@@ -294,13 +294,14 @@ def autoconfig(func: tx.Callable) -> tx.Callable:
     def wrapper(*args, **kwargs) -> tx.Callable:  # noqa: ANN002, ANN003
         # Start from explicit instances (if provided)
         cfg_instances: tx.Mapping[str, tx.Any] = {}
-        for pname, cls in config_map.items():
-            inst = kwargs.pop(pname, None)
+        for param_name, cls in config_map.items():
+            inst = kwargs.pop(param_name, None)
             if inst is not None and not is_dataclass(inst):
                 raise TypeError(
-                    f"Parameter '{pname}' must be a {cls.__name__} instance"
+                    f"Parameter '{param_name}' must be a "
+                    f"{cls.__name__} instance"
                 )
-            cfg_instances[pname] = inst or cls()
+            cfg_instances[param_name] = inst or cls()
 
         # Route flat kwargs by field name into the right config
         consumed = set()
