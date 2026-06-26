@@ -21,7 +21,8 @@ try:
 
     __all__ += ['ZarrPythonArray', 'ZarrPythonGroup']
 except ImportError:
-    warnings.warn("zarr-python is not installed, driver disabled")
+    warnings.warn("zarr-python is not installed, driver disabled",
+                  stacklevel=2)
 
 try:
     import tensorstore as TS  # noqa: F401
@@ -30,4 +31,5 @@ try:
 
     __all__ += ["ZarrTSArray", "ZarrTSGroup"]
 except ImportError:
-    warnings.warn("Tensorstore is not installed, driver disabled")
+    warnings.warn("Tensorstore is not installed, driver disabled",
+                  stacklevel=2)

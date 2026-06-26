@@ -62,19 +62,21 @@ class ZarrConfig:
         Compression options
     no_time
         If True, indicates that the dataset does not have a time dimension.
-        In such cases, any fourth dimension is interpreted as the channel dimension.
+        In such cases, any fourth dimension is interpreted as the channel
+        dimension.
     no_pyramid_axis
-        Spatial axis that should not be downsampled when generating pyramid levels.
+        Spatial axis that should not be downsampled when generating
+        pyramid levels.
         If None, downsampling is applied across all spatial axes.
     levels : int, optional
         Number of pyramid levels to generate.
-        If set to -1, all possible levels are generated until the smallest level
-        fits into one chunk.
+        If set to -1, all possible levels are generated until the
+        smallest level fits into one chunk.
     ome_version
         Version of the OME-Zarr specification to use
     overwrite
-        when no name is supplied and using default output name, if overwrite is set,
-        it won't ask if overwrite
+        when no name is supplied and using default output name, if
+        overwrite is set, it won't ask if overwrite
     driver : {"zarr-python", "tensorstore", "zarrita"}
         library used for Zarr IO Operation
     """
@@ -101,8 +103,9 @@ class ZarrConfig:
         """
         Perform post-initialization checks and adjustments.
 
-        - Ensure that sharding options (shard, shard_channels, shard_time) are only
-          used when zarr_version == 3; otherwise raise NotImplementedError.
+        - Ensure that sharding options (shard, shard_channels, shard_time)
+          are only used when zarr_version == 3;
+          otherwise raise NotImplementedError.
         """
         if self.zarr_version == 2:
             if self.shard or self.shard_channels or self.shard_time:
@@ -136,7 +139,8 @@ class GeneralConfig:
         """
         Perform post-initialization checks and adjustments.
 
-        - Ensure that max_load is a positive integer; otherwise raise ValueError.
+        - Ensure that max_load is a positive integer;
+          otherwise raise ValueError.
         - If verbose is True, set log_level to "debug".
         """
         if not isinstance(self.max_load, int) or self.max_load <= 0:
@@ -166,7 +170,8 @@ class GeneralConfig:
         - Otherwise sets `self.out` to `name + ".nii.zarr"` if NIfTI mode
           is active, or `name + ".ome.zarr"` otherwise.
         - If the resulting path exists and `overwrite` is False, prompts
-          the user for confirmation and raises FileExistsError if not confirmed.
+          the user for confirmation and raises FileExistsError if not
+          confirmed.
         """
         if self.out is not None:
             return
@@ -228,7 +233,9 @@ class NiftiConfig:
 
 
 def autoconfig(func: tx.Callable) -> tx.Callable:
-    """Use as @autoconfig only. Infers config params from dataclass annotations."""
+    """
+    Use as @autoconfig only. Infers config params from dataclass annotations.
+    """
 
     def _unwrap_dataclass_type(tp: dataclass) -> dataclass:
         # Handle Annotated[T, ...]
@@ -244,7 +251,7 @@ def autoconfig(func: tx.Callable) -> tx.Callable:
     sig = inspect.signature(func)
 
     # Build the config map by reading dataclass-typed parameters
-    config_map: tx.Mapping[str, tx.Type] = {}
+    config_map: tx.Mapping[str, type] = {}
     for name, p in sig.parameters.items():
         if name in ("self", "cls"):
             continue
@@ -261,8 +268,8 @@ def autoconfig(func: tx.Callable) -> tx.Callable:
             if f.name in field_owner:
                 other = field_owner[f.name]
                 raise ValueError(
-                    f"Field '{f.name}' appears in both '{other}' and '{pname}'. "
-                    "Rename to avoid ambiguity."
+                    f"Field '{f.name}' appears in both '{other}' and "
+                    f"'{pname}'. Rename to avoid ambiguity."
                 )
             field_owner[f.name] = pname
 
@@ -270,8 +277,9 @@ def autoconfig(func: tx.Callable) -> tx.Callable:
     accepted_names = {
         n for n, p in func_params.items()
         if p.kind in (
-            inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY)
-           and n not in config_map
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            inspect.Parameter.KEYWORD_ONLY
+        ) and n not in config_map
     }
     accepts_var_kw = any(
         p.kind == inspect.Parameter.VAR_KEYWORD for p in func_params.values())
@@ -301,7 +309,9 @@ def autoconfig(func: tx.Callable) -> tx.Callable:
         if not accepts_var_kw:
             unknown = [k for k in leftovers.keys() if k not in accepted_names]
             if unknown:
-                raise TypeError(f"Unknown options: {', '.join(sorted(unknown))}")
+                raise TypeError(
+                    f"Unknown options: {', '.join(sorted(unknown))}"
+                )
 
         return func(*args, **cfg_instances, **leftovers)
 

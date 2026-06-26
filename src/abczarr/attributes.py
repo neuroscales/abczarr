@@ -13,9 +13,9 @@ import threading
 from collections.abc import Iterator, MutableMapping
 from typing import Any
 
-from .path import Path
+# locals
 from .abc import ZarrNode
-
+from .path import Path
 
 if hasattr(MutableMapping, "__class_getitem__"):
     AttributesBase = MutableMapping[str, Any]
@@ -64,7 +64,9 @@ class Attributes(AttributesBase):
             self._path = store / "zarr.json"
             self._is_v3 = True
         else:
-            raise ValueError(f"Unsupported zarr_version: {self._obj.zarr_version}")
+            raise ValueError(
+                f"Unsupported zarr_version: {self._obj.zarr_version}"
+            )
 
     # ---------- public helpers ----------
 
