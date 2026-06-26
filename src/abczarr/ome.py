@@ -16,7 +16,7 @@ def write_ome_metadata(
     levels: tx.Optional[int] = None,
     no_pool: tx.Optional[int] = None,
     multiscales_type: str = "",
-    ome_version: tz.OMEVersion = "0.4"
+    ome_version: tz.OMEVersion = "0.4",
 ) -> None:
     """
     Write OME metadata into Zarr.
@@ -76,6 +76,7 @@ def write_ome_metadata(
         if len(val) < length:
             val = [val[0]] * (length - len(val)) + list(val)
         return val[-length:]
+
     space_scale = _normalize(space_scale, sdim)
     aligns = _normalize(pyramid_aligns, sdim)
 
@@ -88,16 +89,18 @@ def write_ome_metadata(
     ms: dict = {
         "version": ome_version,
         "name": name,
-        "type": multiscales_type or f"median window {'x'.join(['2']*sdim)}",
+        "type": multiscales_type or f"median window {'x'.join(['2'] * sdim)}",
         "axes": [
             dict(
                 name=a,
                 type=t,
                 **(
-                    {"unit": space_unit} if t == "space" else
-                    {"unit": time_unit} if t == "time" else
-                    {}
-                )
+                    {"unit": space_unit}
+                    if t == "space"
+                    else {"unit": time_unit}
+                    if t == "time"
+                    else {}
+                ),
             )
             for a, t in zip(axes, types)
         ],
@@ -106,21 +109,25 @@ def write_ome_metadata(
 
     # Helper to compute per-dimension scale/translation
     def _factor(
-        a0: int, aN: int, align: tx.Union[int, str], n: int,
-        scale: float, is_pool: bool
+        a0: int,
+        aN: int,
+        align: tx.Union[int, str],
+        n: int,
+        scale: float,
+        is_pool: bool,
     ) -> tx.Tuple[float, float]:
         if is_pool:
             # no pooling along this axis
             return scale, 0.0
         if isinstance(align, str) and align.lower().startswith("e"):
-            factor = (a0 / aN)
+            factor = a0 / aN
             trans = (factor - 1) * 0.5
         elif isinstance(align, str) and align.lower().startswith("c"):
-            factor = ((a0 - 1) / (aN - 1))
+            factor = (a0 - 1) / (aN - 1)
             trans = 0.0
         else:
             # numeric align: repeated power
-            factor = (align ** n)
+            factor = align**n
             trans = (factor - 1) * 0.5
         return factor * scale, trans * scale
 
@@ -129,13 +136,13 @@ def write_ome_metadata(
     # 7) Populate each pyramid level
     for n, shape in enumerate(shapes):
         # compute scale+translation arrays of length ndim
-        scale = [1.0]*bdim + []
-        translation = [0.0]*bdim + []
+        scale = [1.0] * bdim + []
+        translation = [0.0] * bdim + []
         for i in range(sdim):
-            a0 = shape0[bdim+i]
-            aN = shape[bdim+i]
-            is_pool = (i == no_pool)
-            if n > 0 and shapes[n-1][bdim + i] == aN:
+            a0 = shape0[bdim + i]
+            aN = shape[bdim + i]
+            is_pool = i == no_pool
+            if n > 0 and shapes[n - 1][bdim + i] == aN:
                 # no change from last level → re‐use
                 s, tr = prev_scale_axes[i], prev_trans_axes[i]
             else:
@@ -145,21 +152,23 @@ def write_ome_metadata(
             prev_scale_axes[i] = s
             prev_trans_axes[i] = tr
 
-        ms["datasets"].append({
-            "path": str(n),
-            "coordinateTransformations": [
-                {"type":"scale",       "scale": scale},
-                {"type":"translation", "translation": translation},
-            ]
-        })
+        ms["datasets"].append(
+            {
+                "path": str(n),
+                "coordinateTransformations": [
+                    {"type": "scale", "scale": scale},
+                    {"type": "translation", "translation": translation},
+                ],
+            }
+        )
 
     # 8) Add global time‐scale transformation
-    tscale = [time_scale if t=="time" else 1.0 for t in types]
-    ms["coordinateTransformations"] = [{"type":"scale", "scale": tscale}]
+    tscale = [time_scale if t == "time" else 1.0 for t in types]
+    ms["coordinateTransformations"] = [{"type": "scale", "scale": tscale}]
 
     # 9) Write into Zarr attributes
     omz.attrs["multiscales"] = [ms]
     if ome_version == "0.5":
         omz.attrs["ome"] = {"version": ome_version, "multiscales": [ms]}
-    elif ome_version not in {"0.4","0.5"}:
+    elif ome_version not in {"0.4", "0.5"}:
         raise ValueError(f"Unsupported ome_version {ome_version}")

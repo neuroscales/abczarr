@@ -18,8 +18,7 @@ from ..config import ZarrConfig
 from ..helpers import _compute_zarr_layout
 
 
-class ZarrPythonNode(ZarrNode):
-    ...
+class ZarrPythonNode(ZarrNode): ...
 
 
 class ZarrPythonArray(ZarrArray, ZarrPythonNode):
@@ -120,7 +119,7 @@ class ZarrPythonGroup(ZarrGroup, ZarrPythonNode):
     @classmethod
     def from_config(
         cls, out: tz.PathLike, zarr_config: ZarrConfig
-        ) -> "ZarrPythonGroup":
+    ) -> "ZarrPythonGroup":
         """Create a Zarr group from a configuration object."""
         store = zarr.storage.LocalStore(out)
         return cls(
@@ -159,9 +158,7 @@ class ZarrPythonGroup(ZarrGroup, ZarrPythonNode):
         else:
             raise TypeError(f"Unsupported item type: {type(item)}")
 
-    def __setitem__(
-        self, key: str, value:  ZarrPythonNode
-    ) -> None:
+    def __setitem__(self, key: str, value: ZarrPythonNode) -> None:
         """Set a subgroup or array by name within this group."""
         if isinstance(value, ZarrPythonGroup):
             self._zgroup[key] = value._zgroup
@@ -219,7 +216,7 @@ class ZarrPythonGroup(ZarrGroup, ZarrPythonNode):
             "compressors": _make_compressor(
                 compressor, zarr_config.zarr_version, **compressor_opt
             ),
-            "overwrite": zarr_config.overwrite
+            "overwrite": zarr_config.overwrite,
         }
 
         chunk_key_encoding = _make_chunk_key_encoding(
@@ -296,16 +293,13 @@ def _make_compressor(
     """Build compressor object from name and options."""
     if not isinstance(name, str):
         return name
-    if name == 'none':
+    if name == "none":
         return None
 
     if zarr_version == 2:
         import numcodecs
 
-        compressor_map = {
-            "blosc": numcodecs.Blosc,
-            "zlib": numcodecs.Zstd
-        }
+        compressor_map = {"blosc": numcodecs.Blosc, "zlib": numcodecs.Zstd}
     elif zarr_version == 3:
         import zarr.codecs
 
@@ -334,8 +328,9 @@ def _make_chunk_key_encoding(
         return None
     return ChunkKeyEncodingParams(
         name="default" if zarr_version == 3 else "v2",
-        separator=dimension_separator
+        separator=dimension_separator,
     )
+
 
 def _getattr(x: object, name: str) -> tx.Any:
     """Get attribute from object, or None if not present."""

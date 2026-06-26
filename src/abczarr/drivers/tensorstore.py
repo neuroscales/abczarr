@@ -1,4 +1,5 @@
 """TensorStore driver for Zarr arrays and groups."""
+
 import json
 import os
 from urllib.parse import urlparse
@@ -19,8 +20,7 @@ from ..metadata import GroupMetadata
 from ..path import Path
 
 
-class ZarrTSNode(ZarrNode):
-    ...
+class ZarrTSNode(ZarrNode): ...
 
 
 class ZarrTSArray(ZarrArray, ZarrTSNode):
@@ -154,9 +154,7 @@ class ZarrTSGroup(ZarrGroup, ZarrTSNode):
         self._metadata: tx.Optional[GroupMetadata] = None
 
     @classmethod
-    def from_config(
-        cls, out: tz.PathLike, zarr_config: ZarrConfig
-        ) -> tx.Self:
+    def from_config(cls, out: tz.PathLike, zarr_config: ZarrConfig) -> tx.Self:
         """
         Create a ZarrTSGroup from a configuration object.
 
@@ -169,9 +167,7 @@ class ZarrTSGroup(ZarrGroup, ZarrTSNode):
         -------
         ZarrTSGroup
         """
-        return cls.open(
-            out, mode="a", zarr_version=zarr_config.zarr_version
-        )
+        return cls.open(out, mode="a", zarr_version=zarr_config.zarr_version)
 
     @classmethod
     def open(
@@ -261,7 +257,8 @@ class ZarrTSGroup(ZarrGroup, ZarrTSNode):
     def keys(self) -> tx.Iterator[str]:
         """Get the names of all subgroups and arrays in this group."""
         return (
-            p.name for p in self._path.iterdir()
+            p.name
+            for p in self._path.iterdir()
             if p.is_dir() and _detect_metadata(p)
         )
 
@@ -337,12 +334,16 @@ class ZarrTSGroup(ZarrGroup, ZarrTSNode):
         # Start with defaults from zarr_config (if provided)
         base: dict = {}
         if zarr_config is not None:
-            base = _normalize_keys({
-                "chunk": getattr(zarr_config, "chunk", None),
-                "shard": getattr(zarr_config, "shard", None),
-                "compressor": getattr(zarr_config, "compressor", None),
-                "compressor_opt": getattr(zarr_config, "compressor_opt", None),
-            })
+            base = _normalize_keys(
+                {
+                    "chunk": getattr(zarr_config, "chunk", None),
+                    "shard": getattr(zarr_config, "shard", None),
+                    "compressor": getattr(zarr_config, "compressor", None),
+                    "compressor_opt": getattr(
+                        zarr_config, "compressor_opt", None
+                    ),
+                }
+            )
 
         # Normalize kwargs and make them override zarr_config-provided defaults
         kw = _normalize_keys(kwargs)
@@ -414,7 +415,7 @@ def make_compressor_v3(name: tx.Optional[str], **prm: dict) -> dict:
 def make_kvstore(path: str | os.PathLike) -> dict:
     """Transform a URI into a kvstore JSON object."""
     path = Path(path)
-    protocol = getattr(path, 'protocol', '')
+    protocol = getattr(path, "protocol", "")
     if protocol in ("file", ""):
         return {"driver": "file", "path": path.path}
     if protocol == "gcs":
@@ -449,8 +450,8 @@ def default_read_config(path: tz.PathLike) -> dict:
         Path to zarr array.
     """
     path = Path(path)
-    protocol = getattr(path, 'protocol', '')
-    if hasattr(path, 'protocol') and not protocol:
+    protocol = getattr(path, "protocol", "")
+    if hasattr(path, "protocol") and not protocol:
         path = Path("file://" + str(path))
     if (path / "zarr.json").exists():
         zarr_version = 3
@@ -468,7 +469,7 @@ def default_read_config(path: tz.PathLike) -> dict:
 
 
 def _detect_metadata(
-    path: tz.PathLike
+    path: tz.PathLike,
 ) -> tx.Optional[tx.Tuple[tz.ZarrNodeType, tz.ZarrVersion]]:
     """
     Look for Zarr metadata files in `path` and return (node_type, version).
@@ -532,8 +533,8 @@ def default_write_config(
         Configuration
     """
     path = Path(path)
-    protocol = getattr(path, 'protocol', '')
-    if hasattr(path, 'protocol') and not protocol:
+    protocol = getattr(path, "protocol", "")
+    if hasattr(path, "protocol") and not protocol:
         path = Path("file://" + str(path))
 
     # Format compressor
@@ -574,7 +575,7 @@ def default_write_config(
 
         codec_little_endian = {
             "name": "bytes",
-            "configuration": {"endian": "little"}
+            "configuration": {"endian": "little"},
         }
 
         if shard:
@@ -603,7 +604,7 @@ def default_write_config(
         else:
             chunk_grid = {
                 "name": "regular",
-                "configuration": {"chunk_shape": chunk}
+                "configuration": {"chunk_shape": chunk},
             }
             codecs = [
                 codec_little_endian,

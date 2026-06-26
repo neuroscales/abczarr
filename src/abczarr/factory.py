@@ -1,4 +1,5 @@
 """Factory module for creating/opening Zarr Nodes with different drivers."""
+
 # stdlib
 import importlib
 import warnings
@@ -80,7 +81,7 @@ def open_array(
     path: tz.PathLike,
     mode: tz.FileMode = "a",
     zarr_version: tz.ZarrVersion = 3,
-    driver: tx.Optional[tz.AnyDriver]  = None,
+    driver: tx.Optional[tz.AnyDriver] = None,
 ) -> ZarrNode:
     """Open a Zarr Node (Array or Group) based on the specified driver."""
     if driver is None:

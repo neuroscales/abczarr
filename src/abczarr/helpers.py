@@ -17,7 +17,7 @@ from .config import ZarrConfig
 SHARD_FILE_SIZE_LIMIT = (
     2  # compression ratio
     * 2  # GB
-    * 2 ** 30  # GB->Bytes
+    * 2**30  # GB->Bytes
 )
 
 
@@ -119,7 +119,8 @@ def _compute_zarr_layout(
                     improved = True
             # Remove dimensions that have reached or exceeded the data size.
             free_dims = [
-                i for i in free_dims
+                i
+                for i in free_dims
                 if M[i] * chunk_spatial[i] < shape_spatial[i]
             ]
         shard = tuple(M[i] * chunk_spatial[i] for i in range(dims))
@@ -131,7 +132,7 @@ def _compute_zarr_layout(
 def auto_shard_size(
     max_shape: tz.ShapeLike,
     itemsize: int | np.dtype | str,
-    max_file_size: int = 2 * 1024 ** 4,
+    max_file_size: int = 2 * 1024**4,
     compression_ratio: float = 2,
 ) -> tz.Shape:
     """

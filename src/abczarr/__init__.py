@@ -19,10 +19,11 @@ try:
 
     from .drivers.zarr_python import ZarrPythonArray, ZarrPythonGroup
 
-    __all__ += ['ZarrPythonArray', 'ZarrPythonGroup']
+    __all__ += ["ZarrPythonArray", "ZarrPythonGroup"]
 except ImportError:
-    warnings.warn("zarr-python is not installed, driver disabled",
-                  stacklevel=2)
+    warnings.warn(
+        "zarr-python is not installed, driver disabled", stacklevel=2
+    )
 
 try:
     import tensorstore as TS  # noqa: F401
@@ -31,5 +32,6 @@ try:
 
     __all__ += ["ZarrTSArray", "ZarrTSGroup"]
 except ImportError:
-    warnings.warn("Tensorstore is not installed, driver disabled",
-                  stacklevel=2)
+    warnings.warn(
+        "Tensorstore is not installed, driver disabled", stacklevel=2
+    )

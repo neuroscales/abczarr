@@ -153,9 +153,7 @@ class Attributes(AttributesBase):
             self._attrs = dict(data.get("attributes", {}))
             # keep all other top-level keys to preserve on write
             self._v3_other_keys = {
-                k: v
-                for k, v in data.items()
-                if k != "attributes"
+                k: v for k, v in data.items() if k != "attributes"
             }
         else:
             self._attrs = dict(data)

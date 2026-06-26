@@ -54,8 +54,7 @@ def default_levels(
 
 
 def next_level_shape(
-    prev_shape: tz.ShapeLike,
-    no_pyramid_axis: tx.Optional[int]
+    prev_shape: tz.ShapeLike, no_pyramid_axis: tx.Optional[int]
 ) -> tz.Shape:
     """
     Compute the shape of the next coarser level by halving each dimension.
@@ -122,15 +121,16 @@ def compute_next_level(
         axis: (
             1
             if (
-                no_pyramid_axis is not None and
-                axis == pyramid_axes[no_pyramid_axis]
-                ) or arr.shape[axis] == 1
+                no_pyramid_axis is not None
+                and axis == pyramid_axes[no_pyramid_axis]
+            )
+            or arr.shape[axis] == 1
             else 2
         )
         for axis in pyramid_axes
     }
     dtype = arr.dtype
 
-    return da.coarsen(
-        window_func, arr, factors, trim_excess=True
-    ).astype(dtype)
+    return da.coarsen(window_func, arr, factors, trim_excess=True).astype(
+        dtype
+    )

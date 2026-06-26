@@ -43,8 +43,7 @@ CompressorOptions = tx.Mapping[str, tx.Union[float, str]]
 DimensionSeparator = tx.Literal[".", "/"]
 ArrayOrder = tx.Literal["C", "F"]
 PyramidMode = tx.Union[
-    tx.Literal["mean", "median"],
-    tx.Callable[[npt.ArrayLike], Value]
+    tx.Literal["mean", "median"], tx.Callable[[npt.ArrayLike], Value]
 ]
 SpatialAxisName = tx.Literal["x", "y", "z"]
 TimeAxisName = tx.Literal["t"]

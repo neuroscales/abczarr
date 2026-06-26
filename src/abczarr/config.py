@@ -1,4 +1,5 @@
 """Configuration related to output Zarr Archive."""
+
 import inspect
 from dataclasses import dataclass, field, fields, is_dataclass, replace
 from functools import wraps
@@ -12,10 +13,11 @@ from . import typing as tz
 # optionals
 try:
     import cyclopts
+
     Parameter = cyclopts.Parameter
 except ImportError:
     cyclopts = None
-    Parameter = lambda *a, **k: (lambda f: f)  # noqa: E731
+    Parameter = lambda *a, **k: lambda f: f  # noqa: E731
 
 
 @Parameter(name="*")
@@ -82,7 +84,7 @@ class ZarrConfig:
     """
 
     zarr_version: tz.ZarrVersion = 3
-    chunk: tz.Shape= (128,)
+    chunk: tz.Shape = (128,)
     chunk_channels: bool = False
     chunk_time: bool = True
     shard: tx.Union[tz.Shape, tx.Literal["auto"], None] = None
@@ -275,14 +277,18 @@ def autoconfig(func: tx.Callable) -> tx.Callable:
 
     func_params = sig.parameters
     accepted_names = {
-        n for n, p in func_params.items()
-        if p.kind in (
+        n
+        for n, p in func_params.items()
+        if p.kind
+        in (
             inspect.Parameter.POSITIONAL_OR_KEYWORD,
-            inspect.Parameter.KEYWORD_ONLY
-        ) and n not in config_map
+            inspect.Parameter.KEYWORD_ONLY,
+        )
+        and n not in config_map
     }
     accepts_var_kw = any(
-        p.kind == inspect.Parameter.VAR_KEYWORD for p in func_params.values())
+        p.kind == inspect.Parameter.VAR_KEYWORD for p in func_params.values()
+    )
 
     @wraps(func)
     def wrapper(*args, **kwargs) -> tx.Callable:  # noqa: ANN002, ANN003
@@ -292,7 +298,8 @@ def autoconfig(func: tx.Callable) -> tx.Callable:
             inst = kwargs.pop(pname, None)
             if inst is not None and not is_dataclass(inst):
                 raise TypeError(
-                    f"Parameter '{pname}' must be a {cls.__name__} instance")
+                    f"Parameter '{pname}' must be a {cls.__name__} instance"
+                )
             cfg_instances[pname] = inst or cls()
 
         # Route flat kwargs by field name into the right config

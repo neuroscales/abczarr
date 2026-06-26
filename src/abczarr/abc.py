@@ -28,6 +28,7 @@ from .path import Path
 try:
     from tqdm import tqdm
 except ImportError:
+
     def tqdm(x: tx.Iterable, *a, **kw) -> tx.Iterable:
         return x
 
@@ -48,7 +49,7 @@ class ZarrNode(ABC):
     """Base class for any Zarr-like object (group or array)."""
 
     def __init__(self, store_path: tz.PathLike) -> None:
-        if isinstance(store_path,(str, bytes)):
+        if isinstance(store_path, (str, bytes)):
             store_path = Path(store_path)
         self._store_path = store_path
 
