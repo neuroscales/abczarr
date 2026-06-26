@@ -4,5 +4,8 @@
     "balbasty",
     "brainhops",
     "zensical"
+  ],
+  "ignorePaths": [
+    "zensical.toml"
   ]
 }
