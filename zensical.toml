@@ -1,0 +1,167 @@
+[project]
+
+nav = [
+  {"Home" = "index.md"},
+  # {"Getting started" = [
+  #   "index.md",
+  #    {"Command-line interface" = "start/cli.md"},
+  #    {"Python interface" = "start/python.md"},
+  # ]},
+  # {"Command-line API" = [
+  #   "cli/index.md",
+  #   {"Commands" = "cli/commands.md"},
+  # ]},
+  # {"Python API" = [
+  #   "api/index.md",
+  #   {"datamodel" = [
+  #     "api/datamodel/index.md",
+  #     "api/datamodel/base.md",
+  #     "api/datamodel/enums.md",
+  #     "api/datamodel/units.md",
+  #     "api/datamodel/orientation.md",
+  #     "api/datamodel/axes.md",
+  #     "api/datamodel/systems.md",
+  #     "api/datamodel/transformations.md",
+  #     "api/datamodel/hierarchy.md",
+  #   ]},
+  #   {"io" = [
+  #     {"transformations" = [
+  #       "api/io/index.md",
+  #       "api/io/lta.md",
+  #       "api/io/index.md",
+  #     ]},
+  #     {"images" = []},
+  #     {"vectors" = []},
+  #   ]},
+  #   {"For developers" = [
+  #       {"struct" = [
+  #         "api/_ext/struct/index.md",
+  #         "api/_ext/struct/converters.md",
+  #         "api/_ext/struct/validators.md",
+  #       ]},
+  #       {"invfield" = "api/_ext/invfield.md"},
+  #   ]}
+  # ]}
+]
+
+# The site_name is shown in the page header and the browser window title
+#
+# Read more: https://zensical.org/docs/setup/basics/#site_name
+site_name = "abczarr"
+
+site_description = "Spatial transformations that scale."
+
+# The site_author attribute. This is used in the HTML head element.
+#
+# Read more: https://zensical.org/docs/setup/basics/#site_author
+site_author = "Yael Balbastre"
+
+site_url = "https://neuroscales.github.io/abczarr/"
+
+copyright = """
+Copyright &copy; 2026 The authors
+"""
+
+[project.theme]
+
+language = "en"
+
+features = [
+  "content.code.copy",
+  "content.code.select",
+  "navigation.indexes",
+]
+
+[[project.theme.palette]]
+scheme = "default"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+scheme = "slate"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to light mode"
+
+# ----------------------------------------------------------------------------
+# In the "font" subsection you can configure the fonts used. By default, fonts
+# are loaded from Google Fonts, giving you a wide range of choices from a set
+# of suitably licensed fonts. There are options for a normal text font and for
+# a monospaced font used in code blocks.
+# ----------------------------------------------------------------------------
+#[project.theme.font]
+#text = "Inter"
+#code = "Jetbrains Mono"
+
+# ----------------------------------------------------------------------------
+# You can configure your own logo to be shown in the header using the "logo"
+# option in the "icons" subsection. The logo can be a path to a file in your
+# "docs_dir" or it can be a path to an icon.
+#
+# Likewise, you can customize the logo used for the repository section of the
+# header. Zensical derives the default logo for this from the repository URL.
+# See below...
+#
+# There are other icons you can customize. See the documentation for details.
+#
+# Read more:
+# - https://zensical.org/docs/setup/logo-and-icons
+# - https://zensical.org/docs/authoring/icons-emojis/#search
+# ----------------------------------------------------------------------------
+[project.theme.icon]
+logo = "lucide/brain-circuit"
+repo = "fontawesome/brands/github"
+
+# ----------------------------------------------------------------------------
+# The "extra" section contains miscellaneous settings.
+# ----------------------------------------------------------------------------
+#[[project.extra.social]]
+#icon = "fontawesome/brands/github"
+#link = "https://github.com/user/repo"
+
+# ----------------------------------------------------------------------------
+# mkdocstrings
+# ----------------------------------------------------------------------------
+[project.plugins.mkdocstrings.handlers.python]
+inventories = ["https://docs.python.org/3/objects.inv"]
+paths = ["src"]
+
+[project.plugins.mkdocstrings.handlers.python.options]
+docstring_style = "numpy"
+inherited_members = true
+show_source = false
+merge_init_into_class = true
+separate_signature = true
+members_order = "source"
+show_root_heading = true
+show_overloads = true
+overloads_only = true
+relative_crossrefs = true
+scoped_crossrefs = true
+show_if_no_docstring = false
+allow_inspection = true
+filters = "public"
+group_by_category = true
+show_category_heading = true
+
+# ----------------------------------------------------------------------------
+# Markdown extras
+# ----------------------------------------------------------------------------
+[project.markdown_extensions.admonition]
+# [project.markdown_extensions.attr_list]
+[project.markdown_extensions.pymdownx.highlight]
+anchor_linenums = true
+line_spans = "__span"
+pygments_lang_class = true
+[project.markdown_extensions.pymdownx.inlinehilite]
+[project.markdown_extensions.pymdownx.snippets]
+[project.markdown_extensions.pymdownx.superfences]
+[project.markdown_extensions.pymdownx.details]
+[project.markdown_extensions.pymdownx.tabbed]
+alternate_style = true
+[project.markdown_extensions.pymdownx.emoji]
+emoji_generator = "zensical.extensions.emoji.to_svg"
+emoji_index = "zensical.extensions.emoji.twemoji"
+[project.markdown_extensions.pymdownx.keys]
+[project.markdown_extensions.tables]
+[project.markdown_extensions.toc]
+toc_depth = 3

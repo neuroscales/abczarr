@@ -1,0 +1,124 @@
+name: Test package and publish
+description: Test package and publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Commit / Branch / Tag / SHA to checkout'
+        required: false
+        default: ''
+      test:
+        description: 'Run tests'
+        required: false
+        default: true
+        type: boolean
+      publish:
+        description: 'Publish'
+        required: false
+        default: 'none'
+        type: choice
+        options:
+          - 'none'
+          - 'pypi'
+          - 'test'
+          - 'test+pypi'
+      python-version:
+        description: 'Python version'
+        required: false
+        default: ''
+
+  workflow_call:
+    inputs:
+      tag:
+        description: 'Commit / Branch / Tag / SHA to checkout'
+        required: false
+        default: ''
+        type: string
+      test:
+        description: 'Run tests'
+        required: false
+        default: true
+        type: boolean
+      publish:
+        description: 'Publish'
+        required: false
+        default: 'none'
+        type: string
+      python-version:
+        description: 'Python version'
+        required: false
+        default: ''
+        type: string
+    secrets:
+      PYPI_TOKEN:
+        required: true
+      TEST_PYPI_TOKEN:
+        required: true
+
+jobs:
+  tests:
+    if: inputs.test
+    uses: ./.github/workflows/test-matrix.yaml
+    with:
+      tag: ${{ inputs.tag }}
+
+  publish-testpypi-if-tests:
+    if: ${{ inputs.test && contains(inputs.publish, 'test') }}
+    needs: tests
+    uses: ./.github/workflows/publish-pypi.yaml
+    with:
+      python-version: ${{ inputs.python-version }}
+      tag: ${{ inputs.tag }}
+      test: true
+    secrets:
+      password: ${{ secrets.TEST_PYPI_TOKEN }}
+
+  publish-testpypi-always:
+    if: ${{ !inputs.test && contains(inputs.publish, 'test') }}
+    uses: ./.github/workflows/publish-pypi.yaml
+    with:
+      python-version: ${{ inputs.python-version }}
+      tag: ${{ inputs.tag }}
+      test: true
+    secrets:
+      password: ${{ secrets.TEST_PYPI_TOKEN }}
+
+  publish-pypi-if-testpypi-and-tests:
+    if: ${{ inputs.test && contains(inputs.publish, 'pypi') && contains(inputs.publish, 'test') }}
+    needs: publish-testpypi-if-tests
+    uses: ./.github/workflows/publish-pypi.yaml
+    with:
+      python-version: ${{ inputs.python-version }}
+      tag: ${{ inputs.tag }}
+    secrets:
+      password: ${{ secrets.PYPI_TOKEN }}
+
+  publish-pypi-if-tests:
+    if: ${{ inputs.test && contains(inputs.publish, 'pypi') && !contains(inputs.publish, 'test') }}
+    needs: tests
+    uses: ./.github/workflows/publish-pypi.yaml
+    with:
+      python-version: ${{ inputs.python-version }}
+      tag: ${{ inputs.tag }}
+    secrets:
+      password: ${{ secrets.PYPI_TOKEN }}
+
+  publish-pypi-if-testpypi:
+    if: ${{ !inputs.test && contains(inputs.publish, 'pypi') && contains(inputs.publish, 'test') }}
+    needs: publish-testpypi-always
+    uses: ./.github/workflows/publish-pypi.yaml
+    with:
+      python-version: ${{ inputs.python-version }}
+      tag: ${{ inputs.tag }}
+    secrets:
+      password: ${{ secrets.PYPI_TOKEN }}
+
+  publish-pypi-always:
+    if: ${{ !inputs.test && contains(inputs.publish, 'pypi') && !contains(inputs.publish, 'test') }}
+    uses: ./.github/workflows/publish-pypi.yaml
+    with:
+      python-version: ${{ inputs.python-version }}
+      tag: ${{ inputs.tag }}
+    secrets:
+      password: ${{ secrets.PYPI_TOKEN }}
