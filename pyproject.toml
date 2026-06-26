@@ -24,7 +24,7 @@ zarr-py = ["zarr"]
 tensorstore = ["tensorstore"]
 
 # test
-test = []
+test = ["pytest"]
 
 # doc
 doc = [
