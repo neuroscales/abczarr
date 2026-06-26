@@ -41,8 +41,8 @@ class ZarrConfig:
         Put channels in different chunk.
         If False, combine all channels in a single chunk.
     chunk_time
-        Put timepoints in different chunk.
-        If False, combine all timepoints in a single chunk.
+        Put time points in different chunk.
+        If False, combine all time points in a single chunk.
     shard
         Output shard size.
         Behavior same as chunk.
@@ -52,8 +52,8 @@ class ZarrConfig:
         Put channels in different shards.
         If False, combine all channels in a single shard.
     shard_time
-        Put timepoints in different shards.
-        If False, combine all timepoints in a single shard.
+        Put time points in different shards.
+        If False, combine all time points in a single shard.
     dimension_separator
         The separator placed between the dimensions of a chunk.
     order:
@@ -245,9 +245,9 @@ def autoconfig(func: tx.Callable) -> tx.Callable:
             tp = tx.get_args(tp)[0]
         # Handle Optional[T] / Union[T, None]
         if tx.get_origin(tp) is tx.Union:
-            cand = [t for t in tx.get_args(tp) if t is not type(None)]  # noqa: E721
-            if len(cand) == 1:
-                tp = cand[0]
+            args = [t for t in tx.get_args(tp) if t is not type(None)]
+            if len(args) == 1:
+                tp = args[0]
         return tp if isinstance(tp, type) and is_dataclass(tp) else None
 
     sig = inspect.signature(func)
@@ -263,17 +263,17 @@ def autoconfig(func: tx.Callable) -> tx.Callable:
 
     # Collision check across config field names
     field_owner: tx.Mapping[str, str] = {}
-    for pname, cls in config_map.items():
+    for param_name, cls in config_map.items():
         if not is_dataclass(cls):
-            raise TypeError(f"{pname} -> {cls} must be a dataclass type")
+            raise TypeError(f"{param_name} -> {cls} must be a dataclass type")
         for f in fields(cls):
             if f.name in field_owner:
                 other = field_owner[f.name]
                 raise ValueError(
                     f"Field '{f.name}' appears in both '{other}' and "
-                    f"'{pname}'. Rename to avoid ambiguity."
+                    f"'{param_name}'. Rename to avoid ambiguity."
                 )
-            field_owner[f.name] = pname
+            field_owner[f.name] = param_name
 
     func_params = sig.parameters
     accepted_names = {

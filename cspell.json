@@ -1,9 +1,15 @@
 {
   "version": "0.2",
   "words": [
-    "balbasty",
-    "brainhops",
-    "zensical"
+    "cyclopts",
+    "zarrita",
+    "blosc",
+    "nifti",
+    "autoconfig",
+
+    "downsample",
+    "downsampled",
+    "downsampling"
   ],
   "ignorePaths": [
     "zensical.toml"
