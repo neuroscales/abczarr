@@ -338,7 +338,6 @@ def _make_chunk_key_encoding(
     }
 
 
-
 def _getattr(x: object, name: str) -> tx.Any:
     """Get attribute from object, or None if not present."""
     return getattr(x, name, None)
