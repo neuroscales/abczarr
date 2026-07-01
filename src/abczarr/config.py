@@ -8,7 +8,7 @@ from functools import wraps
 import typing_extensions as tx
 
 # locals
-from . import typing as tz
+from ._core import typing as tz
 
 # optionals
 try:
@@ -91,7 +91,7 @@ class ZarrConfig:
     shard_channels: bool = False
     shard_time: bool = False
     dimension_separator: tz.DimensionSeparator = "/"
-    order: tz.ArrayOrder = "C"
+    order: tz.MemoryOrder = "C"
     compressor: tz.CompressorType = "blosc"
     compressor_opt: tz.CompressorOptions = field(default_factory=dict)
     no_time: bool = False

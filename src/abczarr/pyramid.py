@@ -9,7 +9,7 @@ import dask.array as da
 import typing_extensions as tx
 
 # locals
-from . import typing as tz
+from ._core import typing as tz
 
 # logger
 logger = logging.getLogger(__name__)

@@ -14,15 +14,15 @@ import typing_extensions as tx
 from dask.diagnostics import ProgressBar
 
 # locals
-from . import typing as tz
+from ._core import typing as tz
 from .config import ZarrConfig
-from .generate_pyramid import (
+from .pyramid import (
     compute_next_level,
     default_levels,
     next_level_shape,
 )
 from .ome import write_ome_metadata
-from .path import Path
+from ._core.path import Path
 
 # optionals
 try:
@@ -41,7 +41,7 @@ class ZarrArrayConfig(tx.TypedDict):
     compressor: tx.Optional[tz.CompressorType]
     compressor_options: tx.Mapping[str, tx.Any]
     dimension_separator: tz.DimensionSeparator
-    order: tz.ArrayOrder
+    order: tz.MemoryOrder
     fill_value: tx.Optional[Number]
 
 
@@ -241,13 +241,13 @@ class ZarrGroup(ZarrNode):
 
     def write_ome_metadata(
         self,
-        axes: tx.Sequence[tz.AxisName],
-        space_scale: tz.OneOrMore[float] = 1.0,
+        axes: tx.Sequence[tz.OMEAxisName],
+        space_scale: tz.OneOrIter[float] = 1.0,
         time_scale: float = 1.0,
         space_unit: str = "micrometer",
         time_unit: str = "second",
         name: str = "",
-        pyramid_aligns: tz.OneOrMore[tx.Union[str, int]] = 2,
+        pyramid_aligns: tz.OneOrIter[tx.Union[str, int]] = 2,
         levels: tx.Optional[int] = None,
         no_pool: tx.Optional[int] = None,
         multiscales_type: str = "",

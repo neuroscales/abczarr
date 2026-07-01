@@ -4,24 +4,30 @@
 import numpy as np
 import numpy.typing as npt
 import typing_extensions as tx
-import zarr
-from zarr.core.array import CompressorsLike
-from zarr.core.chunk_key_encodings import (
-    ChunkKeyEncodingLike,
-    ChunkKeyEncodingParams,
-)
 
 # locals
-from .. import typing as tz
-from ..abc import ZarrArray, ZarrArrayConfig, ZarrGroup, ZarrNode
-from ..config import ZarrConfig
-from ..helpers import _compute_zarr_layout
+from abczarr._core import typing as tz
+from abczarr.config import ZarrConfig
+from abczarr.helpers import _compute_zarr_layout
+from abczarr.registry import UnavailableDriverError
+from abczarr.abc import (
+    ZarrArray as ZarrArrayABC,
+    ZarrGroup as ZarrGroupABC,
+    ZarrNode as ZarrNodeABC,
+    ZarrArrayConfig,
+)
+
+# optionals
+try:
+    import zarr
+except ImportError:
+    raise UnavailableDriverError("zarr-python")
 
 
-class ZarrPythonNode(ZarrNode): ...
+class ZarrPythonNode(ZarrNodeABC): ...
 
 
-class ZarrPythonArray(ZarrArray, ZarrPythonNode):
+class ZarrPythonArray(ZarrArrayABC, ZarrPythonNode):
     """Zarr Array implementation using the zarr-python library."""
 
     def __init__(self, array: zarr.Array) -> None:
@@ -100,7 +106,7 @@ class ZarrPythonArray(ZarrArray, ZarrPythonNode):
         return cls(zarr.open_array(*args, **kwargs))
 
 
-class ZarrPythonGroup(ZarrGroup, ZarrPythonNode):
+class ZarrPythonGroup(ZarrGroupABC, ZarrPythonNode):
     """Zarr Group implementation using the zarr-python library."""
 
     def __init__(self, zarr_group: zarr.Group) -> None:
@@ -289,7 +295,7 @@ class ZarrPythonGroup(ZarrGroup, ZarrPythonNode):
 
 def _make_compressor(
     name: str | None, zarr_version: tz.ZarrVersion, **prm: dict
-) -> CompressorsLike:
+): # -> CompressorsLike:
     """Build compressor object from name and options."""
     if not isinstance(name, str):
         return name
@@ -320,16 +326,17 @@ def _make_compressor(
 
 def _make_chunk_key_encoding(
     dimension_separator: tz.DimensionSeparator, zarr_version: tz.ZarrVersion
-) -> ChunkKeyEncodingLike:
+): # -> ChunkKeyEncodingLike:
     dimension_separator = dimension_separator
     if dimension_separator == "." and zarr_version == 2:
         return None
     if dimension_separator == "/" and zarr_version == 3:
         return None
-    return ChunkKeyEncodingParams(
-        name="default" if zarr_version == 3 else "v2",
-        separator=dimension_separator,
-    )
+    return {
+        "name": "default" if zarr_version == 3 else "v2",
+        "separator": dimension_separator,
+    }
+
 
 
 def _getattr(x: object, name: str) -> tx.Any:

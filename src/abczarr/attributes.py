@@ -15,7 +15,7 @@ from typing import Any
 
 # locals
 from .abc import ZarrNode
-from .path import Path
+from ._core.path import Path
 
 if hasattr(MutableMapping, "__class_getitem__"):
     AttributesBase = MutableMapping[str, Any]

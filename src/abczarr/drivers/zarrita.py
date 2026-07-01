@@ -1,3 +1,6 @@
 """Zarrita driver for Zarr groups and arrays."""
 
-raise NotImplementedError
+from abczarr.api import UnavailableDriverError
+
+
+raise UnavailableDriverError("zarr-python")

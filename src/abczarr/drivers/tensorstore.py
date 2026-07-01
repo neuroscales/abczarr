@@ -1,5 +1,6 @@
 """TensorStore driver for Zarr arrays and groups."""
 
+# stdlib
 import json
 import os
 from urllib.parse import urlparse
@@ -7,17 +8,23 @@ from urllib.parse import urlparse
 # dependencies
 import numpy as np
 import numpy.typing as npt
-import tensorstore as ts
 import typing_extensions as tx
 
-# locals
-from .. import typing as tz
-from ..abc import ZarrArray, ZarrArrayConfig, ZarrGroup, ZarrNode
-from ..attributes import Attributes
-from ..config import ZarrConfig
-from ..helpers import auto_shard_size, fix_shard_chunk
-from ..metadata import GroupMetadata
-from ..path import Path
+# abczarr
+from abczarr._core import typing as tz
+from abczarr._core.path import Path
+from abczarr.abc import ZarrArray, ZarrArrayConfig, ZarrGroup, ZarrNode
+from abczarr.attributes import Attributes
+from abczarr.config import ZarrConfig
+from abczarr.helpers import auto_shard_size, fix_shard_chunk
+from abczarr.metadata.base import GroupMetadata
+from abczarr.registry import UnavailableDriverError
+
+# optionals
+try:
+    import tensorstore as ts
+except ImportError:
+    raise UnavailableDriverError("tensorstore")
 
 
 class ZarrTSNode(ZarrNode): ...
@@ -91,7 +98,7 @@ class ZarrTSArray(ZarrArray, ZarrTSNode):
     def open(
         cls,
         path: tz.PathLike,
-        mode: tz.FileMode = "a",
+        mode: tz.AccessMode = "a",
         *,
         zarr_version: tz.ZarrVersion = 3,
     ) -> tx.Self:
@@ -173,7 +180,7 @@ class ZarrTSGroup(ZarrGroup, ZarrTSNode):
     def open(
         cls,
         path: tz.PathLike,
-        mode: tz.FileMode = "a",
+        mode: tz.AccessMode = "a",
         *,
         zarr_version: tz.ZarrVersion = 3,
     ) -> tx.Self:
@@ -470,7 +477,7 @@ def default_read_config(path: tz.PathLike) -> dict:
 
 def _detect_metadata(
     path: tz.PathLike,
-) -> tx.Optional[tx.Tuple[tz.ZarrNodeType, tz.ZarrVersion]]:
+) -> tx.Optional[tx.Tuple[tz.NodeType, tz.ZarrVersion]]:
     """
     Look for Zarr metadata files in `path` and return (node_type, version).
 

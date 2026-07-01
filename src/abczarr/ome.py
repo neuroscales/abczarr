@@ -1,13 +1,15 @@
 import typing_extensions as tx
 
-from . import typing as tz
-from .abc import ZarrGroup
+from ._core import typing as tz
+
+if tx.TYPE_CHECKING:
+    from .abc import ZarrGroup
 
 
 def write_ome_metadata(
     omz: ZarrGroup,
-    axes: tx.Sequence[tz.AxisName],
-    space_scale: tz.OneOrMore[float] = 1.0,
+    axes: tx.Sequence[tz.OMEAxisName],
+    space_scale: tz.OneOrIter[float] = 1.0,
     time_scale: float = 1.0,
     space_unit: str = "micrometer",
     time_unit: str = "second",
@@ -69,7 +71,7 @@ def write_ome_metadata(
 
     # 3) Normalize space_scale and pyramid_aligns to length==sdim
     def _normalize(
-        val: tz.OneOrMore[float], length: int
+        val: tz.OneOrIter[float], length: int
     ) -> tx.Sequence[float]:
         if not isinstance(val, (list, tuple)):
             val = [val]

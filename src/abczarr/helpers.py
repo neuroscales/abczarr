@@ -10,7 +10,7 @@ import numpy.typing as npt
 import typing_extensions as tx
 
 # locals
-from . import typing as tz
+from ._core import typing as tz
 from .config import ZarrConfig
 
 # constants
