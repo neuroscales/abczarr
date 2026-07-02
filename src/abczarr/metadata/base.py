@@ -25,7 +25,7 @@ import json
 import os
 import re
 import tempfile
-from collections.abc import Sequence, Mapping
+from collections import abc
 
 # dependencies
 import typing_extensions as tx
@@ -56,7 +56,7 @@ def register_subclass(
     registered subclass if its input parameters match the given dictionary.
     """
 
-    if isinstance(match, Mapping):
+    if isinstance(match, abc.Mapping):
         match = match.items()
     match = dict(map(tuple, match))
     match.update(other_matches)
@@ -80,14 +80,7 @@ def register_subclass(
 class Metadata:
     """Frozen, recursive, JSON-serializable metadata class."""
 
-    @classmethod
-    def _registry(cls):
-        # Return the dictionary of registered subclasses.
-        return {
-            match: subcls
-            for match, subcls in getattr(cls, "_REGISTRY", {}).items()
-            if issubclass(subcls, cls)
-        }
+    # --- Subclass registry --------------------------------------------
 
     def __new__(cls, *args, **kwargs) -> tx.Self:
         # Some subclasses register themselves with their base class,
@@ -127,6 +120,19 @@ class Metadata:
 
         return super().__new__(cls)
 
+    @classmethod
+    def _registry(cls):
+        # Return the dictionary of registered subclasses.
+        return {
+            match: subcls
+            for match, subcls in getattr(cls, "_REGISTRY", {}).items()
+            if issubclass(subcls, cls)
+        }
+
+    # --- Dict-like interface ------------------------------------------
+    # NOTE: Metadata is not a subclass of abc.Mapping, but it implements
+    # `__getitem__` and `keys()` and can therefore be unpacked as a dict.
+
     def __getitem__(self, key: str) -> tx.Any:
         if any(f.name == key for f in fields(self)):
             return getattr(self, key)
@@ -145,54 +151,25 @@ class Metadata:
     def keys(self) -> tx.Tuple[str, ...]:
         return tuple(self)
 
+    # --- JSON conversion ----------------------------------------------
+
     def to_dict(self) -> tz.JSONDict:
         """Convert this metadata to a JSON-serializable dict."""
-        out: tz.JSONDict = {}
-
-        def _serialize_item(k: str, v: tx.Any, out: tz.JSONDict) -> None:
-            if _is_metadata(v):
-                out[k] = v.to_dict()
-            elif _is_sequence(v):
-                out[k] = tuple(
-                    x.to_dict() if _is_metadata(x) else x for x in v
-                )
-            else:
-                out[k] = v
-
-        def _serialize_dict(d: tz.JSONDict, out: tz.JSONDict) -> None:
-            for k, v in d.items():
-                _serialize_item(k, v, out)
-
-        def _serialize_meta(meta: Metadata, out: tz.JSONDict) -> None:
-            for f in fields(meta):
-                k = f.name
-                if k == "extra_items":
-                    continue
-                v = getattr(meta, k)
-                _serialize_item(k, v, out)
-
-        def _serialize(meta: Metadata, out: tz.JSONDict) -> None:
-            _serialize_meta(meta, out)
-            extra = getattr(meta, "extra_items", False)
-            if extra:
-                _serialize_dict(extra, out)
-
-        _serialize(self, out)
-        return out
+        return _to_json(self)
 
     @classmethod
     def from_dict(cls, data: tz.JSONDict) -> tx.Self:
         """Create an instance from a JSON-serializable dict."""
 
         # If not a dict, try to interpret it as a positional argument
-        if not isinstance(data, Mapping):
+        if not isinstance(data, abc.Mapping):
             for f in fields(cls):
                 if f.init and not f.kw_only:
                     data = {f.name: data}
                     break
 
         # If no positional argument -> error
-        if not isinstance(data, Mapping):
+        if not isinstance(data, abc.Mapping):
             raise TypeError(
                 f"Cannot create {cls.__name__} from non-mapping data: {data}"
             )
@@ -256,6 +233,13 @@ class FlexibleMetadata(Metadata):
     ...
 
 
+# ======================================================================
+#
+#                             NODE BASE
+#
+# ======================================================================
+
+
 @autofrozen
 class NodeMetadata(Metadata):
 
@@ -289,58 +273,6 @@ class NodeMetadata(Metadata):
             f"{constants.Z1META_JSON}"
         )
 
-    if False:
-        @classmethod
-        def from_dict(cls, data: tz.JSONDict) -> tx.Self:
-            """Create an instance from a JSON-serializable dict."""
-            cls0 = cls
-
-            # Guess format
-            zf = data.get("zarr_format")
-            if not zf:
-                if isinstance(cls, NodeMetadataV1):
-                    zf = 1
-                elif isinstance(cls, NodeMetadataV2):
-                    zf = 2
-                elif isinstance(cls, NodeMetadataV3):
-                    zf = 3
-
-            # Ensure correct version
-            if (zf == 1) and not isinstance(cls, NodeMetadataV1):
-                cls = NodeMetadataV1
-            elif (zf == 2) and not isinstance(cls, NodeMetadataV2):
-                cls = NodeMetadataV2
-            elif (zf == 3) and not isinstance(cls, NodeMetadataV3):
-                cls = NodeMetadataV3
-
-            # Guess node type
-            node_type = data.get("node_type")
-            if not node_type:
-                if isinstance(cls, ArrayMetadata):
-                    node_type = "array"
-                elif isinstance(cls, GroupMetadata):
-                    node_type = "group"
-
-            # Ensure correct node type
-            ARRAYS = {
-                1: getattr(ArrayMetadataV1, "_IMPL", ArrayMetadataV1),
-                2: getattr(ArrayMetadataV2, "_IMPL", ArrayMetadataV2),
-                3: getattr(ArrayMetadataV3, "_IMPL", ArrayMetadataV3),
-            }
-            GROUPS = {
-                2: getattr(GroupMetadataV2, "_IMPL", GroupMetadataV2),
-                3: getattr(GroupMetadataV3, "_IMPL", GroupMetadataV3),
-            }
-            if (node_type == "array") and not issubclass(cls, ArrayMetadata):
-                cls = ARRAYS.get(zf, ArrayMetadata)
-            elif (node_type == "group") and not issubclass(cls, GroupMetadata):
-                cls = GROUPS.get(zf, GroupMetadata)
-
-            if cls0 is cls:
-                return super().from_dict(data)
-            else:
-                return cls.from_dict(data)
-
 
 @register_subclass(node_type="group")
 @autofrozen
@@ -354,7 +286,6 @@ class GroupMetadata(NodeMetadata):
 class ArrayMetadata(NodeMetadata):
 
     node_type: tx.Literal["array"] = "array"
-
 
 
 # ======================================================================
@@ -580,10 +511,52 @@ def _atomic_write(path: os.PathLike, data: tz.JSONDict) -> None:
             pass
 
 
-def _is_sequence(obj: tx.Any) -> bool:
-    """Check if an object is a sequence (e.g., list or tuple)."""
+def _to_json(obj: tx.Any) -> tz.JSON:
+
+    def _serialize_list(x: tx.Iterable) -> tx.List[tz.JSON]:
+        return [_to_json(v) for v in x]
+
+    def _serialize_dict(x: tx.Mapping) -> tx.Dict[str, tz.JSON]:
+        if not callable(getattr(x, "items", None)):
+            x = dict(**x)
+        return {k: _to_json(v) for k, v in x.items()}
+
+    def _serialize_meta(x: Metadata) -> tx.Dict[str, tz.JSON]:
+        extra = getattr(x, "extra_items", False)
+        out = {
+            f.name: _to_json(getattr(x, f.name))
+            for f in fields(x)
+            if f.name != "extra_items"
+        }
+        if extra:
+            out.update(_serialize_dict(extra))
+        return out
+
+    def _serialize_item(x: tx.Any) -> None:
+        if _is_metadata(x):
+            return _serialize_meta(x)
+        elif _is_mapping(x):
+            return _serialize_dict(x)
+        elif _is_iterable(x):
+            return _serialize_list(x)
+        else:
+            return x
+
+    return _serialize_item(obj)
+
+
+def _is_iterable(obj: tx.Any) -> bool:
+    """Check if an object is iterable (e.g., list, tuple, set, dict)."""
     str_like = (str, bytes, bytearray)
-    return isinstance(obj, Sequence) and not isinstance(obj, str_like)
+    return hasattr(obj, "__iter__") and not isinstance(obj, str_like)
+
+
+def _is_mapping(obj: tx.Any) -> bool:
+    """Check if an object is a mapping-like (e.g., dict)."""
+    return (
+        callable(getattr(obj, "keys", None)) and
+        callable(getattr(obj, "__getitem__", None))
+    )
 
 
 def _is_metadata(obj: tx.Any) -> bool:
@@ -619,7 +592,7 @@ class MetadataConverter(Converter[METADATA, METADATALIKE]):
         fallback = self.fallback
         if isinstance(fallback, type) and isinstance(value, fallback):
             return value
-        elif isinstance(value, Mapping):
+        elif isinstance(value, abc.Mapping):
             return fallback.from_dict(value)
         else:
             return fallback(value)

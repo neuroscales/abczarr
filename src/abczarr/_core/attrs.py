@@ -118,6 +118,7 @@ from attrs import fields, evolve, make_class, NOTHING
 
 # locals
 from .dtypes import asdtype
+from .frozendict import FrozenDict
 
 # typing
 T = tx.TypeVar("T", bound=tx.Any)
@@ -161,11 +162,18 @@ DTYPELIKE = tx.TypeVar("DTYPELIKE", bound=npt.DTypeLike, default=npt.DTypeLike)
 
 @wraps(_define)
 def define(*args, **kwargs):
+    # Deal with extra_items (adds `extra_items` field to the class)
     extra = kwargs.pop("extra_items", None)
     if extra is not None:
         transformer = kwargs.pop("field_transformer", None)
-        kwargs["field_transformer"] = extra_items(extra, transformer)
+        dict_type = FrozenDict if kwargs.get("frozen", False) else tx.Dict
+        extra_transformer = extra_items(extra, transformer, dict_type=dict_type)
+        kwargs["field_transformer"] = extra_transformer
+
+    # Fix fields order to match dataclass inheritance strategy
     kwargs["field_transformer"] = fix_order(kwargs.get("field_transformer"))
+
+    # Call attrs.define
     return _define(*args, **kwargs)
 
 
@@ -298,7 +306,9 @@ def transform_fields(factory: bool = True, converter: bool = True):
     return _transform_fields
 
 
-def extra_items(extra_items=tx.Any, transform_fields=None):
+def extra_items(
+    extra_items=tx.Any, transform_fields=None, dict_type=tx.Dict
+):
     """
     Return a `field_transformer` callable that adds an `extra_items`
     field to the class, with the provided type hint.
@@ -336,7 +346,7 @@ def extra_items(extra_items=tx.Any, transform_fields=None):
         if extra_items is False:
             field = autofield(tx.Literal[False], repr=False, init=False)
         else:
-            field = autofield(tx.Dict[str, extra_items])
+            field = autofield(dict_type[str, extra_items])
         dummy = make_class("Dummy", {"extra_items": field})
         field = fields(dummy)[0]
         new_fields.append(field)
