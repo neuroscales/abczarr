@@ -1,30 +1,69 @@
 """Configuration related to output Zarr Archive."""
 
-import inspect
-from dataclasses import dataclass, field, fields, is_dataclass, replace
-from functools import wraps
+# stdlib
+from types import NoneType
 
 # dependencies
 import typing_extensions as tx
 
 # locals
 from ._core import typing as tz
-
-# optionals
-try:
-    import cyclopts
-
-    Parameter = cyclopts.Parameter
-except ImportError:
-    cyclopts = None
-    Parameter = lambda *a, **k: lambda f: f  # noqa: E731
+from ._core.attrs import autodefine, field
 
 
-@Parameter(name="*")
-@dataclass
+@autodefine
 class ZarrConfig:
     """
-    Configuration related to output Zarr Archive.
+    Configuration related to output Zarr archives.
+
+    Parameters
+    ----------
+    zarr_version
+        Zarr version to use. If `shard` is used, 3 is required.
+    chunk
+        Output chunk size.
+        Will be copy-padded to match the number of dimensions of the data.
+    shard
+        Output shard size.
+        If `"auto"`, find shard size that ensures files smaller than 2TB,
+        assuming a compression ratio or 2.
+    dimension_separator
+        The separator placed between the dimensions of a chunk.
+    order:
+        Memory layout order for the data array.
+    compressor
+        Compression method
+    compressor_opt
+        Compression options
+
+    """
+    zarr_version: tz.ZarrVersion = 3
+    chunk: tz.Shape = (128,)
+    shard: tx.Union[tz.Shape, tx.Literal["auto"], NoneType] = None
+    dimension_separator: tz.DimensionSeparator = "/"
+    order: tz.MemoryOrder = "C"
+    compressor: tz.CompressorType = "blosc"
+    compressor_opt: tz.CompressorOptions = field(default_factory=dict)
+    overwrite: bool = False
+    driver: tz.AnyDriver = "zarr-python"
+
+    def __post_init__(self) -> None:
+        """
+        Perform post-initialization checks and adjustments.
+
+        - Ensure that sharding options (shard, shard_channels, shard_time)
+          are only used when zarr_version == 3;
+          otherwise raise NotImplementedError.
+        """
+        if self.zarr_version < 3:
+            if self.shard:
+                raise ValueError("Shard is not supported for Zarr < 3.")
+
+
+@autodefine
+class OMEZarrConfig(ZarrConfig):
+    """
+    Configuration related to output OME Zarr archives.
 
     Parameters
     ----------
@@ -54,14 +93,6 @@ class ZarrConfig:
     shard_time
         Put time points in different shards.
         If False, combine all time points in a single shard.
-    dimension_separator
-        The separator placed between the dimensions of a chunk.
-    order:
-        Memory layout order for the data array.
-    compressor
-        Compression method
-    compressor_opt
-        Compression options
     no_time
         If True, indicates that the dataset does not have a time dimension.
         In such cases, any fourth dimension is interpreted as the channel
@@ -83,23 +114,14 @@ class ZarrConfig:
         library used for Zarr IO Operation
     """
 
-    zarr_version: tz.ZarrVersion = 3
-    chunk: tz.Shape = (128,)
     chunk_channels: bool = False
     chunk_time: bool = True
-    shard: tx.Union[tz.Shape, tx.Literal["auto"], None] = None
     shard_channels: bool = False
     shard_time: bool = False
-    dimension_separator: tz.DimensionSeparator = "/"
-    order: tz.MemoryOrder = "C"
-    compressor: tz.CompressorType = "blosc"
-    compressor_opt: tz.CompressorOptions = field(default_factory=dict)
     no_time: bool = False
     no_pyramid_axis: tx.Optional[tz.SpatialAxisName] = None
     levels: int = -1
     ome_version: tz.OMEVersion = "0.4"
-    overwrite: bool = False
-    driver: tz.AnyDriver = "zarr-python"
 
     def __post_init__(self) -> None:
         """
@@ -109,13 +131,12 @@ class ZarrConfig:
           are only used when zarr_version == 3;
           otherwise raise NotImplementedError.
         """
-        if self.zarr_version == 2:
+        if self.zarr_version < 3:
             if self.shard or self.shard_channels or self.shard_time:
-                raise ValueError("Shard is not supported for Zarr 2.")
+                raise ValueError("Shard is not supported for Zarr < 3.")
 
 
-@Parameter(name="*")
-@dataclass
+@autodefine
 class GeneralConfig:
     """
     General configuration for the conversion process.
@@ -132,10 +153,10 @@ class GeneralConfig:
         If True, set log_level to "debug".
     """
 
-    out: tx.Annotated[str, Parameter(name=["--out", "-o"])] = None
+    out:tx.Optional[str] = None
     max_load: int = 1024
     log_level: tz.LogLevel = "info"
-    verbose: tx.Annotated[bool, Parameter(name=["--verbose", "-v"])] = False
+    verbose: bool = False
 
     def __post_init__(self) -> None:
         """
@@ -150,177 +171,27 @@ class GeneralConfig:
         if self.verbose:
             self.log_level = "debug"
 
-    def set_default_name(self, name: str, nii: bool = True) -> None:
+    def set_default_name(self, name: str, variant: str = "") -> None:
         """
         Assign a default output name if none was specified.
+
+        !!! tip
+            - If `self.out` is already set, does nothing.
+            - Otherwise sets `self.out` to `f"{name}{self.variant}.zarr"`
+              if the variant is specified, or `f"{name}.zarr"` otherwise.
+            - If the resulting path exists and `overwrite` is False, prompts
+              the user for confirmation and raises FileExistsError if not
+              confirmed.
 
         Parameters
         ----------
         name : str
             Base filename (without extension) to use for the output archive.
-        nii : bool
-            If True, the output will be in NIfTI-Zarr format (with `.nii.zarr`
-            extension).
-            If False, the output will be in OME-Zarr format (with `.ome.zarr`
-            extension).
-
-        Returns
-        -------
-        None
-        --------
-        - If `self.out` is already set, does nothing.
-        - Otherwise sets `self.out` to `name + ".nii.zarr"` if NIfTI mode
-          is active, or `name + ".ome.zarr"` otherwise.
-        - If the resulting path exists and `overwrite` is False, prompts
-          the user for confirmation and raises FileExistsError if not
-          confirmed.
+        variant : str
+            The file extension prefix to use for the output archive.
+            Example: `".ome"` for OME-Zarr files.
         """
         if self.out is not None:
             return
         self.out = name
-        self.out += ".nii.zarr" if nii else ".ome.zarr"
-
-
-@Parameter(name="*")
-@dataclass
-class NiftiConfig:
-    """
-    Configuration related to output nifti-zarr.
-
-    Parameters
-    ----------
-    nii
-        Convert the output to nifti-zarr format.
-        This is automatically enabled if the output path ends with ".nii.zarr".
-    orientation
-        Orientation of the slice
-    center
-        Set RAS[0, 0, 0] at FOV center
-    nifti_header
-        Path to the nifti header file to use.
-        Can be a .nii[.gz] file, a binary header file, or a .nii.zarr archive.
-
-    Orientation
-    -----------
-    The anatomical orientation of the slice is given in terms of RAS axes.
-
-    It is a combination of two letters from the set
-    `{"L", "R", "A", "P", "I", "S"}`, where
-
-    * the first letter corresponds to the horizontal dimension and
-        indicates the anatomical meaning of the _right_ of the input image,
-    * the second letter corresponds to the vertical dimension and
-        indicates the anatomical meaning of the _bottom_ of the input image.
-     * the third letter corresponds to the slice dimension and
-      indicates the anatomical meaning of the _end_ of the volume.
-
-    We also provide the aliases
-
-    * `"coronal"` == `"LI"`
-    * `"axial"` == `"LP"`
-    * `"sagittal"` == `"PI"`
-
-    When the aliases are used, the third dimension will be popped from "RAS"
-    """
-
-    nii: bool = True
-    orientation: str = "RAS"
-    center: bool = True
-    nifti_header: tx.Optional[tz.PathLike] = None
-
-    def __post_init__(self) -> None:
-        """Perform post-initialization checks and adjustments."""
-        if self.nifti_header:
-            self.nii = True
-
-
-def autoconfig(func: tx.Callable) -> tx.Callable:
-    """
-    Use as @autoconfig only. Infers config params from dataclass annotations.
-    """
-
-    def _unwrap_dataclass_type(tp: dataclass) -> dataclass:
-        # Handle Annotated[T, ...]
-        if tx.get_origin(tp) is tx.Annotated:
-            tp = tx.get_args(tp)[0]
-        # Handle Optional[T] / Union[T, None]
-        if tx.get_origin(tp) is tx.Union:
-            args = [t for t in tx.get_args(tp) if t is not type(None)]
-            if len(args) == 1:
-                tp = args[0]
-        return tp if isinstance(tp, type) and is_dataclass(tp) else None
-
-    sig = inspect.signature(func)
-
-    # Build the config map by reading dataclass-typed parameters
-    config_map: tx.Mapping[str, type] = {}
-    for name, p in sig.parameters.items():
-        if name in ("self", "cls"):
-            continue
-        dt = _unwrap_dataclass_type(p.annotation)
-        if dt is not None:
-            config_map[name] = dt
-
-    # Collision check across config field names
-    field_owner: tx.Mapping[str, str] = {}
-    for param_name, cls in config_map.items():
-        if not is_dataclass(cls):
-            raise TypeError(f"{param_name} -> {cls} must be a dataclass type")
-        for f in fields(cls):
-            if f.name in field_owner:
-                other = field_owner[f.name]
-                raise ValueError(
-                    f"Field '{f.name}' appears in both '{other}' and "
-                    f"'{param_name}'. Rename to avoid ambiguity."
-                )
-            field_owner[f.name] = param_name
-
-    func_params = sig.parameters
-    accepted_names = {
-        n
-        for n, p in func_params.items()
-        if p.kind
-        in (
-            inspect.Parameter.POSITIONAL_OR_KEYWORD,
-            inspect.Parameter.KEYWORD_ONLY,
-        )
-        and n not in config_map
-    }
-    accepts_var_kw = any(
-        p.kind == inspect.Parameter.VAR_KEYWORD for p in func_params.values()
-    )
-
-    @wraps(func)
-    def wrapper(*args, **kwargs) -> tx.Callable:  # noqa: ANN002, ANN003
-        # Start from explicit instances (if provided)
-        cfg_instances: tx.Mapping[str, tx.Any] = {}
-        for param_name, cls in config_map.items():
-            inst = kwargs.pop(param_name, None)
-            if inst is not None and not is_dataclass(inst):
-                raise TypeError(
-                    f"Parameter '{param_name}' must be a "
-                    f"{cls.__name__} instance"
-                )
-            cfg_instances[param_name] = inst or cls()
-
-        # Route flat kwargs by field name into the right config
-        consumed = set()
-        for k in list(kwargs.keys()):
-            owner = field_owner.get(k)
-            if owner is not None:
-                inst = cfg_instances[owner]
-                cfg_instances[owner] = replace(inst, **{k: kwargs[k]})
-                consumed.add(k)
-
-        # Leftovers: allow real function params (e.g., key, meta) or **kwargs
-        leftovers = {k: v for k, v in kwargs.items() if k not in consumed}
-        if not accepts_var_kw:
-            unknown = [k for k in leftovers.keys() if k not in accepted_names]
-            if unknown:
-                raise TypeError(
-                    f"Unknown options: {', '.join(sorted(unknown))}"
-                )
-
-        return func(*args, **cfg_instances, **leftovers)
-
-    return wrapper
+        self.out += f"{self.variant}.zarr"
