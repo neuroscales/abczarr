@@ -23,7 +23,7 @@ from .base import ArrayMetadataV1
 
 
 @register_subclass(zarr_format=1, node_type="array")
-@autofrozen(kw_only=True, extra_items=tz.JSON)
+@autofrozen(kw_only=True, extra_items=tz.FrozenJSON)
 class ArrayMetadata(ArrayMetadataV1):
 
     # --- Required ----

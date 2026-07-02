@@ -1,5 +1,8 @@
 __all__ = ["DType", "ScalarDType", "StructDType"]
 
+# stdlib
+from functools import wraps
+
 # dependencies
 import numpy as np
 import typing_extensions as tx
@@ -47,6 +50,10 @@ class ScalarDType(str, DType):
         return str.__new__(cls, value)
 
 
+def _immutable(self, *args, **kwargs):
+    raise TypeError(f"{self.__class__.__name__} is immutable")
+
+
 class StructDType(list, DType):
 
     def __new__(cls, value: tx.Iterable[tx.Tuple[str, str]]) -> tx.Self:
@@ -57,6 +64,19 @@ class StructDType(list, DType):
             dtype = DType(dtype)
             items.append((name, dtype))
         return list.__new__(cls, items)
+
+    # Make the list immutable
+    __setitem__ = wraps(list.__setitem__)(_immutable)
+    __delitem__ = wraps(list.__delitem__)(_immutable)
+    __iadd__ = wraps(list.__iadd__)(_immutable)
+    __imul__ = wraps(list.__imul__)(_immutable)
+    append = wraps(list.append)(_immutable)
+    extend = wraps(list.extend)(_immutable)
+    pop = wraps(list.pop)(_immutable)
+    clear = wraps(list.clear)(_immutable)
+    insert = wraps(list.insert)(_immutable)
+    remove = wraps(list.remove)(_immutable)
+    reverse = wraps(list.reverse)(_immutable)
 
 
 @register_converter(DType)

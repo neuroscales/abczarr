@@ -19,13 +19,13 @@ from abczarr._core import typing as tz
 from abczarr._core.attrs import autofrozen
 from abczarr.schemas.v3 import codecs
 
-# locals
-from ...base import register_subclass
-from .base import Codec, CodecConfig, BytesToBytesCodec, ArrayToArrayCodec
+# metadata
+from abczarr.metadata.base import register_subclass
+from .base import Codec, CodecConfigImpl, BytesToBytesCodec, ArrayToArrayCodec
 
 
 @autofrozen
-class BloscConfig(CodecConfig):
+class BloscConfig(CodecConfigImpl):
     cname: codecs.BloscCodecName = "lz4"
     clevel: codecs.BloscCompressionLevel = 5
     shuffle: codecs.BloscShuffle = "shuffle"
@@ -41,7 +41,7 @@ class BloscCodec(BytesToBytesCodec):
 
 
 @autofrozen
-class BytesConfig(CodecConfig):
+class BytesConfig(CodecConfigImpl):
     endian: tx.Optional[tx.Literal["big", "little"]]
 
 
@@ -53,7 +53,7 @@ class BytesCodec(BytesToBytesCodec):
 
 
 @autofrozen
-class CRC32CConfig(CodecConfig):
+class CRC32CConfig(CodecConfigImpl):
     ...
 
 
@@ -65,7 +65,7 @@ class CRC32CCodec(BytesToBytesCodec):
 
 
 @autofrozen
-class GzipConfig(CodecConfig):
+class GzipConfig(CodecConfigImpl):
     level: codecs.GzipCompressionLevel = 5
 
 
@@ -77,10 +77,10 @@ class GzipCodec(BytesToBytesCodec):
 
 
 @autofrozen
-class ShardingConfig(CodecConfig):
+class ShardingConfig(CodecConfigImpl):
     chunk_shape: tz.Shape
-    codecs: tz.BuiltinSequence[Codec]
-    index_codecs: tz.BuiltinSequence[Codec]
+    codecs: tx.Tuple[Codec, ...]
+    index_codecs: tx.Tuple[Codec, ...]
     index_location: tx.Literal["start", "end"] = "end"
 
 
@@ -92,8 +92,8 @@ class ShardingCodec(ArrayToArrayCodec):
 
 
 @autofrozen
-class TransposeConfig(CodecConfig):
-    order: tz.BuiltinSequence[int]
+class TransposeConfig(CodecConfigImpl):
+    order: tx.Tuple[int, ...]
 
 
 @register_subclass(name="transpose")

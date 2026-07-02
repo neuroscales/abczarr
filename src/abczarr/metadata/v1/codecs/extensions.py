@@ -43,7 +43,7 @@ class LZMACodecOptions(CodecOptionsImpl):
     format: Format
     check: Check
     preset: CompressionLevel
-    filters: tz.BuiltinSequence[tz.JSONDict]
+    filters: tx.Tuple[tz.FrozenJSONDict, ...]
 
 
 @register_subclass(id="lz4")
@@ -82,7 +82,7 @@ class ZFPYCodecOptions(CodecOptionsImpl):
     tolerance: float
     rate: int
     precision: int
-    compression_kwargs: tz.JSONDict
+    compression_kwargs: tz.FrozenJSONDict
 
 
 @register_subclass(id="zlib")

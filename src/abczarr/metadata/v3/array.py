@@ -66,7 +66,7 @@ class RectilinearChunkGrid(ChunkGrid):
 # ----------------------------------------------------------------------
 
 
-@autofrozen(extra_items=tz.JSON)
+@autofrozen(extra_items=tz.FrozenJSON)
 class ChunkKeyEncodingConfig(TypedConfig):
     ...
 
@@ -135,9 +135,9 @@ class ArrayMetadata(ArrayMetadataV3):
     codecs: tx.Tuple[Codec, ...]
 
     # --- Optional ----
-    attributes: tz.JSONDict
+    attributes: tz.FrozenJSONDict
     dimension_names: tx.Optional[_AxisNames]
-    storage_transformers: tx.Tuple[tz.JSONDict, ...]
+    storage_transformers: tx.Tuple[tz.FrozenJSONDict, ...]
 
     # --- Conversion ---
 

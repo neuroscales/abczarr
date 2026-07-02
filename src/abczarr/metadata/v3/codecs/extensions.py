@@ -21,13 +21,13 @@ from abczarr._core import typing as tz
 from abczarr._core.attrs import autofrozen
 
 # locals
-from ...base import Metadata, register_subclass
-from .base import CodecConfig, Codec, ArrayToArrayCodec, ArrayToBytesCodec
+from abczarr.metadata.base import register_subclass, Metadata
+from .base import CodecConfigImpl, Codec, ArrayToArrayCodec, ArrayToBytesCodec
 from .builtin import TransposeCodec, BytesCodec
 
 
 @autofrozen
-class BitroundConfig(CodecConfig):
+class BitroundConfig(CodecConfigImpl):
     keepbits: int = 1
 
 
@@ -39,7 +39,7 @@ class BitroundCodec(ArrayToArrayCodec):
 
 
 _ScalarMapItem = tx.Union[tz.JSONScalar, str]
-_ScalarMap = tz.BuiltinSequence[tx.Tuple[_ScalarMapItem, _ScalarMapItem]]
+_ScalarMap = tx.Tuple[tx.Tuple[_ScalarMapItem, _ScalarMapItem], ...]
 
 
 @autofrozen
@@ -49,7 +49,7 @@ class ScalarMap(Metadata):
 
 
 @autofrozen
-class CastValueConfig(CodecConfig):
+class CastValueConfig(CodecConfigImpl):
     data_type: np.dtype
     rounding: tx.Literal[
         "nearest-even",
@@ -70,7 +70,7 @@ class CastValueCodec(ArrayToArrayCodec):
 
 
 @autofrozen
-class ConditionalConfig(CodecConfig):
+class ConditionalConfig(CodecConfigImpl):
     codecs: tx.Tuple[Codec]
 
 
@@ -108,7 +108,7 @@ class N5DefaultCodecList(list):
 
 
 @autofrozen
-class N5DefaultConfig(CodecConfig):
+class N5DefaultConfig(CodecConfigImpl):
     codecs: N5DefaultCodecList
 
 
@@ -120,12 +120,12 @@ class N5DefaultCodec(Codec):
 
 
 @autofrozen
-class N5DefaultCodecListConfig(CodecConfig):
+class N5DefaultCodecListConfig(CodecConfigImpl):
     codecs: N5DefaultCodecList
 
 
 @autofrozen
-class PackBitsConfig(CodecConfig):
+class PackBitsConfig(CodecConfigImpl):
     padding_encoding: tx.Literal["first_byte", "last_byte", "none"] = "none"
     first_bit: tx.Optional[int]
     last_bit: tx.Optional[int]
@@ -139,7 +139,7 @@ class PackBitsCodec(ArrayToBytesCodec):
 
 
 @autofrozen
-class ScaleOffsetConfig(CodecConfig):
+class ScaleOffsetConfig(CodecConfigImpl):
     offset: tz.JSONNumber
     scale: tz.JSONNumber
 

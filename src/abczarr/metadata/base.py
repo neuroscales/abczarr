@@ -6,6 +6,7 @@ https://github.com/zarr-developers/zarr-python
 """
 __all__ = [
     "Metadata",
+    "FlexibleMetadata",
     "NodeMetadata",
     "GroupMetadata",
     "ArrayMetadata",
@@ -27,7 +28,6 @@ import tempfile
 from collections.abc import Sequence, Mapping
 
 # dependencies
-import numpy as np
 import typing_extensions as tx
 
 # locals
@@ -35,11 +35,6 @@ from abczarr._core import typing as tz
 from abczarr._core import constants
 from abczarr._core.attrs import (
     Converter, register_converter, autofrozen, fields, evolve
-)
-from abczarr._core.dtypes import (
-    asdtype,
-    to_zarr2 as dtype_to_zarr2,
-    to_zarr3 as dtype_to_zarr3,
 )
 
 
@@ -249,6 +244,16 @@ class Metadata:
             filtered_data["extra_items"] = data
 
         return cls(**filtered_data)
+
+
+_JSONMetadata = tx.Union[tz._JSONScalar, Metadata, tx.Tuple["_JSONMetadata", ...]]
+JSONMetadata = tx.TypeVar("JSONMetadata", bound=_JSONMetadata, default=_JSONMetadata)
+
+
+@autofrozen(extra_items=JSONMetadata)
+class FlexibleMetadata(Metadata):
+    """A flexible metadata class that allows extra fields."""
+    ...
 
 
 @autofrozen

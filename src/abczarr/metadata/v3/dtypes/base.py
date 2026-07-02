@@ -15,7 +15,7 @@ from ..extensions import MustUnderstandExtension, TypedConfig
 
 
 
-@autofrozen(extra_items=tz.JSON)
+@autofrozen(extra_items=tz.FrozenJSON)
 class DTypeConfig(TypedConfig):
     """
     Base class

@@ -14,10 +14,10 @@ from abczarr._core import typing as tz
 from abczarr._core.attrs import autofrozen, field
 
 # locals
-from ..base import Metadata
+from abczarr.metadata.base import Metadata, JSONMetadata
 
 
-@autofrozen
+@autofrozen(extra_items=JSONMetadata)
 class TypedConfig(Metadata):
     ...
 
@@ -25,7 +25,7 @@ class TypedConfig(Metadata):
 @autofrozen
 class Extension(Metadata):
     name: str
-    configuration: tx.Union[tz.JSONDict, TypedConfig]
+    configuration: TypedConfig
     must_understand: bool = True
 
     def to_dict(self) -> tx.Union[str, tz.JSONDict]:
@@ -44,5 +44,5 @@ class MustUnderstandExtension(Extension):
 
 
 @autofrozen
-class ExtraField(Extension):
+class ExtraField(Extension, extra_items=JSONMetadata):
     must_understand: tx.Literal[False]

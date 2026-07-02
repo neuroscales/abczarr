@@ -15,6 +15,7 @@ from .attrs import (
     Converter, register_converter,
 )
 from .dtypes import DataTypeV2, DataTypeV3
+from .frozendict import FrozenDict
 
 
 def typevar(name: str, *constraints, **kwargs) -> tx.tx.TypeVar:
@@ -145,6 +146,14 @@ JSONNumberLike = tx.TypeVar("JSONNumberLike", bound=_JSONNumberLike, default=_JS
 JSONScalar = tx.TypeVar("JSONScalar", bound=_JSONScalar, default=_JSONScalar)
 JSON = tx.TypeVar("JSON", bound=_JSON, default=_JSON)
 JSONDict = tx.Mapping[str, JSON]
+
+_FrozenJSON = tx.Union[_JSONScalar, FrozenDict[str, "JSON"], tx.Tuple["JSON", ...]]
+FrozenJSON = tx.TypeVar("FrozenJSON", bound=_FrozenJSON, default=_FrozenJSON)
+FrozenJSONDict = FrozenDict[str, FrozenJSON]
+
+_MutableJSON = tx.Union[_JSONScalar, tx.MutableMapping[str, "JSON"], tx.List["JSON"]]
+MutableJSON = tx.TypeVar("MutableJSON", bound=_MutableJSON, default=_MutableJSON)
+MUtableJSONDict = tx.MutableMapping[str, MutableJSON]
 
 # Shapes
 Shape = tx.Tuple[BuiltinNonNegativeIntegral, ...]

@@ -62,7 +62,7 @@ class StructField(DTypeConfig):
 
 @autofrozen
 class StructConfig(DTypeConfig):
-    fields: tz.BuiltinSequence[StructField]
+    fields: tx.Tuple[StructField, ...]
 
 
 @register_subclass(name=re.compile(r"(?:struct|structured)"))

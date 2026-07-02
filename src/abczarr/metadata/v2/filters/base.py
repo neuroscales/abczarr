@@ -2,9 +2,6 @@ __all__ = [
     "Filter",
 ]
 
-# stdlib
-from collections import abc
-
 # dependencies
 import typing_extensions as tx
 
@@ -14,7 +11,7 @@ from abczarr._core.attrs import autofrozen
 from abczarr.metadata.base import Metadata
 
 
-@autofrozen(extra_items=tz.JSON)
+@autofrozen(extra_items=tz.FrozenJSON)
 class Filter(Metadata):
     id: str
 

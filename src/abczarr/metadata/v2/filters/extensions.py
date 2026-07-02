@@ -120,7 +120,7 @@ class AsTypeFilter(FilterImpl):
 @autofrozen
 class CategorizeFilter(FilterImpl):
     id: tx.Literal["categorize"]
-    labels: tz.BuiltinSequence[str]
+    labels: tx.Tuple[str, ...]
     dtype: np.dtype
     astype: tx.Optional[np.dtype]
     def to_version(self, version: tz.ZarrVersion) -> tx.Self:

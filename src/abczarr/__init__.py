@@ -18,6 +18,7 @@ from . import abc
 from . import drivers
 from . import metadata
 from . import api
+from . import _core     # noqa: F401
 
 from .abc import ZarrArray, ZarrGroup, ZarrNode
 from .api import from_config, open_array, open_group

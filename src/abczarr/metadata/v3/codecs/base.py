@@ -5,18 +5,12 @@ __all__ = [
     "BytesToBytesCodec",
 ]
 
-# stdlib
-from collections import abc
-
-# dependencies
-import typing_extensions as tx
-
 # core
 from abczarr._core import typing as tz
 from abczarr._core.attrs import autofrozen
 
-# locals
-from ..extensions import Extension, TypedConfig
+# metadata
+from abczarr.metadata.v3.extensions import Extension, TypedConfig
 
 
 @autofrozen
@@ -24,9 +18,14 @@ class CodecConfig(TypedConfig):
     ...
 
 
+@autofrozen(extra_items=False)
+class CodecConfigImpl(CodecConfig):
+    ...
+
+
 @autofrozen
 class Codec(Extension):
-    configuration: tx.Union[CodecConfig, tz.JSONDict]
+    configuration: CodecConfig
 
     def to_version(self, version: tz.ZarrVersion) -> "Codec":
         if version == 3:
