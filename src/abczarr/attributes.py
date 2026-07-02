@@ -13,8 +13,12 @@ import threading
 from collections.abc import Iterator, MutableMapping
 from typing import Any
 
+# dependencies
+import typing_extensions as tx
+
 # locals
 from .abc import ZarrNode
+from ._core import typing as tz
 from ._core.path import Path
 
 if hasattr(MutableMapping, "__class_getitem__"):
@@ -36,7 +40,7 @@ class Attributes(AttributesBase):
       - .zarr_version (2 or 3)
     """
 
-    def __init__(self, obj: ZarrNode, *, write_through: bool = True) -> None:  # noqa: ANN401
+    def __init__(self, obj: ZarrNode, *, write_through: bool = True) -> None:
         """
         Parameters
         ----------
@@ -53,20 +57,15 @@ class Attributes(AttributesBase):
         self._lock = threading.RLock()
         self._loaded = False
         self._attrs: dict[str, Any] = {}
-        # Only for v3 we need to preserve other top-level keys in zarr.json
-        self._v3_other_keys: dict[str, Any] = {}
-        # cache the path computation
-        store = Path(self._obj.store_path)
-        if self._obj.zarr_version == 2:
-            self._path = store / ".zattrs"
-            self._is_v3 = False
-        elif self._obj.zarr_version == 3:
-            self._path = store / "zarr.json"
-            self._is_v3 = True
-        else:
-            raise ValueError(
-                f"Unsupported zarr_version: {self._obj.zarr_version}"
-            )
+
+        # cache paths
+        self._file_path = self._get_file_path()
+        self._key_path = self._get_key_path()
+
+    @property
+    def zarr_version(self) -> tz.ZarrVersion:
+        """Return the Zarr version (2 or 3) for this attributes mapping."""
+        return self._obj.zarr_version
 
     # ---------- public helpers ----------
 
@@ -95,7 +94,6 @@ class Attributes(AttributesBase):
         with self._lock:
             self._loaded = False
             self._attrs.clear()
-            self._v3_other_keys.clear()
             self._ensure_loaded()
 
     # ---------- MutableMapping interface ----------
@@ -126,7 +124,9 @@ class Attributes(AttributesBase):
         """Iterate over a snapshot of keys."""
         with self._lock:
             self._ensure_loaded()
-            return iter(dict(self._attrs))  # iterate over a snapshot
+            # iterate over a snapshot
+            # TODO: deepcopy?
+            return iter(dict(self._attrs))
 
     def __len__(self) -> int:
         """Return number of attributes."""
@@ -136,42 +136,75 @@ class Attributes(AttributesBase):
 
     # ---------- internals ----------
 
+    def _get_file_path(self) -> os.PathLike:
+        """Return the path to the attributes file on disk."""
+        if self.zarr_version == 1:
+            return Path(self._obj.store_path) / "attrs"
+        if self.zarr_version == 2:
+            return Path(self._obj.store_path) / ".zattrs"
+        if self.zarr_version == 3:
+            return Path(self._obj.store_path) / "zarr.json"
+        raise ValueError(f"Unsupported zarr_version: {self.zarr_version}")
+
+    def _get_key_path(self) -> tx.Tuple[str]:
+        """
+        Return the key path to the attributes object in the attributes file.
+        """
+        if self.zarr_version >= 3:
+            return ("attributes",)
+        return ()
+
+    def _load_all(self) -> dict:
+        """Load the entire file (including non-attributes keys)"""
+
+        if not self._file_path.exists():
+            return {}
+
+        with self._file_path.open("r", encoding="utf-8") as f:
+            data = json.load(f) or {}
+
+        if not isinstance(data, dict):
+            raise ValueError(
+                f"Invalid attributes file: {self._file_path} "
+                f"(expected JSON object, got {type(data).__name__})"
+            )
+
+        return data
+
+
     def _ensure_loaded(self) -> None:
+        """Load if not already loaded."""
         if self._loaded:
             return
-        if not self._path.exists():
-            # not present on disk yet
-            self._attrs = {}
-            self._v3_other_keys = {}
-            self._loaded = True
-            return
 
-        with self._path.open("r", encoding="utf-8") as f:
-            data = json.load(f)
+        # Load entire file
+        data = self._load_all()
 
-        if self._is_v3:
-            self._attrs = dict(data.get("attributes", {}))
-            # keep all other top-level keys to preserve on write
-            self._v3_other_keys = {
-                k: v for k, v in data.items() if k != "attributes"
-            }
-        else:
-            self._attrs = dict(data)
-            self._v3_other_keys = {}
+        # Extract target key
+        for key in  self._key_path:
+            data = data.get(key, {})
 
+        # Save
+        self._attrs = data
         self._loaded = True
 
     def _flush_locked(self) -> None:
-        if self._is_v3:
-            data = dict(self._v3_other_keys)
-            data["attributes"] = self._attrs
+        if self._key_path:
+            # Load entire file
+            data = self._load_all()
+            # Update target key
+            d = data
+            for key in self._key_path[:-1]:
+                d = d.setdefault(key, {})
+            d[self._key_path[-1]] = self._attrs
+
         else:
             data = self._attrs
 
-        _atomic_json_write(self._path, data)
+        _atomic_json_write(self._file_path, data)
 
 
-def _atomic_json_write(path: os.PathLike, data: dict[str, Any]) -> None:
+def _atomic_json_write(path: os.PathLike, data: tx.Mapping[str, Any]) -> None:
     """
     Atomically write JSON to 'path' via a temp file + rename.
 
