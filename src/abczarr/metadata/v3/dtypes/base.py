@@ -17,9 +17,6 @@ from ..extensions import MustUnderstandExtension, TypedConfig
 
 @autofrozen(extra_items=tz.FrozenJSON)
 class DTypeConfig(TypedConfig):
-    """
-    Base class
-    """
     ...
 
 
@@ -44,6 +41,17 @@ class DType(MustUnderstandExtension):
             from abczarr.metadata.v1.dtypes import DType as DTypeV1
             return DTypeV1(self.numpy)
         raise ValueError(f"Unsupported version: {version}")
+
+
+
+@autofrozen(extra_items=False)
+class DTypeConfigImpl(DTypeConfig):
+    ...
+
+
+@autofrozen
+class DTypeImpl(DType):
+    configuration: DTypeConfigImpl
 
 
 def _make_dtype_class(
@@ -79,7 +87,7 @@ def _make_dtype_classes(
     namespace: tx.MutableMapping,
     names: tx.Iterable[str] = (),
     ignore: tx.Sequence[str] = (),
-    base: tx.Type[DType] = DType,
+    base: tx.Type[DType] = DTypeImpl,
 ) -> None:
     if isinstance(ignore, str):
         ignore = (ignore,)

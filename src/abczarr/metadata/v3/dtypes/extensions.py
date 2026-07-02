@@ -12,7 +12,7 @@ from abczarr._core.attrs import autofrozen
 
 # locals
 from ...base import register_subclass
-from .base import DType, DTypeConfig, _make_dtype_classes
+from .base import DType, DTypeImpl, DTypeConfigImpl, _make_dtype_classes
 
 # constants
 DTYPES_EXTENSIONS = (
@@ -50,18 +50,18 @@ DTYPES_EXTENSIONS = (
 
 
 @autofrozen
-class DTypeExtra(DType):
+class DTypeExtra(DTypeImpl):
     ...
 
 
 @autofrozen
-class StructField(DTypeConfig):
+class StructField(DTypeConfigImpl):
     name: str
     data_type: DType
 
 
 @autofrozen
-class StructConfig(DTypeConfig):
+class StructConfig(DTypeConfigImpl):
     fields: tx.Tuple[StructField, ...]
 
 
@@ -73,7 +73,7 @@ class Struct(DTypeExtra):
 
 
 @autofrozen
-class NumpyTimeConfig(DTypeConfig):
+class NumpyTimeConfig(DTypeConfigImpl):
     unit: tx.Literal[
         "Y", "M", "W", "D", "h", "m", "s",
         "ms", "us", "μs", "ns", "ps", "fs", "as", "generic",

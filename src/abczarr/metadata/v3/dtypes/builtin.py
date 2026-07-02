@@ -11,7 +11,7 @@ from abczarr._core.attrs import autofrozen, RegexConverter
 
 # locals
 from ...base import register_subclass
-from .base import DType, _make_dtype_classes
+from .base import DTypeImpl, _make_dtype_classes
 
 # constants
 RE_RAW = re.compile(r"r\d+")
@@ -34,7 +34,7 @@ DTYPES_BUILTIN = (
 
 
 @autofrozen
-class DTypeBuiltin(DType):
+class DTypeBuiltin(DTypeImpl):
     ...
 
 
