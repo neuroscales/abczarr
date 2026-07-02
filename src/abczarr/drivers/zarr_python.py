@@ -8,7 +8,7 @@ import typing_extensions as tx
 # locals
 from abczarr._core import typing as tz
 from abczarr.config import ZarrConfig
-from abczarr.helpers import _compute_zarr_layout
+from abczarr._core.sharding import _compute_zarr_layout
 from abczarr.registry import UnavailableDriverError
 from abczarr.abc import (
     ZarrArray as ZarrArrayABC,

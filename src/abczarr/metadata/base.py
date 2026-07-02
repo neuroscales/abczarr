@@ -269,11 +269,11 @@ class NodeMetadata(Metadata):
         return evolve(self, attributes=dict(attributes))
 
     @classmethod
-    def from_files(cls, root: os.PathLike) -> tx.Self:
+    def from_file(cls, root: os.PathLike) -> tx.Self:
         """Load metadata from the specified root directory."""
         zarr_json = root / constants.Z3_JSON
         if zarr_json.exists():
-            return NodeMetadataV3.from_files(root)
+            return NodeMetadataV3.from_file(root)
         zgroup = root / constants.Z2GROUP_JSON
         zarrays = root / constants.Z2ARRAY_JSON
         if zgroup.exists() or zarrays.exists():
@@ -371,7 +371,7 @@ class NodeMetadataV1(NodeMetadata):
     zarr_format: tx.Literal[1] = 1
 
     @classmethod
-    def from_files(cls, root: os.PathLike) -> tx.Self:
+    def from_file(cls, root: os.PathLike) -> tx.Self:
         """Load metadata from the specified root directory."""
         attrs = {}
         zattrs = root / constants.Z1ATTRS_JSON
@@ -421,7 +421,7 @@ class NodeMetadataV2(NodeMetadata):
     zarr_format: tx.Literal[2] = 2
 
     @classmethod
-    def from_files(cls, root: os.PathLike) -> tx.Self:
+    def from_file(cls, root: os.PathLike) -> tx.Self:
         """Load metadata from the specified root directory."""
 
         # --- Detect node type ---
@@ -466,7 +466,7 @@ class NodeMetadataV2(NodeMetadata):
         return cls.from_dict({**meta, "attributes": attrs})
 
     @classmethod
-    def to_files(self, root: os.PathLike) -> None:
+    def to_file(self, root: os.PathLike) -> None:
         """Write this metadata to the specified root directory."""
         new_meta = self.to_dict()
         new_attrs = new_meta.pop("attributes", {})
@@ -522,7 +522,7 @@ class NodeMetadataV3(NodeMetadata):
     zarr_format: tx.Literal[3] = 3
 
     @classmethod
-    def from_files(cls, root: os.PathLike) -> tx.Self:
+    def from_file(cls, root: os.PathLike) -> tx.Self:
         """Load metadata from the specified root directory."""
         zarr_json = root / constants.Z3_JSON
         if zarr_json.exists():
@@ -530,7 +530,7 @@ class NodeMetadataV3(NodeMetadata):
                 d = json.load(f)
         return cls.from_dict(d)
 
-    def to_files(self, root: os.PathLike) -> None:
+    def to_file(self, root: os.PathLike) -> None:
         """Write this metadata to the specified root directory."""
         path = root / constants.Z3_JSON
         data = {}

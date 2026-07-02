@@ -1,5 +1,5 @@
 """
-Attributes Handling for Zarr.
+In-memory, write-through (configurable) attributes mapping for Zarr.
 
 This file contains code from the Zarr project
 https://github.com/zarr-developers/zarr-python
@@ -17,9 +17,9 @@ from typing import Any
 import typing_extensions as tx
 
 # locals
-from .abc import ZarrNode
-from ._core import typing as tz
-from ._core.path import Path
+from ..abc import ZarrNode
+from . import typing as tz
+from .path import Path
 
 if hasattr(MutableMapping, "__class_getitem__"):
     AttributesBase = MutableMapping[str, Any]

@@ -34,14 +34,16 @@ class DType(MustUnderstandExtension):
         """
         return asdtype(self)
 
-    def to_version(self, version: int) -> tx.Any:
+    def to_version(self, version: tz.ZarrVersion) -> tx.Any:
+        if version == 3:
+            return self
         if version == 2:
             from abczarr.metadata.v2.dtypes import DType as DTypeV2
             return DTypeV2(self.numpy)
-        elif version == 3:
-            return self
-        else:
-            raise ValueError(f"Unsupported version: {version}")
+        if version == 1:
+            from abczarr.metadata.v1.dtypes import DType as DTypeV1
+            return DTypeV1(self.numpy)
+        raise ValueError(f"Unsupported version: {version}")
 
 
 def _make_dtype_class(

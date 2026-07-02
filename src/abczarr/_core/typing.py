@@ -170,7 +170,13 @@ AccessMode = tx.Literal["r", "r+", "a", "w", "w-"]
 KnownDriver = tx.Literal["zarr-python", "tensorstore", "zarrita"]
 ZarrVersion = tx.Literal[1, 2, 3]
 OMEVersion = tx.Literal["0.1", "0.2", "0.3", "0.4", "0.5", "0.6"]
-CompressorType = tx.Literal["blosc", "zlib", "bz2", "zstd", "none"]
+CompressorTypeV1 = tx.Literal[
+    "blosc", "gzip", "bz2", "lzma", "lz4", "pcodec", "zfpy", "zlib", "zstd",
+    "none"
+]
+CompressorTypeV2 = CompressorTypeV1
+CompressorTypeV3 = tx.Literal["blosc", "gzip", "none"]
+CompressorType = tx.Union[CompressorTypeV1, CompressorTypeV2, CompressorTypeV3]
 NodeType = tx.Literal["group", "array"]
 MemoryOrder = tx.Literal["C", "F"]
 DimensionSeparator = tx.Literal[".", "/"]

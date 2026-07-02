@@ -30,6 +30,9 @@ class Bz2CodecOptions(CodecOptionsImpl):
     # attributes
     level: CompressionLevel
 
+    # classvar
+    id: tx.ClassVar[tx.Literal["bz2"]] = "bz2"
+
 
 @register_subclass(id="lzma")
 @autofrozen
@@ -44,6 +47,9 @@ class LZMACodecOptions(CodecOptionsImpl):
     check: Check
     preset: CompressionLevel
     filters: tx.Tuple[tz.FrozenJSONDict, ...]
+
+    # classvar
+    id: tx.ClassVar[tx.Literal["lzma"]] = "lzma"
 
 
 @register_subclass(id="lz4")
@@ -70,6 +76,9 @@ class PCodecOptions(CodecOptionsImpl):
     delta_encoding_order: DeltaOrder
     equal_pages_up_to: int
 
+    # classvar
+    id: tx.ClassVar[tx.Literal["pcodec"]] = "pcodec"
+
 
 @register_subclass(id="zfpy")
 @autofrozen
@@ -84,6 +93,9 @@ class ZFPYCodecOptions(CodecOptionsImpl):
     precision: int
     compression_kwargs: tz.FrozenJSONDict
 
+    # classvar
+    id: tx.ClassVar[tx.Literal["zfpy"]] = "zfpy"
+
 
 @register_subclass(id="zlib")
 @autofrozen
@@ -94,9 +106,15 @@ class ZlibCodecOptions(CodecOptionsImpl):
     # attributes
     level: CompressionLevel
 
+    # classvar
+    id: tx.ClassVar[tx.Literal["zlib"]] = "zlib"
+
 
 @register_subclass(id="zstd")
 @autofrozen
 class ZstdCodecOptions(CodecOptionsImpl):
     # attributes
     level: int
+
+    # classvar
+    id: tx.ClassVar[tx.Literal["zstd"]] = "zstd"

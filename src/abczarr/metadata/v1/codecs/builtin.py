@@ -30,9 +30,12 @@ class BloscCodecOptions(CodecOptionsImpl):
     # attributes
     cname: CodecName = "lz4"
     clevel: CompressionLevel = 5
-    shuffle: Shuffle = "shuffle"
+    shuffle: Shuffle = 1
     blocksize: int = 0
     typesize: tx.Optional[int] = None
+
+    # classvar
+    id: tx.ClassVar[tx.Literal["blosc"]] = "blosc"
 
 
 @register_subclass(id="gzip")
@@ -44,3 +47,6 @@ class GzipCodecOptions(CodecOptionsImpl):
     # attributes
     id: tx.Literal["gzip"]
     level: CompressionLevel = 5
+
+    # classvar
+    id: tx.ClassVar[tx.Literal["gzip"]] = "gzip"

@@ -14,9 +14,9 @@ import typing_extensions as tx
 from abczarr._core import typing as tz
 from abczarr._core.path import Path
 from abczarr.abc import ZarrArray, ZarrArrayConfig, ZarrGroup, ZarrNode
-from abczarr.attributes import Attributes
+from abczarr._core.attributes import Attributes
 from abczarr.config import ZarrConfig
-from abczarr.helpers import auto_shard_size, fix_shard_chunk
+from abczarr._core.sharding import auto_shard, fix_shard_chunk
 from abczarr.metadata.base import GroupMetadata
 from abczarr.registry import UnavailableDriverError
 
@@ -419,15 +419,14 @@ def make_compressor_v3(name: tx.Optional[str], **prm: dict) -> dict:
     return {"name": name, "configuration": prm}
 
 
-def make_kvstore(path: str | os.PathLike) -> dict:
+def make_kvstore(path: tz.PathLike) -> dict:
     """Transform a URI into a kvstore JSON object."""
     path = Path(path)
-    protocol = getattr(path, "protocol", "")
-    if protocol in ("file", ""):
-        return {"driver": "file", "path": path.path}
-    if protocol == "gcs":
-        url = urlparse(str(path))
-        return {"driver": "gcs", "bucket": url.netloc, "path": url.path}
+    protocol = getattr(path, "protocol", "") or "file"
+
+    if protocol in ("file", "memory"):
+        return {"driver": protocol, "path": path.path}
+
     if protocol in ("http", "https"):
         url = urlparse(str(path))
         base_url = f"{url.scheme}://{url.netloc}"
@@ -438,12 +437,16 @@ def make_kvstore(path: str | os.PathLike) -> dict:
         if url.fragment:
             base_url += "#" + url.fragment
         return {"driver": "http", "base_url": base_url, "path": url.path}
-    if protocol == "memory":
-        return {"driver": "memory", "path": path.path}
+
+    if protocol == "gcs":
+        url = urlparse(str(path))
+        return {"driver": "gcs", "bucket": url.netloc, "path": url.path}
+
     if protocol == "s3":
         url = urlparse(str(path))
         path = {"path": url.path} if url.path else {}
         return {"driver": "s3", "bucket": url.netloc, **path}
+
     raise ValueError("Unsupported protocol:", path.protocol)
 
 
@@ -561,7 +564,7 @@ def default_write_config(
     # Prepare shard size
     if shard:
         if shard == "auto":
-            shard = auto_shard_size(shape, dtype)
+            shard = auto_shard(shape, dtype)
         if isinstance(shard, int):
             shard = [shard]
         shard = shard[:1] * max(0, len(shape) - len(shard)) + shard
@@ -666,9 +669,4 @@ def default_write_config(
 
 def _init_group(group_path: tz.PathLike, version: tz.ZarrVersion) -> None:
     group_path.mkdir(parents=True, exist_ok=True)
-    if version == 3:
-        (group_path / "zarr.json").write_text(
-            json.dumps({"zarr_format": 3, "node_type": "group"})
-        )
-    else:
-        (group_path / ".zgroup").write_text(json.dumps({"zarr_format": 2}))
+    GroupMetadata(zarr_version=version).to_file(group_path)

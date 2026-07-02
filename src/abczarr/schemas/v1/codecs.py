@@ -44,7 +44,12 @@ class CodecOptions(tx.TypedDict):
 
 BloscCodecName = tx.Literal["blosclz", "lz4", "lz4hc", "snappy", "zlib", "zstd"]
 BloscCompressionLevel = _9Levels
-BloscShuffle = tx.Literal["noshuffle", "shuffle", "bitshuffle"]
+BloscShuffle = tx.Literal[
+    0,      # "noshuffle"
+    1,      # "shuffle"
+    2,      # "bitshuffle"
+    -1,     # "autoshuffle"
+]
 
 
 class BloscOptions(CodecOptions):

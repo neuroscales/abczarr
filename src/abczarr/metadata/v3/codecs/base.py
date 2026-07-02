@@ -3,6 +3,7 @@ __all__ = [
     "ArrayToArrayCodec",
     "ArrayToBytesCodec",
     "BytesToBytesCodec",
+    "CompressorCodec",
 ]
 
 # core
@@ -55,4 +56,9 @@ class ArrayToBytesCodec(Codec):
 
 @autofrozen
 class BytesToBytesCodec(Codec):
+    ...
+
+
+@autofrozen
+class CompressorCodec(BytesToBytesCodec):
     ...

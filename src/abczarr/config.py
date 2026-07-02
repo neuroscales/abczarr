@@ -1,32 +1,61 @@
 """Configuration related to output Zarr Archive."""
 
-# stdlib
-from types import NoneType
-
 # dependencies
+import numpy as np
+import numpy.typing as npt
 import typing_extensions as tx
 
-# locals
+# core
 from ._core import typing as tz
-from ._core.attrs import autodefine, field
+from ._core.attrs import autodefine, evolve
+from ._core.dtypes import to_zarr3 as dtype_to_zarr3
+from ._core.sharding import auto_chunk, auto_shard, ChunkSpec
+from .metadata.base import ArrayMetadata
 
 
 @autodefine
 class ZarrConfig:
     """
-    Configuration related to output Zarr archives.
+    Parameters
+    ----------
+    zarr_version
+        Zarr version to use.
+    overwrite
+        Overwrite the existing zarr file if it exists.
+    driver
+        library used for Zarr IO Operation
+    """
+    zarr_version: tz.ZarrVersion = 3
+    overwrite: bool = False
+    driver: tz.AnyDriver = "zarr-python"
+
+
+@autodefine
+class ZarrArrayConfig(ZarrConfig):
+    """
+    Configuration related to Zarr arrays.
 
     Parameters
     ----------
     zarr_version
         Zarr version to use. If `shard` is used, 3 is required.
-    chunk
+    chunks
         Output chunk size.
-        Will be copy-padded to match the number of dimensions of the data.
-    shard
+        * Will be copy-padded to match the number of dimensions of the data.
+        * If a dictionary, maps dimension names to chunk sizes.
+        * Zero means no chunking along that dimension.
+        * "auto" means that the chunk size will be automatically determined
+          to match a target (binary) chunk size.
+    shards
         Output shard size.
-        If `"auto"`, find shard size that ensures files smaller than 2TB,
-        assuming a compression ratio or 2.
+        * If a dictionary, maps dimension names to shard sizes.
+        * Zero means no sharding along that dimension.
+        * "auto" means that the shard size will be automatically determined
+          to match a target (binary) file size.
+    max_chunk_bytes
+        Target chunk size in bytes when `chunks` is set to "auto".
+    max_shard_bytes
+        Target shard size in bytes when `shards` is set to "auto".
     dimension_separator
         The separator placed between the dimensions of a chunk.
     order:
@@ -35,19 +64,26 @@ class ZarrConfig:
         Compression method
     compressor_opt
         Compression options
+    overwrite
+        Overwrite the existing zarr file if it exists.
+    driver
+        library used for Zarr IO Operation
 
     """
-    zarr_version: tz.ZarrVersion = 3
-    chunk: tz.Shape = (128,)
-    shard: tx.Union[tz.Shape, tx.Literal["auto"], NoneType] = None
+    shape: tz.Shape = ()
+    dtype: np.dtype = np.float32
+    names: tx.Tuple[tx.Optional[str], ...] = ()
+    chunks: ChunkSpec = "auto"
+    shards: tx.Optional[ChunkSpec] = None
+    max_chunk_bytes: int = 8 * 1024**2  # 8 MB
+    max_shard_bytes: int = 2 * 1024**3  # 2 GB
     dimension_separator: tz.DimensionSeparator = "/"
     order: tz.MemoryOrder = "C"
-    compressor: tz.CompressorType = "blosc"
-    compressor_opt: tz.CompressorOptions = field(default_factory=dict)
-    overwrite: bool = False
-    driver: tz.AnyDriver = "zarr-python"
+    fill_value: tx.Optional[tz.BuiltinNumber] = None
+    compressor: tz.CompressorTypeV3 = "blosc"
+    compressor_opt: tz.CompressorOptions
 
-    def __post_init__(self) -> None:
+    def __attrs_post_init__(self) -> None:
         """
         Perform post-initialization checks and adjustments.
 
@@ -56,8 +92,131 @@ class ZarrConfig:
           otherwise raise NotImplementedError.
         """
         if self.zarr_version < 3:
-            if self.shard:
+            if self.shards:
                 raise ValueError("Shard is not supported for Zarr < 3.")
+
+    def finalize(
+        self,
+        data: tx.Optional[npt.ArrayLike] = None,
+        **kwargs
+    ) -> tx.Self:
+        """
+        Finalize the configuration by computing any "auto" values.
+
+        Other Parameters
+        ----------------
+        shape : sequence[int]
+            Shape of the data array.
+        dtype : int | str | numpy.dtype
+            Data type of the data array, or its number of bytes.
+        names : sequence[str]
+            Names of the dimensions, if `chunks` or `shards` is a mapping.
+        """
+        shape = kwargs.get("shape", self.shape)
+        dtype = kwargs.get("dtype", self.dtype)
+        names = kwargs.get("names", self.names)
+        shape = getattr(data, "shape", shape)
+        dtype = getattr(data, "dtype", dtype)
+        names = getattr(data, "names", names)
+
+        shards, chunks = self.shards, self.chunks
+        chunks = auto_chunk(
+            shape,
+            chunks,
+            names=names,
+            itemsize=dtype,
+            maxsize=self.max_chunk_bytes,
+        )
+        if self.shards:
+            shards, chunks = auto_shard(
+                shape,
+                shards,
+                chunks,
+                names=names,
+                itemsize=dtype,
+                maxsize=self.max_shard_bytes,
+            )
+        return evolve(
+            self,
+            shape=shape, dtype=dtype, names=names,
+            shards=shards, chunks=chunks,
+        )
+
+    def to_metadata(self) -> ArrayMetadata:
+        """
+        Convert the configuration to Zarr metadata.
+
+        Returns
+        -------
+        metadata : ArrayMetadata
+            Metadata dictionary for the Zarr array.
+        """
+        config = self.finalize()
+        version = config.zarr_version
+
+        compressor = config.compressor.lower()
+        if compressor not in ("raw", "none"):
+            compressors = [{
+                "name": compressor,
+                "configuration": config.compressor_opt or {}
+            }]
+        else:
+            compressors = []
+
+        codec_little_endian =  {
+            "name": "bytes",
+            "configuration": {"endian": "little"},
+        }
+
+        if config.shards:
+
+            chunk_grid = {
+                "name": "regular",
+                "configuration": {"chunk_shape": config.shards},
+            }
+
+            codecs = [{
+                "name": "sharding_indexed",
+                "configuration": {
+                    "chunk_shape": config.chunks,
+                    "codecs": [
+                        codec_little_endian,
+                        *compressors
+                    ],
+                    "index_codecs": [
+                        codec_little_endian,
+                        {"name": "crc32c"},
+                    ],
+                    "index_location": "end",
+                },
+            }]
+
+        else:
+
+            chunk_grid = {
+                "name": "regular",
+                "configuration": {"chunk_shape": config.chunks},
+            }
+
+            codecs = [
+                codec_little_endian,
+                *compressors,
+            ]
+
+        metadata = {
+            "zarr_format": 3,
+            "shape": config.shape,
+            "data_type": dtype_to_zarr3(config.dtype),
+            "chunk_grid": chunk_grid,
+            "codecs": codecs,
+            "chunk_key_encoding": {
+                "name": "default",
+                "configuration": {"separator": config.dimension_separator}
+            },
+            "fill_value": config.fill_value,
+        }
+
+        return ArrayMetadata.from_dict(metadata).to_version(version)
 
 
 @autodefine
@@ -67,22 +226,22 @@ class OMEZarrConfig(ZarrConfig):
 
     Parameters
     ----------
-    chunk
+    zarr_version
+        Zarr version to use. If `shard` is used, 3 is required.
+    chunks
         Output chunk size.
         Behavior depends on the number of values provided:
         * one:   used for all spatial dimensions
         * three: used for spatial dimensions ([z, y, x])
         * four+:  used for channels and spatial dimensions ([c, z, y, x])
         If `"auto"`, find chunk size smaller than 1 MB (TODO: not implemented)
-    zarr_version
-        Zarr version to use. If `shard` is used, 3 is required.
     chunk_channels
         Put channels in different chunk.
         If False, combine all channels in a single chunk.
     chunk_time
         Put time points in different chunk.
         If False, combine all time points in a single chunk.
-    shard
+    shards
         Output shard size.
         Behavior same as chunk.
         If `"auto"`, find shard size that ensures files smaller than 2TB,
@@ -123,7 +282,7 @@ class OMEZarrConfig(ZarrConfig):
     levels: int = -1
     ome_version: tz.OMEVersion = "0.4"
 
-    def __post_init__(self) -> None:
+    def __attrs_post_init__(self) -> None:
         """
         Perform post-initialization checks and adjustments.
 
@@ -132,7 +291,7 @@ class OMEZarrConfig(ZarrConfig):
           otherwise raise NotImplementedError.
         """
         if self.zarr_version < 3:
-            if self.shard or self.shard_channels or self.shard_time:
+            if self.shards or self.shard_channels or self.shard_time:
                 raise ValueError("Shard is not supported for Zarr < 3.")
 
 
@@ -158,7 +317,7 @@ class GeneralConfig:
     log_level: tz.LogLevel = "info"
     verbose: bool = False
 
-    def __post_init__(self) -> None:
+    def __attrs_post_init__(self) -> None:
         """
         Perform post-initialization checks and adjustments.
 

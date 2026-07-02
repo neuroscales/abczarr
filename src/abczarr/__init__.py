@@ -1,9 +1,12 @@
 """ZarrIO module for handling Zarr data structures."""
 __all__ = [
     "abc",
+    "api",
+    "config",
     "drivers",
     "metadata",
-    "api",
+    "registry",
+    "schemas",
     "ZarrArray",
     "ZarrGroup",
     "ZarrNode",
@@ -15,10 +18,12 @@ __all__ = [
 import warnings
 
 from . import abc
+from . import api
+from . import config
 from . import drivers
 from . import metadata
-from . import api
-from . import _core     # noqa: F401
+from . import registry
+from . import schemas
 
 from .abc import ZarrArray, ZarrGroup, ZarrNode
 from .api import from_config, open_array, open_group

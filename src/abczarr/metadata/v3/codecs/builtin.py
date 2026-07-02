@@ -20,8 +20,11 @@ from abczarr._core.attrs import autofrozen
 from abczarr.schemas.v3 import codecs
 
 # metadata
-from abczarr.metadata.base import register_subclass
-from .base import Codec, CodecConfigImpl, BytesToBytesCodec, ArrayToArrayCodec
+from abczarr.metadata.base import Metadata, register_subclass
+from .base import (
+    Codec, CodecConfigImpl,
+    BytesToBytesCodec, ArrayToArrayCodec, ArrayToBytesCodec, CompressorCodec
+)
 
 
 @autofrozen
@@ -32,12 +35,42 @@ class BloscConfig(CodecConfigImpl):
     blocksize: int = 0
     typesize: tx.Optional[int] = None
 
+    def to_version(self, version: tz.ZarrVersion) -> Metadata:
+        if version == 3:
+            return self
+        if version == 2:
+            from abczarr.metadata import v2
+            SHUFFLE = ("noshuffle", "shuffle", "bitshuffle")
+            return v2.BloscCodec(
+                cname=self.cname,
+                clevel=self.clevel,
+                shuffle=SHUFFLE.index(self.shuffle),
+                blocksize=self.blocksize,
+                typesize=self.typesize,
+            )
+        if version == 1:
+            from abczarr.metadata import v1
+            SHUFFLE = ("noshuffle", "shuffle", "bitshuffle")
+            return v1.BloscCodecOptions(
+                cname=self.cname,
+                clevel=self.clevel,
+                shuffle=SHUFFLE.index(self.shuffle),
+                blocksize=self.blocksize,
+            )
+        else:
+            raise ValueError(f"Unsupported version: {version}")
+
 
 @register_subclass(name="blosc")
 @autofrozen
-class BloscCodec(BytesToBytesCodec):
+class BloscCodec(CompressorCodec):
     name: tx.Literal["blosc"]
     configuration: BloscConfig
+
+    def to_version(self, version: tz.ZarrVersion) -> Metadata:
+        if version == 3:
+            return self
+        return self.configuration.to_version(version)
 
 
 @autofrozen
@@ -47,7 +80,7 @@ class BytesConfig(CodecConfigImpl):
 
 @register_subclass(name="bytes")
 @autofrozen
-class BytesCodec(BytesToBytesCodec):
+class BytesCodec(ArrayToBytesCodec):
     name: tx.Literal["bytes"]
     configuration: BytesConfig
 
@@ -71,7 +104,7 @@ class GzipConfig(CodecConfigImpl):
 
 @register_subclass(name="gzip")
 @autofrozen
-class GzipCodec(BytesToBytesCodec):
+class GzipCodec(CompressorCodec):
     name: tx.Literal["gzip"]
     configuration: GzipConfig
 
