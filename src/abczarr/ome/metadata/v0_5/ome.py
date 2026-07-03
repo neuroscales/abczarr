@@ -1,7 +1,7 @@
 __all__ = [
     "OME",
     "OMESeries", "OMEImage", "OMEImageLabel", "OMELabels",
-    "OMEPlate", "OMEWell", "OMEScene", "OMEBioformats2Raw"
+    "OMEPlate", "OMEWell", "OMEBioformats2Raw"
 ]
 
 # dependencies
@@ -18,7 +18,6 @@ from .omero import Omero
 from .labels import ImageLabel
 from .plates import Plate
 from .wells import Well
-from .scenes import Scene
 from .version import Version, VERSION
 
 
@@ -63,12 +62,6 @@ class OMEPlate(OME):
 @autodefine
 class OMEWell(OME):
     well: Well
-
-
-@register_subclass(scene=tx.Any)
-@autodefine
-class OMEScene(OME):
-    scene: Scene
 
 
 @register_subclass(bioformats2raw_layout=3)

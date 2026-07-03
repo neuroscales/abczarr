@@ -19,23 +19,24 @@ import typing_extensions as tx
 
 # core
 from abczarr._core.attrs import autodefine, field
-from abczarr._core.metadata import FlexibleMetadata, register_subclass
+from abczarr._core.metadata import register_subclass
 
 # locals
 from ..rfc2119 import Required, Optional
+from ..base import OMEMetadata
 
 # typing
 Interpolation = tx.Union[tx.Literal["nearest", "linear", "bspline-cubic"], str]
 
 
 @autodefine
-class Space(FlexibleMetadata):
+class Space(OMEMetadata):
     name: Required[str]
     path: Optional[str]
 
 
 @autodefine
-class CoordinateTransformation(FlexibleMetadata):
+class CoordinateTransformation(OMEMetadata):
     type: Required[str] = field(factory=False)
     output: Required[Space]
     input: Required[Space]

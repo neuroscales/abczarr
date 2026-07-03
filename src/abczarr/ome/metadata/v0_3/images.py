@@ -10,14 +10,18 @@ from abczarr._core.attrs import autodefine, field
 # locals
 from ..rfc2119 import Required, Recommended, Optional
 from ..base import OMEMetadata
-from .systems import CoordinateSystem
-from .transformations import CoordinateTransformation
+from .version import Version
+
+# typing
+SpaceAxis = tx.Literal["x", "y", "z"]
+TimeAxis = tx.Literal["t"]
+ChannelAxis = tx.Literal["c"]
+Axis = tx.Union[SpaceAxis, TimeAxis, ChannelAxis]
 
 
 @autodefine
 class Dataset(OMEMetadata):
     path: Required[str] = field(factory=False)
-    coordinateTransformations: Required[tx.List[CoordinateTransformation]]
 
 
 @autodefine
@@ -30,9 +34,9 @@ class Multiscale(OMEMetadata):
         args: Optional[tx.List[tz.JSON]]
         kwargs: Optional[tx.Dict[str, tz.JSON]]
 
-    coordinateSystems: Required[tx.List[CoordinateSystem]]
+    axes: Required[tx.List[Axis]]
     datasets: Required[tx.List[Dataset]]
-    coordinateTransformations: Recommended[tx.List[CoordinateTransformation]]
     name: Recommended[str]
     type: Recommended[str]
     metadata: Recommended[Metadata]
+    version: Version

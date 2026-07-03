@@ -32,11 +32,10 @@ def import_all(
 
     for module in modules:
         # Import module
-        _module = f".{module}" if package else module
-        imported = importlib.import_module(_module, package)
+        imported = importlib.import_module(module, package)
         namespace[module] = imported
         if "module" in add_to_all:
-            namespace["__all__"].append(module)
+            namespace["__all__"].append(imported.__name__)
 
         # Import attributes
         for attr in getattr(imported, "__all__", []):

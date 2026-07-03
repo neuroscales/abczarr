@@ -1,6 +1,5 @@
 __all__ = [
-    "Axis", "SpaceAxis", "TimeAxis", "ChannelAxis", "ArrayAxis",
-    "DisplacementAxis", "CoordinateAxis",
+    "Axis", "SpaceAxis", "TimeAxis", "ChannelAxis",
     "AxisType", "SpaceUnit", "TimeUnit", "Unit",
 ]
 
@@ -9,16 +8,13 @@ import typing_extensions as tx
 
 # core
 from abczarr._core.attrs import autodefine, field
-from abczarr._core.metadata import register_subclass
+from abczarr._core.metadata import FlexibleMetadata, register_subclass
 
 # locals
-from ..rfc2119 import Required, Recommended, Optional, NotRecommended
-from ..base import OMEMetadata
+from ..rfc2119 import Required, Recommended, NotRecommended
 
 # typing
-AxisType = tx.Literal[
-    "array", "space", "time", "channel", "coordinate", "displacement"
-]
+AxisType = tx.Literal["space", "time", "channel"]
 
 SpaceUnit = tx.Literal[
     'angstrom', 'attometer', 'centimeter', 'decimeter', 'exameter',
@@ -40,12 +36,10 @@ Unit = tx.Union[SpaceUnit, TimeUnit]
 
 
 @autodefine
-class Axis(OMEMetadata):
+class Axis(FlexibleMetadata):
     name: Required[str] = field(factory=False)
     type: Recommended[tx.Union[AxisType, str]]
-    discrete: Optional[bool]
     unit: Recommended[tx.Union[Unit, str]]
-    longName: Optional[str]
 
 
 @register_subclass(type="space")
@@ -64,27 +58,3 @@ class TimeAxis(Axis):
 class ChannelAxis(Axis):
     type: Recommended[tx.Literal["channel"]]
     unit: NotRecommended[Unit]
-
-
-@register_subclass(type="array")
-class ArrayAxis(Axis):
-    type: tx.Literal["array"]
-    unit: NotRecommended[Unit]
-
-
-@register_subclass(type="displacement")
-class DisplacementAxis(Axis):
-    type: tx.Literal["displacement"]
-    unit: NotRecommended[Unit]
-
-
-@register_subclass(type="coordinate")
-class CoordinateAxis(Axis):
-    type: tx.Literal["coordinate"]
-    unit: NotRecommended[Unit]
-
-
-@autodefine
-class CoordinateSystem(OMEMetadata):
-    name: Required[str] = field(factory=False)
-    axes: Required[tx.List[Axis]]

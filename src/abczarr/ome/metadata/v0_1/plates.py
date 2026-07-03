@@ -6,10 +6,11 @@ import typing_extensions as tx
 # core
 from abczarr._core.attrs import autodefine, field
 from abczarr._core.attrs import NonNegativeConverter
+from abczarr._core.metadata import FlexibleMetadata
 
 # locals
+from .version import Version
 from ..rfc2119 import Required, Recommended, Optional
-from ..base import OMEMetadata
 
 # typing
 NonNegativeInt = tx.Annotated[int, NonNegativeConverter()]
@@ -18,11 +19,11 @@ WellPath = tx.Annotated[str, tx.Pattern(r"^[A-Z][0-9]/[A-Z][0-9]+$")]
 
 
 @autodefine
-class Plate(OMEMetadata):
+class Plate(FlexibleMetadata):
 
 
     @autodefine
-    class Acquisition(OMEMetadata):
+    class Acquisition(FlexibleMetadata):
         id: Required[NonNegativeInt] = field(factory=False)
         name: Recommended[str]
         maximumfieldcount: Recommended[NonNegativeInt]
@@ -32,17 +33,17 @@ class Plate(OMEMetadata):
 
 
     @autodefine
-    class Column(OMEMetadata):
+    class Column(FlexibleMetadata):
         name: Required[AlphaNumeric] = field(factory=False)
 
 
     @autodefine
-    class Row(OMEMetadata):
+    class Row(FlexibleMetadata):
         name: Required[AlphaNumeric] = field(factory=False)
 
 
     @autodefine
-    class Well(OMEMetadata):
+    class Well(FlexibleMetadata):
         path: Required[WellPath] = field(factory=False)
         rowIndex: Required[NonNegativeInt]
         columnIndex: Required[NonNegativeInt]
@@ -54,3 +55,4 @@ class Plate(OMEMetadata):
     name: Recommended[str]
     rows: Required[tx.List[Row]]
     wells: Required[tx.List[Well]]
+    version: Recommended[Version]

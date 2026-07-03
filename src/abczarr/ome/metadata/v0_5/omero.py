@@ -5,18 +5,18 @@ import typing_extensions as tx
 
 # core
 from abczarr._core.attrs import autodefine
+from abczarr._core.metadata import FlexibleMetadata
 
 # locals
 from ..rfc2119 import Required
-from ..base import OMEMetadata
 
 
 @autodefine
-class Channel(OMEMetadata):
+class Channel(FlexibleMetadata):
 
 
     @autodefine
-    class Window(OMEMetadata):
+    class Window(FlexibleMetadata):
         min: Required[float]
         max: Required[float]
         start: Required[float]
@@ -28,5 +28,5 @@ class Channel(OMEMetadata):
 
 
 @autodefine
-class Omero(OMEMetadata):
+class Omero(FlexibleMetadata):
     channels: Required[tx.List[Channel]]
