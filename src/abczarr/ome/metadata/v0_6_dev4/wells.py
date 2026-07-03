@@ -1,3 +1,5 @@
+__all__ = ["Well"]
+
 # dependencies
 import typing_extensions as tx
 
@@ -10,11 +12,13 @@ from ..rfc2119 import Required, Recommended
 
 
 @autodefine
-class WellImage(FlexibleMetadata):
-    path: Required[str] = field(factory=False)
-    acquisition: Recommended[int]
-
-
-@autodefine
 class Well(FlexibleMetadata):
-    images: Required[tx.List[WellImage]]
+
+
+    @autodefine
+    class Image(FlexibleMetadata):
+        path: Required[str] = field(factory=False)
+        acquisition: Recommended[int]
+
+
+    images: Required[tx.List[Image]]

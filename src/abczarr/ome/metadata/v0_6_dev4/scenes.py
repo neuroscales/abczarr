@@ -1,3 +1,5 @@
+__all__ = ["Scene"]
+
 # dependencies
 import typing_extensions as tx
 

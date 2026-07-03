@@ -1,3 +1,9 @@
+__all__ = [
+    "OME",
+    "OMESeries", "OMEImage", "OMEImageLabel", "OMELabels",
+    "OMEPlate", "OMEWell", "OMEScene", "OMEBioformats2Raw"
+]
+
 # dependencies
 import typing_extensions as tx
 

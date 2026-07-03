@@ -1,3 +1,5 @@
+__all__ = ["Omero", "Channel"]
+
 # dependencies
 import typing_extensions as tx
 
@@ -10,15 +12,17 @@ from ..rfc2119 import Required
 
 
 @autodefine
-class Window(FlexibleMetadata):
-    min: Required[float]
-    max: Required[float]
-    start: Required[float]
-    end: Required[float]
-
-
-@autodefine
 class Channel(FlexibleMetadata):
+
+
+    @autodefine
+    class Window(FlexibleMetadata):
+        min: Required[float]
+        max: Required[float]
+        start: Required[float]
+        end: Required[float]
+
+
     color: Required[str]
     window: Required[Window]
 

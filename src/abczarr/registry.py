@@ -1,11 +1,12 @@
 
 # stdlib
-import importlib
 import warnings
 from types import ModuleType
 
 # dependencies
 import typing_extensions as tx
+
+from abczarr._core.import import _import_symbol
 
 # locals
 from ._core import typing as tz
@@ -116,15 +117,3 @@ def get_driver(
     if node_cls is None:
         raise UnsupportedDriverError(driver)
     return node_cls
-
-
-def _import_symbol(path: str) -> type:
-    """Import a symbol given its full path as 'module:attr'."""
-    mod_path, _, attr = path.partition(":")
-    module = importlib.import_module(mod_path)
-    if not attr:
-        return module
-    try:
-        return getattr(module, attr)
-    except AttributeError as e:
-        raise ImportError(f"Cannot import '{attr}' from '{mod_path}'") from e

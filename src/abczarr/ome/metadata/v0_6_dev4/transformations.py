@@ -1,3 +1,19 @@
+__all__ = [
+    "Space",
+    "CoordinateTransformation",
+    "Identity",
+    "MapAxis",
+    "Translation",
+    "Scale",
+    "Affine", "AffineMatrix", "AffinePath",
+    "Rotation", "RotationMatrix", "RotationPath",
+    "Sequence",
+    "Displacements",
+    "Coordinates",
+    "Bijection",
+    "ByDimension"
+]
+
 # dependencies
 import typing_extensions as tx
 

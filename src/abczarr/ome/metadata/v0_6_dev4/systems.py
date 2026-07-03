@@ -1,3 +1,9 @@
+__all__ = [
+    "Axis", "SpaceAxis", "TimeAxis", "ChannelAxis", "ArrayAxis",
+    "DisplacementAxis", "CoordinateAxis",
+    "AxisType", "SpaceUnit", "TimeUnit", "Unit",
+]
+
 # dependencies
 import typing_extensions as tx
 
