@@ -7,8 +7,8 @@ import typing_extensions as tx
 
 # core
 from abczarr._core import typing as tz
-from abczarr._core.attrs import autofrozen
-from abczarr.metadata.base import Metadata
+from abczarr._core.auto.attrs import autofrozen
+from abczarr._core.metadata import Metadata
 
 
 @autofrozen(extra_items=tz.FrozenJSON)

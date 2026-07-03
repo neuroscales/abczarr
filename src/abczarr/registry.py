@@ -6,7 +6,7 @@ from types import ModuleType
 # dependencies
 import typing_extensions as tx
 
-from abczarr._core.import import _import_symbol
+from abczarr._core.imports import import_symbol
 
 # locals
 from ._core import typing as tz
@@ -61,7 +61,7 @@ register_driver("tensorstore", "abczarr.drivers.tensorstore")
 
 def reload_driver(name: str, strict: bool = True) -> ModuleType:
     try:
-        mod = _import_symbol(_DRIVERS[name])
+        mod = import_symbol(_DRIVERS[name])
         _LOADED_DRIVERS[name] = mod
         return mod
     except UnavailableDriverError:

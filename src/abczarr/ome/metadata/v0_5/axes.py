@@ -8,10 +8,11 @@ import typing_extensions as tx
 
 # core
 from abczarr._core.attrs import autodefine, field
-from abczarr._core.metadata import FlexibleMetadata, register_subclass
+from abczarr._core.metadata import register_subclass
+from abczarr._core.rfc2119 import Required, Recommended, NotRecommended
 
 # locals
-from ..rfc2119 import Required, Recommended, NotRecommended
+from ..base import OMEMetadata
 
 # typing
 AxisType = tx.Literal["space", "time", "channel"]
@@ -36,7 +37,7 @@ Unit = tx.Union[SpaceUnit, TimeUnit]
 
 
 @autodefine
-class Axis(FlexibleMetadata):
+class Axis(OMEMetadata):
     name: Required[str] = field(factory=False)
     type: Recommended[tx.Union[AxisType, str]]
     unit: Recommended[tx.Union[Unit, str]]

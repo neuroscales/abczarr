@@ -1,0 +1,184 @@
+__all__ = [
+    "Factory",
+    "register_factory",
+    "get_factory",
+    "NoneFactory",
+    "UnionFactory",
+    "LiteralFactory",
+    "TypeVarFactory",
+    "SequenceFactory",
+    "MappingFactory",
+    "AnnotatedFactory",
+]
+
+# stdlib
+from collections import abc
+from types import NoneType, UnionType
+
+# dependencies
+import typing_extensions as tx
+
+# internals
+from ._typing import (
+    MagicRegistry,
+    ClassDecorator,
+    T,
+    MAPPING,
+    NONETYPE,
+    SEQUENCE,
+)
+from ._utils import (
+    HintMagic,
+    TypeVarMixin,
+    get_from_registry,
+    _get_args,
+    _get_origin,
+    _isinstance,
+    _issubclass,
+)
+
+
+# ======================================================================
+#       BASE
+# ======================================================================
+
+
+class Factory(HintMagic[T]):
+    """Base class for magic factories."""
+
+    def __call__(self) -> T:
+        return self.fallback()
+
+
+_FACTORIES: MagicRegistry[Factory] = {}
+
+
+def register_factory(*hints: tx.Unpack[tx.Tuple[tx.Any]]) -> ClassDecorator:
+    """
+    Decorator to register a factory class for one or more type hints.
+
+    !!! example
+        ```python
+        @register_factory(int)
+        class IntFactory(Factory[int]):
+            def __call__(self) -> int:
+                return 42
+        ```
+    """
+    def decorator(cls: tx.Type[Factory]) -> tx.Type[Factory]:
+        for hint in hints:
+            _FACTORIES[hint] = cls
+        return cls
+
+    return decorator
+
+
+def get_factory(hint: tx.Any) -> tx.Callable[[], T]:
+    """
+    Get the best-matching factory function for a given type hint.
+    """
+    factory_cls = get_factory_class(hint)
+    return factory_cls(hint)
+
+
+def get_factory_class(hint: tx.Any) -> tx.Type[Factory]:
+    """
+    Get the best-matching factory class for a given type hint.
+    """
+    factory_cls = get_from_registry(hint, _FACTORIES) or Factory
+    if hasattr(factory_cls, "__class_getitem__"):
+        factory_cls = factory_cls[hint]
+    return factory_cls
+
+
+# ======================================================================
+#       IMPL
+# ======================================================================
+
+
+@register_factory(NoneType)
+class NoneFactory(Factory[NONETYPE]):
+
+    DEFAULT = NoneType
+
+    def __call__(self) -> NONETYPE:
+        return None
+
+
+@register_factory(tx.Union, UnionType)
+class UnionFactory(Factory[T]):
+
+    DEFAULT = tx.Union
+
+    def __call__(self) -> T:
+        if NoneType in self.args:
+            return None
+        for arg in self.args:
+            try:
+                factory = get_factory(arg)
+                return factory()
+            except TypeError:
+                continue
+        raise TypeError(
+            "Cannot create an instance of any of the union types: "
+            f"{' | '.join(str(arg) for arg in self.args)}"
+        )
+
+
+@register_factory(tx.Literal)
+class LiteralFactory(Factory[T]):
+
+    DEFAULT = tx.Literal
+
+    def __call__(self) -> T:
+        if not self.args:
+            raise TypeError("Cannot create an instance of an empty literal")
+        if None in self.args:
+            return None
+        return self.args[0]
+
+
+@register_factory(tx.TypeVar)
+class TypeVarFactory(TypeVarMixin, Factory[T]):
+
+    DEFAULT = tx.TypeVar("T")
+
+    def __call__(self) -> T:
+        return get_factory(self.fallback)()
+
+
+@register_factory(abc.Sequence)
+class SequenceFactory(Factory[SEQUENCE]):
+
+    DEFAULT = abc.Sequence
+    FALLBACK = list
+
+
+@register_factory(abc.Mapping)
+class MappingFactory(Factory[MAPPING]):
+
+    DEFAULT = abc.Mapping
+    FALLBACK = dict
+
+
+@register_factory(tx.Annotated)
+class AnnotatedFactory(Factory[T]):
+
+    @property
+    def factories(self) -> tx.Tuple[Factory, ...]:
+        origin = _get_origin(self.hint, unwrap=tx.Annotated)
+
+        factories = []
+        for arg in _get_args(self.hint):
+            if _issubclass(arg, Factory):
+                arg = arg(origin)
+            if _isinstance(arg, Factory):
+                factories.append(arg)
+
+        factories.insert(0, get_factory(origin))
+        return tuple(factories)
+
+    def __call__(self) -> T:
+        for factory in reversed(self.factories):
+            return factory()
+        raise TypeError(f"Cannot instantiate value for {self.hint}")

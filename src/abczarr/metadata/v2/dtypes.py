@@ -8,7 +8,8 @@ import numpy as np
 import typing_extensions as tx
 
 # core
-from abczarr._core.attrs import Converter, register_converter, DTYPELIKE
+from abczarr._core.auto._typing import DTYPELIKE
+from abczarr._core.auto.converters import Converter, register_converter
 from abczarr._core.dtypes import asdtype, to_zarr2 as dtype_to_zarr2
 
 

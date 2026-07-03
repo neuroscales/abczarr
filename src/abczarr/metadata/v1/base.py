@@ -1,16 +1,11 @@
 __all__ = [
-    "Metadata",
+    "NodeMetadata",
     "NodeMetadataV1",
     "ArrayMetadataV1",
-    "NodeMetadata",
 ]
 
-from ..base import (
-    Metadata,
-    NodeMetadataV1,
-    ArrayMetadataV1,
-    register_subclass,
-)
+from abczarr._core.metadata import register_subclass
+from abczarr.metadata.base import NodeMetadataV1, ArrayMetadataV1
 
 
 @register_subclass(zarr_format=1)

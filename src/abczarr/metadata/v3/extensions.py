@@ -13,14 +13,8 @@ import typing_extensions as tx
 
 # core
 from abczarr._core import typing as tz
-from abczarr._core.attrs import autofrozen, field, fields
-
-# locals
-from abczarr.metadata.base import Metadata, JSONMetadata
-
-
-def _repr_if_false(value: bool) -> str:
-    return None if value else repr(value)
+from abczarr._core.auto.attrs import autofrozen, field, fields
+from abczarr._core.metadata import Metadata, JSONMetadata
 
 
 @autofrozen(extra_items=JSONMetadata)

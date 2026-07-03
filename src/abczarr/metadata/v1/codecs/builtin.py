@@ -11,7 +11,7 @@ __all__ = [
 import typing_extensions as tx
 
 # core
-from abczarr._core.attrs import autofrozen
+from abczarr._core.auto.attrs import autofrozen
 from abczarr.metadata.base import register_subclass
 from abczarr.schemas.v1 import codecs
 

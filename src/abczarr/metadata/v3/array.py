@@ -15,12 +15,12 @@ import typing_extensions as tx
 
 # core
 from abczarr._core import typing as tz
-from abczarr._core.attrs import autofrozen, update, field, eq_safenan
+from abczarr._core.auto.attrs import autofrozen, update, field, eq_safenan
 from abczarr._core.dtypes import asdtype
+from abczarr._core.metadata import register_subclass
 
 # metadata
 from abczarr.metadata import base
-from abczarr.metadata.base import register_subclass
 
 # locals
 from .base import ArrayMetadataV3

@@ -5,22 +5,22 @@ import typing_extensions as tx
 
 # core
 from abczarr._core.attrs import autodefine, field
-from abczarr._core.metadata import FlexibleMetadata
+from abczarr._core.rfc2119 import Required, Recommended
 
 # locals
+from ..base import OMEMetadata
 from .version import Version
-from ..rfc2119 import Required, Recommended
 
 
 @autodefine
-class Well(FlexibleMetadata):
+class Well(OMEMetadata):
 
 
     @autodefine
-    class Image(FlexibleMetadata):
+    class Image(OMEMetadata):
         path: Required[str] = field(factory=False)
         acquisition: Recommended[int]
 
 
     images: Required[tx.List[Image]]
-    version: Version
+    version: Required[Version]

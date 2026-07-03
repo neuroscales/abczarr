@@ -9,14 +9,15 @@ import typing_extensions as tx
 
 # core
 from abczarr._core.attrs import autodefine, field
-from abczarr._core.metadata import FlexibleMetadata, register_subclass
+from abczarr._core.metadata import register_subclass
+from abczarr._core.rfc2119 import Required
 
 # locals
-from ..rfc2119 import Required
+from ..base import OMEMetadata
 
 
 @autodefine
-class CoordinateTransformation(FlexibleMetadata):
+class CoordinateTransformation(OMEMetadata):
     type: Required[str] = field(factory=False)
 
 

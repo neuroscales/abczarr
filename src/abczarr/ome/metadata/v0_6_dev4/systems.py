@@ -10,9 +10,9 @@ import typing_extensions as tx
 # core
 from abczarr._core.attrs import autodefine, field
 from abczarr._core.metadata import register_subclass
+from abczarr._core.rfc2119 import Required, Recommended, Optional, NotRecommended
 
 # locals
-from ..rfc2119 import Required, Recommended, Optional, NotRecommended
 from ..base import OMEMetadata
 
 # typing
@@ -68,19 +68,19 @@ class ChannelAxis(Axis):
 
 @register_subclass(type="array")
 class ArrayAxis(Axis):
-    type: tx.Literal["array"]
+    type: Required[tx.Literal["array"]]
     unit: NotRecommended[Unit]
 
 
 @register_subclass(type="displacement")
 class DisplacementAxis(Axis):
-    type: tx.Literal["displacement"]
+    type: Required[tx.Literal["displacement"]]
     unit: NotRecommended[Unit]
 
 
 @register_subclass(type="coordinate")
 class CoordinateAxis(Axis):
-    type: tx.Literal["coordinate"]
+    type: Required[tx.Literal["coordinate"]]
     unit: NotRecommended[Unit]
 
 

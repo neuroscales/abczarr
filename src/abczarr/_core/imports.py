@@ -16,7 +16,7 @@ def import_symbol(path: str) -> type:
 
 
 def import_all(
-    modules: tx.List[str],
+    modules: tx.Iterable[str],
     namespace: tx.MutableMapping[str, tx.Any],
     package: tx.Optional[str] = None,
     add_to_all: tx.Iterable[tx.Literal["module", "attrs"]] = ("module", "attrs")
@@ -28,14 +28,19 @@ def import_all(
         add_to_all = (add_to_all,)
     add_to_all = tuple(add_to_all)
 
+    if isinstance(modules, str):
+        modules = (modules,)
+
     namespace.setdefault("__all__", [])
 
     for module in modules:
+        module_name = module.split(".")[-1]
+
         # Import module
         imported = importlib.import_module(module, package)
-        namespace[module] = imported
+        namespace[module_name] = imported
         if "module" in add_to_all:
-            namespace["__all__"].append(imported.__name__)
+            namespace["__all__"].append(module_name)
 
         # Import attributes
         for attr in getattr(imported, "__all__", []):

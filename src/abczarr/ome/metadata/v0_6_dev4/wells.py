@@ -5,9 +5,9 @@ import typing_extensions as tx
 
 # core
 from abczarr._core.attrs import autodefine, field
+from abczarr._core.rfc2119 import Required, Recommended
 
 # locals
-from ..rfc2119 import Required, Recommended
 from ..base import OMEMetadata
 
 
