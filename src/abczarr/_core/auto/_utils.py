@@ -59,6 +59,13 @@ class HintMagic(tx.Generic[T]):
             f"{self.__class__.__name__} must implement __call__"
         )
 
+    def __repr__(self) -> str:
+        hint_arg = self.hint if self.hint != self.DEFAULT else ""
+        return f"{type(self).__name__}({hint_arg})"
+
+    def __str__(self) -> str:
+        return repr(self)
+
 
 class TypeVarMixin:
 
@@ -151,48 +158,94 @@ def _get_best_match(hint: tx.Any, registry: dict) -> tx.Tuple[tx.Any, float]:
 
     best_match, best_dist = None, float("inf")
     for key in registry:
+
         dist = _type_dist(hint, key)
+
         if dist == 0:
+            # Perfect match -> stop here
             best_match, best_dist = key, dist
             break
+
         elif dist < best_dist:
+            if _is_typeddict(best_match) and not _is_typeddict(key):
+                # Prefer typeddict over other types if they are compatible
+                continue
+            else:
+                # Update best match
+                best_match, best_dist = key, dist
+
+        elif dist < float('inf') and _is_typeddict(key):
+            # Prefer typeddict over other types if they are compatible
             best_match, best_dist = key, dist
+
         elif dist == best_dist:
             if _issubclass(key, best_match):
+                # Prefer more specific subclass
                 best_match = key
 
     return best_match, best_dist
 
 
-def _type_dist(typ: type, ref: type) -> int:
+def _type_dist(subcls: type, cls: type) -> int:
     """Distance between two types, based on their inheritence hierarchy."""
-    if _isinstance(typ, tx.TypeVar):
-        typ = tx.TypeVar
-    if typ is ref:
+    if _isinstance(subcls, tx.TypeVar):
+        subcls = tx.TypeVar
+    if subcls is cls:
         return 0
-    if not isinstance(typ, type) or not isinstance(ref, type):
+    if not _issubclassable(subcls) or not _issubclassable(cls):
         return float("inf")
-    if not issubclass(typ, ref):
+    if not _issubclass(subcls, cls):
         return float("inf")
+    if tx.is_typeddict(cls):
+        bases = _all_orig_bases(subcls)
+    else:
+        bases = subcls.__mro__
     distance = 0
-    for base in typ.__mro__:
-        if base is ref:
+    for base in bases:
+        if base is cls:
             return distance
         distance += 1
     return 1000
 
 
-def _issubclass(typ: tx.Any, ref: tx.Any) -> bool:
+def _issubclassable(cls: tx.Any) -> bool:
+    if cls is tx.TypedDict:
+        return True
+    return isinstance(cls, type)
+
+
+def _is_typeddict(cls: tx.Any) -> bool:
+    if cls is tx.TypedDict:
+        return True
+    return tx.is_typeddict(cls)
+
+
+def _all_orig_bases(cls: type, _self=True) -> tx.Tuple[type, ...]:
+    """Get all original bases of a type, including the type itself."""
+    if not _is_typeddict(cls):
+        return ()
+    bases = (cls,) if _self else ()
+    bases += getattr(cls, '__orig_bases__', ())
+    for base in getattr(cls, '__orig_bases__', ()):
+        bases += _all_orig_bases(base, _self=False)
+    return bases
+
+
+def _issubclass(subcls: tx.Any, cls: tx.Any) -> bool:
     """Safe subclass (does not fail if arguments are not types)."""
-    if isinstance(typ, type) and isinstance(ref, type):
-        return issubclass(typ, ref)
+    if _is_typeddict(cls):
+        return cls in _all_orig_bases(subcls) or subcls is dict
+    if isinstance(subcls, type) and isinstance(cls, type):
+        return issubclass(subcls, cls)
     return False
 
 
-def _isinstance(obj: tx.Any, typ: tx.Any) -> bool:
+def _isinstance(obj: tx.Any, cls: tx.Any) -> bool:
     """Safe isinstance (does not fail if second argument is not a type)."""
-    if isinstance(typ, type) and typ is not tx.Any:
-        return isinstance(obj, typ)
+    if _is_typeddict(cls):
+        return _issubclass(type(obj), cls)
+    if isinstance(cls, type) and cls is not tx.Any:
+        return isinstance(obj, cls)
     return False
 
 

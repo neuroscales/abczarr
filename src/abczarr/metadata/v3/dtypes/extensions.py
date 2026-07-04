@@ -8,7 +8,7 @@ import typing_extensions as tx
 
 # core
 from abczarr._core import typing as tz
-from abczarr._core.attrs import autofrozen
+from abczarr._core.auto import autofrozen
 
 # locals
 from ...base import register_subclass

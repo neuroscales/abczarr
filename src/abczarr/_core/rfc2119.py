@@ -1,7 +1,6 @@
 import typing_extensions as tx
 
-from .auto.converters import Converter, register_converter
-from .auto.factories import AnnotatedFactory, register_factory
+from .auto.factories import AnnotatedFactory
 
 
 class Requirement:
@@ -20,9 +19,10 @@ class Requirement:
     Required class.
     """
 
-    def __new__(cls, value: tx.Union[str, "Requirement"]) -> tx.Self:
+    def __new__(cls, value: tx.Union[str, "Requirement"] = "") -> tx.Self:
         if cls is Requirement:
             return cls._INSTANCES[value.upper()]
+        value = value or cls._STR
         value = str(value).upper()
         if value != cls._STR:
             raise ValueError(f"Invalid value for {cls.__name__}: {value}")
@@ -155,17 +155,26 @@ Requirement._INSTANCES = {
 }
 
 
-@register_factory(Requirement)
-class RequirementFactory(AnnotatedFactory):
-    """
-    Factory for types annotated with a Requirement instance.
-    """
+class RequirementMixin:
 
     @property
     def requirement(self) -> Requirement:
+        if getattr(self, "_requirement", None) is None:
+            self._requirement = self._get_requirement()
+        return self._requirement
+
+    def _get_requirement(self) -> Requirement:
         for arg in self.args:
             if isinstance(arg, Requirement):
                 return arg
+        raise TypeError("No Requirement instance found in args")
+
+
+@AnnotatedFactory.register(Requirement)
+class RequirementFactory(RequirementMixin, AnnotatedFactory):
+    """
+    Factory for types annotated with a Requirement instance.
+    """
 
     def __call__(self) -> Requirement:
         requirement = self.requirement
@@ -174,3 +183,46 @@ class RequirementFactory(AnnotatedFactory):
                 "Cannot instantiate a Required field without a default value"
             )
         return MISSING
+
+
+class RequirementForTypedDict:
+
+    _Required = Required
+    _Recommended = Recommended
+    _Optional = Optional
+    _Prohibited = Prohibited
+    _NotRecommended = NotRecommended
+
+
+    class Required(_Required):
+
+        def __class_getitem__(cls, item: tx.Any) -> tx.Self:
+            base = super().__class_getitem__(item)
+            return tx.Required[base]
+
+
+    class Recommended(_Recommended):
+
+        def __class_getitem__(cls, item: tx.Any) -> tx.Self:
+            base = super().__class_getitem__(item)
+            return tx.NotRequired[base]
+
+
+    class Optional(_Optional):
+
+        def __class_getitem__(cls, item: tx.Any) -> tx.Self:
+            base = super().__class_getitem__(item)
+            return tx.NotRequired[base]
+
+
+    class Prohibited(_Prohibited):
+
+        def __class_getitem__(cls, item: tx.Any) -> tx.Self:
+            return tx.Annotated[tx.Never, MUST_NOT]
+
+
+    class NotRecommended(_NotRecommended):
+
+        def __class_getitem__(cls, item: tx.Any) -> tx.Self:
+            base = super().__class_getitem__(item)
+            return tx.NotRequired[base]

@@ -8,7 +8,7 @@ __all__ = [
 import typing_extensions as tx
 
 # core
-from abczarr._core.attrs import autodefine, field
+from abczarr._core.auto.attrs import autodefine, field
 from abczarr._core.metadata import register_subclass
 from abczarr._core.rfc2119 import Required
 
@@ -44,7 +44,7 @@ class OMEImage(OME):
 @register_subclass(image_label=tx.Any)
 @autodefine
 class OMEImageLabel(OMEImage):
-    image_labels: Required[ImageLabel] = field(alias="image-labels")
+    image_labels: Required[ImageLabel]
 
 
 @register_subclass(labels=tx.Any)

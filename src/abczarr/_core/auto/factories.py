@@ -73,19 +73,27 @@ def register_factory(*hints: tx.Unpack[tx.Tuple[tx.Any]]) -> ClassDecorator:
     return decorator
 
 
-def get_factory(hint: tx.Any) -> tx.Callable[[], T]:
+def get_factory(
+    hint: tx.Any,
+    registry: MagicRegistry[Factory] = _FACTORIES,
+    fallback: tx.Optional[tx.Type[Factory]] = Factory
+) -> tx.Callable[[], T]:
     """
     Get the best-matching factory function for a given type hint.
     """
-    factory_cls = get_factory_class(hint)
+    factory_cls = get_factory_class(hint, registry, fallback)
     return factory_cls(hint)
 
 
-def get_factory_class(hint: tx.Any) -> tx.Type[Factory]:
+def get_factory_class(
+    hint: tx.Any,
+    registry: MagicRegistry[Factory] = _FACTORIES,
+    fallback: tx.Optional[tx.Type[Factory]] = Factory
+) -> tx.Type[Factory]:
     """
     Get the best-matching factory class for a given type hint.
     """
-    factory_cls = get_from_registry(hint, _FACTORIES) or Factory
+    factory_cls = get_from_registry(hint, registry) or fallback
     if hasattr(factory_cls, "__class_getitem__"):
         factory_cls = factory_cls[hint]
     return factory_cls
@@ -164,6 +172,22 @@ class MappingFactory(Factory[MAPPING]):
 @register_factory(tx.Annotated)
 class AnnotatedFactory(Factory[T]):
 
+    _REGISTRY: MagicRegistry[Factory] = {}
+
+    @classmethod
+    def register(cls, *hints: tx.Unpack[tx.Tuple[tx.Any]]) -> ClassDecorator:
+
+        def decorator(factory_cls: tx.Type[Factory]) -> tx.Type[Factory]:
+            for hint in hints:
+                cls._REGISTRY[hint] = factory_cls
+            return factory_cls
+
+        return decorator
+
+    @classmethod
+    def _get_factory(cls, hint: tx.Any) -> tx.Optional[tx.Type[Factory]]:
+        return get_factory(hint, registry=cls._REGISTRY, fallback=None)
+
     @property
     def factories(self) -> tx.Tuple[Factory, ...]:
         origin = _get_origin(self.hint, unwrap=tx.Annotated)
@@ -172,6 +196,9 @@ class AnnotatedFactory(Factory[T]):
         for arg in _get_args(self.hint):
             if _issubclass(arg, Factory):
                 arg = arg(origin)
+            if not isinstance(arg, Factory):
+                # Look into annotation registry
+                arg = self._get_factory(arg)
             if _isinstance(arg, Factory):
                 factories.append(arg)
 

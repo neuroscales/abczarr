@@ -6,7 +6,7 @@ import typing_extensions as tx
 
 # core
 from abczarr._core import typing as tz
-from abczarr._core.attrs import autofield, autofrozen
+from abczarr._core.auto import autofield, autofrozen
 from abczarr._core.dtypes import asdtype
 
 # locals

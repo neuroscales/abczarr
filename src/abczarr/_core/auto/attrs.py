@@ -25,65 +25,103 @@ from attrs import NOTHING, evolve, fields, make_class
 from ..frozendict import FrozenDict
 from .converters import get_converter
 from .factories import get_factory
+from .validators import get_validator
 from ._utils import eq_safenan, get_default
 
 
-@wraps(_define)
-def define(*args, **kwargs):
+def _auto(kwargs: dict) -> dict:
+    factory = kwargs.pop("factory", True)
+    converter = kwargs.pop("converter", True)
+    validator = kwargs.pop("validator", False)
+    transformer = transform_fields(
+        factory=factory, converter=converter, validator=validator)
+    kwargs.setdefault("field_transformer", transformer)
+    return kwargs
+
+
+def _extra(kwargs: dict) -> dict:
     extra = kwargs.pop("extra_items", None)
     if extra is not None:
         transformer = kwargs.pop("field_transformer", None)
         dict_type = FrozenDict if kwargs.get("frozen", False) else tx.Dict
         extra_transformer = extra_items(extra, transformer, dict_type=dict_type)
         kwargs["field_transformer"] = extra_transformer
+    return kwargs
 
-    kwargs["field_transformer"] = fix_order(kwargs.get("field_transformer"))
+
+def _freeze(kwargs: dict) -> dict:
+    kwargs.setdefault("frozen", True)
+    kwargs.setdefault("on_setattr", None)
+    return kwargs
+
+
+def _fix_order(kwargs: dict) -> dict:
+    transformer = kwargs.pop("field_transformer", None)
+    kwargs["field_transformer"] = fix_order(transformer)
+    return kwargs
+
+
+@wraps(_define)
+def define(*args, **kwargs):
+    kwargs = _extra(kwargs)
+    kwargs = _fix_order(kwargs)
     return _define(*args, **kwargs)
 
 
 @wraps(define)
 def frozen(*args, **kwargs):
-    kwargs.setdefault("frozen", True)
-    kwargs.setdefault("on_setattr", None)
+    kwargs = _freeze(kwargs)
     return define(*args, **kwargs)
 
 
 @wraps(define)
 def autodefine(*args, **kwargs):
-    factory = kwargs.pop("factory", True)
-    converter = kwargs.pop("converter", True)
-    transformer = transform_fields(factory=factory, converter=converter)
-    kwargs.setdefault("field_transformer", transformer)
+    kwargs = _auto(kwargs)
     return define(*args, **kwargs)
 
 
 @wraps(define)
 def autofrozen(*args, **kwargs):
-    factory = kwargs.pop("factory", True)
-    converter = kwargs.pop("converter", True)
-    transformer = transform_fields(factory=factory, converter=converter)
-    kwargs.setdefault("field_transformer", transformer)
+    kwargs = _auto(kwargs)
     return frozen(*args, **kwargs)
 
 
 @wraps(_field)
 def field(**kwargs) -> tx.Any:
     if "type" in kwargs:
-        if kwargs.get("converter", None) is True:
+
+        # Validator
+        if kwargs.get("validator") is True:
+            kwargs["validator"] = get_validator(kwargs["type"])
+        elif kwargs.get("validator") is False:
+            kwargs.pop("validator")
+
+        # Converter
+        if kwargs.get("converter") is True:
             kwargs["converter"] = get_converter(kwargs["type"], wrap=True)
-        elif kwargs.get("converter", None) is False:
+        elif kwargs.get("converter") is False:
             kwargs.pop("converter")
 
-        if kwargs.get("factory", None) is True and "default" in kwargs:
+        # Default
+        if kwargs.get("factory") is True and "default" in kwargs:
             kwargs.pop("factory")
 
-        if kwargs.get("factory", None) is True:
+        # Factory
+        if kwargs.get("factory") is True:
             try:
                 kwargs["default"] = get_default(kwargs["type"])
                 kwargs.pop("factory")
             except TypeError:
                 kwargs["factory"] = get_factory(kwargs["type"])
         elif kwargs.get("factory", None) is False:
+            kwargs.pop("factory")
+
+    else:
+        if kwargs.get("validator") is False:
+            kwargs.pop("validator")
+        if kwargs.get("converter") is False:
+            kwargs.pop("converter")
+        if kwargs.get("factory") is False:
             kwargs.pop("factory")
 
     return _field(**kwargs)
@@ -117,11 +155,26 @@ def autoconvert(type, **kwargs) -> tx.Any:
     return field(**kwargs)
 
 
-def transform_fields(factory: bool = True, converter: bool = True):
-    def _transform_fields(cls: tx.Type, attrs_fields: tx.Sequence[tx.Any]) -> tx.Sequence[tx.Any]:
+@wraps(field)
+def autovalidate(type, **kwargs) -> tx.Any:
+    kwargs.setdefault("validator", True)
+    kwargs["type"] = type
+    return field(**kwargs)
+
+
+def transform_fields(
+    factory: bool = True,
+    converter: bool = True,
+    validator: bool = False,
+):
+    def _transform_fields(
+        cls: tx.Type,
+        attrs_fields: tx.Sequence[tx.Any]
+    ) -> tx.Sequence[tx.Any]:
         new_fields = []
         for f in attrs_fields:
             if f.type is not None:
+
                 if factory and (f.default is NOTHING):
                     try:
                         f = f.evolve(default=get_default(f.type))
@@ -130,6 +183,9 @@ def transform_fields(factory: bool = True, converter: bool = True):
 
                 if converter and f.converter is None:
                     f = f.evolve(converter=get_converter(f.type, wrap=True))
+
+                if validator and f.validator is None:
+                    f = f.evolve(validator=get_validator(f.type))
 
             new_fields.append(f)
         return new_fields

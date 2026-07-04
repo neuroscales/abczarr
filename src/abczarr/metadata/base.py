@@ -31,7 +31,7 @@ import typing_extensions as tx
 # locals
 from abczarr._core import typing as tz
 from abczarr._core import constants
-from abczarr._core.attrs import autofrozen, evolve
+from abczarr._core.auto import autofrozen, evolve
 from abczarr._core.metadata import (
     Metadata, FlexibleMetadata, register_subclass
 )

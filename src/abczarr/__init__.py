@@ -5,6 +5,7 @@ __all__ = [
     "config",
     "drivers",
     "metadata",
+    "ome",
     "registry",
     "schemas",
     "ZarrArray",
@@ -22,6 +23,7 @@ from . import api
 from . import config
 from . import drivers
 from . import metadata
+from . import ome
 from . import registry
 from . import schemas
 

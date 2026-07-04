@@ -141,11 +141,18 @@ def register_converter(*hints: tx.Unpack[tx.Tuple[tx.Any]]) -> ClassDecorator:
     return decorator
 
 
-def get_converter(hint: tx.Any, wrap: bool = False) -> tx.Callable[[tx.Any], T]:
+def get_converter(
+    hint: tx.Any,
+    wrap: bool = False,
+    registry: MagicRegistry[Converter] = _CONVERTERS,
+    fallback: tx.Optional[tx.Type[Converter]] = Converter
+) -> tx.Optional[tx.Callable[[tx.Any], T]]:
     """
     Get the best-matching conversion function for a given type hint.
     """
-    cls = get_converter_class(hint)
+    cls = get_converter_class(hint, registry, fallback)
+    if cls is None:
+        return None
     inp = cls.like(hint)
     obj = cls(hint)
     if wrap:
@@ -153,11 +160,15 @@ def get_converter(hint: tx.Any, wrap: bool = False) -> tx.Callable[[tx.Any], T]:
     return obj
 
 
-def get_converter_class(hint: tx.Any) -> tx.Type[Converter]:
+def get_converter_class(
+    hint: tx.Any,
+    registry: MagicRegistry[Converter] = _CONVERTERS,
+    fallback: tx.Optional[tx.Type[Converter]] = Converter
+) -> tx.Type[Converter]:
     """
     Get the best-matching conversion class for a given type hint.
     """
-    return get_from_registry(hint, _CONVERTERS) or Converter
+    return get_from_registry(hint, registry) or fallback
 
 
 # ======================================================================
@@ -205,7 +216,8 @@ class UnionConverter(Converter[TO, FROM]):
                     filtered_args.remove(filtered_arg)
                     break
             filtered_args.append(arg)
-        return tx.Union[tuple(filtered_args)]
+        filtered_args = tuple(filtered_args)
+        return tx.Union[tuple(filtered_args)] if filtered_args else tx.Never
 
     def __call__(self, value: FROM) -> TO:
         if value is None and NoneType in self.args:
@@ -265,7 +277,7 @@ class StringConverter(Converter[STR, FROM]):
         return tx.Union[str, bytes]
 
     def __call__(self, value: FROM) -> STR:
-        if not isinstance(value, (str, bytes)):
+        if not _isinstance(value, str) or _isinstance(value, bytes):
             raise TypeError(
                 f"Value {value} of type {type(value)} is not a string or bytes"
             )
@@ -356,7 +368,7 @@ class MappingConverter(Converter[MAPPING, MAPPINGLIKE]):
         if self.args:
             key_converter = get_converter(self.args[0])
             val_converter = get_converter(self.args[1])
-            if isinstance(value, abc.Mapping):
+            if _isinstance(value, abc.Mapping):
                 value = value.items()
             value = {key_converter(k): val_converter(v) for k, v in value}
         if _issubclass(input_type, self.origin):
@@ -428,7 +440,7 @@ class NumberConverter(Converter[NUMBER, NUMBERLIKE]):
 
     def __call__(self, value: NUMBERLIKE) -> NUMBER:
         float_like = ("inf", "infinity", "-inf", "-infinity", "nan")
-        if isinstance(value, str) and value.lower() in float_like:
+        if _isinstance(value, str) and value.lower() in float_like:
             value = float(value)
         if _isinstance(value, self.hint):
             return value
@@ -464,6 +476,24 @@ class DTypeConverter(Converter[DTYPE, DTYPELIKE]):
 @register_converter(tx.Annotated)
 class AnnotatedConverter(Converter[TO, FROM]):
 
+    _REGISTRY: MagicRegistry[Converter] = {}
+
+    @classmethod
+    def register(cls, *hints: tx.Unpack[tx.Tuple[tx.Any]]) -> ClassDecorator:
+
+        def decorator(converter_cls: tx.Type[Converter]) -> tx.Type[Converter]:
+            for hint in hints:
+                cls._REGISTRY[hint] = converter_cls
+            return converter_cls
+
+        return decorator
+
+    @classmethod
+    def _get_converter(cls, hint: tx.Any) -> tx.Optional[tx.Type[Converter]]:
+        return get_converter(
+            hint, wrap=False, registry=cls._REGISTRY, fallback=None
+        )
+
     @property
     def converters(self) -> tx.Tuple[Converter, ...]:
         if getattr(self, "_converters", None) is None:
@@ -474,10 +504,11 @@ class AnnotatedConverter(Converter[TO, FROM]):
         origin = _get_origin(self.hint, unwrap=tx.Annotated)
         converters = []
         for arg in _get_args(self.hint):
-            if _isinstance(arg, re.Pattern):
-                arg = RegexConverter(arg)
             if _issubclass(arg, Converter):
                 arg = arg(origin)
+            if not _isinstance(arg, Converter):
+                # Look into annotation registry
+                arg = self._get_converter(arg)
             if _isinstance(arg, Converter):
                 if getattr(arg, "compose", False):
                     converters.append(arg)
@@ -615,13 +646,34 @@ class RangeConverter(NumberConverter[NUMBER, NUMBERLIKE]):
         return value
 
 
+class LengthConverter(SequenceConverter[ITERABLE, ITERABLELIKE]):
+
+    def __init__(
+        self,
+        length: int,
+        hint: tx.Any = _UNSET,
+    ) -> None:
+        super().__init__(hint)
+        self.length = length
+
+    def __call__(self, value: ITERABLELIKE) -> ITERABLE:
+        value = super().__call__(value)
+        value = value[:self.length]
+        if len(value) != self.length:
+            raise ValueError(
+                f"Expected iterable of length {self.length}, got {len(value)}"
+            )
+        return value
+
+
+AnnotatedConverter.register(re.Pattern)
 class RegexConverter(StringConverter[STR, FROM]):
 
     def __init__(
         self, pattern: tx.Union[str, re.Pattern], hint: tx.Any = _UNSET
     ) -> None:
         super().__init__(hint)
-        if not isinstance(pattern, re.Pattern):
+        if not _isinstance(pattern, re.Pattern):
             pattern = re.compile(pattern)
         self.pattern = pattern
 

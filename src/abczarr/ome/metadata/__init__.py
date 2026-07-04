@@ -4,7 +4,7 @@ __all__ = [
     "v0_3",
     "v0_4",
     "v0_5",
-    "v0_6_dev4",
+    "v0_6dev4",
 ]
 
 
@@ -17,7 +17,7 @@ from . import (
     v0_3,
     v0_4,
     v0_5,
-    v0_6_dev4,
+    v0_6dev4,
 )
 
 import_all( ".base", locals(), __package__)

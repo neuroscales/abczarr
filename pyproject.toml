@@ -7,7 +7,7 @@ readme = "README.md"
 dynamic = ["version"]
 requires-python = ">=3.8"
 dependencies = [
-    "typing_extensions",
+    "typing_extensions >= 4.13",
     "numpy",
     "dask[array,diagnostics]",
 ]

@@ -4,7 +4,8 @@ __all__ = ["ImageLabel"]
 import typing_extensions as tx
 
 # core
-from abczarr._core.attrs import autodefine, field, RangeConverter
+from abczarr._core.auto.attrs import autodefine, field
+from abczarr._core.auto.converters import RangeConverter
 from abczarr._core.rfc2119 import Required, Recommended, Optional
 
 # locals
@@ -21,19 +22,19 @@ class ImageLabel(OMEMetadata):
 
     @autodefine
     class Color(OMEMetadata):
-        label_value: Required[int] = field(alias="label-value")
+        label_value: Required[int]
         rgba: Optional[tx.Tuple[UInt8, UInt8, UInt8, UInt8]]
 
 
     @autodefine
     class Property(OMEMetadata):
-        label_value: Required[int] = field(alias="label-value")
+        label_value: Required[int]
 
 
     @autodefine
     class Source(OMEMetadata):
         image: Optional[str] = None
-        label_value: Required[int] = field(alias="label-value")
+        label_value: Required[int]
 
 
     colors: Recommended[tx.List[Color]]

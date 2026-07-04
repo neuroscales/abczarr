@@ -7,7 +7,7 @@ import re
 import typing_extensions as tx
 
 # core
-from abczarr._core.attrs import autofrozen, RegexConverter
+from abczarr._core.auto import autofrozen, RegexConverter
 
 # locals
 from ...base import register_subclass

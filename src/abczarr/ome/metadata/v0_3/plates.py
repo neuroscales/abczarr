@@ -1,11 +1,14 @@
 __all__ = ["Plate"]
 
+# stdlib
+import re
+
 # dependencies
 import typing_extensions as tx
 
 # core
-from abczarr._core.attrs import autodefine, field
-from abczarr._core.attrs import NonNegativeConverter
+from abczarr._core.auto.attrs import autodefine, field
+from abczarr._core.auto.converters import NonNegativeConverter
 from abczarr._core.rfc2119 import Required, Recommended, Optional
 
 # locals
@@ -14,8 +17,8 @@ from .version import Version
 
 # typing
 NonNegativeInt = tx.Annotated[int, NonNegativeConverter()]
-AlphaNumeric = tx.Annotated[str, tx.Pattern(r"^[a-zA-Z0-9]+$")]
-WellPath = tx.Annotated[str, tx.Pattern(r"^[A-Z][0-9]/[A-Z][0-9]+$")]
+AlphaNumeric = tx.Annotated[str, re.compile(r"^[a-zA-Z0-9]+$")]
+WellPath = tx.Annotated[str, re.compile(r"^[A-Z][0-9]/[A-Z][0-9]+$")]
 
 
 @autodefine
