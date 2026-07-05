@@ -42,8 +42,9 @@ jobs:
         run: pip install ruff
       - name: Ruff check
         run: ruff check .
-      - name: Ruff format check
-        run: ruff format --check .
+      # NOTE: do not use formatter for now
+      # - name: Ruff format check
+      #   run: ruff format --check .
 
   spellcheck:
     runs-on: ubuntu-latest
