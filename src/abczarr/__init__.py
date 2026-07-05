@@ -18,15 +18,7 @@ __all__ = [
 
 import warnings
 
-from . import abc
-from . import api
-from . import config
-from . import drivers
-from . import metadata
-from . import ome
-from . import registry
-from . import schemas
-
+from . import abc, api, config, drivers, metadata, ome, registry, schemas
 from .abc import ZarrArray, ZarrGroup, ZarrNode
 from .api import from_config, open_array, open_group
 

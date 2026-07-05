@@ -15,7 +15,7 @@ import typing_extensions as tx
 
 # core
 from abczarr._core import typing as tz
-from abczarr._core.auto.attrs import autofrozen, update, field, eq_safenan
+from abczarr._core.auto.attrs import autofrozen, eq_safenan, field, update
 from abczarr._core.dtypes import asdtype
 from abczarr._core.metadata import register_subclass
 
@@ -24,10 +24,9 @@ from abczarr.metadata import base
 
 # locals
 from .base import ArrayMetadataV3
-from .extensions import MustUnderstandExtension, ExtraField, TypedConfig
-from .codecs import Codec, CompressorCodec, ShardingCodec, BytesCodec
+from .codecs import BytesCodec, Codec, CompressorCodec, ShardingCodec
 from .dtypes import DType
-
+from .extensions import ExtraField, MustUnderstandExtension, TypedConfig
 
 # ----------------------------------------------------------------------
 #   CHUNK GRID
@@ -203,7 +202,10 @@ def _to_v1(self: ArrayMetadata) -> base.ArrayMetadata:
 
     # If remaining filters, warn
     if filters:
-        warn(f"Ignoring filters imcompatible with Zarr v1: {filters}")
+        warn(
+            f"Ignoring filters imcompatible with Zarr v1: {filters}",
+            stacklevel=2
+        )
 
     # Preprocess compressor
     compression_opts = None

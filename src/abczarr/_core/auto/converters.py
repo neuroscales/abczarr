@@ -41,41 +41,40 @@ import typing_extensions as tx
 
 # internals
 from ..dtypes import asdtype
+from ._typing import (
+    DICTLIKE,
+    DTYPE,
+    DTYPELIKE,
+    FROM,
+    ITERABLE,
+    ITERLIKE,
+    MAPPING,
+    NONELIKE,
+    NONETYPE,
+    NUMBER,
+    NUMBERLIKE,
+    SEQLIKE,
+    SEQUENCE,
+    STR,
+    TO,
+    TUPLE,
+    TUPLELIKE,
+    ClassDecorator,
+    MagicRegistry,
+    T,
+)
 from ._utils import (
+    _UNSET,
     HintMagic,
     TypeVarMixin,
-    _UNSET,
-    get_from_registry,
     _get_args,
     _get_origin,
     _isinstance,
     _issubclass,
     _typevar_fallback,
     _unwrap,
+    get_from_registry,
 )
-from ._typing import (
-    DTYPE,
-    DTYPELIKE,
-    FROM,
-    ITERABLE,
-    ITERABLELIKE,
-    MAPPING,
-    MAPPINGLIKE,
-    NONETYPE,
-    NONETYPELIKE,
-    NUMBER,
-    NUMBERLIKE,
-    SEQLIKE,
-    SEQUENCE,
-    STR,
-    T,
-    TO,
-    TUPLE,
-    TUPLELIKE,
-    MagicRegistry,
-    ClassDecorator,
-)
-
 
 # ======================================================================
 #       BASE
@@ -186,11 +185,11 @@ class AnyConverter(Converter[TO, FROM]):
 
 
 @register_converter(NoneType)
-class NoneConverter(Converter[NONETYPE, NONETYPELIKE]):
+class NoneConverter(Converter[NONETYPE, NONELIKE]):
 
     DEFAULT = NoneType
 
-    def __call__(self, value: NONETYPELIKE) -> NONETYPE:
+    def __call__(self, value: NONELIKE) -> NONETYPE:
         if value is not None:
             raise TypeError(f"Value {value} is not None")
         return value
@@ -292,7 +291,7 @@ class StringConverter(Converter[STR, FROM]):
 
 
 @register_converter(abc.Iterable)
-class IterableConverter(Converter[ITERABLE, ITERABLELIKE]):
+class IterableConverter(Converter[ITERABLE, ITERLIKE]):
 
     DEFAULT = abc.Iterable
     FALLBACK = abc.Iterable
@@ -308,7 +307,7 @@ class IterableConverter(Converter[ITERABLE, ITERABLELIKE]):
         args = tuple(get_converter_class(arg).like(arg) for arg in args)
         return tx.Iterable[args] if args else tx.Iterable
 
-    def __call__(self, value: ITERABLELIKE) -> ITERABLE:
+    def __call__(self, value: ITERLIKE) -> ITERABLE:
         input_type = type(value)
         if self.args:
             arg_converter = get_converter(self.args[0])
@@ -347,7 +346,7 @@ class SequenceConverter(Converter[SEQUENCE, SEQLIKE]):
 
 
 @register_converter(abc.Mapping)
-class MappingConverter(Converter[MAPPING, MAPPINGLIKE]):
+class MappingConverter(Converter[MAPPING, DICTLIKE]):
 
     DEFAULT = abc.Mapping
     FALLBACK = dict
@@ -363,7 +362,7 @@ class MappingConverter(Converter[MAPPING, MAPPINGLIKE]):
             tx.Mapping[tx.Any, tx.Any],
         ]
 
-    def __call__(self, value: MAPPINGLIKE) -> MAPPING:
+    def __call__(self, value: DICTLIKE) -> MAPPING:
         input_type = type(value)
         if self.args:
             key_converter = get_converter(self.args[0])
@@ -641,12 +640,13 @@ class RangeConverter(NumberConverter[NUMBER, NUMBERLIKE]):
         value = super().__call__(value)
         if not (self.min_value <= value <= self.max_value):
             raise ValueError(
-                f"Expected int in range [{self.min_value}, {self.max_value}], got {value}"
+                f"Expected int in range [{self.min_value}, {self.max_value}], "
+                f"got {value}"
             )
         return value
 
 
-class LengthConverter(SequenceConverter[ITERABLE, ITERABLELIKE]):
+class LengthConverter(SequenceConverter[ITERABLE, ITERLIKE]):
 
     def __init__(
         self,
@@ -656,7 +656,7 @@ class LengthConverter(SequenceConverter[ITERABLE, ITERABLELIKE]):
         super().__init__(hint)
         self.length = length
 
-    def __call__(self, value: ITERABLELIKE) -> ITERABLE:
+    def __call__(self, value: ITERLIKE) -> ITERABLE:
         value = super().__call__(value)
         value = value[:self.length]
         if len(value) != self.length:

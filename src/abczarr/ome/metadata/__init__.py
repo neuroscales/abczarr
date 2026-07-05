@@ -10,7 +10,6 @@ __all__ = [
 
 from abczarr._core.imports import import_all
 
-
 from . import (
     v0_1,
     v0_2,

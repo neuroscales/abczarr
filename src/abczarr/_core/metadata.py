@@ -8,7 +8,10 @@ import typing_extensions as tx
 # locals
 from abczarr._core import typing as tz
 from abczarr._core.auto import (
-    Converter, register_converter, autofrozen, fields
+    Converter,
+    autofrozen,
+    fields,
+    register_converter,
 )
 
 
@@ -88,7 +91,7 @@ class Metadata:
         return super().__new__(cls)
 
     @classmethod
-    def _registry(cls):
+    def _registry(cls) -> dict:
         # Return the dictionary of registered subclasses.
         return {
             match: subcls
@@ -104,7 +107,7 @@ class Metadata:
         if any(f.name == key for f in fields(self)):
             return getattr(self, key)
         if hasattr(self, "extra_items"):
-            extra = getattr(self, "extra_items") or {}
+            extra = self.extra_items or {}
             return extra[key]
 
     def __iter__(self) -> tx.Iterator[tx.Tuple[str, tx.Any]]:
@@ -113,7 +116,7 @@ class Metadata:
                 continue
             yield f.name
         if hasattr(self, "extra_items"):
-            yield from getattr(self, "extra_items") or {}
+            yield from self.extra_items or {}
 
     def keys(self) -> tx.Tuple[str, ...]:
         return tuple(self)
@@ -190,8 +193,12 @@ class Metadata:
         return cls(**filtered_data)
 
 
-_JSONMetadata = tx.Union[tz._JSONScalar, Metadata, tx.Tuple["_JSONMetadata", ...]]
-JSONMetadata = tx.TypeVar("JSONMetadata", bound=_JSONMetadata, default=_JSONMetadata)
+_JSONMetadata = tx.Union[
+    tz._JSONScalar, Metadata, tx.Tuple["_JSONMetadata", ...]
+]
+JSONMetadata = tx.TypeVar(
+    "JSONMetadata", bound=_JSONMetadata, default=_JSONMetadata
+)
 
 
 @autofrozen(extra_items=JSONMetadata)
@@ -262,7 +269,9 @@ def _is_metadata(obj: tx.Any) -> bool:
 
 _METADATALIKE = tx.Union[Metadata, tz.JSON]
 METADATA = tx.TypeVar("METADATA", bound=Metadata, default=Metadata)
-METADATALIKE = tx.TypeVar("METADATALIKE", bound=_METADATALIKE, default=_METADATALIKE)
+METADATALIKE = tx.TypeVar(
+    "METADATALIKE", bound=_METADATALIKE, default=_METADATALIKE
+)
 
 
 @register_converter(Metadata)

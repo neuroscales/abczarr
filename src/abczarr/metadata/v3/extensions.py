@@ -14,7 +14,7 @@ import typing_extensions as tx
 # core
 from abczarr._core import typing as tz
 from abczarr._core.auto.attrs import autofrozen, field, fields
-from abczarr._core.metadata import Metadata, JSONMetadata
+from abczarr._core.metadata import JSONMetadata, Metadata
 
 
 @autofrozen(extra_items=JSONMetadata)
@@ -28,7 +28,7 @@ class Extension(Metadata):
     configuration: TypedConfig
     must_understand: bool = True
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         if len(args) < 2 and "configuration" not in kwargs:
             config = kwargs
             kwargs = {}

@@ -7,21 +7,27 @@ import typing_extensions as tx
 
 # locals
 from abczarr._core import typing as tz
-from abczarr.config import ZarrConfig
 from abczarr._core.sharding import _compute_zarr_layout
-from abczarr.registry import UnavailableDriverError
 from abczarr.abc import (
     ZarrArray as ZarrArrayABC,
-    ZarrGroup as ZarrGroupABC,
-    ZarrNode as ZarrNodeABC,
+)
+from abczarr.abc import (
     ZarrArrayConfig,
 )
+from abczarr.abc import (
+    ZarrGroup as ZarrGroupABC,
+)
+from abczarr.abc import (
+    ZarrNode as ZarrNodeABC,
+)
+from abczarr.config import ZarrConfig
+from abczarr.registry import UnavailableDriverError
 
 # optionals
 try:
     import zarr
-except ImportError:
-    raise UnavailableDriverError("zarr-python")
+except ImportError as e:
+    raise UnavailableDriverError("zarr-python") from e
 
 
 class ZarrPythonNode(ZarrNodeABC): ...
@@ -295,7 +301,7 @@ class ZarrPythonGroup(ZarrGroupABC, ZarrPythonNode):
 
 def _make_compressor(
     name: str | None, zarr_version: tz.ZarrVersion, **prm: dict
-): # -> CompressorsLike:
+) -> tx.Any:
     """Build compressor object from name and options."""
     if not isinstance(name, str):
         return name
@@ -326,7 +332,7 @@ def _make_compressor(
 
 def _make_chunk_key_encoding(
     dimension_separator: tz.DimensionSeparator, zarr_version: tz.ZarrVersion
-): # -> ChunkKeyEncodingLike:
+) -> tx.Any: # -> ChunkKeyEncodingLike:
     dimension_separator = dimension_separator
     if dimension_separator == "." and zarr_version == 2:
         return None

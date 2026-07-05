@@ -19,7 +19,8 @@ def import_all(
     modules: tx.Iterable[str],
     namespace: tx.MutableMapping[str, tx.Any],
     package: tx.Optional[str] = None,
-    add_to_all: tx.Iterable[tx.Literal["module", "attrs"]] = ("module", "attrs")
+    add_to_all:
+        tx.Iterable[tx.Literal["module", "attrs"]] = ("module", "attrs")
 ) -> None:
     """
     Import all symbols from the given submodules into the provided namespace.

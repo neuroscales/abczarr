@@ -15,13 +15,12 @@ import typing_extensions as tx
 
 # core
 from abczarr._core import typing as tz
-from abczarr._core.dtypes import to_zarr3 as dtype_to_zarr3
 from abczarr._core.auto.attrs import autofrozen
+from abczarr._core.dtypes import to_zarr3 as dtype_to_zarr3
 from abczarr._core.metadata import register_subclass
 
 # locals
 from .base import FilterImpl
-
 
 # -
 # Filters that have a compatible v3 Codec

@@ -38,18 +38,6 @@ from types import NoneType, UnionType
 import numpy as np
 import typing_extensions as tx
 
-# internals
-from ._utils import (
-    HintMagic,
-    TypeVarMixin,
-    _UNSET,
-    get_from_registry,
-    _get_args,
-    _get_origin,
-    _isinstance,
-    _issubclass,
-    _unwrap,
-)
 from ._typing import (
     DTYPE,
     ITERABLE,
@@ -58,12 +46,24 @@ from ._typing import (
     NUMBER,
     SEQUENCE,
     STR,
-    T,
     TUPLE,
-    MagicRegistry,
     ClassDecorator,
+    MagicRegistry,
+    T,
 )
 
+# internals
+from ._utils import (
+    _UNSET,
+    HintMagic,
+    TypeVarMixin,
+    _get_args,
+    _get_origin,
+    _isinstance,
+    _issubclass,
+    _unwrap,
+    get_from_registry,
+)
 
 # ======================================================================
 #       EXCEPTIONS
@@ -101,7 +101,12 @@ class ValidationError(Exception):
             default=None
         )
 
-    def _make_str(self, validator=True, value=True, parents=True) -> str:
+    def _make_str(
+        self,
+        validator: bool = True,
+        value: bool = True,
+        parents: bool = True
+    ) -> str:
         message = self.message or ""
         if validator:
             if message:
@@ -114,7 +119,9 @@ class ValidationError(Exception):
             arrow = "?> " if len(self.parents) > 1 else "->"
             value = len(self.parents) == 1
             for parent in self.parents:
-                parent_message = parent._make_str(validator=validator, value=value)
+                parent_message = parent._make_str(
+                    validator=validator, value=value
+                )
                 message = f"{message}\n{arrow} {parent_message}"
         return message
 
@@ -230,7 +237,8 @@ class UnionValidator(Validator[T]):
 
     def __init__(self, *a, **k) -> None:
         super().__init__(*a, **k)
-        if _get_origin(self.hint, unwrap=tx.Annotated) not in (tx.Union, UnionType):
+        UNION_TYPES = (tx.Union, UnionType)
+        if _get_origin(self.hint, unwrap=tx.Annotated) not in UNION_TYPES:
             raise TypeError(f"{self!r}: Hint is not a Union type")
         if len(self.args) == 0:
             raise TypeError(f"{self!r}: No arguments provided")
@@ -514,7 +522,6 @@ class AnnotatedValidator(Validator[T]):
         if not validators or getattr(validators[0], "compose", False):
             validators.insert(0, get_validator(wrapped_type))
 
-        assert len(validators) > 0, f"Cannot get validators for hint {self.hint}"
         return tuple(validators)
 
     def __call__(self, value: T) -> None:

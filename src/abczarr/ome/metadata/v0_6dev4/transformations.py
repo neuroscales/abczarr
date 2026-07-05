@@ -20,7 +20,7 @@ import typing_extensions as tx
 # core
 from abczarr._core.auto.attrs import autodefine, field
 from abczarr._core.metadata import register_subclass
-from abczarr._core.rfc2119 import Required, Optional
+from abczarr._core.rfc2119 import Optional, Required
 
 # locals
 from ..base import OMEMetadata

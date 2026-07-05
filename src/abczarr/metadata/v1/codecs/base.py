@@ -49,7 +49,9 @@ class CodecOptions(Metadata):
             )
 
         else:
-            raise ValueError(f"Cannot convert BloscCodecOption to version {version}")
+            raise ValueError(
+                f"Cannot convert BloscCodecOption to version {version}"
+            )
 
 
 @autofrozen(extra_items=False)

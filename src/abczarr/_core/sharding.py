@@ -46,7 +46,7 @@ def broadcast_spec(
     ----------
     shape : sequence[int]
         Shape of the data array.
-    spec : int | {"auto"} | sequence[int | {"auto"}] | mapping[str | None, int | {"auto"}]
+    spec : int | {"auto"} | sequence | mapping
         Chunk size along each dimension, or a mapping from dimension names to
         chunk sizes, or a single integer to use for all dimensions.
         * Zero means no chunking along that dimension.
@@ -93,7 +93,7 @@ def auto_chunk(
     maxsize: int = 8 * 1024**2,
     compression_ratio: float = 1.8,
     names: tx.Iterable[tx.Optional[str]] = (),
-):
+) -> tz.ShapeLike:
     """
     Compute chunk size that ensures blob size below cap.
 

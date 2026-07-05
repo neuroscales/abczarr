@@ -10,6 +10,8 @@ __all__ = [
 ]
 
 
+import typing_extensions as tx
+
 from . import (
     v0_1,
     v0_2,
@@ -19,10 +21,7 @@ from . import (
     v0_6dev4,
     v0_6rc0,
 )
-
 from .base import OMESchemaItem
-
-import typing_extensions as tx
 
 OMEAttributes = tx.Union[
     v0_1.OMEAttributes,

@@ -18,15 +18,24 @@ from functools import wraps
 
 # dependencies
 import typing_extensions as tx
-from attrs import Factory as _Factory, define as _define, field as _field
 from attrs import NOTHING, evolve, fields, make_class
+from attrs import Factory as _Factory
+from attrs import define as _define
+from attrs import field as _field
 
 # internals
 from ..frozendict import FrozenDict
+from ._utils import eq_safenan, get_default
 from .converters import get_converter
 from .factories import get_factory
 from .validators import get_validator
-from ._utils import eq_safenan, get_default
+
+# typing
+ClassDecorator = tx.Callable[[tx.Type], tx.Type]
+FieldTransformer = tx.Callable[
+    [tx.Type, tx.Sequence[tx.Any]],
+    tx.Sequence[tx.Any]
+]
 
 
 def _auto(kwargs: dict) -> dict:
@@ -44,7 +53,7 @@ def _extra(kwargs: dict) -> dict:
     if extra is not None:
         transformer = kwargs.pop("field_transformer", None)
         dict_type = FrozenDict if kwargs.get("frozen", False) else tx.Dict
-        extra_transformer = extra_items(extra, transformer, dict_type=dict_type)
+        extra_transformer = extra_items(extra, transformer, dict_type)
         kwargs["field_transformer"] = extra_transformer
     return kwargs
 
@@ -61,6 +70,16 @@ def _fix_order(kwargs: dict) -> dict:
     return kwargs
 
 
+@tx.overload
+def define(maybe_cls: tx.Type) -> tx.Type:
+    ...
+
+
+@tx.overload
+def define(**kwargs) -> ClassDecorator:
+    ...
+
+
 @wraps(_define)
 def define(*args, **kwargs):
     kwargs = _extra(kwargs)
@@ -68,16 +87,46 @@ def define(*args, **kwargs):
     return _define(*args, **kwargs)
 
 
+@tx.overload
+def frozen(maybe_cls: tx.Type) -> tx.Type:
+    ...
+
+
+@tx.overload
+def frozen(**kwargs) -> ClassDecorator:
+    ...
+
+
 @wraps(define)
-def frozen(*args, **kwargs):
+def frozen(*args, **kwargs) -> tx.Callable[[tx.Type], tx.Type]:
     kwargs = _freeze(kwargs)
     return define(*args, **kwargs)
 
 
+@tx.overload
+def autodefine(maybe_cls: tx.Type) -> tx.Type:
+    ...
+
+
+@tx.overload
+def autodefine(**kwargs) -> ClassDecorator:
+    ...
+
+
 @wraps(define)
-def autodefine(*args, **kwargs):
+def autodefine(*args, **kwargs) -> tx.Callable[[tx.Type], tx.Type]:
     kwargs = _auto(kwargs)
     return define(*args, **kwargs)
+
+
+@tx.overload
+def autofrozen(maybe_cls: tx.Type) -> tx.Type:
+    ...
+
+
+@tx.overload
+def autofrozen(**kwargs) -> ClassDecorator:
+    ...
 
 
 @wraps(define)
@@ -128,13 +177,13 @@ def field(**kwargs) -> tx.Any:
 
 
 @wraps(field)
-def factory(factory, **kwargs) -> tx.Any:
+def factory(factory: tx.Callable[[], tx.Any], **kwargs) -> tx.Any:
     kwargs.setdefault("factory", factory)
     return field(**kwargs)
 
 
 @wraps(field)
-def autofield(type, **kwargs) -> tx.Any:
+def autofield(type: tx.Type, **kwargs) -> tx.Any:
     kwargs.setdefault("converter", True)
     kwargs.setdefault("factory", True)
     kwargs["type"] = type
@@ -142,21 +191,21 @@ def autofield(type, **kwargs) -> tx.Any:
 
 
 @wraps(field)
-def autofactory(type, **kwargs) -> tx.Any:
+def autofactory(type: tx.Type, **kwargs) -> tx.Any:
     kwargs.setdefault("factory", True)
     kwargs["type"] = type
     return field(**kwargs)
 
 
 @wraps(field)
-def autoconvert(type, **kwargs) -> tx.Any:
+def autoconvert(type: tx.Type, **kwargs) -> tx.Any:
     kwargs.setdefault("converter", True)
     kwargs["type"] = type
     return field(**kwargs)
 
 
 @wraps(field)
-def autovalidate(type, **kwargs) -> tx.Any:
+def autovalidate(type: tx.Type, **kwargs) -> tx.Any:
     kwargs.setdefault("validator", True)
     kwargs["type"] = type
     return field(**kwargs)
@@ -166,7 +215,8 @@ def transform_fields(
     factory: bool = True,
     converter: bool = True,
     validator: bool = False,
-):
+) -> FieldTransformer:
+
     def _transform_fields(
         cls: tx.Type,
         attrs_fields: tx.Sequence[tx.Any]
@@ -193,13 +243,20 @@ def transform_fields(
     return _transform_fields
 
 
-def extra_items(extra_items=tx.Any, transform_fields=None, dict_type=tx.Dict):
+def extra_items(
+    extra_items: tx.Any = tx.Any,
+    transform_fields: tx.Optional[FieldTransformer] = None,
+    dict_type: tx.Type = tx.Dict
+) -> FieldTransformer:
     if extra_items is None:
         return transform_fields
     if extra_items is True:
         extra_items = tx.Any
 
-    def field_transformer(cls: tx.Type, old_fields: tx.Sequence[tx.Any]) -> tx.Sequence[tx.Any]:
+    def field_transformer(
+        cls: tx.Type,
+        old_fields: tx.Sequence[tx.Any]
+    ) -> tx.Sequence[tx.Any]:
         if transform_fields:
             old_fields = transform_fields(cls, old_fields)
         new_fields = list(old_fields)
@@ -215,8 +272,14 @@ def extra_items(extra_items=tx.Any, transform_fields=None, dict_type=tx.Dict):
     return field_transformer
 
 
-def update(transform_fields=None, **kwargs):
-    def _transformer(cls, attrs_fields):
+def update(
+    transform_fields: tx.Optional[FieldTransformer] = None,
+    **kwargs
+) -> FieldTransformer:
+
+    def _transformer(
+        cls: tx.Type, attrs_fields: tx.Sequence[tx.Any]
+    ) -> tx.Sequence[tx.Any]:
         if transform_fields:
             attrs_fields = transform_fields(cls, attrs_fields)
         return [
@@ -227,8 +290,13 @@ def update(transform_fields=None, **kwargs):
     return _transformer
 
 
-def fix_order(transform_fields=None):
-    def _transform_fields(cls, old_fields):
+def fix_order(
+    transform_fields: tx.Optional[FieldTransformer] = None,
+) -> FieldTransformer:
+
+    def _transform_fields(
+        cls: tx.Type, old_fields: tx.Sequence[tx.Any]
+    ) -> tx.Sequence[tx.Any]:
         if transform_fields:
             old_fields = transform_fields(cls, old_fields)
         old_fields = {f.name: f for f in old_fields}

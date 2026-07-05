@@ -12,19 +12,19 @@ import typing_extensions as tx
 
 # abczarr
 from abczarr._core import typing as tz
-from abczarr._core.path import Path
-from abczarr.abc import ZarrArray, ZarrArrayConfig, ZarrGroup, ZarrNode
 from abczarr._core.attributes import Attributes
-from abczarr.config import ZarrConfig
+from abczarr._core.path import Path
 from abczarr._core.sharding import auto_shard, fix_shard_chunk
+from abczarr.abc import ZarrArray, ZarrArrayConfig, ZarrGroup, ZarrNode
+from abczarr.config import ZarrConfig
 from abczarr.metadata.base import GroupMetadata
 from abczarr.registry import UnavailableDriverError
 
 # optionals
 try:
     import tensorstore as ts
-except ImportError:
-    raise UnavailableDriverError("tensorstore")
+except ImportError as e:
+    raise UnavailableDriverError("tensorstore") from e
 
 
 class ZarrTSNode(ZarrNode): ...

@@ -3,7 +3,7 @@ import json
 from abczarr.metadata import v2, v3
 
 
-def test_zarray_v3():
+def test_zarray_v3() -> None:
 
     EXAMPLE = """
     {
@@ -47,7 +47,9 @@ def test_zarray_v3():
         dimension_names=("rows", "columns"),
         data_type=v3.Float64(),
         chunk_grid=v3.RegularChunkGrid(configuration=(1000, 100)),
-        chunk_key_encoding=v3.DefaultChunkKeyEncoding(configuration={"separator": "/"}),
+        chunk_key_encoding=v3.DefaultChunkKeyEncoding(
+            configuration={"separator": "/"}
+        ),
         codecs=(v3.BytesCodec(configuration={"endian": "little"}),),
         fill_value=float("nan"),
         attributes={"foo": 42, "bar": "apples", "baz": [1, 2, 3, 4]},
@@ -58,7 +60,7 @@ def test_zarray_v3():
     assert metadata == EXAMPLE_META
 
 
-def test_zarray_v3_extension():
+def test_zarray_v3_extension() -> None:
 
     EXAMPLE = """
     {
@@ -98,9 +100,14 @@ def test_zarray_v3_extension():
         zarr_format=3,
         node_type="array",
         shape=(10000, 1000),
-        data_type=v3.DType(name="urn:example:datetime", configuration={"unit": "ns"}),
+        data_type=v3.DType(
+            name="urn:example:datetime",
+            configuration={"unit": "ns"}
+        ),
         chunk_grid=v3.RegularChunkGrid(configuration=(1000, 100)),
-        chunk_key_encoding=v3.DefaultChunkKeyEncoding(configuration={"separator": "/"}),
+        chunk_key_encoding=v3.DefaultChunkKeyEncoding(
+            configuration={"separator": "/"}
+        ),
         codecs=(v3.BytesCodec(configuration={"endian": "big"}),),
         fill_value=None,
     )
@@ -110,7 +117,7 @@ def test_zarray_v3_extension():
     assert metadata == EXAMPLE_META
 
 
-def test_zarray_v2():
+def test_zarray_v2() -> None:
 
     EXAMPLE = """
     {

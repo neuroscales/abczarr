@@ -15,14 +15,14 @@ from dask.diagnostics import ProgressBar
 
 # locals
 from ._core import typing as tz
-from .config import ZarrConfig
+from ._core.path import Path
 from ._core.pyramid import (
     compute_next_level,
     default_levels,
     next_level_shape,
 )
 from ._ome import write_ome_metadata
-from ._core.path import Path
+from .config import ZarrConfig
 
 # optionals
 try:

@@ -8,19 +8,19 @@ __all__ = [
 import typing_extensions as tx
 
 # core
-from abczarr._core.auto.attrs import autodefine, field
+from abczarr._core.auto.attrs import autodefine
 from abczarr._core.metadata import register_subclass
 from abczarr._core.rfc2119 import Required
 
 # locals
 from ..base import OME as OMEBase
 from .images import Multiscale
-from .omero import Omero
 from .labels import ImageLabel
+from .omero import Omero
 from .plates import Plate
-from .wells import Well
 from .scenes import Scene
-from .version import Version, VERSION
+from .version import VERSION, Version
+from .wells import Well
 
 
 @register_subclass(version=VERSION)

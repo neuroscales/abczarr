@@ -7,12 +7,11 @@ import re
 import typing_extensions as tx
 
 # core
-from abczarr._core import typing as tz
 from abczarr._core.auto import autofrozen
 
 # locals
 from ...base import register_subclass
-from .base import DType, DTypeImpl, DTypeConfigImpl, _make_dtype_classes
+from .base import DType, DTypeConfigImpl, DTypeImpl, _make_dtype_classes
 
 # constants
 DTYPES_EXTENSIONS = (

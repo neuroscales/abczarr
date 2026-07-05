@@ -6,9 +6,10 @@ import importlib
 # dependencies
 import typing_extensions as tx
 
+from abczarr._core.auto.attrs import autodefine, field, fields
+
 # core
 from abczarr._core.metadata import FlexibleMetadata
-from abczarr._core.auto.attrs import autodefine, field, fields
 
 
 @autodefine
@@ -26,10 +27,10 @@ class OMEMetadata(FlexibleMetadata):
             newcls = importlib.import_module(module)
             for attr in attrs:
                 newcls = getattr(newcls, attr)
-        except (ModuleNotFoundError, AttributeError):
+        except (ModuleNotFoundError, AttributeError) as e:
             raise ValueError(
                 f"Object {type(self).__name__} does not exist in OME {version}"
-            )
+            ) from e
 
         kwargs = {}
         for f in fields(newcls):

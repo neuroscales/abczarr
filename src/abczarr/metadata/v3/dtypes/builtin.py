@@ -7,7 +7,7 @@ import re
 import typing_extensions as tx
 
 # core
-from abczarr._core.auto import autofrozen, RegexConverter
+from abczarr._core.auto import RegexConverter, autofrozen
 
 # locals
 from ...base import register_subclass
@@ -25,11 +25,11 @@ DTYPES_BUILTIN = (
     "uint16",       # Integer in [0, 2^16-1]
     "uint32",       # Integer in [0, 2^32-1]
     "uint64",       # Integer in [0, 2^64-1]
-    "float16",      # IEEE 754 half-precision floating point: sign bit, 5 bits exponent, 10 bits mantissa  (optionally supported)
-    "float32",      # IEEE 754 single-precision floating point: sign bit, 8 bits exponent, 23 bits mantissa
-    "float64",      # IEEE 754 double-precision floating point: sign bit, 11 bits exponent, 52 bits mantissa
-    "complex64",    # real and complex components are each IEEE 754 single-precision floating point
-    "complex128",   # real and complex components are each IEEE 754 double-precision floating point
+    "float16",      # IEEE 754 half-precision floating point
+    "float32",      # IEEE 754 single-precision floating point
+    "float64",      # IEEE 754 double-precision floating point
+    "complex64",    # real and complex components are each IEEE 754 single
+    "complex128",   # real and complex components are each IEEE 754 double
 )
 
 

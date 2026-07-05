@@ -14,8 +14,8 @@ from abczarr._core.rfc2119 import RequirementForTypedDict
 # locals
 from ..base import OME as OMEBase
 from .images import Multiscale
-from .omero import Omero
 from .labels import ImageLabel
+from .omero import Omero
 from .plates import Plate
 from .wells import Well
 

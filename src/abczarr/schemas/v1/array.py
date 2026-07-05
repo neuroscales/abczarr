@@ -7,7 +7,7 @@ import typing_extensions as tx
 from abczarr._core import typing as tz
 
 # locals
-from .codecs import ValidCodecOptions, Codec
+from .codecs import Codec, ValidCodecOptions
 
 
 class Array(tx.TypedDict, extra_items=tz.JSON):

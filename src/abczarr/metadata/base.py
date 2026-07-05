@@ -28,14 +28,16 @@ import tempfile
 # dependencies
 import typing_extensions as tx
 
+from abczarr._core import constants
+
 # locals
 from abczarr._core import typing as tz
-from abczarr._core import constants
 from abczarr._core.auto import autofrozen, evolve
 from abczarr._core.metadata import (
-    Metadata, FlexibleMetadata, register_subclass
+    FlexibleMetadata,
+    Metadata,
+    register_subclass,
 )
-
 
 # ======================================================================
 #

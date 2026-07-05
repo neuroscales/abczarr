@@ -10,11 +10,13 @@ import typing_extensions as tx
 
 # internals
 from .attrs import (
-    PositiveConverter, NegativeConverter,
-    NonPositiveConverter, NonNegativeConverter,
-    Converter, register_converter,
+    Converter,
+    NegativeConverter,
+    NonNegativeConverter,
+    NonPositiveConverter,
+    PositiveConverter,
+    register_converter,
 )
-from .dtypes import DataTypeV2, DataTypeV3
 from .frozendict import FrozenDict
 
 
@@ -94,23 +96,35 @@ BuiltinSequence = tx.Union[tx.Tuple[T, ...], tx.List[T]]
 
 # Values
 _BuiltinIntegralNumber = int
-_BuiltinRealNumber = tx.Union[_BuiltinIntegralNumber, float]
+_BuiltinRealNumber = tx.Union[int, float]
 _BuiltinNumber = tx.Union[_BuiltinRealNumber, complex]
 _BuiltinScalar = tx.Union[_BuiltinNumber, str]
-BuiltinNumber = tx.TypeVar("BuiltinNumber", bound=_BuiltinNumber, default=_BuiltinNumber)
-BuiltinReal = tx.TypeVar("BuiltinReal", bound=_BuiltinRealNumber, default=_BuiltinRealNumber)
-BuiltinIntegral = tx.TypeVar("BuiltinIntegral", bound=_BuiltinIntegralNumber, default=_BuiltinIntegralNumber)
-BuiltinScalar = tx.TypeVar("BuiltinScalar", bound=_BuiltinScalar, default=_BuiltinScalar)
+BuiltinNumber = tx.TypeVar(
+    "BuiltinNumber", bound=_BuiltinNumber, default=_BuiltinNumber)
+BuiltinReal = tx.TypeVar(
+    "BuiltinReal", bound=_BuiltinRealNumber, default=_BuiltinRealNumber)
+BuiltinIntegral = tx.TypeVar(
+    "BuiltinIntegral", bound=int, default=int)
+BuiltinScalar = tx.TypeVar(
+    "BuiltinScalar", bound=_BuiltinScalar, default=_BuiltinScalar)
 
-BuiltinPositiveNumber = tx.Annotated[BuiltinReal, PositiveConverter(compose=True)]
-BuiltinNegativeNumber = tx.Annotated[BuiltinReal, NegativeConverter(compose=True)]
-BuiltinNonPositiveNumber = tx.Annotated[BuiltinReal, NonPositiveConverter(compose=True)]
-BuiltinNonNegativeNumber = tx.Annotated[BuiltinReal, NonNegativeConverter(compose=True)]
+BuiltinPositiveNumber = tx.Annotated[
+    BuiltinReal, PositiveConverter(compose=True)]
+BuiltinNegativeNumber = tx.Annotated[
+    BuiltinReal, NegativeConverter(compose=True)]
+BuiltinNonPositiveNumber = tx.Annotated[
+    BuiltinReal, NonPositiveConverter(compose=True)]
+BuiltinNonNegativeNumber = tx.Annotated[
+    BuiltinReal, NonNegativeConverter(compose=True)]
 
-BuiltinPositiveIntegral = tx.Annotated[BuiltinIntegral, PositiveConverter(compose=True)]
-BuiltinNegativeIntegral = tx.Annotated[BuiltinIntegral, NegativeConverter(compose=True)]
-BuiltinNonPositiveIntegral = tx.Annotated[BuiltinIntegral, NonPositiveConverter(compose=True)]
-BuiltinNonNegativeIntegral = tx.Annotated[BuiltinIntegral, NonNegativeConverter(compose=True)]
+BuiltinPositiveIntegral = tx.Annotated[
+    BuiltinIntegral, PositiveConverter(compose=True)]
+BuiltinNegativeIntegral = tx.Annotated[
+    BuiltinIntegral, NegativeConverter(compose=True)]
+BuiltinNonPositiveIntegral = tx.Annotated[
+    BuiltinIntegral, NonPositiveConverter(compose=True)]
+BuiltinNonNegativeIntegral = tx.Annotated[
+    BuiltinIntegral, NonNegativeConverter(compose=True)]
 
 _BytesLike = tx.Union[bytes, bytearray, memoryview]
 _StringLike = tx.Union[str, _BytesLike]
@@ -131,10 +145,14 @@ NegativeNumber = tx.Annotated[Real, NegativeConverter(compose=True)]
 NonPositiveNumber = tx.Annotated[Real, NonPositiveConverter(compose=True)]
 NonNegativeNumber = tx.Annotated[Real, NonNegativeConverter(compose=True)]
 
-PositiveIntegral = tx.Annotated[Integral, PositiveConverter(compose=True)]
-NegativeIntegral = tx.Annotated[Integral, NegativeConverter(compose=True)]
-NonPositiveIntegral = tx.Annotated[Integral, NonPositiveConverter(compose=True)]
-NonNegativeIntegral = tx.Annotated[Integral, NonNegativeConverter(compose=True)]
+PositiveIntegral = tx.Annotated[
+    Integral, PositiveConverter(compose=True)]
+NegativeIntegral = tx.Annotated[
+    Integral, NegativeConverter(compose=True)]
+NonPositiveIntegral = tx.Annotated[
+    Integral, NonPositiveConverter(compose=True)]
+NonNegativeIntegral = tx.Annotated[
+    Integral, NonNegativeConverter(compose=True)]
 
 # JSON
 _JSONNumber = tx.Union[int, float]
@@ -142,18 +160,26 @@ _JSONNumberLike = tx.Union[int, float, bool]
 _JSONScalar = tx.Union[int, float, bool, str, None]
 _JSON = tx.Union[_JSONScalar, tx.Mapping[str, "JSON"], BuiltinSequence["JSON"]]
 JSONNumber = tx.TypeVar("JSONNumber", bound=_JSONNumber, default=_JSONNumber)
-JSONNumberLike = tx.TypeVar("JSONNumberLike", bound=_JSONNumberLike, default=_JSONNumberLike)
+JSONNumberLike = tx.TypeVar(
+    "JSONNumberLike", bound=_JSONNumberLike, default=_JSONNumberLike
+)
 JSONScalar = tx.TypeVar("JSONScalar", bound=_JSONScalar, default=_JSONScalar)
 JSON = tx.TypeVar("JSON", bound=_JSON, default=_JSON)
 JSONDict = tx.Mapping[str, JSON]
 
-_FrozenJSON = tx.Union[_JSONScalar, FrozenDict[str, "JSON"], tx.Tuple["JSON", ...]]
+_FrozenJSON = tx.Union[
+    _JSONScalar, FrozenDict[str, "JSON"], tx.Tuple["JSON", ...]
+]
 FrozenJSON = tx.TypeVar("FrozenJSON", bound=_FrozenJSON, default=_FrozenJSON)
 FrozenJSONDict = FrozenDict[str, FrozenJSON]
 
-_MutableJSON = tx.Union[_JSONScalar, tx.MutableMapping[str, "JSON"], tx.List["JSON"]]
-MutableJSON = tx.TypeVar("MutableJSON", bound=_MutableJSON, default=_MutableJSON)
-MUtableJSONDict = tx.MutableMapping[str, MutableJSON]
+_MutableJSON = tx.Union[
+    _JSONScalar, tx.MutableMapping[str, "JSON"], tx.List["JSON"]
+]
+MutableJSON = tx.TypeVar(
+    "MutableJSON", bound=_MutableJSON, default=_MutableJSON
+)
+MutableJSONDict = tx.MutableMapping[str, MutableJSON]
 
 # Shapes
 Shape = tx.Tuple[BuiltinNonNegativeIntegral, ...]

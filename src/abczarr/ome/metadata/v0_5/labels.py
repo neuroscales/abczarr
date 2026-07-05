@@ -4,9 +4,9 @@ __all__ = ["ImageLabel"]
 import typing_extensions as tx
 
 # core
-from abczarr._core.auto.attrs import autodefine, field
+from abczarr._core.auto.attrs import autodefine
 from abczarr._core.auto.converters import RangeConverter
-from abczarr._core.rfc2119 import Required, Recommended, Optional
+from abczarr._core.rfc2119 import Optional, Recommended, Required
 
 # locals
 from ..base import OMEMetadata

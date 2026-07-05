@@ -12,13 +12,14 @@ from abczarr._core import typing as tz
 from abczarr._core.rfc2119 import RequirementForTypedDict
 
 # locals
-from ..base import OME as OMEBase, OMEAttributes as OMEAttributesBase
+from ..base import OME as OMEBase
+from ..base import OMEAttributes as OMEAttributesBase
 from .images import Multiscale
-from .omero import Omero
 from .labels import ImageLabel
+from .omero import Omero
 from .plates import Plate
-from .wells import Well
 from .version import Version
+from .wells import Well
 
 # typing
 Required = RequirementForTypedDict.Required

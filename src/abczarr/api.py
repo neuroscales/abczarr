@@ -5,7 +5,7 @@ import typing_extensions as tx
 
 # locals
 from ._core import typing as tz
-from .abc import ZarrGroup, ZarrNode, ZarrArray
+from .abc import ZarrArray, ZarrGroup, ZarrNode
 from .config import ZarrConfig
 from .registry import get_driver
 

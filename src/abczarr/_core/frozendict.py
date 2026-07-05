@@ -2,7 +2,6 @@ from collections.abc import Mapping
 
 import typing_extensions as tx
 
-
 KT = tx.TypeVar("KT")
 VT = tx.TypeVar("VT")
 

@@ -9,9 +9,9 @@ __all__ = [
 from abczarr._core.metadata import register_subclass
 
 from ..base import (
-    NodeMetadataV2,
     ArrayMetadataV2,
     GroupMetadataV2,
+    NodeMetadataV2,
 )
 
 

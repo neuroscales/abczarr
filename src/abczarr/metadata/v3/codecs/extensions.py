@@ -21,9 +21,10 @@ from abczarr._core import typing as tz
 from abczarr._core.auto import autofrozen
 
 # locals
-from abczarr.metadata.base import register_subclass, Metadata
-from .base import CodecConfigImpl, Codec, ArrayToArrayCodec, ArrayToBytesCodec
-from .builtin import TransposeCodec, BytesCodec
+from abczarr.metadata.base import Metadata, register_subclass
+
+from .base import ArrayToArrayCodec, ArrayToBytesCodec, Codec, CodecConfigImpl
+from .builtin import BytesCodec, TransposeCodec
 
 
 @autofrozen
@@ -88,7 +89,7 @@ class N5TransposeCodec(TransposeCodec):
 
 class N5DefaultCodecList(list):
 
-    def __new__(cls, codecs: tx.Iterable[Codec]):
+    def __new__(cls, codecs: tx.Iterable[Codec]) -> tx.Self:
         codecs = list(codecs)
         if len(codecs) < 2:
             raise ValueError(

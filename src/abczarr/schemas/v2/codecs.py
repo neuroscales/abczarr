@@ -32,7 +32,9 @@ class Codec(tx.TypedDict, total=False):
     id: str
 
 
-BloscCodecName = tx.Literal["blosclz", "lz4", "lz4hc", "snappy", "zlib", "zstd"]
+BloscCodecName = tx.Literal[
+    "blosclz", "lz4", "lz4hc", "snappy", "zlib", "zstd"
+]
 BloscShuffle = tx.Literal[
     0,      # "noshuffle"
     1,      # "shuffle"

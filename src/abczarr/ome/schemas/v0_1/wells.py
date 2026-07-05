@@ -1,7 +1,6 @@
 __all__ = ["Well"]
 
 # dependencies
-import typing_extensions as tx
 
 # core
 from abczarr._core import typing as tz

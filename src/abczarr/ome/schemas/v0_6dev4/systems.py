@@ -90,7 +90,9 @@ class CoordinateAxis(AxisBase, **ome_schema_opt):
 class OtherAxis(AxisBase, **ome_schema_opt):
     type: Required[tx.Annotated[
         str,
-        NotOneOfValidator({"array", "space", "time", "channel", "coordinate", "displacement"})
+        NotOneOfValidator({
+            "array", "space", "time", "channel", "coordinate", "displacement"
+        })
     ]]
 
 

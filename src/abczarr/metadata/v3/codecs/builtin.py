@@ -17,13 +17,18 @@ import typing_extensions as tx
 # core
 from abczarr._core import typing as tz
 from abczarr._core.auto import autofrozen
-from abczarr.schemas.v3 import codecs
 
 # metadata
 from abczarr.metadata.base import Metadata, register_subclass
+from abczarr.schemas.v3 import codecs
+
 from .base import (
-    Codec, CodecConfigImpl,
-    BytesToBytesCodec, ArrayToArrayCodec, ArrayToBytesCodec, CompressorCodec
+    ArrayToArrayCodec,
+    ArrayToBytesCodec,
+    BytesToBytesCodec,
+    Codec,
+    CodecConfigImpl,
+    CompressorCodec,
 )
 
 

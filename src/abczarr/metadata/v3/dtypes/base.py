@@ -14,7 +14,6 @@ from ...base import register_subclass
 from ..extensions import MustUnderstandExtension, TypedConfig
 
 
-
 @autofrozen(extra_items=tz.FrozenJSON)
 class DTypeConfig(TypedConfig):
     ...

@@ -2,5 +2,4 @@
 
 from abczarr.api import UnavailableDriverError
 
-
 raise UnavailableDriverError("zarr-python")

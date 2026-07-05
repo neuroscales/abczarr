@@ -10,7 +10,8 @@ import typing_extensions as tx
 # core
 from abczarr._core.auto._typing import DTYPELIKE
 from abczarr._core.auto.converters import Converter, register_converter
-from abczarr._core.dtypes import asdtype, to_zarr2 as dtype_to_zarr2
+from abczarr._core.dtypes import asdtype
+from abczarr._core.dtypes import to_zarr2 as dtype_to_zarr2
 
 
 class DType:
@@ -51,7 +52,7 @@ class ScalarDType(str, DType):
         return str.__new__(cls, value)
 
 
-def _immutable(self, *args, **kwargs):
+def _immutable(self: "StructDType", *args, **kwargs) -> None:
     raise TypeError(f"{self.__class__.__name__} is immutable")
 
 

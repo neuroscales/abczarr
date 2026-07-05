@@ -13,10 +13,14 @@ import typing_extensions as tx
 
 # core
 from abczarr._core import typing as tz
+from abczarr._core.rfc2119 import RequirementForTypedDict
 
 # locals
-from .extensions import Extension, ExtensionWithConfig, ExtraField, Config
 from .codecs import ValidCodec
+from .extensions import Config, Extension, ExtensionWithConfig, ExtraField
+
+# typing
+Optional = RequirementForTypedDict[tx.Optional]
 
 
 class ChunkGridConfig(Config):
@@ -25,7 +29,7 @@ class ChunkGridConfig(Config):
 
 class ChunkGrid(Extension):
     name: tx.Literal["regular", "rectilinear"]
-    configuration: tx.NotRequired[ChunkGridConfig]
+    configuration: Optional[ChunkGridConfig]
 
 
 class RegularChunkGridConfig(Config):
@@ -60,17 +64,17 @@ class CommonChunkKeyEncodingConfig(ChunkKeyEncodingConfig):
 
 class ChunkKeyEncoding(Extension):
     name: tx.Literal["default", "v2"]
-    configuration: tx.NotRequired[ChunkKeyEncodingConfig]
+    configuration: Optional[ChunkKeyEncodingConfig]
 
 
 class DefaultChunkKeyEncoding(ChunkKeyEncoding):
     name: tx.Literal["default"]
-    configuration: tx.NotRequired[CommonChunkKeyEncodingConfig]
+    configuration: Optional[CommonChunkKeyEncodingConfig]
 
 
 class V2ChunkKeyEncoding(ChunkKeyEncoding):
     name: tx.Literal["v2"]
-    configuration: tx.NotRequired[CommonChunkKeyEncodingConfig]
+    configuration: Optional[CommonChunkKeyEncodingConfig]
 
 
 ValidChunkKeyEncoding = tx.Union[DefaultChunkKeyEncoding, V2ChunkKeyEncoding]
@@ -94,6 +98,6 @@ class Array(tx.TypedDict, extra_items=ExtraField):
     codecs: tz.BuiltinSequence[ValidCodec]
 
     # --- Optional ----
-    attributes: tx.NotRequired[tz.JSONDict]
-    storage_transformers: tx.NotRequired[tz.BuiltinSequence[StorageTransformer]]
-    dimension_names: tx.NotRequired[tz.BuiltinSequence[tx.Optional[str]]]
+    attributes: Optional[tz.JSONDict]
+    storage_transformers: Optional[tz.BuiltinSequence[StorageTransformer]]
+    dimension_names: Optional[tz.BuiltinSequence[tx.Optional[str]]]

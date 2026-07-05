@@ -9,7 +9,7 @@ import typing_extensions as tx
 from abczarr._core import typing as tz
 
 # locals
-from .extensions import Extension, ExtensionWithConfig, Config
+from .extensions import Config, Extension, ExtensionWithConfig
 
 # typing
 CompressionLevel = tx.Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -27,7 +27,9 @@ class CodecConfig(Config):
     ...
 
 
-BloscCodecName = tx.Literal["blosclz", "lz4", "lz4hc", "snappy", "zlib", "zstd"]
+BloscCodecName = tx.Literal[
+    "blosclz", "lz4", "lz4hc", "snappy", "zlib", "zstd"
+]
 BloscShuffle = tx.Literal["noshuffle", "shuffle", "bitshuffle"]
 BloscCompressionLevel = CompressionLevel
 

@@ -9,7 +9,7 @@ import typing_extensions as tx
 from ._core import typing as tz
 from ._core.attrs import autodefine, evolve
 from ._core.dtypes import to_zarr3 as dtype_to_zarr3
-from ._core.sharding import auto_chunk, auto_shard, ChunkSpec
+from ._core.sharding import ChunkSpec, auto_chunk, auto_shard
 from .metadata.base import ArrayMetadata
 
 

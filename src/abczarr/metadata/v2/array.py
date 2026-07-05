@@ -11,12 +11,12 @@ from abczarr._core.auto.attrs import autofrozen, eq_safenan, field
 from abczarr._core.metadata import register_subclass
 from abczarr.metadata import base
 
+from .base import ArrayMetadataV2
+from .codecs import Codec
+
 # locals
 from .dtypes import DType
-from .codecs import Codec
 from .filters import Filter
-from .base import ArrayMetadataV2
-
 
 # ----------------------------------------------------------------------
 #   ARRAY

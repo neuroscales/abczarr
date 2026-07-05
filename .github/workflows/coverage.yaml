@@ -45,7 +45,7 @@ jobs:
           pip install -e .[test]
       - name: Run pytest with coverage
         shell: bash
-        run: pytest --cov=magnetix --cov-report=term --cov-report=xml
+        run: pytest --cov=abczarr --cov-report=term --cov-report=xml
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:

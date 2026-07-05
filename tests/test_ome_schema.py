@@ -4,16 +4,16 @@ from pathlib import Path
 import pytest
 import typing_extensions as tx
 
+from abczarr._core.auto.validators import get_validator
 from abczarr.ome import schemas
-from abczarr._core.auto.validators import get_validator, ValidationError
-
 
 TESTDIR = Path(__file__).parent
 
 
 class SystemsAndTransforms(schemas.OMESchemaItem):
-    coordinateSystems: tx.List[schemas.v0_6rc0.CoordinateSystem]
-    coordinateTransformations: tx.List[schemas.v0_6rc0.CoordinateTransformation]
+    v = schemas.v0_6rc0
+    coordinateSystems: tx.List[v.CoordinateSystem]
+    coordinateTransformations: tx.List[v.CoordinateTransformation]
 
 
 @pytest.mark.parametrize("example", [
@@ -35,7 +35,7 @@ class SystemsAndTransforms(schemas.OMESchemaItem):
     "translation",
     "xarrayLike"
 ])
-def test_06rc0_xforms(example):
+def test_06rc0_xforms(example: str) -> None:
     path = TESTDIR / "data" / "ome" / "v0_6rc0" / f"{example}.json"
     with path.open("r") as f:
         data = json.load(f)
@@ -71,7 +71,7 @@ def test_06rc0_xforms(example):
     "well_2fields",
     "well_4fields",
 ])
-def test_06rc0_ome(example):
+def test_06rc0_ome(example: str) -> None:
     path = TESTDIR / "data" / "ome" / "v0_6rc0" / f"{example}.json"
     with path.open("r") as f:
         data = json.load(f)

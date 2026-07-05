@@ -12,7 +12,6 @@ from abczarr._core.imports import import_symbol
 from ._core import typing as tz
 from .abc import ZarrNode
 
-
 _NODE2CLS = {
     "node": "ZarrNode",
     "array": "ZarrArray",
@@ -69,7 +68,7 @@ def reload_driver(name: str, strict: bool = True) -> ModuleType:
         if strict:
             raise
         else:
-            warnings.warn(name, UnavailableDriverWarning)
+            warnings.warn(name, UnavailableDriverWarning, stacklevel=2)
             return False
 
 

@@ -220,7 +220,7 @@ def _is_typeddict(cls: tx.Any) -> bool:
     return tx.is_typeddict(cls)
 
 
-def _all_orig_bases(cls: type, _self=True) -> tx.Tuple[type, ...]:
+def _all_orig_bases(cls: type, _self: bool = True) -> tx.Tuple[type, ...]:
     """Get all original bases of a type, including the type itself."""
     if not _is_typeddict(cls):
         return ()
@@ -297,7 +297,7 @@ def _get_args(hint: tx.Any, unwrap: tx.Any = ()) -> tx.Tuple[tx.Any, ...]:
     return tx.get_args(hint)
 
 
-def eq_safenan(x):
+def eq_safenan(x: tx.Any) -> bool:
     """
     Safe equality comparison that treats NaN as equal to NaN.
     """

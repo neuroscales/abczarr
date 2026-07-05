@@ -8,7 +8,6 @@ import numpy as np
 import numpy.typing as npt
 import typing_extensions as tx
 
-
 T = tx.TypeVar("T", bound=tx.Any)
 ClassDecorator = tx.Callable[[tx.Type[T]], tx.Type[T]]
 MagicRegistry = tx.Dict[tx.Any, tx.Type[T]]
@@ -33,9 +32,9 @@ _NUMBERLIKE = tx.Union[numbers.Number, np.number, np.bool_]
 TO = tx.TypeVar("TO", bound=tx.Any, default=tx.Any)
 FROM = tx.TypeVar("FROM", bound=tx.Any, default=tx.Any)
 SEQLIKE = tx.TypeVar("SEQLIKE", bound=abc.Sequence, default=abc.Sequence)
-NONETYPELIKE = tx.TypeVar("NONETYPELIKE", bound=NoneType, default=NoneType)
-MAPPINGLIKE = tx.TypeVar("MAPPINGLIKE", bound=_MAPPINGLIKE, default=_MAPPINGLIKE)
+NONELIKE = tx.TypeVar("NONELIKE", bound=NoneType, default=NoneType)
+DICTLIKE = tx.TypeVar("DICTLIKE", bound=_MAPPINGLIKE, default=_MAPPINGLIKE)
 TUPLELIKE = tx.TypeVar("TUPLELIKE", bound=tx.Tuple, default=tx.Tuple)
 NUMBERLIKE = tx.TypeVar("NUMBERLIKE", bound=_NUMBERLIKE, default=_NUMBERLIKE)
-ITERABLELIKE = tx.TypeVar("ITERABLELIKE", bound=abc.Iterable, default=abc.Iterable)
+ITERLIKE = tx.TypeVar("ITERLIKE", bound=abc.Iterable, default=abc.Iterable)
 DTYPELIKE = tx.TypeVar("DTYPELIKE", bound=npt.DTypeLike, default=npt.DTypeLike)

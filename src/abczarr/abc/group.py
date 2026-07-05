@@ -12,9 +12,10 @@ import typing_extensions as tx
 # core
 from abczarr._core import typing as tz
 
+from .array import ZarrArray, ZarrArrayConfig
+
 # locals
 from .node import ZarrNode
-from .array import ZarrArray, ZarrArrayConfig
 
 
 class ZarrGroup(ZarrNode):

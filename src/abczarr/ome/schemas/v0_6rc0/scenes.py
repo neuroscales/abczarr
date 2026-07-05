@@ -6,9 +6,8 @@ from abczarr._core.rfc2119 import RequirementForTypedDict
 
 # locals
 from ..base import OMESchemaItem, ome_schema_opt
-from .transformations import CoordinateTransformation
 from .systems import CoordinateSystem
-
+from .transformations import CoordinateTransformation
 
 # typing
 Required = RequirementForTypedDict.Required

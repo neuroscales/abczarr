@@ -74,5 +74,5 @@ ignore = [
     "ANN002",  # Allow missing type annotations for *args
     "ANN003",  # Allow missing type annotations for **kwargs
     "ANN401",  # Allow annotating with Any
-    "UPP006",  # Allow annotating with typing.Type instead of type
+    "UP006",   # Allow annotating with typing.Type instead of type
 ]

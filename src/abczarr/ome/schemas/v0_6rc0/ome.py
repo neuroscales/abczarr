@@ -10,11 +10,11 @@ import typing_extensions as tx
 # core
 from abczarr._core import typing as tz
 from abczarr._core.rfc2119 import RequirementForTypedDict
-from abczarr.ome.metadata.v0_2 import omero
 
 # locals
-from ..base import OME as OMEBase, OMEAttributes as OMEAttributesBase
-from ..v0_6dev4 import Omero, ImageLabel, Plate, Well
+from ..base import OME as OMEBase
+from ..base import OMEAttributes as OMEAttributesBase
+from ..v0_6dev4 import ImageLabel, Omero, Plate, Well
 from .images import Multiscale
 from .scenes import Scene
 from .version import Version

@@ -20,23 +20,22 @@ import typing_extensions as tx
 
 # internals
 from ._typing import (
-    MagicRegistry,
-    ClassDecorator,
-    T,
     MAPPING,
     NONETYPE,
     SEQUENCE,
+    ClassDecorator,
+    MagicRegistry,
+    T,
 )
 from ._utils import (
     HintMagic,
     TypeVarMixin,
-    get_from_registry,
     _get_args,
     _get_origin,
     _isinstance,
     _issubclass,
+    get_from_registry,
 )
-
 
 # ======================================================================
 #       BASE
