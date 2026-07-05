@@ -44,4 +44,5 @@ DICT_LIKE = tx.TypeVar("DICTLIKE", bound=_MAPPINGLIKE, default=_MAPPINGLIKE)
 TUPLE_LIKE = tx.TypeVar("TUPLELIKE", bound=tx.Tuple, default=tx.Tuple)
 NUMBER_LIKE = tx.TypeVar("NUMBERLIKE", bound=_NUMBERLIKE, default=_NUMBERLIKE)
 ITER_LIKE = tx.TypeVar("ITERLIKE", bound=abc.Iterable, default=abc.Iterable)
-DTYPE_LIKE = tx.TypeVar("DTYPELIKE", bound=npt.DTypeLike, default=npt.DTypeLike)
+DTYPE_LIKE = tx.TypeVar(
+    "DTYPELIKE", bound=npt.DTypeLike, default=npt.DTypeLike)
