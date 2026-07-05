@@ -203,7 +203,7 @@ def _to_v1(self: ArrayMetadata) -> base.ArrayMetadata:
     # If remaining filters, warn
     if filters:
         warn(
-            f"Ignoring filters imcompatible with Zarr v1: {filters}",
+            f"Ignoring filters incompatible with Zarr v1: {filters}",
             stacklevel=2
         )
 

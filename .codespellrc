@@ -1,0 +1,11 @@
+[codespell]
+check-filenames =
+ignore-words = .codespell-ignore-words.txt
+skip =
+    .git
+	./*.egg-info/*,
+	./tests/data/*,
+	*.json,
+	*.txt,
+    *.pdf,
+    *.svg

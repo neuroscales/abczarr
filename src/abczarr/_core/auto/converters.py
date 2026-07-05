@@ -41,23 +41,23 @@ import typing_extensions as tx
 # internals
 from ..dtypes import asdtype
 from ._typing import (
-    DICTLIKE,
+    DICT_LIKE,
     DTYPE,
-    DTYPELIKE,
+    DTYPE_LIKE,
     FROM,
     ITERABLE,
-    ITERLIKE,
+    ITER_LIKE,
     MAPPING,
-    NONELIKE,
+    NONE_LIKE,
     NONETYPE,
     NUMBER,
-    NUMBERLIKE,
-    SEQLIKE,
+    NUMBER_LIKE,
+    SEQUENCE_LIKE,
     SEQUENCE,
     STR,
     TO,
     TUPLE,
-    TUPLELIKE,
+    TUPLE_LIKE,
     ClassDecorator,
     MagicRegistry,
     T,
@@ -186,11 +186,11 @@ class AnyConverter(Converter[TO, FROM]):
 
 
 @register_converter(NoneType)
-class NoneConverter(Converter[NONETYPE, NONELIKE]):
+class NoneConverter(Converter[NONETYPE, NONE_LIKE]):
 
     DEFAULT = NoneType
 
-    def __call__(self, value: NONELIKE) -> NONETYPE:
+    def __call__(self, value: NONE_LIKE) -> NONETYPE:
         if value is not None:
             raise TypeError(f"Value {value} is not None")
         return value
@@ -292,7 +292,7 @@ class StringConverter(Converter[STR, FROM]):
 
 
 @register_converter(abc.Iterable)
-class IterableConverter(Converter[ITERABLE, ITERLIKE]):
+class IterableConverter(Converter[ITERABLE, ITER_LIKE]):
 
     DEFAULT = abc.Iterable
     FALLBACK = abc.Iterable
@@ -308,7 +308,7 @@ class IterableConverter(Converter[ITERABLE, ITERLIKE]):
         args = tuple(get_converter_class(arg).like(arg) for arg in args)
         return tx.Iterable[args] if args else tx.Iterable
 
-    def __call__(self, value: ITERLIKE) -> ITERABLE:
+    def __call__(self, value: ITER_LIKE) -> ITERABLE:
         input_type = type(value)
         if self.args:
             arg_converter = get_converter(self.args[0])
@@ -323,7 +323,7 @@ class IterableConverter(Converter[ITERABLE, ITERLIKE]):
 
 
 @register_converter(abc.Sequence)
-class SequenceConverter(Converter[SEQUENCE, SEQLIKE]):
+class SequenceConverter(Converter[SEQUENCE, SEQUENCE_LIKE]):
 
     DEFAULT = abc.Sequence
     FALLBACK = list
@@ -334,7 +334,7 @@ class SequenceConverter(Converter[SEQUENCE, SEQLIKE]):
         args = tuple(get_converter_class(arg).like(arg) for arg in args)
         return tx.Iterable[args] if args else tx.Iterable
 
-    def __call__(self, value: SEQLIKE) -> SEQUENCE:
+    def __call__(self, value: SEQUENCE_LIKE) -> SEQUENCE:
         input_type = type(value)
         if self.args:
             arg_converter = get_converter(self.args[0])
@@ -347,7 +347,7 @@ class SequenceConverter(Converter[SEQUENCE, SEQLIKE]):
 
 
 @register_converter(abc.Mapping)
-class MappingConverter(Converter[MAPPING, DICTLIKE]):
+class MappingConverter(Converter[MAPPING, DICT_LIKE]):
 
     DEFAULT = abc.Mapping
     FALLBACK = dict
@@ -363,7 +363,7 @@ class MappingConverter(Converter[MAPPING, DICTLIKE]):
             tx.Mapping[tx.Any, tx.Any],
         ]
 
-    def __call__(self, value: DICTLIKE) -> MAPPING:
+    def __call__(self, value: DICT_LIKE) -> MAPPING:
         input_type = type(value)
         if self.args:
             key_converter = get_converter(self.args[0])
@@ -379,7 +379,7 @@ class MappingConverter(Converter[MAPPING, DICTLIKE]):
 
 
 @register_converter(tuple)
-class TupleConverter(Converter[TUPLE, TUPLELIKE]):
+class TupleConverter(Converter[TUPLE, TUPLE_LIKE]):
 
     DEFAULT = tuple
 
@@ -392,7 +392,7 @@ class TupleConverter(Converter[TUPLE, TUPLELIKE]):
         args = tuple(get_converter_class(arg).like(arg) for arg in args)
         return tx.Tuple[args] if args else tx.Tuple
 
-    def __call__(self, value: TUPLELIKE) -> TUPLE:
+    def __call__(self, value: TUPLE_LIKE) -> TUPLE:
         input_type = type(value)
         if self.args:
             if len(self.args) == 2 and self.args[1] is Ellipsis:
@@ -417,7 +417,7 @@ class TupleConverter(Converter[TUPLE, TUPLELIKE]):
 
 
 @register_converter(numbers.Number)
-class NumberConverter(Converter[NUMBER, NUMBERLIKE]):
+class NumberConverter(Converter[NUMBER, NUMBER_LIKE]):
 
     DEFAULT = numbers.Number
     FALLBACKS = {
@@ -438,7 +438,7 @@ class NumberConverter(Converter[NUMBER, NUMBERLIKE]):
             return tx.Union[numbers.Number, np.number, np.bool_]
         return fallback
 
-    def __call__(self, value: NUMBERLIKE) -> NUMBER:
+    def __call__(self, value: NUMBER_LIKE) -> NUMBER:
         float_like = ("inf", "infinity", "-inf", "-infinity", "nan")
         if _isinstance(value, str) and value.lower() in float_like:
             value = float(value)
@@ -455,16 +455,16 @@ class NumberConverter(Converter[NUMBER, NUMBERLIKE]):
 
 
 @register_converter(np.dtype, np.generic)
-class DTypeConverter(Converter[DTYPE, DTYPELIKE]):
+class DTypeConverter(Converter[DTYPE, DTYPE_LIKE]):
 
     DEFAULT = np.dtype
     FALLBACK = np.dtype
 
     @classmethod
     def like(cls, hint: tx.Any = DTYPE) -> tx.Any:
-        return DTYPELIKE
+        return DTYPE_LIKE
 
-    def __call__(self, value: DTYPELIKE) -> DTYPE:
+    def __call__(self, value: DTYPE_LIKE) -> DTYPE:
         dtype = None
         if _issubclass(self.origin, np.generic):
             dtype = self.origin
@@ -533,18 +533,18 @@ class AnnotatedConverter(Converter[TO, FROM]):
         return value
 
 
-class PositiveConverter(NumberConverter[NUMBER, NUMBERLIKE]):
+class PositiveConverter(NumberConverter[NUMBER, NUMBER_LIKE]):
 
-    def __call__(self, value: NUMBERLIKE) -> NUMBER:
+    def __call__(self, value: NUMBER_LIKE) -> NUMBER:
         value = super().__call__(value)
         if value <= 0:
             raise ValueError(f"Expected positive int, got {value}")
         return value
 
 
-class NegativeConverter(NumberConverter[NUMBER, NUMBERLIKE]):
+class NegativeConverter(NumberConverter[NUMBER, NUMBER_LIKE]):
 
-    def __call__(self, value: NUMBERLIKE) -> NUMBER:
+    def __call__(self, value: NUMBER_LIKE) -> NUMBER:
         default_converter = get_converter(self.origin)
         value = default_converter(value)
 
@@ -554,34 +554,34 @@ class NegativeConverter(NumberConverter[NUMBER, NUMBERLIKE]):
         return value
 
 
-class NonNegativeConverter(NumberConverter[NUMBER, NUMBERLIKE]):
+class NonNegativeConverter(NumberConverter[NUMBER, NUMBER_LIKE]):
 
-    def __call__(self, value: NUMBERLIKE) -> NUMBER:
+    def __call__(self, value: NUMBER_LIKE) -> NUMBER:
         value = super().__call__(value)
         if value < 0:
             raise ValueError(f"Expected non-negative int, got {value}")
         return value
 
 
-class NonPositiveConverter(NumberConverter[NUMBER, NUMBERLIKE]):
+class NonPositiveConverter(NumberConverter[NUMBER, NUMBER_LIKE]):
 
-    def __call__(self, value: NUMBERLIKE) -> NUMBER:
+    def __call__(self, value: NUMBER_LIKE) -> NUMBER:
         value = super().__call__(value)
         if value > 0:
             raise ValueError(f"Expected non-positive int, got {value}")
         return value
 
 
-class _ComparatorConverter(NumberConverter[NUMBER, NUMBERLIKE]):
+class _ComparatorConverter(NumberConverter[NUMBER, NUMBER_LIKE]):
 
     def __init__(self, threshold: NUMBER, hint: tx.Any = _UNSET) -> None:
         super().__init__(hint)
         self.threshold = threshold
 
 
-class LessThan(_ComparatorConverter[NUMBER, NUMBERLIKE]):
+class LessThan(_ComparatorConverter[NUMBER, NUMBER_LIKE]):
 
-    def __call__(self, value: NUMBERLIKE) -> NUMBER:
+    def __call__(self, value: NUMBER_LIKE) -> NUMBER:
         value = super().__call__(value)
         if value >= self.threshold:
             raise ValueError(
@@ -590,9 +590,9 @@ class LessThan(_ComparatorConverter[NUMBER, NUMBERLIKE]):
         return value
 
 
-class LessEqual(_ComparatorConverter[NUMBER, NUMBERLIKE]):
+class LessEqual(_ComparatorConverter[NUMBER, NUMBER_LIKE]):
 
-    def __call__(self, value: NUMBERLIKE) -> NUMBER:
+    def __call__(self, value: NUMBER_LIKE) -> NUMBER:
         value = super().__call__(value)
         if value > self.threshold:
             raise ValueError(
@@ -602,9 +602,9 @@ class LessEqual(_ComparatorConverter[NUMBER, NUMBERLIKE]):
         return value
 
 
-class GreaterThan(_ComparatorConverter[NUMBER, NUMBERLIKE]):
+class GreaterThan(_ComparatorConverter[NUMBER, NUMBER_LIKE]):
 
-    def __call__(self, value: NUMBERLIKE) -> NUMBER:
+    def __call__(self, value: NUMBER_LIKE) -> NUMBER:
         value = super().__call__(value)
         if value <= self.threshold:
             raise ValueError(
@@ -613,9 +613,9 @@ class GreaterThan(_ComparatorConverter[NUMBER, NUMBERLIKE]):
         return value
 
 
-class GreaterEqual(_ComparatorConverter[NUMBER, NUMBERLIKE]):
+class GreaterEqual(_ComparatorConverter[NUMBER, NUMBER_LIKE]):
 
-    def __call__(self, value: NUMBERLIKE) -> NUMBER:
+    def __call__(self, value: NUMBER_LIKE) -> NUMBER:
         value = super().__call__(value)
         if value < self.threshold:
             raise ValueError(
@@ -625,7 +625,7 @@ class GreaterEqual(_ComparatorConverter[NUMBER, NUMBERLIKE]):
         return value
 
 
-class RangeConverter(NumberConverter[NUMBER, NUMBERLIKE]):
+class RangeConverter(NumberConverter[NUMBER, NUMBER_LIKE]):
 
     def __init__(
         self,
@@ -637,7 +637,7 @@ class RangeConverter(NumberConverter[NUMBER, NUMBERLIKE]):
         self.min_value = min_value
         self.max_value = max_value
 
-    def __call__(self, value: NUMBERLIKE) -> NUMBER:
+    def __call__(self, value: NUMBER_LIKE) -> NUMBER:
         value = super().__call__(value)
         if not (self.min_value <= value <= self.max_value):
             raise ValueError(
@@ -647,7 +647,7 @@ class RangeConverter(NumberConverter[NUMBER, NUMBERLIKE]):
         return value
 
 
-class LengthConverter(SequenceConverter[ITERABLE, ITERLIKE]):
+class LengthConverter(SequenceConverter[ITERABLE, ITER_LIKE]):
 
     def __init__(
         self,
@@ -657,7 +657,7 @@ class LengthConverter(SequenceConverter[ITERABLE, ITERLIKE]):
         super().__init__(hint)
         self.length = length
 
-    def __call__(self, value: ITERLIKE) -> ITERABLE:
+    def __call__(self, value: ITER_LIKE) -> ITERABLE:
         value = super().__call__(value)
         value = value[:self.length]
         if len(value) != self.length:

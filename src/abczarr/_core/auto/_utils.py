@@ -186,7 +186,7 @@ def _get_best_match(hint: tx.Any, registry: dict) -> tx.Tuple[tx.Any, float]:
 
 
 def _type_dist(subcls: type, cls: type) -> int:
-    """Distance between two types, based on their inheritence hierarchy."""
+    """Distance between two types, based on their inheritance hierarchy."""
     if _isinstance(subcls, tx.TypeVar):
         subcls = tx.TypeVar
     if subcls is cls:

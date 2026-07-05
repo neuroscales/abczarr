@@ -418,7 +418,7 @@ class TypedDictValidator(Validator[MAPPING]):
         if origin.__name__ == "Metadata":
             print(origin, total, extra_items, closed)
 
-        # Check explicitely defined keys
+        # Check explicitly defined keys
         for key, arg in annots.items():
             if key not in value:
                 arg_origin = _get_origin(arg)

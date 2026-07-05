@@ -1,0 +1,10 @@
+abczarr
+cyclopts
+zarrita
+blosc
+nifti
+autoconfig
+downsample
+downsampled
+downsampling
+nd

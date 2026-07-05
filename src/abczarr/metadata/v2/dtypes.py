@@ -8,7 +8,7 @@ import numpy as np
 import typing_extensions as tx
 
 # core
-from abczarr._core.auto._typing import DTYPELIKE
+from abczarr._core.auto._typing import DTYPE_LIKE
 from abczarr._core.auto.converters import Converter, register_converter
 from abczarr._core.dtypes import asdtype
 from abczarr._core.dtypes import to_zarr2 as dtype_to_zarr2
@@ -82,16 +82,16 @@ class StructDType(list, DType):
 
 
 @register_converter(DType)
-class DTypeConverter(Converter[DType, DTYPELIKE]):
+class DTypeConverter(Converter[DType, DTYPE_LIKE]):
 
     DEFAULT = DType
     FALLBACK = DType
 
     @classmethod
-    def like(cls, value: DTYPELIKE) -> bool:
-        return DTYPELIKE
+    def like(cls, value: DTYPE_LIKE) -> bool:
+        return DTYPE_LIKE
 
-    def __call__(self, value: DTYPELIKE) -> DType:
+    def __call__(self, value: DTYPE_LIKE) -> DType:
         if isinstance(value, self.origin):
             return value
         return self.fallback(value)
