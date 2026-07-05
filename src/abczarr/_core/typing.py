@@ -20,7 +20,7 @@ from .attrs import (
 from .frozendict import FrozenDict
 
 
-def typevar(name: str, *constraints, **kwargs) -> tx.tx.TypeVar:
+def typevar(name: str, *constraints, **kwargs) -> tx.TypeVar:
     """
     Return a tx.TypeVar that
 
@@ -45,10 +45,10 @@ def typevar(name: str, *constraints, **kwargs) -> tx.tx.TypeVar:
         kwargs.setdefault("default", constraints[0])
     elif kwargs.get("bound") is not None:
         kwargs.setdefault("default", kwargs["bound"])
-    return tx.tx.TypeVar(name, *constraints, **kwargs)
+    return tx.TypeVar(name, *constraints, **kwargs)
 
 
-def invariant(x: tx.tx.TypeVar) -> tx.tx.TypeVar:
+def invariant(x: tx.TypeVar) -> tx.TypeVar:
     """Return an invariant version of this type"""
     return type(x)(
         x.__name__,
@@ -57,7 +57,7 @@ def invariant(x: tx.tx.TypeVar) -> tx.tx.TypeVar:
         default=x.__default__,
     )
 
-def contravariant(x: tx.tx.TypeVar) -> tx.tx.TypeVar:
+def contravariant(x: tx.TypeVar) -> tx.TypeVar:
     """Return an contravariant version of this type"""
     return type(x)(
         x.__name__,
@@ -67,7 +67,7 @@ def contravariant(x: tx.tx.TypeVar) -> tx.tx.TypeVar:
         contravariant=True,
     )
 
-def covariant(x: tx.tx.TypeVar) -> tx.tx.TypeVar:
+def covariant(x: tx.TypeVar) -> tx.TypeVar:
     """Return an covariant version of this type"""
     return type(x)(
         x.__name__,
@@ -77,7 +77,7 @@ def covariant(x: tx.tx.TypeVar) -> tx.tx.TypeVar:
         covariant=True,
     )
 
-def infer_variance(x: tx.tx.TypeVar) -> tx.tx.TypeVar:
+def infer_variance(x: tx.TypeVar) -> tx.TypeVar:
     """Return a version of this type that infers its variance"""
     return type(x)(
         x.__name__,
