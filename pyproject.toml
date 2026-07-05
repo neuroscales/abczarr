@@ -7,9 +7,10 @@ readme = "README.md"
 dynamic = ["version"]
 requires-python = ">=3.8"
 dependencies = [
-    "typing_extensions >= 4.13",
-    "numpy",
-    "dask[array,diagnostics]",
+    "typing_extensions >= 4.9.0",           # TypeVar(..., default=...)
+    "attrs >= 20.1.0",                      # @define
+    "numpy >= 1.20.0",                      # numpy.typing.DTypeLike
+    "dask[array,diagnostics] >= 2.9.1",     # nanmedian
 ]
 
 [project.optional-dependencies]
