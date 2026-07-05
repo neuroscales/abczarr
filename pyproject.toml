@@ -33,7 +33,6 @@ doc = [
   "markdown-grid-tables",
 ]
 
-
 [project.urls]
 Homepage = "https://github.com/neuroscales/abczarr"
 Issues = "https://github.com/neuroscales/abczarr/issues"
