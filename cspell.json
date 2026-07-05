@@ -12,6 +12,7 @@
     "downsampling"
   ],
   "ignorePaths": [
-    "zensical.toml"
+    "zensical.toml",
+    "pyproject.toml"
   ]
 }
