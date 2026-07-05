@@ -35,10 +35,9 @@ class ImageLabel(OMESchemaItem):
     class Source(OMESchemaItem):
         __annotations__ = {
             "image": Optional[str],
-            "label-value": Required[int],
         }
 
 
     colors: Recommended[List[Color]]
-    properties: Optional[Property]
+    properties: Optional[List[Property]]
     source: Optional[Source]

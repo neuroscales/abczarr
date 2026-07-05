@@ -37,7 +37,7 @@ class OMEImage(OMEBase):
 
 class OMEImageLabel(OMEImage):
     __annotations__ = {
-        "image-labels": Required[List[ImageLabel]],
+        "image-label": Required[List[ImageLabel]],
     }
 
 

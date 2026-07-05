@@ -33,7 +33,7 @@ class Multiscale(OMESchemaItem):
     class Metadata(OMESchemaItem):
         method: Optional[str]
         version: Optional[str]
-        args: Optional[List[JSON]]
+        args: Optional[JSON]
         kwargs: Optional[tx.Dict[str, JSON]]
 
     axes: Required[List[Axis]]

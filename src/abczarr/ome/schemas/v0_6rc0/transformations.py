@@ -3,6 +3,7 @@ __all__ = [
     "CoordinateTransformation",
     "Identity",
     "MapAxis",
+    "ProjectAxis",
     "Translation",
     "Scale",
     "Affine", "AffineMatrix", "AffinePath",
@@ -51,6 +52,12 @@ class Identity(CoordinateTransformationBase, **ome_schema_opt):
 class MapAxis(CoordinateTransformationBase, **ome_schema_opt):
     type: Required[tx.Literal["mapAxis"]]
     mapAxis: Required[List[int]]
+
+
+class ProjectAxis(CoordinateTransformationBase, **ome_schema_opt):
+    type: Required[tx.Literal["projectAxis"]]
+    createdOutputs: Optional[List[int]]
+    droppedInputs: Optional[List[int]]
 
 
 class Translation(CoordinateTransformationBase, **ome_schema_opt):
@@ -112,9 +119,9 @@ class Bijection(CoordinateTransformationBase, **ome_schema_opt):
 
 class ByDimension(CoordinateTransformationBase, **ome_schema_opt):
 
-    class Transformation(OMESchemaItem):
-        input_axes: Required[List[int]]
-        output_axes: Required[List[int]]
+    class Transformation(OMESchemaItem, **ome_schema_opt):
+        inputAxes: Required[List[int]]
+        outputAxes: Required[List[int]]
         transformation: Required["CoordinateTransformation"]
 
     type: Required[tx.Literal["byDimension"]]
@@ -124,6 +131,7 @@ class ByDimension(CoordinateTransformationBase, **ome_schema_opt):
 CoordinateTransformation = tx.Union[
     Identity,
     MapAxis,
+    ProjectAxis,
     Translation,
     Scale,
     AffineMatrix, AffinePath,

@@ -1,14 +1,11 @@
 __all__ = ["Well"]
 
-# dependencies
-import typing_extensions as tx
-
 # core
 from abczarr._core import typing as tz
 from abczarr._core.rfc2119 import RequirementForTypedDict
 
 # locals
-from ..base import OMESchemaItem
+from ..base import OMESchemaItem, ome_schema_opt
 
 # typing
 Required = RequirementForTypedDict.Required
@@ -16,9 +13,9 @@ Recommended = RequirementForTypedDict.Recommended
 List = tz.BuiltinSequence  # list | tuple
 
 
-class Well(OMESchemaItem):
+class Well(OMESchemaItem, **ome_schema_opt):
 
-    class Image(OMESchemaItem):
+    class Image(OMESchemaItem, **ome_schema_opt):
         path: Required[str]
         acquisition: Recommended[int]
 

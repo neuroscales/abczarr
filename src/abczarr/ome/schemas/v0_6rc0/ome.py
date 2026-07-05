@@ -10,10 +10,13 @@ import typing_extensions as tx
 # core
 from abczarr._core import typing as tz
 from abczarr._core.rfc2119 import RequirementForTypedDict
+from abczarr.ome.metadata.v0_2 import omero
 
 # locals
 from ..base import OME as OMEBase, OMEAttributes as OMEAttributesBase
-from ..v0_6dev4 import Multiscale, Omero, ImageLabel, Plate, Well, Scene
+from ..v0_6dev4 import Omero, ImageLabel, Plate, Well
+from .images import Multiscale
+from .scenes import Scene
 from .version import Version
 
 # typing
@@ -32,12 +35,14 @@ class OMESeries(OMEVersion):
 
 class OMEImage(OMEVersion):
     multiscales: Required[List[Multiscale]]
-    omero: tx.Optional[Omero]
+    omero: Optional[Omero]
 
 
 class OMEImageLabel(OMEImage):
     __annotations__ = {
-        "image-labels": Required[List[ImageLabel]],
+        "image-label": Required[ImageLabel],
+        "multiscales": Required[List[Multiscale]],
+        "omero": Optional[Omero],
     }
 
 
@@ -58,19 +63,21 @@ class OMEScene(OMEVersion):
 
 
 class OMEBioformats2Raw(OMEVersion):
-    bioformats2raw_layout: Required[tx.Literal[3]]
-    plate: Optional[Plate]
+    __annotations__ = {
+        "bioformats2raw.layout": Required[tx.Literal[3]],
+        "plate": Optional[Plate],
+    }
 
 
 OME = tx.Union[
-    OMESeries,
-    OMEImage,
+    OMEBioformats2Raw,
     OMEImageLabel,
+    OMEImage,
     OMELabels,
     OMEPlate,
     OMEWell,
     OMEScene,
-    OMEBioformats2Raw
+    OMESeries,
 ]
 
 

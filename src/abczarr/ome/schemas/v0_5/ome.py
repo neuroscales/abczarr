@@ -36,12 +36,12 @@ class OMESeries(OMEVersion):
 
 class OMEImage(OMEVersion):
     multiscales: Required[List[Multiscale]]
-    omero: tx.Optional[Omero]
+    omero: Optional[Omero]
 
 
 class OMEImageLabel(OMEImage):
     __annotations__ = {
-        "image-labels": Required[List[ImageLabel]],
+        "image-label": Required[List[ImageLabel]],
     }
 
 

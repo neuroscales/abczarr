@@ -9,7 +9,7 @@ from abczarr._core.auto.validators import RangeValidator
 from abczarr._core.rfc2119 import RequirementForTypedDict
 
 # locals
-from ..base import OMESchemaItem
+from ..base import OMESchemaItem, ome_schema_opt
 from .version import Version
 
 # typing
@@ -21,26 +21,25 @@ List = tz.BuiltinSequence  # list | tuple
 UInt8 = tx.Annotated[int, RangeValidator(0, 255)]
 
 
-class ImageLabel(OMESchemaItem):
+class ImageLabel(OMESchemaItem, **ome_schema_opt):
 
-    class Color(OMESchemaItem):
+    class Color(OMESchemaItem, **ome_schema_opt):
         __annotations__ = {
             "label-value": Required[int],
             "rgba": Optional[tx.Tuple[UInt8, UInt8, UInt8, UInt8]],
         }
 
-    class Property(OMESchemaItem):
+    class Property(OMESchemaItem, **ome_schema_opt):
         __annotations__ = {
             "label-value": Required[int],
         }
 
-    class Source(OMESchemaItem):
+    class Source(OMESchemaItem, **ome_schema_opt):
         __annotations__ = {
             "image": Optional[str],
-            "label-value": Required[int],
         }
 
     colors: Recommended[List[Color]]
-    properties: Optional[Property]
+    properties: Optional[List[Property]]
     source: Optional[Source]
     version: Recommended[Version]

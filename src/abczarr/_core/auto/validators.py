@@ -71,7 +71,55 @@ from ._typing import (
 
 
 class ValidationError(Exception):
-    ...
+
+    def __init__(self, *args, **kwargs) -> None:
+        validator = kwargs.pop("validator", None)
+        parents = kwargs.pop("parents", None)
+        value = kwargs.pop("value", None)
+        super().__init__(*args, **kwargs)
+        if parents is None:
+            parents = ()
+        elif not isinstance(parents, (list, tuple)):
+            parents = (parents,)
+        self.parents = tuple(parents)
+        self.validator = validator
+        self.value = value
+
+    @property
+    def message(self) -> str:
+        return super().__str__()
+
+    @property
+    def depth(self) -> int:
+        return 1 + max(getattr(p, "depth", 0) for p in self.parents)
+
+    @property
+    def best_parent(self) -> tx.Optional[tx.Self]:
+        return max(
+            self.parents,
+            key=lambda p: getattr(p, "depth", 0),
+            default=None
+        )
+
+    def _make_str(self, validator=True, value=True, parents=True) -> str:
+        message = self.message or ""
+        if validator:
+            if message:
+                message = f"{self.validator!r}: {message}"
+            else:
+                message = f"{self.validator!r}"
+        if value:
+            message = f"{message}\n=> value: {self.value!r}"
+        if parents and self.parents:
+            arrow = "?> " if len(self.parents) > 1 else "->"
+            value = len(self.parents) == 1
+            for parent in self.parents:
+                parent_message = parent._make_str(validator=validator, value=value)
+                message = f"{message}\n{arrow} {parent_message}"
+        return message
+
+    def __str__(self) -> str:
+        return self._make_str()
 
 
 class ValueValidationError(ValueError, ValidationError):
@@ -97,9 +145,8 @@ class Validator(HintMagic[T]):
     def __call__(self, value: T) -> None:
         if not _isinstance(value, self.origin):
             raise TypeValidationError(
-                f"{self!r}:\n"
-                f"Value {value!r} of type {type(value)} is not compatible with "
-                f"the expected type {self.origin!r}"
+                "Not a valid instance.",
+                validator=self, value=value
             )
 
 
@@ -173,7 +220,7 @@ class NoneValidator(Validator[NONETYPE]):
 
     def __call__(self, value: NONETYPE) -> None:
         if value is not None:
-            raise TypeValidationError(f"{self!r}: Value {value!r} is not None")
+            raise TypeValidationError("Not None", validator=self, value=value)
 
 
 @register_validator(tx.Union, UnionType)
@@ -198,14 +245,10 @@ class UnionValidator(Validator[T]):
                 errors.append(e)
                 continue
 
-        message = (
-            f"{self!r}:\n"
-            f"Value {value!r} of type {type(value)} is not compatible with "
-            f"any of the union types."
+        raise TypeValidationError(
+            "Not compatible with any of the union types.",
+            validator=self, parents=errors, value=value
         )
-        for e in errors:
-            message += f"\n?> {str(e)}"
-        raise TypeValidationError(message)
 
 
 @register_validator(tx.Literal)
@@ -216,9 +259,8 @@ class LiteralValidator(Validator[T]):
     def __call__(self, value: T) -> None:
         if value not in self.args:
             raise TypeValidationError(
-                f"{self!r}:\n"
-                f"Value {value!r} is not compatible with any of the literal "
-                f"types"
+                "Not compatible with any of the literals",
+                validator=self, value=value
             )
 
 
@@ -239,12 +281,23 @@ class IterableValidator(Validator[ITERABLE]):
     def __call__(self, value: ITERABLE) -> None:
         super().__call__(value)  # check type
         if self.args:
+
             if not _isinstance(value, abc.Sequence):
                 raise TypeValidationError(
-                    f"{self!r}: Cannot validate generator arguments"
+                    "Cannot validate generator arguments",
+                    validator=self, value=value
                 )
+
             arg_validator = get_validator(self.args[0])
-            list(map(arg_validator, value))
+            for i, item in enumerate(value):
+                try:
+                    arg_validator(item)
+                except ValidationError as e:
+                    th = {1: "st", 2: "nd", 3: "rd"}.get(i, "th")
+                    raise type(e)(
+                        f"Iterable's {i}{th} element is not valid.",
+                        validator=self, parents=e, value=value
+                    ) from e
 
 
 @register_validator(abc.Sequence)
@@ -275,18 +328,16 @@ class MappingValidator(Validator[MAPPING]):
                     key_validator(k)
                 except ValidationError as e:
                     raise type(e)(
-                        f"{self!r}: Key {k!r} of type {type(k)} is not "
-                        f"compatible with the expected key type {key_hint}.\n"
-                        f"-> {str(e)}"
+                        f"Key {k!r} has invalid type {type(k)!r}.",
+                        validator=self, parents=e, value=value
                     ) from e
 
                 try:
                     val_validator(v)
                 except ValidationError as e:
                     raise type(e)(
-                        f"{self!r}: Value {v!r} of type {type(v)} is not "
-                        f"compatible with the expected value type {val_hint}.\n"
-                        f"-> {str(e)}"
+                        f"At key {k!r}, value {v!r} is invalid.",
+                        validator=self, parents=e, value=value
                     ) from e
 
 
@@ -297,8 +348,13 @@ class TupleValidator(Validator[TUPLE]):
     DEFAULT = tuple
 
     def __call__(self, value: TUPLE) -> None:
-        super().__call__(value)  # check type
         if self.args:
+            # If args are provided, we accept either lists or tuples.
+            # This is because the tuple annotation is often used to specify
+            # per-item types, but the value may be a list
+            # (e.g., for JSON serialization).
+
+            SequenceValidator()(value)  # check type
 
             if len(self.args) == 2 and self.args[1] is Ellipsis:
                 arg_validator = get_validator(self.args[0])
@@ -307,8 +363,9 @@ class TupleValidator(Validator[TUPLE]):
             else:
                 if len(value) != len(self.args):
                     raise ValueValidationError(
-                        f"{self!r}: Value {value!r} does not match the "
-                        f"expected tuple length {len(self.args)!r}"
+                        f"Invalid tuple length "
+                        f"{len(value)!r} != {len(self.args)!r}",
+                        validator=self, value=value
                     )
                 validators = map(get_validator, self.args)
 
@@ -316,12 +373,22 @@ class TupleValidator(Validator[TUPLE]):
                 try:
                     validator(val)
                 except ValidationError as e:
+                    th = {1: "st", 2: "nd", 3: "rd"}.get(i, "th")
                     raise type(e)(
-                        f"{self!r}:\n"
-                        f"Tuple's {i}th element {value!r} is not compatible "
-                        f"with the expected type.\n"
-                        f"-> {str(e)}"
+                        f"Tuple's {i}{th} element is not valid.",
+                        validator=self, parents=e, value=value
                     ) from e
+
+        else:
+            # If no args are provided, we do make a "strong" type check.
+            super().__call__(value)  # check type
+
+
+@register_validator(dict)
+class DictValidator(MappingValidator[MAPPING]):
+    # Need to register a dict validator to avoid having the TypedDict
+    # validator being used for dicts.
+    DEFAULT = dict
 
 
 @register_validator(tx.TypedDict)
@@ -339,6 +406,8 @@ class TypedDictValidator(Validator[MAPPING]):
         extra_items = getattr(origin, "__extra_items__", tx.Never)
         closed = getattr(origin, "__closed__", extra_items is tx.Never)
         annots = tx.get_type_hints(origin, include_extras=True)
+        if origin.__name__ == "Metadata":
+            print(origin, total, extra_items, closed)
 
         # Check explicitely defined keys
         for key, arg in annots.items():
@@ -349,8 +418,8 @@ class TypedDictValidator(Validator[MAPPING]):
                     (not total and arg_origin is tx.Required)
                 ):
                     raise ValueValidationError(
-                        f"{self!r}:\n"
-                        f"Missing required key {key!r} in value {value!r}"
+                        f"Missing required key {key!r}",
+                        validator=self, value=value
                     )
             else:
                 arg = _unwrap(arg, (tx.Required, tx.NotRequired))
@@ -359,10 +428,8 @@ class TypedDictValidator(Validator[MAPPING]):
                     validator(value[key])
                 except ValidationError as e:
                     raise type(e)(
-                        f"{self!r}:\n"
-                        f"Key {key!r} with value {value[key]!r} is not "
-                        f"compatible with the expected type {arg!r}.\n"
-                        f"-> {str(e)}"
+                        f"Value for key {key!r} is not valid.",
+                        validator=self, parents=e, value=value
                     ) from e
 
         # Check extra keys
@@ -370,18 +437,16 @@ class TypedDictValidator(Validator[MAPPING]):
             if key not in annots:
                 if closed:
                     raise ValueValidationError(
-                        f"{self!r}:\n"
-                        f"Unexpected key {key!r} in value {value!r}"
+                        f"Unexpected key {key!r}",
+                        validator=self, value=value
                     )
                 validator = get_validator(extra_items)
                 try:
                     validator(arg)
                 except ValidationError as e:
                     raise type(e)(
-                        f"{self!r}:\n"
-                        f"Key {key!r} with value {value[key]!r} is not "
-                        f"compatible with the expected type {extra_items!r}.\n"
-                        f"-> {str(e)}"
+                        f"Value for extra key {key!r} is not valid.",
+                        validator=self, parents=e, value=value
                     ) from e
 
 
@@ -454,14 +519,7 @@ class AnnotatedValidator(Validator[T]):
 
     def __call__(self, value: T) -> None:
         for validator in self.validators:
-            try:
-                validator(value)
-            except ValidationError as e:
-                raise type(e)(
-                    f"{self!r}:\n"
-                    f"Value {value!r} is not compatible with the expected type.\n"
-                    f"-> {str(e)}"
-                ) from e
+            validator(value)
 
 
 class PositiveValidator(NumberValidator[NUMBER]):
@@ -470,7 +528,8 @@ class PositiveValidator(NumberValidator[NUMBER]):
         super().__call__(value)
         if value <= 0:
             raise ValueValidationError(
-                f"{self!r}: Value {value!r} is not a positive int."
+                "Not a positive int.",
+                validator=self, value=value
             )
 
 
@@ -480,7 +539,8 @@ class NegativeValidator(NumberValidator[NUMBER]):
         super().__call__(value)
         if value >= 0:
             raise ValueValidationError(
-                f"{self!r}: Value {value!r} is not a negative int."
+                "Not a negative int.",
+                validator=self, value=value
             )
 
 
@@ -490,7 +550,8 @@ class NonNegativeValidator(NumberValidator[NUMBER]):
         super().__call__(value)
         if value < 0:
             raise ValueValidationError(
-                f"{self!r}: Value {value!r} is not a non-negative int."
+                "Not a non-negative int.",
+                validator=self, value=value
             )
 
 
@@ -500,7 +561,8 @@ class NonPositiveValidator(NumberValidator[NUMBER]):
         super().__call__(value)
         if value > 0:
             raise ValueValidationError(
-                f"{self!r}: Value {value!r} is not a non-positive int."
+                "Not a non-positive int.",
+                validator=self, value=value
             )
 
 
@@ -517,8 +579,8 @@ class LessThan(_ComparatorValidator[NUMBER]):
         super().__call__(value)
         if value >= self.threshold:
             raise ValueValidationError(
-                f"{self!r}: "
-                f"Value {value!r} is not less than {self.threshold!r}"
+                f"Not less than {self.threshold!r}",
+                validator=self, value=value
             )
 
 
@@ -528,8 +590,8 @@ class LessEqual(_ComparatorValidator[NUMBER]):
         super().__call__(value)
         if value > self.threshold:
             raise ValueValidationError(
-                f"{self!r}: Value {value!r} is not less than or equal "
-                f"to {self.threshold!r}"
+                f"Not less than or equal to {self.threshold!r}",
+                validator=self, value=value
             )
 
 
@@ -539,8 +601,8 @@ class GreaterThan(_ComparatorValidator[NUMBER]):
         super().__call__(value)
         if value <= self.threshold:
             raise ValueValidationError(
-                f"{self!r}: "
-                f"Value {value!r} is not greater than {self.threshold!r}."
+                f"Not greater than {self.threshold!r}.",
+                validator=self, value=value
             )
 
 
@@ -550,8 +612,8 @@ class GreaterEqual(_ComparatorValidator[NUMBER]):
         super().__call__(value)
         if value < self.threshold:
             raise ValueValidationError(
-                f"{self!r}: Value {value!r} is not greater than or equal to "
-                f"{self.threshold!r}."
+                f"Not greater than or equal to {self.threshold!r}.",
+                validator=self, value=value
             )
 
 
@@ -571,7 +633,8 @@ class RangeValidator(NumberValidator[NUMBER]):
         super().__call__(value)
         if not (self.min_value <= value <= self.max_value):
             raise ValueValidationError(
-                f"{self!r}: Value {value!r} is not in range."
+                f"Not in range [{self.min_value!r}, {self.max_value!r}].",
+                validator=self, value=value
             )
 
 
@@ -589,7 +652,9 @@ class LengthValidator(SequenceValidator[ITERABLE]):
         super().__call__(value)
         if len(value) != self.length:
             raise ValueValidationError(
-                f"{self!r}: Sequence {value!r} does not match expected length."
+                f"Does not match expected length "
+                f"{len(value)} != {self.length!r}.",
+                validator=self, value=value
             )
 
 
@@ -606,11 +671,15 @@ class RegexValidator(Validator[STR]):
             pattern = re.compile(pattern)
         self.pattern = pattern
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.pattern!r})"
+
     def __call__(self, value: STR) -> None:
         super().__call__(value)
         if not self.pattern.match(value):
             raise ValueValidationError(
-                f"{self!r}: Value {value!r} does not match pattern."
+                "Does not match pattern.",
+                validator=self, value=value
             )
 
 
@@ -625,4 +694,6 @@ class NotOneOfValidator(Validator[T]):
     def __call__(self, value: T) -> None:
         super().__call__(value)
         if value in self.forbidden:
-            raise ValueValidationError(f"{self!r}: Value {value!r} is forbidden.")
+            raise ValueValidationError(
+                "Forbidden value.", validator=self, value=value
+            )

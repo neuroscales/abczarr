@@ -12,7 +12,7 @@ from abczarr._core.auto.validators import NonNegativeValidator
 from abczarr._core.rfc2119 import RequirementForTypedDict
 
 # locals
-from ..base import OMESchemaItem
+from ..base import OMESchemaItem, ome_schema_opt
 
 # typing
 Required = RequirementForTypedDict.Required
@@ -24,9 +24,9 @@ WellPath = tx.Annotated[str, re.compile(r"^[A-Z][0-9]/[A-Z][0-9]+$")]
 List = tz.BuiltinSequence  # list | tuple
 
 
-class Plate(OMESchemaItem):
+class Plate(OMESchemaItem, **ome_schema_opt):
 
-    class Acquisition(OMESchemaItem):
+    class Acquisition(OMESchemaItem, **ome_schema_opt):
         id: Required[NonNegativeInt]
         name: Recommended[str]
         maximumfieldcount: Recommended[NonNegativeInt]
@@ -34,13 +34,13 @@ class Plate(OMESchemaItem):
         starttime: Optional[int]
         endtime: Optional[int]
 
-    class Column(OMESchemaItem):
+    class Column(OMESchemaItem, **ome_schema_opt):
         name: Required[AlphaNumeric]
 
-    class Row(OMESchemaItem):
+    class Row(OMESchemaItem, **ome_schema_opt):
         name: Required[AlphaNumeric]
 
-    class Well(OMESchemaItem):
+    class Well(OMESchemaItem, **ome_schema_opt):
         path: Required[WellPath]
         rowIndex: Required[NonNegativeInt]
         columnIndex: Required[NonNegativeInt]
