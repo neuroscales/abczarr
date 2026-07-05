@@ -3,14 +3,13 @@ import inspect
 import math
 import numbers
 from collections import abc
-from types import NoneType, UnionType
 
 # dependencies
 import numpy as np
 import typing_extensions as tx
 
 # locals
-from ._typing import T
+from ._typing import NoneType, T, UnionType
 
 # constants
 _UNSET = object()

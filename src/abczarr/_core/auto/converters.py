@@ -33,7 +33,6 @@ import inspect
 import numbers
 import re
 from collections import abc
-from types import NoneType, UnionType
 
 # dependencies
 import numpy as np
@@ -66,7 +65,9 @@ from ._typing import (
 from ._utils import (
     _UNSET,
     HintMagic,
+    NoneType,
     TypeVarMixin,
+    UnionType,
     _get_args,
     _get_origin,
     _isinstance,

@@ -1,12 +1,19 @@
 # stdlib
 import numbers
 from collections import abc
-from types import NoneType
 
 # dependencies
 import numpy as np
 import numpy.typing as npt
 import typing_extensions as tx
+
+# optionals
+# optionals
+try:
+    from types import NoneType, UnionType
+except ImportError:
+    NoneType = type(None)
+    UnionType = tx.Union
 
 T = tx.TypeVar("T", bound=tx.Any)
 ClassDecorator = tx.Callable[[tx.Type[T]], tx.Type[T]]

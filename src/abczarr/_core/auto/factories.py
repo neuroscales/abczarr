@@ -13,7 +13,6 @@ __all__ = [
 
 # stdlib
 from collections import abc
-from types import NoneType, UnionType
 
 # dependencies
 import typing_extensions as tx
@@ -25,7 +24,9 @@ from ._typing import (
     SEQUENCE,
     ClassDecorator,
     MagicRegistry,
+    NoneType,
     T,
+    UnionType,
 )
 from ._utils import (
     HintMagic,

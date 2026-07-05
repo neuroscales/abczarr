@@ -32,7 +32,6 @@ __all__ = [
 import numbers
 import re
 from collections import abc
-from types import NoneType, UnionType
 
 # dependencies
 import numpy as np
@@ -49,7 +48,9 @@ from ._typing import (
     TUPLE,
     ClassDecorator,
     MagicRegistry,
+    NoneType,
     T,
+    UnionType,
 )
 
 # internals
