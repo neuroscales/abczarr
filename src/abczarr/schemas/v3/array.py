@@ -20,7 +20,7 @@ from .codecs import ValidCodec
 from .extensions import Config, Extension, ExtensionWithConfig, ExtraField
 
 # typing
-Optional = RequirementForTypedDict[tx.Optional]
+Optional = RequirementForTypedDict.Optional
 
 
 class ChunkGridConfig(Config):
