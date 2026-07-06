@@ -20,7 +20,7 @@ import typing_extensions as tx
 # internals
 from ._typing import (
     MAPPING,
-    NONETYPE,
+    NONE,
     SEQUENCE,
     ClassDecorator,
     MagicRegistry,
@@ -30,12 +30,11 @@ from ._typing import (
 )
 from ._utils import (
     HintMagic,
-    TypeVarMixin,
-    _get_args,
-    _get_origin,
-    _isinstance,
-    _issubclass,
     get_from_registry,
+    safe_get_args,
+    safe_get_origin,
+    safe_isinstance,
+    safe_issubclass,
 )
 
 # ======================================================================
@@ -105,11 +104,11 @@ def get_factory_class(
 
 
 @register_factory(NoneType)
-class NoneFactory(Factory[NONETYPE]):
+class NoneFactory(Factory[NONE]):
 
     DEFAULT = NoneType
 
-    def __call__(self) -> NONETYPE:
+    def __call__(self) -> NONE:
         return None
 
 
@@ -147,7 +146,7 @@ class LiteralFactory(Factory[T]):
 
 
 @register_factory(tx.TypeVar)
-class TypeVarFactory(TypeVarMixin, Factory[T]):
+class TypeVarFactory(Factory[T]):
 
     DEFAULT = tx.TypeVar("T")
 
@@ -190,16 +189,16 @@ class AnnotatedFactory(Factory[T]):
 
     @property
     def factories(self) -> tx.Tuple[Factory, ...]:
-        origin = _get_origin(self.hint, unwrap=tx.Annotated)
+        origin = safe_get_origin(self.hint, unwrap=tx.Annotated)
 
         factories = []
-        for arg in _get_args(self.hint):
-            if _issubclass(arg, Factory):
+        for arg in safe_get_args(self.hint):
+            if safe_issubclass(arg, Factory):
                 arg = arg(origin)
             if not isinstance(arg, Factory):
                 # Look into annotation registry
                 arg = self._get_factory(arg)
-            if _isinstance(arg, Factory):
+            if safe_isinstance(arg, Factory):
                 factories.append(arg)
 
         factories.insert(0, get_factory(origin))

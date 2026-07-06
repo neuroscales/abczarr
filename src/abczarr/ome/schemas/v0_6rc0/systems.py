@@ -13,7 +13,7 @@ import typing_extensions as tx
 
 # core
 from abczarr._core import typing as tz
-from abczarr._core.auto.validators import NotOneOfValidator
+from abczarr._core.auto.validators import IsNotOneOfValidator
 from abczarr._core.rfc2119 import RequirementForTypedDict
 
 # locals
@@ -90,7 +90,7 @@ class CoordinateAxis(AxisBase, **ome_schema_opt):
 class OtherAxis(AxisBase, **ome_schema_opt):
     type: Required[tx.Annotated[
         str,
-        NotOneOfValidator({
+        IsNotOneOfValidator({
             "array", "space", "time", "channel", "coordinate", "displacement"
         })
     ]]

@@ -5,7 +5,7 @@ import typing_extensions as tx
 
 # core
 from abczarr._core import typing as tz
-from abczarr._core.auto.validators import RangeValidator
+from abczarr._core.auto.validators import IsInRange
 from abczarr._core.rfc2119 import RequirementForTypedDict
 
 # locals
@@ -18,7 +18,7 @@ Recommended = RequirementForTypedDict.Recommended
 Optional = RequirementForTypedDict.Optional
 List = tz.BuiltinSequence  # list | tuple
 
-UInt8 = tx.Annotated[int, RangeValidator(0, 255)]
+UInt8 = tx.Annotated[int, IsInRange(0, 255)]
 
 
 class ImageLabel(OMESchemaItem, **ome_schema_opt):

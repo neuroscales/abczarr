@@ -87,8 +87,7 @@ class DTypeConverter(Converter[DType, DTYPE_LIKE]):
     DEFAULT = DType
     FALLBACK = DType
 
-    @classmethod
-    def like(cls, value: DTYPE_LIKE) -> bool:
+    def like(self, __reentrant: tuple = ()) -> tx.Any:
         return DTYPE_LIKE
 
     def __call__(self, value: DTYPE_LIKE) -> DType:

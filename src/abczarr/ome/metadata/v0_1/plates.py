@@ -8,7 +8,7 @@ import typing_extensions as tx
 
 # core
 from abczarr._core.auto.attrs import autodefine, field
-from abczarr._core.auto.converters import NonNegativeConverter
+from abczarr._core.auto.converters import ToNonNegative
 from abczarr._core.rfc2119 import Optional, Recommended, Required
 
 # locals
@@ -16,7 +16,7 @@ from ..base import OMEMetadata
 from .version import Version
 
 # typing
-NonNegativeInt = tx.Annotated[int, NonNegativeConverter()]
+NonNegativeInt = tx.Annotated[int, ToNonNegative()]
 AlphaNumeric = tx.Annotated[str, re.compile(r"^[a-zA-Z0-9]+$")]
 WellPath = tx.Annotated[str, re.compile(r"^[A-Z][0-9]/[A-Z][0-9]+$")]
 

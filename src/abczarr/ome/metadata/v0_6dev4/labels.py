@@ -5,14 +5,14 @@ import typing_extensions as tx
 
 # core
 from abczarr._core.auto.attrs import autodefine
-from abczarr._core.auto.converters import RangeConverter
+from abczarr._core.auto.converters import ToInRange
 from abczarr._core.rfc2119 import Optional, Recommended, Required
 
 # locals
 from ..base import OMEMetadata
 
 # typing
-UInt8 = tx.Annotated[int, RangeConverter(0, 255)]
+UInt8 = tx.Annotated[int, ToInRange(0, 255)]
 
 
 @autodefine

@@ -280,14 +280,16 @@ class MetadataConverter(Converter[METADATA, METADATALIKE]):
     DEFAULT = Metadata
     FALLBACK = Metadata
 
-    @classmethod
-    def like(cls, hint: tx.Any = METADATALIKE) -> tx.Any:
-        hints = (hint, tz.JSONDict)
+    def like(self, __reentrant: tuple = ()) -> tx.Any:
+        if self.hint in __reentrant:
+            return self.hint
+        __reentrant += (self.hint,)
+        hints = (self.hint, tz.JSONDict)
         if (
-            isinstance(hint, type) and
-            issubclass(hint, Metadata)
+            isinstance(self.hint, type) and
+            issubclass(self.hint, Metadata)
         ):
-            for f in fields(hint):
+            for f in fields(self.hint):
                 if f.init and not f.kw_only:
                     hints += (f.type,)
                     break

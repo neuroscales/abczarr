@@ -7,7 +7,7 @@ import re
 import typing_extensions as tx
 
 # core
-from abczarr._core.auto import RegexConverter, autofrozen
+from abczarr._core.auto import ToRegexMatch, autofrozen
 
 # locals
 from ...base import register_subclass
@@ -44,7 +44,7 @@ class Raw(DTypeBuiltin):
     """
     Raw data type, with a specified number of bits per element.
     """
-    name: tx.Annotated[str, RegexConverter(RE_RAW)] = "r8"
+    name: tx.Annotated[str, ToRegexMatch(RE_RAW)] = "r8"
 
 
 __all__ += _make_dtype_classes(

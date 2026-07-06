@@ -25,17 +25,11 @@ from attrs import field as _field
 
 # internals
 from ..frozendict import FrozenDict
+from ._typing import ClassDecorator, FieldTransformer
 from ._utils import eq_safenan, get_default
 from .converters import get_converter
 from .factories import get_factory
 from .validators import get_validator
-
-# typing
-ClassDecorator = tx.Callable[[tx.Type], tx.Type]
-FieldTransformer = tx.Callable[
-    [tx.Type, tx.Sequence[tx.Any]],
-    tx.Sequence[tx.Any]
-]
 
 
 def _auto(kwargs: dict) -> dict:

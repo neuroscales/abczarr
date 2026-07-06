@@ -8,24 +8,25 @@ import numpy.typing as npt
 import typing_extensions as tx
 
 # optionals
-# optionals
-try:
-    from types import NoneType, UnionType
-except ImportError:
-    NoneType = type(None)
-    UnionType = tx.Union
+if tx.TYPE_CHECKING:
+    from typing_extensions import NoneType, UnionType
+else:
+    try:
+        from types import NoneType, UnionType
+    except ImportError:
+        NoneType = type(None)
+        UnionType = tx.Union
 
 T = tx.TypeVar("T", bound=tx.Any)
-ClassDecorator = tx.Callable[[tx.Type[T]], tx.Type[T]]
-MagicRegistry = tx.Dict[tx.Any, tx.Type[T]]
 
+TYPE = tx.TypeVar("TYPE", bound=type, default=type)
 ITERABLE = tx.TypeVar("ITERABLE", bound=abc.Iterable, default=abc.Iterable)
 SEQUENCE = tx.TypeVar("SEQUENCE", bound=abc.Sequence, default=abc.Sequence)
 MAPPING = tx.TypeVar("MAPPING", bound=abc.Mapping, default=abc.Mapping)
 NUMBER = tx.TypeVar("NUMBER", bound=numbers.Number, default=numbers.Number)
 TUPLE = tx.TypeVar("TUPLE", bound=tx.Tuple, default=tuple)
 STR = tx.TypeVar("STR", bound=str, default=str)
-NONETYPE = tx.TypeVar("NONETYPE", bound=NoneType, default=NoneType)
+NONE = tx.TypeVar("NONE", bound=NoneType, default=NoneType)
 DTYPE = tx.TypeVar("DTYPE", bound=np.dtype, default=np.dtype)
 
 KEY = tx.TypeVar("KEY", bound=tx.Any, default=tx.Any)
@@ -46,3 +47,11 @@ NUMBER_LIKE = tx.TypeVar("NUMBERLIKE", bound=_NUMBERLIKE, default=_NUMBERLIKE)
 ITER_LIKE = tx.TypeVar("ITERLIKE", bound=abc.Iterable, default=abc.Iterable)
 DTYPE_LIKE = tx.TypeVar(
     "DTYPELIKE", bound=npt.DTypeLike, default=npt.DTypeLike)
+
+
+MagicRegistry = tx.Dict[tx.Any, TYPE]
+ClassDecorator = tx.Callable[[TYPE], TYPE]
+FieldTransformer = tx.Callable[
+    [tx.Type, tx.Sequence[tx.Any]],
+    tx.Sequence[tx.Any]
+]

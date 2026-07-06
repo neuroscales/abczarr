@@ -11,82 +11,13 @@ import typing_extensions as tx
 # internals
 from .attrs import (
     Converter,
-    NegativeConverter,
-    NonNegativeConverter,
-    NonPositiveConverter,
-    PositiveConverter,
+    ToNegative,
+    ToNonNegative,
+    ToNonPositive,
+    ToPositive,
     register_converter,
 )
 from .frozendict import FrozenDict
-
-
-def typevar(name: str, *constraints, **kwargs) -> tx.TypeVar:
-    """
-    Return a tx.TypeVar that
-
-    * uses `infer_variance=True` by default.
-    * assigns `default` to `constraints` or `bound` if provided.
-    * defines syntactic sugar to create types with a different variance.
-
-    !!! example
-        ```python
-        T = typevar("T", bound=int)
-        T1 = covariant(T)       # covariant
-        T2 = contravariant(T)   # contravariant
-        T3 = invariant(T)       # invariant
-        T4 = infer_variance(T)  # infer_variance=True
-        ```
-
-    Note that this function is programmatic and its output therefore
-    cannot be used by static type checkers.
-    """
-    kwargs.setdefault("infer_variance", True)
-    if constraints:
-        kwargs.setdefault("default", constraints[0])
-    elif kwargs.get("bound") is not None:
-        kwargs.setdefault("default", kwargs["bound"])
-    return tx.TypeVar(name, *constraints, **kwargs)
-
-
-def invariant(x: tx.TypeVar) -> tx.TypeVar:
-    """Return an invariant version of this type"""
-    return type(x)(
-        x.__name__,
-        *x.__constraints__,
-        bound=x.__bound__,
-        default=x.__default__,
-    )
-
-def contravariant(x: tx.TypeVar) -> tx.TypeVar:
-    """Return an contravariant version of this type"""
-    return type(x)(
-        x.__name__,
-        *x.__constraints__,
-        bound=x.__bound__,
-        default=x.__default__,
-        contravariant=True,
-    )
-
-def covariant(x: tx.TypeVar) -> tx.TypeVar:
-    """Return an covariant version of this type"""
-    return type(x)(
-        x.__name__,
-        *x.__constraints__,
-        bound=x.__bound__,
-        default=x.__default__,
-        covariant=True,
-    )
-
-def infer_variance(x: tx.TypeVar) -> tx.TypeVar:
-    """Return a version of this type that infers its variance"""
-    return type(x)(
-        x.__name__,
-        *x.__constraints__,
-        bound=x.__bound__,
-        default=x.__default__,
-        infer_variance=True,
-    )
-
 
 # General types
 T = tx.TypeVar("T")
@@ -109,22 +40,22 @@ BuiltinScalar = tx.TypeVar(
     "BuiltinScalar", bound=_BuiltinScalar, default=_BuiltinScalar)
 
 BuiltinPositiveNumber = tx.Annotated[
-    BuiltinReal, PositiveConverter(compose=True)]
+    BuiltinReal, ToPositive(compose=True)]
 BuiltinNegativeNumber = tx.Annotated[
-    BuiltinReal, NegativeConverter(compose=True)]
+    BuiltinReal, ToNegative(compose=True)]
 BuiltinNonPositiveNumber = tx.Annotated[
-    BuiltinReal, NonPositiveConverter(compose=True)]
+    BuiltinReal, ToNonPositive(compose=True)]
 BuiltinNonNegativeNumber = tx.Annotated[
-    BuiltinReal, NonNegativeConverter(compose=True)]
+    BuiltinReal, ToNonNegative(compose=True)]
 
 BuiltinPositiveIntegral = tx.Annotated[
-    BuiltinIntegral, PositiveConverter(compose=True)]
+    BuiltinIntegral, ToPositive(compose=True)]
 BuiltinNegativeIntegral = tx.Annotated[
-    BuiltinIntegral, NegativeConverter(compose=True)]
+    BuiltinIntegral, ToNegative(compose=True)]
 BuiltinNonPositiveIntegral = tx.Annotated[
-    BuiltinIntegral, NonPositiveConverter(compose=True)]
+    BuiltinIntegral, ToNonPositive(compose=True)]
 BuiltinNonNegativeIntegral = tx.Annotated[
-    BuiltinIntegral, NonNegativeConverter(compose=True)]
+    BuiltinIntegral, ToNonNegative(compose=True)]
 
 _BytesLike = tx.Union[bytes, bytearray, memoryview]
 _StringLike = tx.Union[str, _BytesLike]
@@ -140,19 +71,19 @@ Number = tx.TypeVar("Number", bound=_Number, default=_Number)
 Integral = tx.TypeVar("Integral", bound=_Integral, default=_Integral)
 Real = tx.TypeVar("Real", bound=_Real, default=_Real)
 
-PositiveNumber = tx.Annotated[Real, PositiveConverter(compose=True)]
-NegativeNumber = tx.Annotated[Real, NegativeConverter(compose=True)]
-NonPositiveNumber = tx.Annotated[Real, NonPositiveConverter(compose=True)]
-NonNegativeNumber = tx.Annotated[Real, NonNegativeConverter(compose=True)]
+PositiveNumber = tx.Annotated[Real, ToPositive(compose=True)]
+NegativeNumber = tx.Annotated[Real, ToNegative(compose=True)]
+NonPositiveNumber = tx.Annotated[Real, ToNonPositive(compose=True)]
+NonNegativeNumber = tx.Annotated[Real, ToNonNegative(compose=True)]
 
 PositiveIntegral = tx.Annotated[
-    Integral, PositiveConverter(compose=True)]
+    Integral, ToPositive(compose=True)]
 NegativeIntegral = tx.Annotated[
-    Integral, NegativeConverter(compose=True)]
+    Integral, ToNegative(compose=True)]
 NonPositiveIntegral = tx.Annotated[
-    Integral, NonPositiveConverter(compose=True)]
+    Integral, ToNonPositive(compose=True)]
 NonNegativeIntegral = tx.Annotated[
-    Integral, NonNegativeConverter(compose=True)]
+    Integral, ToNonNegative(compose=True)]
 
 # JSON
 _JSONNumber = tx.Union[int, float]
@@ -228,7 +159,7 @@ PyramidMode = tx.Union[KnownPyramidMode, PyramidFunction]
 
 
 @register_converter(JSON)
-class JsonConverter(Converter[JSON, JSON]):
+class ToJson(Converter[JSON, JSON]):
     """
     A converter for JSON-compatible types.
     """

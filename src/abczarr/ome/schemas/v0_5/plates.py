@@ -8,7 +8,7 @@ import typing_extensions as tx
 
 # core
 from abczarr._core import typing as tz
-from abczarr._core.auto.validators import NonNegativeValidator
+from abczarr._core.auto.validators import IsNonNegative
 from abczarr._core.rfc2119 import RequirementForTypedDict
 
 # locals
@@ -18,7 +18,7 @@ from ..base import OMESchemaItem
 Required = RequirementForTypedDict.Required
 Recommended = RequirementForTypedDict.Recommended
 Optional = RequirementForTypedDict.Optional
-NonNegativeInt = tx.Annotated[int, NonNegativeValidator()]
+NonNegativeInt = tx.Annotated[int, IsNonNegative()]
 AlphaNumeric = tx.Annotated[str, re.compile(r"^[a-zA-Z0-9]+$")]
 WellPath = tx.Annotated[str, re.compile(r"^[A-Z][0-9]/[A-Z][0-9]+$")]
 List = tz.BuiltinSequence  # list | tuple
