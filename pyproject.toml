@@ -8,8 +8,8 @@ dynamic = ["version"]
 requires-python = ">=3.8"
 dependencies = [
     "typing_extensions >= 4.13",            # TypedDict(..., extra_items=...)
-    "attrs >= 20.1.0",                      # @define
-    "numpy >= 1.20.0",                      # numpy.typing.DTypeLike
+    "attrs >= 25.2",                        # @define
+    "numpy >= 1.20",                        # numpy.typing.DTypeLike
     "dask[array,diagnostics] >= 2.9.1",     # nanmedian
 ]
 
