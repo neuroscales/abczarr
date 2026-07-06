@@ -72,10 +72,12 @@ from ._utils import (
     get_args_uw,
     get_from_registry,
     get_origin_uw,
+    is_subscriptable,
     issubhint,
     safe_get_args,
     safe_isinstance,
     safe_issubclass,
+    type2hint,
     unwrap,
 )
 
@@ -707,7 +709,10 @@ def _like_tuple(hint: tx.Any, __reentrant: tuple = ()) -> tx.Any:
     origin = get_origin_uw(hint)
     args = get_args_uw(hint)
     if ... in args:
-        return ToIterable(origin[args[0]]).like(__reentrant)
+        origin = type2hint(origin)
+        if is_subscriptable(origin):
+            origin = origin[args[0]]
+        return ToIterable(origin).like(__reentrant)
     args = tuple(
         get_converter(arg).like(__reentrant)
         for arg in args

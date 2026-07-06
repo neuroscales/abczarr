@@ -716,3 +716,33 @@ def eq_safenan(x: tx.Any) -> bool:
     if isinstance(x, (numbers.Real, np.floating)) and math.isnan(x):
         return "NaN"
     return x
+
+
+def is_subscriptable(x: tx.Any) -> bool:
+    if isinstance(x, type) and hasattr(x, "__class_getitem__"):
+        return True
+    if not isinstance(x, type) and hasattr(x, "__getitem__"):
+        return True
+    return False
+
+
+def type2hint(x: tx.Any) -> tx.Any:
+    """
+    Convert a type to a type hint.
+
+    * If the input is a type, and it does not have `__class_getitem__`,
+      it is returned as is, we try to find its corresponding type hint.
+    * Otherwise, the value is returned as is.
+    """
+    if is_subscriptable(x):
+        return x
+
+    # Look for a type hint with the same name as the type
+    name = x.__name__.split(".")[-1]
+    name = name.capitalize()
+    if hasattr(tx, name):
+        # Type / List / Tuple / ...
+        return getattr(tx, name)
+
+    # Otherwise, return the value as is
+    return x
