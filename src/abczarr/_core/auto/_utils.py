@@ -454,7 +454,7 @@ def issubhint(hint: tx.Any, superhint: tx.Any) -> bool:
 
     if isinstance(hint, tx.TypeVar):
         # Unwrap typevar so that its bound can be checked against the
-        # superhint. We've aready taken care of the case where the
+        # superhint. We've already taken care of the case where the
         # superhint is a typevar.
 
         # For constraints, each constraint must be a subhint of the
