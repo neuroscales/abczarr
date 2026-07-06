@@ -2,7 +2,7 @@
 name = "abczarr"
 authors = [{name = "Chai, Kaidong", email = "mail@kchai.me"}]
 maintainers = [{name = "Balbastre, Yael", email = "y.balbastre@ucl.ac.uk"}]
-description = "ABC...Z[arr] - Abstract base classes for the Zarr format, and vendored implementations"
+description = "ABC...Z(arr) - Abstract base classes for the Zarr format, and vendored implementations"
 readme = "README.md"
 dynamic = ["version"]
 requires-python = ">=3.8"
