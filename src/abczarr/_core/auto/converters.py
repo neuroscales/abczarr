@@ -94,11 +94,11 @@ class ConversionError(MagicError):
         super().__init__(*args, **kwargs)
 
 
-class ValueConversionError(ValueError, ConversionError):
+class ValueConversionError(ConversionError, ValueError):
     ...
 
 
-class TypeConversionError(TypeError, ConversionError):
+class TypeConversionError(ConversionError, TypeError):
     ...
 
 

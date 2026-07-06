@@ -24,9 +24,9 @@ from .base import CodecImpl
 @autofrozen
 class BloscCodec(CodecImpl):
     # type aliases
-    CodecName: tx.ClassVar[tx.TypeAlias] = codecs.BloscCodecName
-    CompressionLevel: tx.ClassVar[tx.TypeAlias] = codecs.BloscCompressionLevel
-    Shuffle: tx.ClassVar[tx.TypeAlias] = codecs.BloscShuffle
+    CodecName: tx.ClassVar = codecs.BloscCodecName
+    CompressionLevel: tx.ClassVar = codecs.BloscCompressionLevel
+    Shuffle: tx.ClassVar = codecs.BloscShuffle
 
     # attributes
     id: tx.Literal["blosc"]
@@ -66,7 +66,7 @@ class BloscCodec(CodecImpl):
 @autofrozen
 class GzipCodec(CodecImpl):
     # type aliases
-    CompressionLevel: tx.ClassVar[tx.TypeAlias] = codecs.GzipCompressionLevel
+    CompressionLevel: tx.ClassVar = codecs.GzipCompressionLevel
 
     # attributes
     id: tx.Literal["gzip"]

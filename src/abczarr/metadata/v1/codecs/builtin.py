@@ -23,9 +23,9 @@ from .base import CodecOptionsImpl
 @autofrozen
 class BloscCodecOptions(CodecOptionsImpl):
     # type aliases
-    CodecName: tx.ClassVar[tx.TypeAlias] = codecs.BloscCodecName
-    CompressionLevel: tx.ClassVar[tx.TypeAlias] = codecs.BloscCompressionLevel
-    Shuffle: tx.ClassVar[tx.TypeAlias] = codecs.BloscShuffle
+    CodecName: tx.ClassVar = codecs.BloscCodecName
+    CompressionLevel: tx.ClassVar = codecs.BloscCompressionLevel
+    Shuffle: tx.ClassVar = codecs.BloscShuffle
 
     # attributes
     cname: CodecName = "lz4"
@@ -42,7 +42,7 @@ class BloscCodecOptions(CodecOptionsImpl):
 @autofrozen
 class GzipCodecOptions(CodecOptionsImpl):
     # type aliases
-    CompressionLevel: tx.ClassVar[tx.TypeAlias] = codecs.GzipCompressionLevel
+    CompressionLevel: tx.ClassVar = codecs.GzipCompressionLevel
 
     # attributes
     id: tx.Literal["gzip"]

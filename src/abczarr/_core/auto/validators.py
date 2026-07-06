@@ -79,11 +79,11 @@ class ValidationError(MagicError):
         super().__init__(*args, **kwargs)
 
 
-class ValueValidationError(ValueError, ValidationError):
+class ValueValidationError(ValidationError, ValueError):
     ...
 
 
-class TypeValidationError(TypeError, ValidationError):
+class TypeValidationError(ValidationError, TypeError):
     ...
 
 

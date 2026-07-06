@@ -165,6 +165,12 @@ class MultipleCauses(Exception):
 class MagicError(Exception):
     """An exception raised by magic objects (factories, converters)."""
 
+    def __new__(cls, *args, **kwargs) -> tx.Self:
+        # Avoids errors in python 3.8, where Exception implements its own
+        # __new__ but without keyword arguments, making subclasses fail
+        # when they are initialized with keyword arguments.
+        return super().__new__(cls, *args)
+
     def __init__(self, *args, **kwargs) -> None:
         """
         Other Parameters

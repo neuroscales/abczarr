@@ -25,7 +25,7 @@ from .base import CodecImpl
 @autofrozen
 class Bz2Codec(CodecImpl):
     # type aliases
-    CompressionLevel: tx.ClassVar[tx.TypeAlias] = codecs.Bz2CompressionLevel
+    CompressionLevel: tx.ClassVar = codecs.Bz2CompressionLevel
 
     # attributes
     id: tx.Literal["bz2"]
@@ -36,9 +36,9 @@ class Bz2Codec(CodecImpl):
 @autofrozen
 class LZMACodec(CodecImpl):
     # type aliases
-    Format: tx.ClassVar[tx.TypeAlias] = codecs.LZMAFormat
-    Check: tx.ClassVar[tx.TypeAlias] = codecs.LZMACheck
-    CompressionLevel: tx.ClassVar[tx.TypeAlias] = codecs.LZMACompressionLevel
+    Format: tx.ClassVar = codecs.LZMAFormat
+    Check: tx.ClassVar = codecs.LZMACheck
+    CompressionLevel: tx.ClassVar = codecs.LZMACompressionLevel
 
     # attributes
     id: tx.Literal["lzma"]
@@ -59,11 +59,11 @@ class LZ4Codec(CodecImpl):
 @autofrozen
 class PCodec(CodecImpl):
     # type aliases
-    CompressionLevel: tx.ClassVar[tx.TypeAlias] = codecs.PCodecCompressionLevel
-    Mode: tx.ClassVar[tx.TypeAlias] = codecs.PCodecMode
-    Delta: tx.ClassVar[tx.TypeAlias] = codecs.PCodecDelta
-    Paging: tx.ClassVar[tx.TypeAlias] = codecs.PCodecPaging
-    DeltaOrder: tx.ClassVar[tx.TypeAlias] = codecs.PCodecDeltaOrder
+    CompressionLevel: tx.ClassVar = codecs.PCodecCompressionLevel
+    Mode: tx.ClassVar = codecs.PCodecMode
+    Delta: tx.ClassVar = codecs.PCodecDelta
+    Paging: tx.ClassVar = codecs.PCodecPaging
+    DeltaOrder: tx.ClassVar = codecs.PCodecDeltaOrder
 
     # attributes
     id: tx.Literal["pcodec"]
@@ -79,7 +79,7 @@ class PCodec(CodecImpl):
 @autofrozen
 class ZFPYCodec(CodecImpl):
     # type aliases
-    Mode: tx.ClassVar[tx.TypeAlias] = codecs.ZFPYMode
+    Mode: tx.ClassVar = codecs.ZFPYMode
 
     # attributes
     id: tx.Literal["zfpy"]
@@ -94,7 +94,7 @@ class ZFPYCodec(CodecImpl):
 @autofrozen
 class ZlibCodec(CodecImpl):
     # type aliases
-    CompressionLevel: tx.ClassVar[tx.TypeAlias] = codecs.ZlibCompressionLevel
+    CompressionLevel: tx.ClassVar = codecs.ZlibCompressionLevel
 
     # attributes
     id: tx.Literal["zlib"]

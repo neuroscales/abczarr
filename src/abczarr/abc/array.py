@@ -28,7 +28,7 @@ class ZarrArrayConfig(tx.TypedDict, total=False):
     compressor_options: tx.Mapping[str, tx.Any]
     dimension_separator: tz.DimensionSeparator
     order: tz.MemoryOrder
-    fill_value: tx.Optional[tx.Number]
+    fill_value: tx.Optional[tz.JSONNumber]
 
 
 class ZarrArray(ZarrNode):

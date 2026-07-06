@@ -13,7 +13,7 @@ from .registry import get_driver
 def open(
     path: tz.PathLike,
     mode: tz.AccessMode = "a",
-    zarr_version: tz.Optional[tz.ZarrVersion] = None,
+    zarr_version: tx.Optional[tz.ZarrVersion] = None,
     driver: tx.Optional[tz.AnyDriver] = None,
     **kwargs
 ) -> ZarrArray:
@@ -51,7 +51,7 @@ def open(
 def open_array(
     path: tz.PathLike,
     mode: tz.AccessMode = "a",
-    zarr_version: tz.Optional[tz.ZarrVersion] = None,
+    zarr_version: tx.Optional[tz.ZarrVersion] = None,
     driver: tx.Optional[tz.AnyDriver] = None,
     **kwargs
 ) -> ZarrArray:
@@ -89,7 +89,7 @@ def open_array(
 def open_group(
     path: tz.PathLike,
     mode: tz.AccessMode = "a",
-    zarr_version: tz.Optional[tz.ZarrVersion] = None,
+    zarr_version: tx.Optional[tz.ZarrVersion] = None,
     driver: tx.Optional[tz.AnyDriver] = None,
     **kwargs
 ) -> ZarrGroup:
@@ -133,7 +133,7 @@ def from_config(out: tz.PathLike, zarr_config: ZarrConfig) -> ZarrGroup:
 def _open(
     path: tz.PathLike,
     mode: tz.AccessMode = "a",
-    zarr_version: tz.Optional[tz.ZarrVersion] = None,
+    zarr_version: tx.Optional[tz.ZarrVersion] = None,
     node_type: tx.Literal["node", "array", "group"] = "node",
     driver: tx.Optional[tz.AnyDriver] = None,
     **kwargs

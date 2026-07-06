@@ -25,7 +25,7 @@ from .base import CodecOptionsImpl
 @autofrozen
 class Bz2CodecOptions(CodecOptionsImpl):
     # type aliases
-    CompressionLevel: tx.ClassVar[tx.TypeAlias] = codecs.Bz2CompressionLevel
+    CompressionLevel: tx.ClassVar = codecs.Bz2CompressionLevel
 
     # attributes
     level: CompressionLevel
@@ -38,9 +38,9 @@ class Bz2CodecOptions(CodecOptionsImpl):
 @autofrozen
 class LZMACodecOptions(CodecOptionsImpl):
     # type aliases
-    Format: tx.ClassVar[tx.TypeAlias] = codecs.LZMAFormat
-    Check: tx.ClassVar[tx.TypeAlias] = codecs.LZMACheck
-    CompressionLevel: tx.ClassVar[tx.TypeAlias] = codecs.LZMACompressionLevel
+    Format: tx.ClassVar = codecs.LZMAFormat
+    Check: tx.ClassVar = codecs.LZMACheck
+    CompressionLevel: tx.ClassVar = codecs.LZMACompressionLevel
 
     # attributes
     format: Format
@@ -62,11 +62,11 @@ class LZ4CodecOptions(CodecOptionsImpl):
 @autofrozen
 class PCodecOptions(CodecOptionsImpl):
     # type aliases
-    CompressionLevel: tx.ClassVar[tx.TypeAlias] = codecs.PCodecCompressionLevel
-    Mode: tx.ClassVar[tx.TypeAlias] = codecs.PCodecMode
-    Delta: tx.ClassVar[tx.TypeAlias] = codecs.PCodecDelta
-    Paging: tx.ClassVar[tx.TypeAlias] = codecs.PCodecPaging
-    DeltaOrder: tx.ClassVar[tx.TypeAlias] = codecs.PCodecDeltaOrder
+    CompressionLevel: tx.ClassVar = codecs.PCodecCompressionLevel
+    Mode: tx.ClassVar = codecs.PCodecMode
+    Delta: tx.ClassVar = codecs.PCodecDelta
+    Paging: tx.ClassVar = codecs.PCodecPaging
+    DeltaOrder: tx.ClassVar = codecs.PCodecDeltaOrder
 
     # attributes
     level: CompressionLevel
@@ -84,7 +84,7 @@ class PCodecOptions(CodecOptionsImpl):
 @autofrozen
 class ZFPYCodecOptions(CodecOptionsImpl):
     # type aliases
-    Mode: tx.ClassVar[tx.TypeAlias] = codecs.ZFPYMode
+    Mode: tx.ClassVar = codecs.ZFPYMode
 
     # attributes
     mode: Mode
@@ -101,7 +101,7 @@ class ZFPYCodecOptions(CodecOptionsImpl):
 @autofrozen
 class ZlibCodecOptions(CodecOptionsImpl):
     # type aliases
-    CompressionLevel: tx.ClassVar[tx.TypeAlias] = codecs.ZlibCompressionLevel
+    CompressionLevel: tx.ClassVar = codecs.ZlibCompressionLevel
 
     # attributes
     level: CompressionLevel
