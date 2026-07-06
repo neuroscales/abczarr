@@ -1,4 +1,5 @@
 __all__ = [
+    "base",
     "v0_1",
     "v0_2",
     "v0_3",
@@ -7,10 +8,8 @@ __all__ = [
     "v0_6dev4",
 ]
 
-
-from abczarr._core.imports import import_all
-
 from . import (
+    base,
     v0_1,
     v0_2,
     v0_3,
@@ -18,5 +17,7 @@ from . import (
     v0_5,
     v0_6dev4,
 )
+from .base import *  # noqa: F403
+from .base import __all__ as __all_base
 
-import_all( ".base", locals(), __package__)
+__all__ += __all_base

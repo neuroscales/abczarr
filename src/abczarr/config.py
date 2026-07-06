@@ -7,7 +7,7 @@ import typing_extensions as tx
 
 # core
 from ._core import typing as tz
-from ._core.attrs import autodefine, evolve
+from ._core.attrs import autodefine, evolve, field
 from ._core.dtypes import to_zarr3 as dtype_to_zarr3
 from ._core.sharding import ChunkSpec, auto_chunk, auto_shard
 from .metadata.base import ArrayMetadata
@@ -81,7 +81,7 @@ class ZarrArrayConfig(ZarrConfig):
     order: tz.MemoryOrder = "C"
     fill_value: tx.Optional[tz.BuiltinNumber] = None
     compressor: tz.CompressorTypeV3 = "blosc"
-    compressor_opt: tz.CompressorOptions
+    compressor_opt: tz.CompressorOptions = field(factory=dict)
 
     def __attrs_post_init__(self) -> None:
         """
