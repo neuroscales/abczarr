@@ -11,11 +11,12 @@ import numpy.typing as npt
 import typing_extensions as tx
 
 # abczarr
+from abczarr import abc
 from abczarr._core import typing as tz
 from abczarr._core.attributes import Attributes
 from abczarr._core.path import Path
 from abczarr._core.sharding import auto_shard, fix_shard_chunk
-from abczarr.abc import ZarrArray, ZarrArrayConfig, ZarrGroup, ZarrNode
+from abczarr.abc import ZarrArrayConfig
 from abczarr.config import ZarrConfig
 from abczarr.metadata.base import GroupMetadata
 from abczarr.registry import UnavailableDriverError
@@ -27,10 +28,138 @@ except ImportError as e:
     raise UnavailableDriverError("tensorstore") from e
 
 
-class ZarrTSNode(ZarrNode): ...
+# ----------------------------------------------------------------------
+#       STORE
+# ----------------------------------------------------------------------
 
 
-class ZarrTSArray(ZarrArray, ZarrTSNode):
+class ZarrTSStore(abc.Store):
+
+    @classmethod
+    def from_kvstore(cls, kvstore: dict) -> tx.Self:
+        """Create a ZarrTSStore from a TensorStore kvstore configuration."""
+        driver = kvstore.get("driver", "")
+        subcls = {
+            "s3": ZarrTSStoreS3,
+            "gcs": ZarrTSStoreGCS,
+            "http": ZarrTSStoreHTTP,
+            "https": ZarrTSStoreHTTP,
+            "memory": ZarrTSStoreMemory,
+            "file": ZarrTSStoreFile
+        }[driver]
+        return subcls.from_kvstore(kvstore)
+
+
+class KVBucketMixin:
+
+    def to_kvstore(self, driver: str) -> dict:
+        """Return a TensorStore kvstore configuration for this store."""
+        return {"driver": driver, "bucket": self.bucket, "path": self.path}
+
+    @classmethod
+    def from_kvstore(cls, kvstore: dict, driver: str) -> tx.Self:
+        if kvstore.get("driver", driver) != driver:
+            raise ValueError(
+                f"Expected kvstore driver '{driver}', "
+                f"got '{kvstore.get('driver')}'"
+            )
+        driver = kvstore.get("driver", driver)
+        bucket = kvstore["bucket"]
+        path = kvstore.get("path", "")
+        return cls(f"{driver}://{bucket}{path}")
+
+
+class ZarrTSStoreS3(KVBucketMixin, abc.S3Store, ZarrTSStore):
+
+    def to_kvstore(self) -> dict:
+        return super().to_kvstore("s3")
+
+    @classmethod
+    def from_kvstore(cls, kvstore: dict) -> tx.Self:
+        return super().from_kvstore(kvstore, "s3")
+
+
+
+class ZarrTSStoreGCS(KVBucketMixin, abc.GCSStore, ZarrTSStore):
+
+    def to_kvstore(self) -> dict:
+        return super().to_kvstore("gs")
+
+    @classmethod
+    def from_kvstore(cls, kvstore: dict) -> tx.Self:
+        return super().from_kvstore(kvstore, "gs")
+
+
+class ZarrTSStoreHTTP(abc.HTTPStore, ZarrTSStore):
+
+    def to_kvstore(self) -> dict:
+        """Return a TensorStore kvstore configuration for this store."""
+        driver = self.protocol
+        base_url = self.base_url
+        path = self.path
+        return {"driver": driver, "base_url": base_url, "path": path}
+
+    @classmethod
+    def from_kvstore(cls, kvstore: dict) -> tx.Self:
+        driver = kvstore.get("driver", "https")
+        if driver not in ("http", "https"):
+            raise ValueError(
+                f"Expected kvstore driver 'http' or 'https', "
+                f"got '{kvstore.get('driver')}'"
+            )
+        base_url = kvstore["base_url"]
+        path = kvstore.get("path", "/")
+        return cls(f"{driver}://{base_url}{path}")
+
+
+class ZarrTSStoreFile(abc.LocalStore, ZarrTSStore):
+
+    def to_kvstore(self) -> dict:
+        return {"driver": "file", "path": self.path}
+
+    @classmethod
+    def from_kvstore(cls, kvstore: dict) -> tx.Self:
+        driver = kvstore.get("driver", "file")
+        if driver != "file":
+            raise ValueError(
+                f"Expected kvstore driver 'file', "
+                f"got '{kvstore.get('driver')}'"
+            )
+        path = kvstore.get("path", "")
+        return cls(f"{driver}://{path}")
+
+
+class ZarrTSStoreMemory(abc.MemoryStore, ZarrTSStore):
+
+    def to_kvstore(self) -> dict:
+        return {"driver": "memory", "path": self.path}
+
+    @classmethod
+    def from_kvstore(cls, kvstore: dict) -> tx.Self:
+        driver = kvstore.get("driver", "memory")
+        if driver != "memory":
+            raise ValueError(
+                f"Expected kvstore driver 'memory', "
+                f"got '{kvstore.get('driver')}'"
+            )
+        path = kvstore.get("path", "")
+        return cls(f"{driver}://{path}")
+
+
+# ----------------------------------------------------------------------
+#       NODE
+# ----------------------------------------------------------------------
+
+
+class ZarrTSNode(abc.ZarrNode): ...
+
+
+# ----------------------------------------------------------------------
+#       ARRAY
+# ----------------------------------------------------------------------
+
+
+class ZarrTSArray(abc.ZarrArray, ZarrTSNode):
     """Zarr array backed by TensorStore."""
 
     def __init__(self, ts_array: ts.TensorStore) -> None:
@@ -42,7 +171,9 @@ class ZarrTSArray(ZarrArray, ZarrTSNode):
         ts_array : tensorstore.TensorStore
             Underlying TensorStore array.
         """
-        super().__init__(str(ts_array.kvstore.path))
+        store_spec = ts_array.kvstore.spec().to_json()
+        store = ZarrTSStore.from_kvstore(store_spec)
+        super().__init__(store)
         self._ts = ts_array
         self._attrs: tx.Optional[Attributes] = None
 
@@ -140,7 +271,12 @@ class ZarrTSArray(ZarrArray, ZarrTSNode):
         return cls(ts_array)
 
 
-class ZarrTSGroup(ZarrGroup, ZarrTSNode):
+# ----------------------------------------------------------------------
+#       GROUP
+# ----------------------------------------------------------------------
+
+
+class ZarrTSGroup(abc.ZarrGroup, ZarrTSNode):
     """Zarr Group implementation using TensorStore as backend."""
 
     def __init__(self, store_path: tz.PathLike) -> None:
@@ -401,6 +537,11 @@ class ZarrTSGroup(ZarrGroup, ZarrTSNode):
         if data is not None:
             arr[:] = data
         return ZarrTSArray(arr)
+
+
+# ----------------------------------------------------------------------
+#       UTILS
+# ----------------------------------------------------------------------
 
 
 def make_compressor_v2(name: tx.Optional[str], **prm: dict) -> dict:
