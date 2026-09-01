@@ -244,11 +244,6 @@ def _to_v2(
         endian = {"big": ">", "little": "<"}.get(endian, dtype.byteorder)
         dtype = dtype.newbyteorder(endian)
 
-    # "annotate": stash the full source so the down-conversion is reversible.
-    attributes = self.attributes
-    if policy == "annotate":
-        attributes = {**attributes, base.SOURCE_ATTR: self.to_dict()}
-
     return v2.ArrayMetadata(
         shape=self.shape,
         chunks=chunk_shape,
@@ -257,5 +252,5 @@ def _to_v2(
         fill_value=self.fill_value,
         filters=filters,
         dimension_separator=separator,
-        attributes=attributes,
+        attributes=self.attributes,
     )
