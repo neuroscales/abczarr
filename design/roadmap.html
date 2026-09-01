@@ -1,0 +1,788 @@
+<title>abczarr Roadmap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo:wght@500;700;900&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --ground: #eef1f2;
+    --surface: #ffffff;
+    --surface-2: #f5f7f8;
+    --ink: #16202a;
+    --muted: #5c6b78;
+    --faint: #8595a1;
+    --line: #dce2e5;
+    --line-strong: #c3ccd1;
+    --accent: #0d7d8a;
+    --accent-ink: #095a64;
+    --accent-wash: #e2f0f1;
+    --solid: #2f8f5b;
+    --solid-wash: #e3f1e8;
+    --untested: #b8791f;
+    --untested-wash: #f6ecd9;
+    --broken: #c1443c;
+    --broken-wash: #f7e2e0;
+    --stub: #6f5f92;
+    --stub-wash: #ece7f3;
+    --shadow: 0 1px 2px rgba(22,32,42,.05), 0 8px 24px -12px rgba(22,32,42,.18);
+    --grid-cell: #d6dde0;
+    --grid-cell-on: #0d7d8a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0e1519;
+      --surface: #16212a;
+      --surface-2: #1b2933;
+      --ink: #e6edf2;
+      --muted: #9db0bd;
+      --faint: #6b7d8a;
+      --line: #263640;
+      --line-strong: #33474f;
+      --accent: #35b6c4;
+      --accent-ink: #7fd6df;
+      --accent-wash: #123037;
+      --solid: #4dbb7f;
+      --solid-wash: #123024;
+      --untested: #d9a24a;
+      --untested-wash: #33280f;
+      --broken: #e2695f;
+      --broken-wash: #331815;
+      --stub: #a996cf;
+      --stub-wash: #221b33;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.6);
+      --grid-cell: #2b3b45;
+      --grid-cell-on: #35b6c4;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0e1519;
+    --surface: #16212a;
+    --surface-2: #1b2933;
+    --ink: #e6edf2;
+    --muted: #9db0bd;
+    --faint: #6b7d8a;
+    --line: #263640;
+    --line-strong: #33474f;
+    --accent: #35b6c4;
+    --accent-ink: #7fd6df;
+    --accent-wash: #123037;
+    --solid: #4dbb7f;
+    --solid-wash: #123024;
+    --untested: #d9a24a;
+    --untested-wash: #33280f;
+    --broken: #e2695f;
+    --broken-wash: #331815;
+    --stub: #a996cf;
+    --stub-wash: #221b33;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.6);
+    --grid-cell: #2b3b45;
+    --grid-cell-on: #35b6c4;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 16.5px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+  code, .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+
+  /* ---- top bar ---- */
+  .topbar {
+    position: sticky; top: 0; z-index: 40;
+    background: color-mix(in srgb, var(--ground) 88%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    max-width: 1080px; margin: 0 auto; padding: 10px 24px;
+    display: flex; align-items: center; gap: 18px;
+  }
+  .brand { font-family: "Chivo", sans-serif; font-weight: 900; letter-spacing: -.01em; font-size: 15px; }
+  .brand span { color: var(--accent); }
+  .topnav { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+  .topnav a {
+    font-family: "IBM Plex Mono", monospace; font-size: 12px; letter-spacing: .02em;
+    color: var(--muted); text-decoration: none; padding: 5px 9px; border-radius: 6px;
+  }
+  .topnav a:hover { color: var(--accent-ink); background: var(--accent-wash); }
+  .theme-btn {
+    font-family: "IBM Plex Mono", monospace; font-size: 12px;
+    background: var(--surface); color: var(--muted);
+    border: 1px solid var(--line-strong); border-radius: 6px;
+    padding: 5px 10px; cursor: pointer;
+  }
+  .theme-btn:hover { color: var(--accent-ink); border-color: var(--accent); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+  main { max-width: 1080px; margin: 0 auto; padding: 0 24px 96px; }
+  .prose { max-width: 68ch; }
+
+  /* ---- hero ---- */
+  .hero { padding: 60px 0 40px; border-bottom: 1px solid var(--line); }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace; font-size: 12.5px; font-weight: 500;
+    letter-spacing: .16em; text-transform: uppercase; color: var(--accent);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .hero h1 {
+    font-family: "Chivo", sans-serif; font-weight: 900; letter-spacing: -.025em;
+    font-size: clamp(2.6rem, 6vw, 4.2rem); line-height: .98; margin: 18px 0 0;
+    text-wrap: balance;
+  }
+  .hero .lede {
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem); color: var(--muted); max-width: 60ch;
+    margin: 22px 0 0; line-height: 1.5;
+  }
+  .hero .lede b { color: var(--ink); font-weight: 600; }
+  .metaline {
+    margin-top: 30px; display: flex; flex-wrap: wrap; gap: 10px 26px;
+    font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: var(--faint);
+  }
+  .metaline b { color: var(--muted); font-weight: 600; }
+
+  .chunkgrid { display: grid; grid-template-columns: repeat(6, 10px); grid-auto-rows: 10px; gap: 3px; }
+  .chunkgrid i { background: var(--grid-cell); border-radius: 2px; display: block; }
+  .chunkgrid i.on { background: var(--grid-cell-on); }
+
+  /* ---- section scaffolding ---- */
+  section { padding: 52px 0 8px; }
+  .sec-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px; }
+  .sec-num {
+    font-family: "IBM Plex Mono", monospace; font-size: 13px; font-weight: 600;
+    color: var(--accent); padding-top: 4px;
+  }
+  h2 {
+    font-family: "Chivo", sans-serif; font-weight: 700; letter-spacing: -.02em;
+    font-size: clamp(1.5rem, 3.4vw, 2.15rem); line-height: 1.08; margin: 0;
+    text-wrap: balance;
+  }
+  h3 {
+    font-family: "Chivo", sans-serif; font-weight: 700; letter-spacing: -.01em;
+    font-size: 1.16rem; margin: 30px 0 8px;
+  }
+  .sec-sub { color: var(--muted); margin: 8px 0 26px; max-width: 66ch; }
+  p { margin: 0 0 16px; }
+  .prose p, section > p { max-width: 68ch; }
+  strong { font-weight: 600; }
+  a.inline { color: var(--accent-ink); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 2px; }
+
+  code {
+    font-size: .86em; background: var(--surface-2); border: 1px solid var(--line);
+    padding: .08em .38em; border-radius: 5px; color: var(--accent-ink);
+    white-space: nowrap;
+  }
+  :root[data-theme="dark"] code, :root:not([data-theme="light"]) code { color: var(--accent-ink); }
+
+  /* ---- chips ---- */
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; vertical-align: middle;
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; font-weight: 600;
+    letter-spacing: .04em; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+    border: 1px solid transparent;
+  }
+  .chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .chip.solid { color: var(--solid); background: var(--solid-wash); border-color: color-mix(in srgb, var(--solid) 30%, transparent); }
+  .chip.untested { color: var(--untested); background: var(--untested-wash); border-color: color-mix(in srgb, var(--untested) 30%, transparent); }
+  .chip.broken { color: var(--broken); background: var(--broken-wash); border-color: color-mix(in srgb, var(--broken) 32%, transparent); }
+  .chip.stub { color: var(--stub); background: var(--stub-wash); border-color: color-mix(in srgb, var(--stub) 32%, transparent); }
+  .chip.accent { color: var(--accent-ink); background: var(--accent-wash); border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+
+  /* ---- cards / callouts ---- */
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    padding: 22px 24px; box-shadow: var(--shadow);
+  }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 760px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+
+  .verdict { display: grid; grid-template-columns: auto 1fr; gap: 0; overflow: hidden; }
+  .verdict .rail {
+    width: 8px; align-self: stretch; grid-row: 1 / -1;
+  }
+  .verdict.go .rail { background: var(--solid); }
+  .verdict.stage .rail { background: var(--untested); }
+  .verdict-body { padding: 22px 24px; }
+  .verdict h3 { margin-top: 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .verdict .tag {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; font-weight: 600;
+    letter-spacing: .05em; text-transform: uppercase; padding: 3px 9px; border-radius: 6px;
+  }
+  .verdict.go .tag { color: var(--solid); background: var(--solid-wash); }
+  .verdict.stage .tag { color: var(--untested); background: var(--untested-wash); }
+
+  ul.clean, ul.check { list-style: none; padding: 0; margin: 14px 0; }
+  ul.clean li, ul.check li { position: relative; padding-left: 26px; margin: 9px 0; max-width: 64ch; }
+  ul.clean li::before { content: "›"; position: absolute; left: 6px; top: -1px; color: var(--accent); font-weight: 700; }
+  ul.check li::before {
+    content: ""; position: absolute; left: 3px; top: 9px; width: 12px; height: 7px;
+    border-left: 2px solid var(--accent); border-bottom: 2px solid var(--accent);
+    transform: rotate(-45deg);
+  }
+  .kv { display: flex; gap: 10px; margin: 6px 0; font-size: 14.5px; }
+  .kv .k { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--faint); min-width: 78px; padding-top: 2px; }
+
+  /* ---- tables ---- */
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; margin: 20px 0; box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; min-width: 560px; }
+  thead th {
+    text-align: left; font-family: "IBM Plex Mono", monospace; font-size: 11px;
+    text-transform: uppercase; letter-spacing: .06em; color: var(--faint); font-weight: 600;
+    padding: 12px 14px; background: var(--surface-2); border-bottom: 1px solid var(--line);
+    position: sticky; top: 0;
+  }
+  tbody td { padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: top; background: var(--surface); }
+  tbody tr:last-child td { border-bottom: none; }
+  td .mono { font-size: 12.5px; color: var(--accent-ink); }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--muted); }
+
+  /* ---- tiers diagram ---- */
+  .tiers { display: grid; gap: 10px; margin: 22px 0; }
+  .tier { display: grid; grid-template-columns: 120px 1fr; gap: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface); }
+  .tier .label { display: flex; flex-direction: column; justify-content: center; padding: 16px 18px; color: #fff; }
+  .tier .label b { font-family: "Chivo", sans-serif; font-size: 1.05rem; }
+  .tier .label span { font-family: "IBM Plex Mono", monospace; font-size: 11px; opacity: .85; letter-spacing: .04em; }
+  .tier .desc { padding: 16px 20px; }
+  .tier.t1 .label { background: var(--accent); }
+  .tier.t2 .label { background: var(--untested); }
+  .tier.t3 .label { background: var(--broken); }
+  @media (max-width: 620px) { .tier { grid-template-columns: 1fr; } }
+
+  /* ---- phase timeline ---- */
+  .timeline { position: relative; margin: 30px 0 0; }
+  .phase { position: relative; padding: 0 0 12px 66px; }
+  .phase::before {
+    content: ""; position: absolute; left: 23px; top: 6px; bottom: -14px; width: 2px; background: var(--line-strong);
+  }
+  .phase:last-child::before { display: none; }
+  .phase .dot {
+    position: absolute; left: 0; top: 0; width: 48px; height: 48px; border-radius: 12px;
+    background: var(--surface); border: 2px solid var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-family: "Chivo", sans-serif; font-weight: 900; font-size: 1.1rem; color: var(--accent);
+    z-index: 2;
+  }
+  .phase.p0 .dot { border-color: var(--broken); color: var(--broken); }
+  .phase-card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    padding: 18px 22px 20px; box-shadow: var(--shadow); margin-bottom: 16px;
+  }
+  .phase-card h3 { margin: 0 0 2px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .phase-card .goal { color: var(--muted); font-size: 14.5px; margin: 0 0 12px; }
+  .phase-card .exit {
+    margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line-strong);
+    font-size: 13.5px; color: var(--muted);
+  }
+  .phase-card .exit b { font-family: "IBM Plex Mono", monospace; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--faint); }
+  .tasklist { margin: 4px 0 0; padding: 0; list-style: none; }
+  .tasklist li { position: relative; padding-left: 22px; margin: 7px 0; font-size: 14.5px; max-width: 66ch; }
+  .tasklist li::before { content: "▸"; position: absolute; left: 2px; color: var(--accent); }
+
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 0; }
+
+  .footnote { color: var(--faint); font-size: 13px; font-family: "IBM Plex Mono", monospace; }
+  .divider-grid { display: flex; gap: 4px; margin: 6px 0 0; opacity: .5; }
+  .divider-grid i { width: 8px; height: 8px; border-radius: 2px; background: var(--grid-cell); }
+  .divider-grid i:nth-child(3n) { background: var(--grid-cell-on); }
+
+  .callout {
+    border-left: 3px solid var(--accent); background: var(--accent-wash);
+    padding: 14px 18px; border-radius: 0 10px 10px 0; margin: 20px 0; max-width: 70ch;
+  }
+  .callout.warn { border-color: var(--broken); background: var(--broken-wash); }
+  .callout p { margin: 0; font-size: 14.5px; }
+  .callout .tt { font-family: "IBM Plex Mono", monospace; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; display: block; margin-bottom: 4px; color: var(--accent-ink); }
+  .callout.warn .tt { color: var(--broken); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 18px 0 0; font-size: 12.5px; color: var(--muted); }
+</style>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">abc&hellip;<span>Z</span>(arr)</div>
+    <nav class="topnav">
+      <a href="#today">state</a>
+      <a href="#decisions">decisions</a>
+      <a href="#abc">abc api</a>
+      <a href="#async">sync/async</a>
+      <a href="#features">features</a>
+      <a href="#fallbacks">fallbacks</a>
+      <a href="#metadata">metadata</a>
+      <a href="#phases">phases</a>
+    </nav>
+    <button class="theme-btn" id="themeBtn" aria-label="Toggle color theme">theme</button>
+  </div>
+</div>
+
+<main>
+  <header class="hero">
+    <div class="eyebrow">
+      Development roadmap
+      <span class="chunkgrid" aria-hidden="true">
+        <i class="on"></i><i></i><i class="on"></i><i></i><i></i><i class="on"></i>
+        <i></i><i class="on"></i><i></i><i class="on"></i><i></i><i></i>
+        <i class="on"></i><i></i><i></i><i></i><i class="on"></i><i></i>
+      </span>
+    </div>
+    <h1>A plan for abczarr</h1>
+    <p class="lede">A generic, multi-backend interface for Zarr I/O &mdash; with native OME-Zarr support and lossless, all-versions metadata. Today the tree is <b>mid-refactor and does not import</b>. This is the sequence that gets it from broken to a coherent, tested API without rebuilding the bagof ecosystem twice.</p>
+    <div class="metaline">
+      <span><b>Repo</b> neuroscales/abczarr</span>
+      <span><b>Status</b> pre-release &middot; DO NOT USE YET</span>
+      <span><b>Floor</b> Python 3.8+</span>
+      <span><b>Backends</b> zarr-python &middot; tensorstore &middot; zarrs &middot; zarrita</span>
+    </div>
+  </header>
+
+  <!-- ============ EXECUTIVE SUMMARY ============ -->
+  <section id="summary">
+    <div class="sec-head"><span class="sec-num">00</span><h2>The short version</h2></div>
+    <p class="sec-sub">Five decisions carry the whole plan. Each is argued in full below; here is the call and the one-line why.</p>
+
+    <div class="grid2">
+      <div class="card">
+        <h3 style="margin-top:0">Replace the path layer with bagof-paths <span class="chip accent">yes, now</span></h3>
+        <p style="margin:0;color:var(--muted);font-size:14.5px"><code>_core/path.py</code> is a 2,375-line reimplementation of bagof-paths that is <em>currently broken</em>. Its cloud surface isn't even wired up. Deleting it is the cheapest large win on the board.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">Move attrs &rarr; bagof-magic <span class="chip untested">yes, staged</span></h3>
+        <p style="margin:0;color:var(--muted);font-size:14.5px">The version lattice you hand-rolled in <code>_core/metadata.py</code> <em>is</em> bagof-magic's <code>polymorphic</code>. But port after the tree is stable, and verify three converter edge-cases first.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">Own the format, borrow the I/O</h3>
+        <p style="margin:0;color:var(--muted);font-size:14.5px">Metadata parsing &amp; cross-version conversion is the product. Chunk I/O, codecs and compression are the backends' job &mdash; synthesize a fallback only from primitives, otherwise raise one named error.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">Sync-first surface, native-async where earned</h3>
+        <p style="margin:0;color:var(--muted);font-size:14.5px">Describe the surface once; bridge sync&rarr;thread for async drivers, await natively when the backend is async. Defer the hard direction (sync-over-async). Same shape as bagof-paths.</p>
+      </div>
+    </div>
+    <div class="legend" aria-hidden="true">
+      <span class="chip solid">solid &amp; tested</span>
+      <span class="chip untested">exists, untested</span>
+      <span class="chip broken">broken / blocker</span>
+      <span class="chip stub">stub / absent</span>
+    </div>
+  </section>
+
+  <!-- ============ STATE TODAY ============ -->
+  <section id="today">
+    <div class="sec-head"><span class="sec-num">01</span><h2>Where it stands today</h2></div>
+    <p class="sec-sub">A lot of surface area exists, but it is broad-and-shallow, and one commit left it unable to import. The value is concentrated in the metadata model; the liability is concentrated in the two large home-grown infrastructure layers.</p>
+
+    <div class="callout warn">
+      <span class="tt">Blocker &middot; the tree does not import</span>
+      <p>The <code>[WIP] metapath</code> commit renamed the path classes (<code>S3Path</code> &rarr; <code>WrappedS3Path</code>) but <code>abc/path.py</code> still references the old names, and <code>__init__.py</code> imports everything eagerly. So <em>every</em> <code>import abczarr&hellip;</code> raises &mdash; even the passing metadata and OME tests can no longer be collected. Nothing ships until this is fixed.</p>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Subsystem</th><th>What it is</th><th class="num">Size</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="mono">metadata/ (v1·v2·v3)</span></td><td>Frozen attrs model of zarr array/group metadata, codecs, dtypes, filters</td><td class="num">~2k ln</td><td><span class="chip untested">parse tested, rest not</span></td></tr>
+          <tr><td><span class="mono">schemas/ (v1·v2·v3)</span></td><td>TypedDict shapes validated by a type-walking <code>get_validator</code></td><td class="num">~0.6k</td><td><span class="chip untested">only OME rc0 exercised</span></td></tr>
+          <tr><td><span class="mono">ome/metadata (v0.1&ndash;v0.6)</span></td><td>attrs model of OME-NGFF, per spec version</td><td class="num">~large</td><td><span class="chip broken">to_version broken, 0 tests</span></td></tr>
+          <tr><td><span class="mono">ome/schemas (&hellip;v0.6rc0)</span></td><td>TypedDict validators per OME version</td><td class="num">~large</td><td><span class="chip untested">only v0.6rc0 tested</span></td></tr>
+          <tr><td><span class="mono">_core/path.py</span></td><td>Home-grown sync+async wrapper over pathlib / UPath / cloudpathlib</td><td class="num">2,375</td><td><span class="chip broken">WIP, cloud surface unwired</span></td></tr>
+          <tr><td><span class="mono">_core/auto/*</span></td><td>Type-hint&ndash;driven attrs converters / validators / factories</td><td class="num">~3k</td><td><span class="chip untested">works, but duplicates bagof-*</span></td></tr>
+          <tr><td><span class="mono">abc/ + _abc.py</span></td><td>Two parallel ABC layers (new package + old flat module)</td><td class="num">~0.7k</td><td><span class="chip broken">duplicated, import-broken</span></td></tr>
+          <tr><td><span class="mono">drivers/zarr_python</span></td><td>zarr-python backend (array + group + create)</td><td class="num">349</td><td><span class="chip untested">most complete, untested</span></td></tr>
+          <tr><td><span class="mono">drivers/tensorstore</span></td><td>TensorStore backend incl. kvstore &harr; store mapping</td><td class="num">813</td><td><span class="chip untested">largest, untested</span></td></tr>
+          <tr><td><span class="mono">drivers/zarrita</span></td><td>&mdash;</td><td class="num">5</td><td><span class="chip stub">raises on import</span></td></tr>
+          <tr><td><span class="mono">config / api / registry</span></td><td>ZarrConfig, open_* façade, driver registry</td><td class="num">~0.6k</td><td><span class="chip untested">plausible, untested</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>Two facts drive everything that follows. <strong>First:</strong> roughly <strong>5,000 lines of <code>_core</code> reimplement libraries that already exist in the same org</strong> &mdash; bagof-paths and the bagof-converters/validators/factories/magic family. <strong>Second:</strong> the genuinely valuable, hard-to-buy part &mdash; a superset metadata model that reads every zarr and OME version &mdash; is real but almost entirely untested, and its conversion paths are where the bugs live.</p>
+  </section>
+
+  <!-- ============ DECISIONS ============ -->
+  <section id="decisions">
+    <div class="sec-head"><span class="sec-num">02</span><h2>The two big forks</h2></div>
+    <p class="sec-sub">You asked both directly: replace the path code with bagof-paths, and attrs vs. bagof-magic. Here is the reasoning and the verdict on each.</p>
+
+    <h3>A &middot; The path layer &rarr; bagof-paths</h3>
+    <div class="card verdict go" style="margin:14px 0 26px">
+      <div class="rail" aria-hidden="true"></div>
+      <div class="verdict-body">
+        <h3><span class="tag">Verdict</span> Replace it &mdash; and do it early, in Phase&nbsp;1</h3>
+        <p style="color:var(--muted);margin-bottom:10px"><code>_core/path.py</code> and bagof-paths solve the identical problem: one uniform, driver-pluggable, sync&nbsp;+&nbsp;async surface over pathlib, universal-pathlib and cloudpathlib, with S3/GCS/Azure/HTTP protocols and a driver registry. abczarr's version is 2,375 lines, mid-refactor, and its per-protocol cloud classes are referenced but never defined &mdash; so in practice only the local <code>Path</code> subset is exercised today.</p>
+        <div class="grid2" style="margin-top:14px">
+          <div>
+            <p style="font-size:12px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);margin:0 0 6px">Why it fits</p>
+            <ul class="check" style="margin:0">
+              <li>bagof-paths already ships sync <code>Path</code> + async <code>AsyncPath</code> over one spec table &mdash; exactly the paired hierarchy <code>abc/store.py</code> needs.</li>
+              <li>Native-async fsspec cloud driver, per-loop session handling, credentials via <code>storage_options</code> &mdash; all the parts a zarr store on S3 needs.</li>
+              <li>The escape hatch <code>path.wrapped</code> preserves any backend-specific member the store needs.</li>
+            </ul>
+          </div>
+          <div>
+            <p style="font-size:12px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);margin:0 0 6px">Migration cost</p>
+            <ul class="clean" style="margin:0">
+              <li>Low at the call sites: <code>_core/attributes.py</code> and the drivers use only the vanilla <code>Path</code> subset.</li>
+              <li>Concentrated at one seam: <code>abc/path.py</code>&nbsp;/&nbsp;<code>abc/store.py</code> subclass the wrapper and use its <code>register_subclass</code> hooks.</li>
+              <li>Model <code>StorePath</code>'s one bit of extra state (<code>read_only</code>) as a thin subclass or via bagof-paths' <code>with_wrapped</code> derivation.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout" style="margin:16px 0 0">
+          <span class="tt">Before you commit</span>
+          <p>Confirm bagof-paths exposes a <em>subclassable</em> <code>Path</code>/<code>AsyncPath</code> and a store-flavoured derivation hook. Its <code>register_protocol</code> / <code>register_driver</code> model is the replacement for abczarr's <code>register_subclass</code>; map the store subclasses onto it rather than onto pathlib inheritance.</p>
+        </div>
+      </div>
+    </div>
+
+    <h3>B &middot; attrs vs. bagof-magic</h3>
+    <div class="card verdict stage" style="margin:14px 0 20px">
+      <div class="rail" aria-hidden="true"></div>
+      <div class="verdict-body">
+        <h3><span class="tag">Verdict</span> Migrate to bagof-magic &mdash; staged, after the tree is stable</h3>
+        <p style="color:var(--muted);margin-bottom:10px">This is the bigger, less reversible call, so it comes <em>after</em> Phases&nbsp;0&ndash;3. But the direction is clear: abczarr has hand-built the two things bagof-magic exists to provide, and is maintaining ~3,000 lines of it untested.</p>
+        <div class="grid2" style="margin-top:6px">
+          <div>
+            <p style="font-size:12px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);margin:0 0 6px">The case for</p>
+            <ul class="check" style="margin:0">
+              <li><strong>Polymorphism is a direct match.</strong> <code>register_subclass(zarr_format=2, node_type="array")</code> dispatch <em>is</em> bagof-magic's <code>polymorphic=True</code> + <code>on={"zarr_format":2, "node_type":"array"}</code>. Your version lattice is its worked example.</li>
+              <li><strong>Hint-driven fields are its premise.</strong> <code>_core/auto</code> derives converters/validators/factories from type hints; bagof-magic + the sibling bags do exactly that, maintained and tested elsewhere.</li>
+              <li>Options inherited via class keywords map cleanly onto the version&times;node-type inheritance you already express with mixins.</li>
+            </ul>
+          </div>
+          <div>
+            <p style="font-size:12px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);margin:0 0 6px">Risks to retire first</p>
+            <ul class="clean" style="margin:0">
+              <li><strong>RFC-2119 markers.</strong> <code>_core/rfc2119.py</code> registers Required/Recommended/&hellip; annotation factories. Confirm these re-home onto bagof-factories' annotation model.</li>
+              <li><strong>Specialised converters.</strong> numpy-DType coercion, JSON round-trip, and the regex dtype match (<code>r\d+</code>) must port to bagof-converters or ride as explicit <code>ConvertTo</code> callables.</li>
+              <li><strong>TypedDict validation.</strong> <code>schemas/</code> leans on <code>get_validator</code> walking TypedDicts (total/Required/closed/extra_items). Keep that surface until bagof-validators is confirmed to subsume it.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout" style="margin:16px 0 0">
+          <span class="tt">Sequencing</span>
+          <p>Migrate innermost-first: <code>ZarrConfig</code> &rarr; metadata base &rarr; array/codec/dtype classes &rarr; OME. Keep the <code>@autofrozen</code>/<code>@autodefine</code> names as thin shims over bagof-magic during the transition so call sites don't churn, then delete <code>_core/auto</code> once nothing imports it. If bagof-magic isn't ready for the DType/RFC-2119 cases, that's a reason to <em>delay</em>, not to keep building the home-grown engine.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ABC API ============ -->
+  <section id="abc">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Designing the generic "abc" API</h2></div>
+    <p class="sec-sub">The abstract layer is the whole point of the package, and it's the least finished. It should borrow bagof-paths' architecture wholesale: describe the surface once, keep drivers thin, and never let the common denominator hide a backend's strengths.</p>
+
+    <div class="grid2">
+      <div class="card">
+        <h3 style="margin-top:0">Consolidate to one layer</h3>
+        <p style="font-size:14.5px;color:var(--muted);margin:0">Delete the old flat <code>_abc.py</code>; keep the <code>abc/</code> package (<code>node</code>, <code>array</code>, <code>group</code>, <code>store</code>, <code>path</code>). Two parallel definitions of <code>ZarrArray</code> is how the import break slipped in.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">One surface spec, like <code>_spec.py</code></h3>
+        <p style="font-size:14.5px;color:var(--muted);margin:0">Describe each node/array/group member once in a table &mdash; its kind (pure vs. I/O), how its result is wrapped, whether it has an async twin &mdash; instead of writing sixty method bodies twice. The engine reads the table.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">Thin driver contract</h3>
+        <p style="font-size:14.5px;color:var(--muted);margin:0">A driver must supply only primitives: <code>open</code>, <code>metadata</code>, read/write chunk, create, list, delete. Everything richer is synthesized from those or capability-gated. That's what makes a new backend (zarrs, zarrita) a small file, not an 800-line one.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">Metadata is first-class on every node</h3>
+        <p style="font-size:14.5px;color:var(--muted);margin:0">Each node exposes <code>.metadata</code> (the rich attrs model), <code>.attrs</code> (user attributes), and <code>.native</code> (the raw <code>zarr.Array</code> / <code>ts.TensorStore</code>). The metadata model is the neutral interchange between drivers.</p>
+      </div>
+    </div>
+
+    <h3>Two contracts that keep the abstraction honest</h3>
+    <div class="grid2" style="margin-top:6px">
+      <div class="card">
+        <p style="margin:0 0 6px"><span class="chip accent">escape hatch</span></p>
+        <p style="font-size:14.5px;margin:0"><code>node.native</code> always returns the underlying backend object, as a documented, supported contract &mdash; not an accident of <code>__getattr__</code> delegation. Anything the uniform surface doesn't name is still reachable, so wrapping never costs a capability.</p>
+      </div>
+      <div class="card">
+        <p style="margin:0 0 6px"><span class="chip accent">capability query</span></p>
+        <p style="font-size:14.5px;margin:0"><code>driver.supports("sharding")</code> / <code>"async"</code> / <code>"partial-write"</code> / <code>"consolidated-metadata"</code>, answered from the driver <em>class</em> (never by touching a live resource). Callers branch on capability instead of catching exceptions.</p>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:22px">
+      <span class="tt">One named error</span>
+      <p>When a member can be neither delegated nor synthesized, raise a single <code>UnsupportedZarrOperation</code> naming the operation and the driver &mdash; the bagof-paths <code>UnsupportedPathOperation</code> pattern. Never a bare <code>NotImplementedError</code>, never a leaked internal name.</p>
+    </div>
+  </section>
+
+  <!-- ============ ASYNC ============ -->
+  <section id="async">
+    <div class="sec-head"><span class="sec-num">04</span><h2>Handling sync and async</h2></div>
+    <p class="sec-sub">The backends disagree: tensorstore is async at heart (futures with a sync <code>.result()</code>), zarr-python has a real async layer under its sync one, zarrs/zarrita differ again. Writing every method twice by hand is how the two surfaces drift. bagof-paths already solved this shape; copy it.</p>
+
+    <div class="grid3">
+      <div class="card">
+        <h3 style="margin-top:0;font-size:1rem">Async node, sync driver</h3>
+        <p style="font-size:14px;color:var(--muted);margin:0">Bridge the sync call into a worker thread &mdash; the <code>run_in_executor</code> approach <code>_core/asyncutils.py</code> already sketches. No second implementation.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;font-size:1rem">Async node, async driver</h3>
+        <p style="font-size:14px;color:var(--muted);margin:0">Await the backend's coroutine directly through a native seam &mdash; the tensorstore/zarr-python fast path. Full concurrency, no thread hop.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;font-size:1rem">Sync node, async driver</h3>
+        <p style="font-size:14px;color:var(--muted);margin:0"><strong>Defer.</strong> Driving a loop from sync code (the "portal") is the hard direction; bagof-paths defers it too. Ship the other three first.</p>
+      </div>
+    </div>
+
+    <ul class="clean">
+      <li><strong>Sync-first public surface.</strong> The consumers are numpy and dask, which are synchronous; make <code>ZarrArray</code> sync-primary and offer <code>AsyncZarrArray</code> where the backend earns it. Parity is enforced by a test that fails the moment the two signatures drift &mdash; bagof-paths' <code>test_parity.py</code>.</li>
+      <li><strong>Async matters most at I/O boundaries</strong> &mdash; the store (already handled by bagof-paths) and chunk read/write. The metadata model stays pure-sync data; there is nothing to await in parsing.</li>
+      <li><strong>Fix the loop handling on the way.</strong> <code>asyncutils</code> uses the deprecated <code>get_event_loop()</code>; move to <code>get_running_loop()</code> + an explicit executor as part of adopting the pattern.</li>
+    </ul>
+  </section>
+
+  <!-- ============ FEATURES ============ -->
+  <section id="features">
+    <div class="sec-head"><span class="sec-num">05</span><h2>Not disabling a backend's good features</h2></div>
+    <p class="sec-sub">The real danger of a lowest-common-denominator ABC: it quietly hides tensorstore's async concurrency, zarr-python's codec pipeline, sharding, partial reads, consolidated metadata. The three-tier discipline &mdash; delegate, then synthesize, then raise &mdash; is what prevents that.</p>
+
+    <div class="tiers">
+      <div class="tier t1">
+        <div class="label"><b>Delegate</b><span>tier 1</span></div>
+        <div class="desc">If the driver implements the member, call it and pass the rich arguments straight through. Keep <code>chunk_grid</code>, <code>codecs</code>, sharding and dtype config <em>in the metadata model</em> (already done) so a feature expressed there survives even when a convenience API wouldn't surface it.</div>
+      </div>
+      <div class="tier t2">
+        <div class="label"><b>Synthesize</b><span>tier 2</span></div>
+        <div class="desc">Only from more-primitive members the driver <em>does</em> have: <code>__array__</code>/<code>to_dask</code> from <code>__getitem__</code>, a group <code>walk</code> from <code>iterdir</code>, whole-array read from chunked reads, pyramid levels from <code>create_array</code>+<code>getitem</code>. Never reach past the primitives.</div>
+      </div>
+      <div class="tier t3">
+        <div class="label"><b>Raise</b><span>tier 3</span></div>
+        <div class="desc">When neither is possible, one <code>UnsupportedZarrOperation</code> &mdash; don't half-emulate compression, a sharding index, or a codec. A clear refusal beats a wrong result that looks right.</div>
+      </div>
+    </div>
+
+    <p>Paired with the <code>node.native</code> escape hatch and <code>driver.supports(&hellip;)</code> from &sect;03, this gives three ways to reach a backend strength: it's in the uniform surface, or you branch on the capability, or you drop to <code>.native</code>. No feature is stranded by the wrapper.</p>
+  </section>
+
+  <!-- ============ FALLBACKS ============ -->
+  <section id="fallbacks">
+    <div class="sec-head"><span class="sec-num">06</span><h2>How many fallbacks to own</h2></div>
+    <p class="sec-sub">The rule of thumb: <strong>own the format logic and the cross-backend glue; borrow I/O and compute; synthesize only from primitives; otherwise refuse.</strong> Here is where each responsibility lands.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Responsibility</th><th>Stance</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Metadata parse / serialize / <strong>cross-version convert</strong></td><td><span class="chip solid">own</span></td><td>Backend-independent spec logic &mdash; the package's core value. No backend does all versions losslessly.</td></tr>
+          <tr><td>Chunk / shard auto-sizing, pyramid downsampling, chunk math</td><td><span class="chip solid">own</span></td><td>Pure numeric logic already in <code>_core/sharding.py</code> &amp; <code>pyramid.py</code>; independent of any driver.</td></tr>
+          <tr><td>Path &amp; store abstraction, protocol selection, credentials</td><td><span class="chip accent">delegate to bagof-paths</span></td><td>Solved once already in the org. Don't own a second copy.</td></tr>
+          <tr><td><code>to_dask</code>, <code>__array__</code>, group <code>walk</code>, whole-array read/write</td><td><span class="chip untested">synthesize from primitives</span></td><td>Trivially derived from <code>__getitem__</code>/<code>iterdir</code>; cheap, correct, driver-agnostic.</td></tr>
+          <tr><td>Chunk I/O, compression, codec encode/decode, sharding index</td><td><span class="chip accent">delegate to backend</span></td><td>This is precisely what zarr-python / tensorstore / zarrs are <em>for</em>. Reimplementing invites subtle corruption.</td></tr>
+          <tr><td>A capability a driver simply lacks</td><td><span class="chip broken">raise, don't emulate</span></td><td>One named error. Half-built emulation of a codec or shard index is worse than an honest refusal.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="footnote">Litmus test for "should we own this fallback?": if it can be written purely in terms of members the driver already exposes, synthesize it; if it needs to re-encode bytes or re-implement a compression/sharding format, it belongs to the backend.</p>
+  </section>
+
+  <!-- ============ METADATA / LOSSLESS ============ -->
+  <section id="metadata">
+    <div class="sec-head"><span class="sec-num">07</span><h2>All-versions metadata &amp; lossless conversion</h2></div>
+    <p class="sec-sub">This is the feature you singled out, and it's the one with the most latent bugs. The model exists (zarr v1/v2/v3, OME v0.1&ndash;v0.6) but the conversion paths are largely untested, one is buggy, one is a broken stub, and "lossless" is nowhere defined as a contract.</p>
+
+    <h3>What's there, and what's wrong with it</h3>
+    <ul class="clean">
+      <li><strong>zarr v2&harr;v3 conversion exists but is untested,</strong> implemented as per-leaf <code>to_version()</code> on codecs, dtypes and filters plus array-level <code>_to_v2</code>/<code>_to_v3</code>. <span class="chip untested">verify</span></li>
+      <li><strong><code>v3&rarr;v1</code> looks buggy</strong> &mdash; the compressor is double-converted and a recomputed dtype is discarded. <span class="chip broken">fix</span></li>
+      <li><strong><code>v1&rarr;v2/v3</code> is absent</strong> &mdash; the v1 array class has no <code>to_version</code> at all. <span class="chip stub">implement</span></li>
+      <li><strong>OME <code>to_version</code> is a broken stub</strong> &mdash; it splits <code>__qualname__</code> expecting a module path that isn't there, targets the wrong subpackage, has no callers and no tests. Rewrite it as explicit per-version migration, not reflection. <span class="chip broken">replace</span></li>
+      <li><strong>No OME&harr;zarr-format coupling is encoded.</strong> OME v0.1&ndash;v0.4 sit on zarr v2; v0.5+ sit on zarr v3 (metadata nested under an <code>ome</code> key). Today that lives only in which submodules happen to exist. Make it an explicit table. <span class="chip stub">add</span></li>
+    </ul>
+
+    <h3>A conversion contract worth committing to</h3>
+    <div class="grid2" style="margin-top:6px">
+      <div class="card">
+        <h3 style="margin-top:0;font-size:1.02rem">Parse into a superset that keeps unknowns</h3>
+        <p style="font-size:14.5px;color:var(--muted);margin:0">The <code>FlexibleMetadata</code> <code>extra_items</code> dict already retains fields the model doesn't name. Lean on it: nothing read is silently dropped, so a field a target version can't express can still be carried.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;font-size:1.02rem">Convert by explicit field maps, not reflection</h3>
+        <p style="font-size:14.5px;color:var(--muted);margin:0">One converter per version pair, hand-written where the spec changed shape (axes, transformations, the <code>ome</code> nesting at v0.5). Reflection over class names can't know that <code>multiscales</code> moved.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;font-size:1.02rem">Make "lossy" a choice, not an accident</h3>
+        <p style="font-size:14.5px;color:var(--muted);margin:0">A policy flag &mdash; <code>strict</code> (raise if a field can't be represented), <code>annotate</code> (stash it in a namespaced extra), or <code>lossy</code> (warn + drop). The per-resolver asymmetry bagof-magic uses is the model: pass a value through, but never invent one.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;font-size:1.02rem">Prove it with round-trips</h3>
+        <p style="font-size:14.5px;color:var(--muted);margin:0">Property test: for every version pair the spec allows, <code>a &rarr; b &rarr; a</code> equals the original. That single family of tests is what turns "as lossless as possible" from an aspiration into a guarantee.</p>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:22px">
+      <span class="tt">Keep both representations, on purpose</span>
+      <p>The TypedDict <code>schemas/</code> and the attrs <code>metadata/</code> are complementary, not redundant: schemas are a declarative <em>validation</em> surface for raw JSON; metadata is the functional model that converts. Keep them &mdash; but add the missing tests (every zarr version, every OME version, and the negative cases that are currently commented out).</p>
+    </div>
+  </section>
+
+  <!-- ============ PHASES ============ -->
+  <section id="phases">
+    <div class="sec-head"><span class="sec-num">08</span><h2>The sequence</h2></div>
+    <p class="sec-sub">Seven phases, ordered so each unblocks the next. Phase&nbsp;0 is non-negotiable and small; the dependency swaps come before the API hardening; the big attrs migration comes only once the model is stable and tested.</p>
+
+    <div class="timeline">
+      <div class="phase p0">
+        <div class="dot">0</div>
+        <div class="phase-card">
+          <h3>Unblock &amp; guard <span class="chip broken">blocker</span></h3>
+          <p class="goal">Make the package import again and never break this silently twice.</p>
+          <ul class="tasklist">
+            <li>Fix the <code>abc/path.py</code> &harr; <code>_core/path.py</code> name mismatch (or leapfrog straight into Phase&nbsp;1).</li>
+            <li>Make <code>__init__.py</code> imports lazy / guarded so a missing backend or a WIP module can't take down the whole package.</li>
+            <li>Add CI that actually <em>imports</em> abczarr and runs the suite on Python 3.8 <em>and</em> current &mdash; the two ends where things differ.</li>
+          </ul>
+          <p class="exit"><b>exit</b> &nbsp;green suite, package imports on both interpreters.</p>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="dot">1</div>
+        <div class="phase-card">
+          <h3>Adopt bagof-paths</h3>
+          <p class="goal">Delete <code>_core/path.py</code>; rebuild the store/path layer on bagof-paths.</p>
+          <ul class="tasklist">
+            <li>Rewrite <code>abc/path.py</code> + <code>abc/store.py</code> onto bagof-paths' <code>Path</code>/<code>AsyncPath</code> and <code>register_protocol</code>.</li>
+            <li>Point <code>_core/attributes.py</code> and the drivers at the new path type (mostly the vanilla subset).</li>
+            <li>Carry <code>read_only</code> as store state; keep <code>.wrapped</code> for backend-specific needs.</li>
+          </ul>
+          <p class="exit"><b>exit</b> &nbsp;2,375 lines gone; local + one cloud protocol tested end-to-end.</p>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="dot">2</div>
+        <div class="phase-card">
+          <h3>Consolidate the abc API</h3>
+          <p class="goal">One coherent abstract layer with the contracts from &sect;03&ndash;&sect;05.</p>
+          <ul class="tasklist">
+            <li>Remove <code>_abc.py</code>; make <code>abc/</code> the single source of truth.</li>
+            <li>Introduce the surface spec table, the <code>node.native</code> contract, <code>driver.supports(&hellip;)</code>, and <code>UnsupportedZarrOperation</code>.</li>
+            <li>Settle the sync/async model and add the parity test.</li>
+          </ul>
+          <p class="exit"><b>exit</b> &nbsp;a documented driver contract a new backend can target.</p>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="dot">3</div>
+        <div class="phase-card">
+          <h3>Harden metadata &amp; conversion</h3>
+          <p class="goal">Turn the untested model into a tested, lossless-by-contract one. <span class="chip accent">core value</span></p>
+          <ul class="tasklist">
+            <li>Fix <code>v3&rarr;v1</code>; implement <code>v1&rarr;v2/v3</code>; add the strict/annotate/lossy policy.</li>
+            <li>Replace OME <code>to_version</code> with explicit per-version migrations; add the OME&harr;zarr-format table.</li>
+            <li>Round-trip property tests across every version pair; re-enable the negative validation tests.</li>
+          </ul>
+          <p class="exit"><b>exit</b> &nbsp;every advertised version parses, converts, and round-trips under test.</p>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="dot">4</div>
+        <div class="phase-card">
+          <h3>attrs &rarr; bagof-magic</h3>
+          <p class="goal">Retire <code>_core/auto</code> once its edge cases are proven portable. <span class="chip untested">staged</span></p>
+          <ul class="tasklist">
+            <li>Verify RFC-2119 markers, DType/JSON converters, and TypedDict validation against the bags first.</li>
+            <li>Migrate innermost-first behind shim decorators; delete <code>_core/auto</code> when nothing imports it.</li>
+            <li>Express the version lattice with <code>polymorphic</code> + <code>on={&hellip;}</code>.</li>
+          </ul>
+          <p class="exit"><b>exit</b> &nbsp;~3k lines of home-grown engine replaced; behavior unchanged under the Phase-3 tests.</p>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="dot">5</div>
+        <div class="phase-card">
+          <h3>Finish the drivers</h3>
+          <p class="goal">Make the multi-backend promise real and measured.</p>
+          <ul class="tasklist">
+            <li>Complete zarr-python (<code>fill_value</code>, groups) and test tensorstore against the contract.</li>
+            <li>Implement the zarrita and zarrs drivers on the thin contract from Phase&nbsp;2.</li>
+            <li>Publish a capability matrix (driver &times; feature) driven by <code>supports()</code>.</li>
+          </ul>
+          <p class="exit"><b>exit</b> &nbsp;the same test suite passes against every installed backend.</p>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="dot">6</div>
+        <div class="phase-card">
+          <h3>Docs, polish, release</h3>
+          <p class="goal">Make it usable by someone who isn't you.</p>
+          <ul class="tasklist">
+            <li>Runnable <code>pycon</code> docstring tests on the 3.8 floor (the bagof house convention).</li>
+            <li>A "lead with what the user writes" guide; the capability matrix; a conversion-fidelity page.</li>
+            <li>Drop the "DO NOT USE YET" once Phases 0&ndash;5 hold.</li>
+          </ul>
+          <p class="exit"><b>exit</b> &nbsp;a first tagged release.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ OPEN QUESTIONS ============ -->
+  <section id="open">
+    <div class="sec-head"><span class="sec-num">09</span><h2>Open questions to settle first</h2></div>
+    <p class="sec-sub">Four things worth a decision before committing engineering time &mdash; each can shift the plan's cost.</p>
+    <div class="grid2">
+      <div class="card">
+        <h3 style="margin-top:0;font-size:1.02rem">Does bagof-paths expose a subclassable store seam?</h3>
+        <p style="font-size:14.5px;color:var(--muted);margin:0">If <code>Path</code>/<code>AsyncPath</code> can't be subclassed for <code>StorePath</code>, model the store as a wrapper holding a path instead. Settles Phase-1 shape.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;font-size:1.02rem">Is bagof-magic ready for the DType &amp; RFC-2119 cases?</h3>
+        <p style="font-size:14.5px;color:var(--muted);margin:0">If not, Phase&nbsp;4 waits &mdash; and that's fine. Don't keep extending <code>_core/auto</code> in the meantime; freeze it.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;font-size:1.02rem">Which OME versions are in scope for v1?</h3>
+        <p style="font-size:14.5px;color:var(--muted);margin:0">Full v0.1&ndash;v0.6 round-tripping is a large test matrix. A defensible cut: v0.4 &amp; v0.5 lossless, older ones read-only.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;font-size:1.02rem">Sync-primary or async-primary internals?</h3>
+        <p style="font-size:14.5px;color:var(--muted);margin:0">This plan recommends sync-primary (numpy/dask consumers). Revisit only if the dominant use case turns out to be high-concurrency cloud I/O.</p>
+      </div>
+    </div>
+
+    <div class="divider-grid" aria-hidden="true">
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+    </div>
+    <p class="footnote" style="margin-top:24px">Draft roadmap &middot; branch <code>claude/abczarr-roadmap-fo0yzr</code> &middot; findings verified against the repository tree, not from memory.</p>
+  </section>
+</main>
+
+<script>
+  (function () {
+    var btn = document.getElementById('themeBtn');
+    var root = document.documentElement;
+    function current() {
+      var explicit = root.getAttribute('data-theme');
+      if (explicit) return explicit;
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    function label() {
+      btn.textContent = current() === 'dark' ? '☀ light' : '☾ dark';
+    }
+    try {
+      var saved = localStorage.getItem('abczarr-theme');
+      if (saved === 'dark' || saved === 'light') root.setAttribute('data-theme', saved);
+    } catch (e) {}
+    label();
+    btn.addEventListener('click', function () {
+      var next = current() === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem('abczarr-theme', next); } catch (e) {}
+      label();
+    });
+  })();
+</script>
