@@ -183,18 +183,28 @@ def test_strict_policy_raises_naming_the_field_and_version() -> None:
 
 
 # --------------------------------------------------------------------------
-# the reverse direction is genuinely lossy (no annotation mode by design)
+# the reverse direction: lossy by default, lossless under "annotate"
 # --------------------------------------------------------------------------
 
 
 @pytest.mark.xfail(
     reason="v2 cannot hold a v3 array-to-bytes codec or the default chunk-key "
-    "encoding, so a down-conversion is lossy by design",
-    strict=False,
+    "encoding, so the default (lossy) down-conversion does not round-trip",
+    strict=True,
 )
-def test_v3_roundtrips_losslessly_through_v2() -> None:
+def test_v3_roundtrips_through_v2_lossy() -> None:
     m3 = v3.ArrayMetadata.from_dict(_v3())
     assert m3.to_version(2).to_version(3) == m3
+
+
+def test_v3_roundtrips_losslessly_through_v2_when_annotated() -> None:
+    # "annotate" stashes the source so the down-conversion is reversible
+    m3 = v3.ArrayMetadata.from_dict(
+        _v3(dimension_names=["rows", "cols"], attributes={"user": "kept"})
+    )
+    v2m = m3.to_version(2, policy="annotate")
+    assert v2m.attributes["user"] == "kept"  # user attributes survive
+    assert v2m.to_version(3) == m3
 
 
 # --------------------------------------------------------------------------

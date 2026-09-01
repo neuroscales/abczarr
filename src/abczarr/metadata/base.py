@@ -55,7 +55,11 @@ from abczarr._core.metadata import (
 #:   everyone knows an older version holds fewer features.
 #: * ``"warn"`` -- drop it, but emit one warning naming what was lost.
 #: * ``"strict"`` -- raise :class:`UnsupportedConversion`.
-ConversionPolicy = tx.Literal["lossy", "warn", "strict"]
+ConversionPolicy = tx.Literal["lossy", "warn", "strict", "annotate"]
+
+#: The attribute key under which ``"annotate"`` stashes the source metadata so
+#: a down-conversion can be reversed losslessly.
+SOURCE_ATTR = "_abczarr_source"
 
 
 class UnsupportedConversion(ValueError):
@@ -78,10 +82,11 @@ def report_loss(
 ) -> None:
     """Apply the conversion *policy* to a field the target can't hold.
 
-    Silent under ``"lossy"``, a warning under ``"warn"``, an
+    Silent under ``"lossy"`` (and ``"annotate"``, which preserves the whole
+    source separately), a warning under ``"warn"``, an
     :class:`UnsupportedConversion` under ``"strict"``.
     """
-    if policy == "lossy":
+    if policy in ("lossy", "annotate"):
         return
     if policy == "warn":
         warnings.warn(
