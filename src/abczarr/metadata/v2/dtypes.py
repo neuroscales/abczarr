@@ -32,10 +32,12 @@ class DType:
         elif version == 3:
             from abczarr._core.dtypes import to_zarr3
             from abczarr.metadata.v3.dtypes import DType as DTypeV3
-            # Build through the zarr-v3 data-type representation (as the
-            # parser does), not by handing a numpy object straight to the
-            # subclass registry, which matches names by regex on strings.
-            return DTypeV3.from_dict(to_zarr3(self.numpy))
+            # A v3 data type is keyed by its zarr name ("float64"), not by a
+            # numpy object, so build it from the canonical v3 name/spec.
+            spec = to_zarr3(self.numpy)
+            if isinstance(spec, str):
+                return DTypeV3(spec)
+            return DTypeV3(**spec)
         else:
             raise ValueError(f"Unsupported version: {version}")
 
