@@ -1,7 +1,8 @@
-__all__ = ["array", "group", "node", "store"]
+__all__ = ["array", "errors", "group", "node", "store"]
 
 from . import (
     array,  # noqa: F401
+    errors,  # noqa: F401
     group,  # noqa: F401
     node,  # noqa: F401
     path,  # noqa: F401
@@ -9,6 +10,8 @@ from . import (
 )
 from .array import *  # noqa: F403
 from .array import __all__ as __all_array
+from .errors import *  # noqa: F403
+from .errors import __all__ as __all_errors
 from .group import *  # noqa: F403
 from .group import __all__ as __all_group
 from .node import *  # noqa: F403
@@ -19,6 +22,7 @@ from .store import *  # noqa: F403
 from .store import __all__ as __all_store
 
 __all__ += __all_array
+__all__ += __all_errors
 __all__ += __all_group
 __all__ += __all_node
 __all__ += __all_path
