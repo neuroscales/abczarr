@@ -107,10 +107,26 @@ def test_v2_to_v3_carries_endianness_in_a_bytes_codec() -> None:
     [
         {"id": "blosc", "cname": "zstd", "clevel": 5, "shuffle": 1},
         {"id": "gzip", "level": 5},
+        {"id": "zstd", "level": 3},  # extension codec, generic conversion
+        {"id": "zlib", "level": 5},
     ],
 )
-def test_builtin_compressor_roundtrips_through_v3(compressor: dict) -> None:
+def test_compressor_roundtrips_through_v3(compressor: dict) -> None:
+    # the compressor is a bytes->bytes codec: it must come back as the v2
+    # compressor, not be misrouted into filters
     m2 = v2.ArrayMetadata.from_dict(_v2(compressor=compressor))
+    assert m2.to_version(3).to_version(2) == m2
+
+
+@pytest.mark.xfail(
+    reason="a v2 filter's dtype serializes as a numpy object, which the v3 "
+    "json config coerces away; per-filter serialization is a follow-up",
+    strict=False,
+)
+def test_filter_roundtrips_through_v3() -> None:
+    m2 = v2.ArrayMetadata.from_dict(
+        _v2(filters=[{"id": "delta", "dtype": "<f8"}])
+    )
     assert m2.to_version(3).to_version(2) == m2
 
 
