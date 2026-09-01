@@ -258,7 +258,8 @@ def _process_reentrant(inp: tx.Any, reentrant: tuple = ()) -> tx.Any:
 
 
 def _trywrap_converter(
-    converter: tx.Callable[[FROM], TO], error: Exception
+    converter: tx.Callable[[FROM], TO],
+    error: tx.Callable[[tx.Any], BaseException],
 ) -> tx.Callable[[FROM], TO]:
     """
     Wrap a converter to catch errors and raise a ConversionError instead.
@@ -268,7 +269,10 @@ def _trywrap_converter(
             return converter(value)
         except (TypeError, ValueError) as e:
             _error = error
-            if safe_issubclass(_error, Exception):
+            # ``error`` is an exception factory (an exception class, or a
+            # bound ``value_error``-style method); build the exception unless
+            # it is already an instance.
+            if not isinstance(_error, BaseException):
                 _error = _error(value)
             raise _error from e
     return wrapped

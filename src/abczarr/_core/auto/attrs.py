@@ -18,10 +18,11 @@ from functools import wraps
 
 # dependencies
 import typing_extensions as tx
-from attrs import NOTHING, evolve, fields, make_class
+from attrs import NOTHING, evolve, make_class
 from attrs import Factory as _Factory
 from attrs import define as _define
 from attrs import field as _field
+from attrs import fields as _attrs_fields
 
 # internals
 from ..frozendict import FrozenDict
@@ -30,6 +31,18 @@ from ._utils import eq_safenan, get_default
 from .converters import get_converter
 from .factories import get_factory
 from .validators import get_validator
+
+
+def fields(cls_or_instance: tx.Any) -> tx.Any:
+    """Like ``attrs.fields``, but accepts an instance as well as a class.
+
+    ``attrs.fields`` only accepted an instance from attrs 26.1, which does not
+    install on Python 3.8; this package calls it on instances (e.g. when
+    serializing a metadata object), so normalize to the class first.
+    """
+    if not isinstance(cls_or_instance, type):
+        cls_or_instance = type(cls_or_instance)
+    return _attrs_fields(cls_or_instance)
 
 
 def _auto(kwargs: dict) -> dict:

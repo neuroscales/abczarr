@@ -193,7 +193,8 @@ def get_validator_class(
 
 
 def _trywrap_validator(
-    validator: tx.Callable[[T], None], error: Exception
+    validator: tx.Callable[[T], None],
+    error: tx.Callable[[tx.Any], BaseException],
 ) -> tx.Callable[[T], None]:
     """
     Wrap a validator to catch errors and raise a ValidationError instead.
@@ -203,7 +204,10 @@ def _trywrap_validator(
             return validator(value)
         except (TypeError, ValueError) as e:
             _error = error
-            if safe_issubclass(_error, Exception):
+            # ``error`` is an exception factory (an exception class, or a
+            # bound ``value_error``-style method); build the exception unless
+            # it is already an instance.
+            if not isinstance(_error, BaseException):
                 _error = _error(value)
             raise _error from e
     return wrapped
