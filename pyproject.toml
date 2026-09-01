@@ -11,6 +11,10 @@ dependencies = [
     "attrs >= 25.2",                        # @define
     "numpy >= 1.20",                        # numpy.typing.DTypeLike
     "dask[array,diagnostics] >= 2.9.1",     # nanmedian
+    # One pathlib-style API over local and cloud paths. universal-pathlib /
+    # cloudpathlib stay optional extras below -- the core wraps stdlib pathlib
+    # and needs neither.
+    "bagof-paths >= 0.1.0",
 ]
 
 [project.optional-dependencies]

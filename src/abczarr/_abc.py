@@ -11,11 +11,11 @@ import dask.array as da
 import numpy as np
 import numpy.typing as npt
 import typing_extensions as tx
+from bagof.paths import Path
 from dask.diagnostics import ProgressBar
 
 # locals
 from ._core import typing as tz
-from ._core.path import Path
 from ._core.pyramid import (
     compute_next_level,
     default_levels,
