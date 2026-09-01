@@ -61,3 +61,37 @@ def test_ome_multiscale_roundtrips_through_dict(
 ) -> None:
     m = cls.from_dict(data)
     assert cls.from_dict(m.to_dict()) == m
+
+
+# --------------------------------------------------------------------------
+# cross-version conversion between same-structure OME versions (v0.4 <-> v0.5)
+# --------------------------------------------------------------------------
+
+
+def test_multiscale_converts_v04_to_v05_and_back() -> None:
+    m4 = v0_4.Multiscale.from_dict(_MULTISCALE_V04)
+    m5 = m4.to_version("0.5")
+    assert type(m5).__module__.endswith("v0_5.images")
+    assert [a.name for a in m5.axes] == ["y", "x"]
+    assert m5.to_version("0.4") == m4
+
+
+def test_omero_converts_v04_to_v05_and_back() -> None:
+    data = {
+        "channels": [
+            {
+                "color": "FF0000",
+                "window": {"start": 0, "end": 255, "min": 0, "max": 255},
+                "active": True,
+                "label": "c1",
+            }
+        ]
+    }
+    o4 = v0_4.Omero.from_dict(data)
+    assert o4.to_version("0.5").to_version("0.4") == o4
+
+
+def test_conversion_to_absent_version_raises() -> None:
+    m4 = v0_4.Multiscale.from_dict(_MULTISCALE_V04)
+    with pytest.raises(ValueError, match="does not exist in OME"):
+        m4.to_version("0.6.dev4")
