@@ -7,7 +7,6 @@ __all__ = [
     "V2ChunkKeyEncoding",
     "ArrayMetadata",
 ]
-# stdlib
 
 # dependencies
 import typing_extensions as tx
