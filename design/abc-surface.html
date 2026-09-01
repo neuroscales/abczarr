@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>abczarr abc surface</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo:wght@500;700;900&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --ground: #eef1f2; --surface: #ffffff; --surface-2: #f5f7f8;
+    --ink: #16202a; --muted: #5c6b78; --faint: #8595a1;
+    --line: #dce2e5; --line-strong: #c3ccd1;
+    --accent: #0d7d8a; --accent-ink: #095a64; --accent-wash: #e2f0f1;
+    --solid: #2f8f5b; --solid-wash: #e3f1e8;
+    --untested: #b8791f; --untested-wash: #f6ecd9;
+    --broken: #c1443c; --broken-wash: #f7e2e0;
+    --stub: #6f5f92; --stub-wash: #ece7f3;
+    --shadow: 0 1px 2px rgba(22,32,42,.05), 0 8px 24px -12px rgba(22,32,42,.18);
+    --grid-cell: #d6dde0; --grid-cell-on: #0d7d8a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0e1519; --surface: #16212a; --surface-2: #1b2933;
+      --ink: #e6edf2; --muted: #9db0bd; --faint: #6b7d8a;
+      --line: #263640; --line-strong: #33474f;
+      --accent: #35b6c4; --accent-ink: #7fd6df; --accent-wash: #123037;
+      --solid: #4dbb7f; --solid-wash: #123024;
+      --untested: #d9a24a; --untested-wash: #33280f;
+      --broken: #e2695f; --broken-wash: #331815;
+      --stub: #a996cf; --stub-wash: #221b33;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.6);
+      --grid-cell: #2b3b45; --grid-cell-on: #35b6c4;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0e1519; --surface: #16212a; --surface-2: #1b2933;
+    --ink: #e6edf2; --muted: #9db0bd; --faint: #6b7d8a;
+    --line: #263640; --line-strong: #33474f;
+    --accent: #35b6c4; --accent-ink: #7fd6df; --accent-wash: #123037;
+    --solid: #4dbb7f; --solid-wash: #123024;
+    --untested: #d9a24a; --untested-wash: #33280f;
+    --broken: #e2695f; --broken-wash: #331815;
+    --stub: #a996cf; --stub-wash: #221b33;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.6);
+    --grid-cell: #2b3b45; --grid-cell-on: #35b6c4;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 16.5px; line-height: 1.62; -webkit-font-smoothing: antialiased;
+  }
+  code, .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+
+  .topbar {
+    position: sticky; top: 0; z-index: 40;
+    background: color-mix(in srgb, var(--ground) 88%, transparent);
+    backdrop-filter: blur(10px); border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner { max-width: 1080px; margin: 0 auto; padding: 10px 24px; display: flex; align-items: center; gap: 18px; }
+  .brand { font-family: "Chivo", sans-serif; font-weight: 900; letter-spacing: -.01em; font-size: 15px; }
+  .brand span { color: var(--accent); }
+  .topnav { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+  .topnav a { font-family: "IBM Plex Mono", monospace; font-size: 12px; letter-spacing: .02em; color: var(--muted); text-decoration: none; padding: 5px 9px; border-radius: 6px; }
+  .topnav a:hover { color: var(--accent-ink); background: var(--accent-wash); }
+  .theme-btn { font-family: "IBM Plex Mono", monospace; font-size: 12px; background: var(--surface); color: var(--muted); border: 1px solid var(--line-strong); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+  .theme-btn:hover { color: var(--accent-ink); border-color: var(--accent); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+  main { max-width: 1080px; margin: 0 auto; padding: 0 24px 96px; }
+
+  .hero { padding: 60px 0 40px; border-bottom: 1px solid var(--line); }
+  .eyebrow { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); display: flex; align-items: center; gap: 12px; }
+  .hero h1 { font-family: "Chivo", sans-serif; font-weight: 900; letter-spacing: -.025em; font-size: clamp(2.6rem, 6vw, 4.2rem); line-height: .98; margin: 18px 0 0; text-wrap: balance; }
+  .hero .lede { font-size: clamp(1.05rem, 2.2vw, 1.3rem); color: var(--muted); max-width: 62ch; margin: 22px 0 0; line-height: 1.5; }
+  .hero .lede b { color: var(--ink); font-weight: 600; }
+  .metaline { margin-top: 30px; display: flex; flex-wrap: wrap; gap: 10px 26px; font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: var(--faint); }
+  .metaline b { color: var(--muted); font-weight: 600; }
+  .chunkgrid { display: grid; grid-template-columns: repeat(6, 10px); grid-auto-rows: 10px; gap: 3px; }
+  .chunkgrid i { background: var(--grid-cell); border-radius: 2px; display: block; }
+  .chunkgrid i.on { background: var(--grid-cell-on); }
+
+  section { padding: 52px 0 8px; }
+  .sec-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px; }
+  .sec-num { font-family: "IBM Plex Mono", monospace; font-size: 13px; font-weight: 600; color: var(--accent); padding-top: 4px; }
+  h2 { font-family: "Chivo", sans-serif; font-weight: 700; letter-spacing: -.02em; font-size: clamp(1.5rem, 3.4vw, 2.15rem); line-height: 1.08; margin: 0; text-wrap: balance; }
+  h3 { font-family: "Chivo", sans-serif; font-weight: 700; letter-spacing: -.01em; font-size: 1.16rem; margin: 30px 0 8px; }
+  .sec-sub { color: var(--muted); margin: 8px 0 26px; max-width: 68ch; }
+  p { margin: 0 0 16px; max-width: 70ch; }
+  strong { font-weight: 600; }
+
+  code { font-size: .86em; background: var(--surface-2); border: 1px solid var(--line); padding: .08em .38em; border-radius: 5px; color: var(--accent-ink); white-space: nowrap; }
+  pre { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; overflow-x: auto; margin: 20px 0; box-shadow: var(--shadow); }
+  pre code { background: none; border: none; padding: 0; white-space: pre; color: var(--ink); font-size: 13px; line-height: 1.7; }
+
+  .chip { display: inline-flex; align-items: center; gap: 6px; vertical-align: middle; font-family: "IBM Plex Mono", monospace; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; white-space: nowrap; border: 1px solid transparent; }
+  .chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .chip.solid { color: var(--solid); background: var(--solid-wash); border-color: color-mix(in srgb, var(--solid) 30%, transparent); }
+  .chip.untested { color: var(--untested); background: var(--untested-wash); border-color: color-mix(in srgb, var(--untested) 30%, transparent); }
+  .chip.broken { color: var(--broken); background: var(--broken-wash); border-color: color-mix(in srgb, var(--broken) 32%, transparent); }
+  .chip.stub { color: var(--stub); background: var(--stub-wash); border-color: color-mix(in srgb, var(--stub) 32%, transparent); }
+  .chip.accent { color: var(--accent-ink); background: var(--accent-wash); border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 22px 24px; box-shadow: var(--shadow); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+  .card h3 { margin-top: 0; }
+  .card p { color: var(--muted); font-size: 14.5px; margin: 0; }
+
+  ul.clean { list-style: none; padding: 0; margin: 14px 0; }
+  ul.clean li { position: relative; padding-left: 26px; margin: 9px 0; max-width: 66ch; }
+  ul.clean li::before { content: "\203A"; position: absolute; left: 6px; top: -1px; color: var(--accent); font-weight: 700; }
+
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; margin: 20px 0; box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; min-width: 560px; }
+  thead th { text-align: left; font-family: "IBM Plex Mono", monospace; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); font-weight: 600; padding: 12px 14px; background: var(--surface-2); border-bottom: 1px solid var(--line); }
+  tbody td { padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; background: var(--surface); }
+  tbody tr:last-child td { border-bottom: none; }
+  td .mono, td code { font-size: 12.5px; }
+  .yes { color: var(--solid); font-weight: 600; }
+  .no { color: var(--faint); }
+
+  .tiers { display: grid; gap: 10px; margin: 22px 0; }
+  .tier { display: grid; grid-template-columns: 130px 1fr; gap: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface); box-shadow: var(--shadow); }
+  .tier .label { display: flex; flex-direction: column; justify-content: center; padding: 16px 18px; color: #fff; }
+  .tier .label b { font-family: "Chivo", sans-serif; font-size: 1.05rem; }
+  .tier .label span { font-family: "IBM Plex Mono", monospace; font-size: 11px; opacity: .85; letter-spacing: .04em; }
+  .tier .desc { padding: 15px 20px; font-size: 14.5px; }
+  .tier .desc code { font-size: 12.5px; }
+  .tier.t1 .label { background: var(--accent); }
+  .tier.t2 .label { background: var(--untested); }
+  .tier.t3 .label { background: var(--broken); }
+  @media (max-width: 620px) { .tier { grid-template-columns: 1fr; } }
+
+  .callout { border-left: 3px solid var(--accent); background: var(--accent-wash); padding: 14px 18px; border-radius: 0 10px 10px 0; margin: 20px 0; max-width: 74ch; }
+  .callout.warn { border-color: var(--broken); background: var(--broken-wash); }
+  .callout p { margin: 0; font-size: 14.5px; }
+  .callout .tt { font-family: "IBM Plex Mono", monospace; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; display: block; margin-bottom: 4px; color: var(--accent-ink); }
+  .callout.warn .tt { color: var(--broken); }
+
+  .verdict { display: grid; grid-template-columns: 8px 1fr; overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow); margin: 14px 0; }
+  .verdict .rail { align-self: stretch; }
+  .verdict.go .rail { background: var(--solid); }
+  .verdict.stage .rail { background: var(--untested); }
+  .verdict.no .rail { background: var(--stub); }
+  .verdict-body { padding: 18px 22px; }
+  .verdict-body h3 { margin: 0 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 1.08rem; }
+  .verdict-body p { margin: 0; color: var(--muted); font-size: 14.5px; }
+
+  .timeline { margin: 30px 0 0; }
+  .phase { position: relative; padding: 0 0 12px 66px; }
+  .phase::before { content: ""; position: absolute; left: 23px; top: 6px; bottom: -14px; width: 2px; background: var(--line-strong); }
+  .phase:last-child::before { display: none; }
+  .phase .dot { position: absolute; left: 0; top: 0; width: 48px; height: 48px; border-radius: 12px; background: var(--surface); border: 2px solid var(--accent); display: flex; align-items: center; justify-content: center; font-family: "Chivo", sans-serif; font-weight: 900; font-size: 1.1rem; color: var(--accent); z-index: 2; }
+  .phase.defer .dot { border-color: var(--stub); color: var(--stub); border-style: dashed; }
+  .phase-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 22px 18px; box-shadow: var(--shadow); margin-bottom: 16px; }
+  .phase-card h3 { margin: 0 0 6px; font-size: 1.06rem; }
+  .phase-card p { margin: 0; font-size: 14.5px; color: var(--muted); }
+
+  .footnote { color: var(--faint); font-size: 13px; font-family: "IBM Plex Mono", monospace; margin-top: 26px; }
+  .divider-grid { display: flex; gap: 4px; margin: 6px 0 0; opacity: .5; }
+  .divider-grid i { width: 8px; height: 8px; border-radius: 2px; background: var(--grid-cell); }
+  .divider-grid i:nth-child(3n) { background: var(--grid-cell-on); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">abc&hellip;<span>Z</span>(arr)</div>
+    <nav class="topnav">
+      <a href="#model">model</a>
+      <a href="#node">node</a>
+      <a href="#store">store</a>
+      <a href="#driver">driver</a>
+      <a href="#compat">compat</a>
+      <a href="#sequence">sequence</a>
+    </nav>
+    <button class="theme-btn" id="themeBtn" aria-label="Toggle color theme">theme</button>
+  </div>
+</div>
+
+<main>
+  <header class="hero">
+    <div class="eyebrow">
+      abc surface design
+      <span class="chunkgrid" aria-hidden="true">
+        <i class="on"></i><i></i><i class="on"></i><i></i><i></i><i class="on"></i>
+        <i></i><i class="on"></i><i></i><i class="on"></i><i></i><i></i>
+        <i class="on"></i><i></i><i></i><i></i><i class="on"></i><i></i>
+      </span>
+    </div>
+    <h1>Shape of the abc surface</h1>
+    <p class="lede">The generic surface, settled <b>before</b> driver code. A <b>store</b> is a key&rarr;bytes map; a <b>node</b> is the typed array or group above it &mdash; and every backend is built exactly that way. Yes, we need a store abc; its default is <b>synthesized over bagof-paths</b>, so local and cloud come for free.</p>
+    <div class="metaline">
+      <span><b>Repo</b> neuroscales/abczarr</span>
+      <span><b>Checked against</b> zarr-python 3.1.6 &middot; tensorstore</span>
+      <span><b>Real drivers</b> zarr-python &middot; tensorstore</span>
+    </div>
+  </header>
+
+  <!-- ============ SHORT VERSION ============ -->
+  <section id="short">
+    <div class="sec-head"><span class="sec-num">00</span><h2>The short version</h2></div>
+    <p class="sec-sub">Every backend claim below was checked by running the library, per the repo rule &ldquo;find out what they do &mdash; by running it.&rdquo;</p>
+    <div class="grid2">
+      <div class="card">
+        <h3>Two layers, and every backend agrees <span class="chip accent">keep both</span></h3>
+        <p>Store (<code>get</code>/<code>set</code>/<code>list</code>/<code>delete</code>) beneath a typed node. zarr-python and tensorstore both split it this way and both let you reach the store from the node.</p>
+      </div>
+      <div class="card">
+        <h3>A store abc &mdash; but a thin one <span class="chip solid">yes</span></h3>
+        <p>Five primitives + a capability query. The <em>default</em> store is synthesized over bagof-paths, so one class covers local and every fsspec/cloud scheme with no per-backend code.</p>
+      </div>
+      <div class="card">
+        <h3>Node stays lowest-common-denominator <span class="chip accent">two valves</span></h3>
+        <p><code>node.native</code> reaches the raw backend object; <code>driver.supports(cap)</code> asks what it can do &mdash; so the shared surface never grows into the union of every backend&rsquo;s features.</p>
+      </div>
+      <div class="card">
+        <h3>zarrs and zarrita are not drivers <span class="chip stub">re-scope</span></h3>
+        <p>zarrs is a Rust codec pipeline <em>inside</em> zarr-python; zarrita was absorbed into zarr-python 3.x. The real driver set is <b>zarr-python + tensorstore</b>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MODEL ============ -->
+  <section id="model">
+    <div class="sec-head"><span class="sec-num">01</span><h2>The two-layer model, confirmed</h2></div>
+    <p class="sec-sub">The invariant abczarr models: a key&rarr;bytes store, a typed node above it, and a bridge from node to store. The metadata layer (already built) is the <em>content</em> of the store&rsquo;s <code>zarr.json</code>&thinsp;/&thinsp;<code>.zarray</code> keys.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Layer</th><th>Responsibility</th><th>zarr-python 3.1.6</th><th>tensorstore</th></tr></thead>
+        <tbody>
+          <tr><td><b>Store</b></td><td>key&rarr;bytes: <code>get</code> <code>set</code> <code>list</code> <code>delete</code> <code>exists</code></td><td><code>zarr.abc.store.Store</code> <span class="chip accent">async</span></td><td><code>ts.KvStore</code>: <code>read</code>/<code>write</code>/<code>delete_range</code>/<code>list</code> <span class="chip untested">futures</span></td></tr>
+          <tr><td><b>Node</b></td><td>typed array / group over a store</td><td><code>zarr.Array</code> / <code>zarr.Group</code></td><td><code>ts.TensorStore</code>; groups are paths</td></tr>
+          <tr><td><b>Bridge</b></td><td>how a node names its store</td><td><code>array.store</code>, <code>array.store_path</code></td><td><code>array.kvstore</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>zarr-python&rsquo;s store surface, introspected directly &mdash; every I/O method a coroutine, capabilities as boolean properties (the same idea as our <code>supports</code>):</p>
+    <pre><code>abstract : get  set  delete  exists  list  list_dir  list_prefix
+           get_partial_values
+           supports_writes  supports_deletes  supports_listing
+concrete : clear  close  delete_dir  getsize  getsize_prefix  is_empty
+           open  set_if_not_exists  with_read_only  read_only
+           supports_partial_writes  supports_consolidated_metadata</code></pre>
+  </section>
+
+  <!-- ============ NODE ============ -->
+  <section id="node">
+    <div class="sec-head"><span class="sec-num">02</span><h2>The node surface</h2></div>
+    <p class="sec-sub">Already in good shape. Keep it as the members every backend can honor; push everything backend-specific behind <code>native</code> and <code>supports</code>. Richer indexing (tensorstore <code>oindex</code>/<code>vindex</code>, labeled domains) is reached through <code>native</code>, not added to the surface.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>ABC</th><th>Abstract members</th><th>Synthesized</th></tr></thead>
+        <tbody>
+          <tr><td><code>ZarrNode</code></td><td><code>metadata</code> <code>attrs</code> <code>zarr_version</code></td><td><code>store_path</code> <code>native</code> <code>supports()</code></td></tr>
+          <tr><td><code>ZarrArray</code></td><td><code>ndim</code> <code>shape</code> <code>dtype</code> <code>chunks</code> <code>shards</code> <code>__getitem__</code> <code>__setitem__</code></td><td><code>__array__</code> <code>to_dask</code></td></tr>
+          <tr><td><code>ZarrGroup</code></td><td><code>__getitem__</code> <code>__setitem__</code> <code>__delitem__</code> <code>create_group</code> <code>create_array</code></td><td>&mdash;</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout warn">
+      <span class="tt">Fixes this surface needs, independent of any new driver</span>
+      <p><b>1.</b> <code>metadata</code> is abstract but no array driver implements it &mdash; both satisfy it by <code>__getattr__</code> delegation, defeating the typed surface. Return a real <code>abczarr.metadata</code> object. <b>2.</b> <code>create_array</code> signature drift (<code>config=</code> vs <code>zarr_config=</code>) &mdash; pick one, hold it with a parity test. <b>3.</b> One spec table for the surface, mirroring bagof-paths&rsquo; <code>_spec.py</code>, with a <code>test_parity.py</code> keeping sync/async and abc/driver from drifting.</p>
+    </div>
+  </section>
+
+  <!-- ============ STORE ============ -->
+  <section id="store">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Do we need a store abc? Yes.</h2></div>
+    <p class="sec-sub">The store is the one seam shared by everything downstream &mdash; every driver, every metadata-version reader, every fallback reads and writes through it. Without it, each driver re-implements local/cloud I/O (tensorstore already hand-rolls kvstore JSON; zarr-python passes raw strings) and the sync/async split is solved N times over.</p>
+
+    <h3>The minimal store contract</h3>
+    <p>Modeled on the intersection of zarr&rsquo;s <code>Store</code> and tensorstore&rsquo;s <code>KvStore</code> &mdash; five primitives and a capability query. Everything richer is synthesized or delegated behind <code>supports</code>.</p>
+    <pre><code>get(key)             -> bytes | None          # None = missing
+set(key, value)      -> None
+delete(key)          -> None
+exists(key)          -> bool
+list(prefix="")      -> Iterator[str]
+supports(capability) -> bool   # writes, listing, deletes,
+                               # partial_read, partial_write</code></pre>
+
+    <h3>The default store is bagof-paths, not per-backend code</h3>
+    <p>A Zarr key (<code>&quot;0/1/2&quot;</code>, <code>&quot;zarr.json&quot;</code>) is a path under the store root. So the generic store wraps a bagof-paths <code>Path</code>:</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>store primitive</th><th>bagof-paths</th></tr></thead>
+        <tbody>
+          <tr><td><code>get(key)</code></td><td><code>(root / key).read_bytes()</code> &mdash; missing &rarr; <code>None</code></td></tr>
+          <tr><td><code>set(key, v)</code></td><td><code>(root / key).write_bytes(v)</code> &mdash; parents created</td></tr>
+          <tr><td><code>delete(key)</code></td><td><code>(root / key).unlink()</code></td></tr>
+          <tr><td><code>exists(key)</code></td><td><code>(root / key).exists()</code></td></tr>
+          <tr><td><code>list(prefix)</code></td><td><code>(root / prefix).walk()</code> &rarr; keys relative to root</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <span class="tt">One class, every backend</span>
+      <p>Because bagof-paths dispatches on URL scheme (local, <code>s3://</code>, <code>gs://</code>, <code>az://</code>, <code>http://</code>, any fsspec backend) and carries credentials via <code>storage_options</code>, one <code>PathStore</code> gives every filesystem and cloud store for free. The empty <code>S3Store</code>/<code>GCSStore</code>/<code>AzureStore</code> subclasses in <code>abc/store.py</code> today collapse into this one class plus bagof-paths&rsquo; protocol registry.</p>
+    </div>
+
+    <h3>The three-tier discipline, on the store</h3>
+    <div class="tiers">
+      <div class="tier t1"><div class="label"><b>Delegate</b><span>tier 1</span></div><div class="desc">A native store that has the member (<code>get_partial_values</code>, <code>getsize</code>) &mdash; use it, gated behind <code>supports</code>.</div></div>
+      <div class="tier t2"><div class="label"><b>Synthesize</b><span>tier 2</span></div><div class="desc"><code>list_dir</code> = <code>list</code> + split on separator; <code>clear</code> = <code>list</code> + <code>delete</code>; whole-array read from per-chunk <code>get</code>.</div></div>
+      <div class="tier t3"><div class="label"><b>Raise</b><span>tier 3</span></div><div class="desc">Neither possible &rarr; one named error, <code>UnsupportedZarrOperation</code> &mdash; never a bare <code>NotImplementedError</code>.</div></div>
+    </div>
+
+    <h3>Native stores, and async</h3>
+    <p>A backend driver with its own store (zarr-python&rsquo;s <code>LocalStore</code>/<code>FsspecStore</code>, tensorstore&rsquo;s <code>KvStore</code>) uses <em>its</em> store when active, to keep its optimized, possibly-partial, possibly-async I/O; the abc store wraps it. <code>PathStore</code> is the default and the fallback; a native store is an opt-in optimization. Both satisfy the same five-method ABC. The async twin (<code>AsyncStore</code> over bagof-paths&rsquo; <code>AsyncPath</code>, including its native async cloud path) is where async earns its keep &mdash; chunk I/O is the hot, blocking, parallel boundary.</p>
+    <div class="callout warn">
+      <span class="tt">What abc/store.py needs</span>
+      <p>Today it is a half-built concrete class: <code>close</code>, <code>iter_keys</code> and <code>bucket</code> are referenced but never defined, and nothing is wired to real reads. Turn it into a real minimal ABC, add the <code>AsyncStore</code> twin, and delete the empty protocol subclasses.</p>
+    </div>
+  </section>
+
+  <!-- ============ DRIVER CONTRACT ============ -->
+  <section id="driver">
+    <div class="sec-head"><span class="sec-num">04</span><h2>The driver contract</h2></div>
+    <p class="sec-sub">A driver supplies primitives only; the abc synthesizes the rest, so a new driver is small. A driver may override a synthesized member when it can do better (tensorstore reading a whole region in one call) and declares that reach through <code>supports</code>.</p>
+    <pre><code>open(store_or_path, ...)  -> ZarrNode        # sniff array vs group
+metadata                  -> NodeMetadata    # typed, per version
+read / write a chunk (or region)             # I/O the store can't infer
+create_group / create_array
+list / delete children (group)
+_CAPABILITIES             -> frozenset        # what supports() reports</code></pre>
+  </section>
+
+  <!-- ============ COMPAT ============ -->
+  <section id="compat">
+    <div class="sec-head"><span class="sec-num">05</span><h2>Compatibility with the proposed drivers</h2></div>
+    <p class="sec-sub">Checked against the real libraries. The surface loses nothing that matters; backend-specific extras stay reachable via <code>native</code>.</p>
+
+    <div class="verdict go"><div class="rail"></div><div class="verdict-body">
+      <h3>zarr-python <span class="chip solid">reference driver</span></h3>
+      <p><code>Store</code> maps onto the five primitives directly; <code>supports_*</code> feed <code>supports</code>. <code>zarr.Array</code>/<code>Group</code> supply every node member. Needs the real <code>metadata</code> property, a real <code>fill_value</code> (currently a TODO), and the <code>create_array</code> keyword fixed. Codecs v2/v3, sharding, consolidated metadata all present &mdash; advertise via <code>supports</code>.</p>
+    </div></div>
+
+    <div class="verdict go"><div class="rail"></div><div class="verdict-body">
+      <h3>tensorstore <span class="chip accent">async-capable</span></h3>
+      <p><code>ts.KvStore</code> maps on (<code>read</code>&rarr;<code>get</code>, <code>write</code>&rarr;<code>set</code>, <code>delete_range</code>&rarr;<code>delete</code>). Future-based: the sync driver calls <code>.result()</code>, an <code>AsyncStore</code> awaits. Rich indexing (<code>oindex</code>/<code>vindex</code>, transforms, labeled domains) is deliberately behind <code>native</code>. No group object &mdash; groups are paths; <code>ZarrGroup.__setitem__</code> stays a named <code>UnsupportedZarrOperation</code>. The <code>native</code> valve is load-bearing here.</p>
+    </div></div>
+
+    <div class="verdict no"><div class="rail"></div><div class="verdict-body">
+      <h3>zarrs <span class="chip stub">not a driver &mdash; a codec option</span></h3>
+      <p>A Rust reimplementation of the codec pipeline that registers <em>into</em> zarr-python. No separate store or array API. Surface it as a codec-pipeline option on the zarr-python driver, not a peer driver. The metadata layer already describes which codecs run.</p>
+    </div></div>
+
+    <div class="verdict no"><div class="rail"></div><div class="verdict-body">
+      <h3>zarrita <span class="chip stub">retire</span></h3>
+      <p>The prototype that became zarr-python&rsquo;s v3 implementation; the standalone package is legacy and <code>drivers/zarrita.py</code> is a 5-line stub that just raises and is not even registered. Drop it, and drop <code>&quot;zarrita&quot;</code> from <code>KnownDriver</code>.</p>
+    </div></div>
+
+    <h3>The real driver set</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>target</th><th>status</th><th>a driver?</th></tr></thead>
+        <tbody>
+          <tr><td>zarr-python</td><td>present, most complete</td><td class="yes">yes &mdash; reference</td></tr>
+          <tr><td>tensorstore</td><td>present, has store mapping</td><td class="yes">yes &mdash; async-capable</td></tr>
+          <tr><td>zarrs</td><td>Rust codec pipeline for zarr-python</td><td class="no">no &mdash; codec option</td></tr>
+          <tr><td>zarrita</td><td>absorbed into zarr-python 3.x</td><td class="no">no &mdash; retire the stub</td></tr>
+          <tr><td><i>(fallback)</i></td><td>dependency-free store over bagof-paths</td><td class="yes">eventually &mdash; <code>PathStore</code> + pure-Python chunk reader</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ CAPABILITIES ============ -->
+  <section id="caps">
+    <div class="sec-head"><span class="sec-num">06</span><h2>Capability vocabulary</h2></div>
+    <p class="sec-sub"><code>KNOWN_CAPABILITIES</code> is the contract for <code>supports</code>. Let the <em>store</em> answer the I/O-shaped ones. Asking about an unknown capability returns <code>False</code>, so a caller on a newer vocabulary never crashes an older driver.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>capability</th><th>asked of</th><th>zarr-python</th><th>tensorstore</th><th>PathStore</th></tr></thead>
+        <tbody>
+          <tr><td><code>sharding</code></td><td>node</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td><td class="no">&mdash;</td></tr>
+          <tr><td><code>async</code></td><td>node/store</td><td class="yes">&#10003; native</td><td class="yes">&#10003; futures</td><td class="yes">&#10003; AsyncPath</td></tr>
+          <tr><td><code>consolidated_metadata</code></td><td>node</td><td class="yes">&#10003;</td><td class="no">&mdash;</td><td class="no">&mdash;</td></tr>
+          <tr><td><code>partial_read</code></td><td>store</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td><td>scheme-dependent</td></tr>
+          <tr><td><code>partial_write</code></td><td>store</td><td>scheme-dependent</td><td class="yes">&#10003;</td><td class="no">&mdash;</td></tr>
+          <tr><td><code>codecs_v2</code> / <code>codecs_v3</code></td><td>node</td><td class="yes">&#10003; / &#10003;</td><td class="yes">v3</td><td class="no">&mdash;</td></tr>
+          <tr><td><code>listing</code></td><td>store</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ SEQUENCE ============ -->
+  <section id="sequence">
+    <div class="sec-head"><span class="sec-num">07</span><h2>Recommended sequence</h2></div>
+    <p class="sec-sub">Each step is small and testable; none needs a backend installed except where noted. The through-line: a narrow, synthesized abc surface; bagof-paths does the store I/O; each backend contributes primitives and reaches past the surface through <code>native</code> and <code>supports</code>.</p>
+    <div class="timeline">
+      <div class="phase"><div class="dot">1</div><div class="phase-card"><h3>Turn <code>abc/store.py</code> into a real ABC</h3><p>Five primitives + <code>supports</code>, the synthesized members (<code>list_dir</code>, <code>clear</code>, <code>getsize</code>&hellip;), the <code>AsyncStore</code> twin. Delete the empty protocol subclasses; fix the dangling <code>close</code>/<code>iter_keys</code>.</p></div></div>
+      <div class="phase"><div class="dot">2</div><div class="phase-card"><h3><code>PathStore</code> / <code>AsyncPathStore</code> over bagof-paths</h3><p>The default store &mdash; local + every fsspec/cloud scheme. Test with a memory path and <code>tmp_path</code>; the async one against bagof-paths&rsquo; in-process async backend.</p></div></div>
+      <div class="phase"><div class="dot">3</div><div class="phase-card"><h3>One surface spec + <code>test_parity.py</code></h3><p>Lock the node and store surfaces &mdash; sync vs async, abc vs driver.</p></div></div>
+      <div class="phase"><div class="dot">4</div><div class="phase-card"><h3>Re-fit the zarr-python driver</h3><p>Real <code>metadata</code>, real <code>fill_value</code>, native <code>Store</code> wrapped as an abc store, capabilities declared. The reference &mdash; and the first green driver.</p></div></div>
+      <div class="phase"><div class="dot">5</div><div class="phase-card"><h3>Re-fit the tensorstore driver</h3><p><code>KvStore</code> wrapped, <code>.result()</code> in the sync path, <code>native</code> for rich indexing, groups-as-paths kept.</p></div></div>
+      <div class="phase"><div class="dot">6</div><div class="phase-card"><h3>Retire zarrita; record zarrs as a codec option</h3><p>Drop the stub and the <code>KnownDriver</code> entry; note zarrs as a future codec-pipeline option on the zarr-python driver.</p></div></div>
+      <div class="phase defer"><div class="dot">7</div><div class="phase-card"><h3>Deferred &mdash; the dependency-free fallback</h3><p>A pure-Python chunk reader on top of <code>PathStore</code>, so a store works with no backend installed.</p></div></div>
+    </div>
+    <div class="divider-grid" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <p class="footnote">Design note &middot; branch <code>claude/abczarr-roadmap-fo0yzr</code> &middot; backend surfaces introspected from zarr-python 3.1.6 and tensorstore, not from memory.</p>
+  </section>
+</main>
+
+<script>
+  (function () {
+    var btn = document.getElementById('themeBtn');
+    var root = document.documentElement;
+    function current() {
+      var explicit = root.getAttribute('data-theme');
+      if (explicit) return explicit;
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    function label() { btn.textContent = current() === 'dark' ? '☀ light' : '☾ dark'; }
+    try {
+      var saved = localStorage.getItem('abczarr-theme');
+      if (saved === 'dark' || saved === 'light') root.setAttribute('data-theme', saved);
+    } catch (e) {}
+    label();
+    btn.addEventListener('click', function () {
+      var next = current() === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem('abczarr-theme', next); } catch (e) {}
+      label();
+    });
+  })();
+</script>
+</body>
+</html>
