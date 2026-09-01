@@ -21,7 +21,7 @@ Recommended = RequirementForTypedDict.Recommended
 Optional = RequirementForTypedDict.Optional
 NonNegativeInt = tx.Annotated[int, IsNonNegative()]
 AlphaNumeric = tx.Annotated[str, re.compile(r"^[a-zA-Z0-9]+$")]
-WellPath = tx.Annotated[str, re.compile(r"^[A-Z][0-9]/[A-Z][0-9]+$")]
+WellPath = tx.Annotated[str, re.compile(r"^[A-Za-z0-9]+/[A-Za-z0-9]+$")]
 List = tz.BuiltinSequence  # list | tuple
 
 
