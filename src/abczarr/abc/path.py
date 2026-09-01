@@ -21,32 +21,32 @@ class StorePath(wpath.WrappedPath):
 
 
 @StorePath.register_subclass
-class S3StorePath(wpath.S3Path, StorePath):
+class S3StorePath(wpath.WrappedS3Path, StorePath):
     ...
 
 
 @StorePath.register_subclass
-class GCSStorePath(wpath.GCSPath, StorePath):
+class GCSStorePath(wpath.WrappedGCSPath, StorePath):
     ...
 
 
 @StorePath.register_subclass
-class AzureStorePath(wpath.AzurePath, StorePath):
+class AzureStorePath(wpath.WrappedAzurePath, StorePath):
     ...
 
 
 @StorePath.register_subclass
-class LocalStorePath(wpath.LocalPath, StorePath):
+class LocalStorePath(wpath.WrappedLocalPath, StorePath):
     ...
 
 
 @StorePath.register_subclass
-class MemoryStorePath(wpath.WrappedPath, StorePath):
+class MemoryStorePath(wpath.WrappedMemoryPath, StorePath):
     ...
 
 
 @StorePath.register_subclass
-class HTTPStorePath(wpath.HTTPPath, StorePath):
+class HTTPStorePath(wpath.WrappedHTTPPath, StorePath):
     ...
 
 
@@ -61,30 +61,30 @@ class AsyncStorePath(wpath.AsyncWrappedPath):
 
 
 @AsyncStorePath.register_subclass
-class S3AsyncStorePath(wpath.AsyncS3Path, AsyncStorePath):
+class S3AsyncStorePath(wpath.AsyncWrappedS3Path, AsyncStorePath):
     ...
 
 
 @AsyncStorePath.register_subclass
-class GCSAsyncStorePath(wpath.AsyncGCSPath, AsyncStorePath):
+class GCSAsyncStorePath(wpath.AsyncWrappedGCSPath, AsyncStorePath):
     ...
 
 
 @AsyncStorePath.register_subclass
-class AzureAsyncStorePath(wpath.AsyncAzurePath, AsyncStorePath):
+class AzureAsyncStorePath(wpath.AsyncWrappedAzurePath, AsyncStorePath):
     ...
 
 
 @AsyncStorePath.register_subclass
-class LocalAsyncStorePath(wpath.AsyncLocalPath, AsyncStorePath):
+class LocalAsyncStorePath(wpath.AsyncWrappedLocalPath, AsyncStorePath):
     ...
 
 
 @AsyncStorePath.register_subclass
-class MemoryAsyncStorePath(wpath.AsyncWrappedPath, AsyncStorePath):
+class MemoryAsyncStorePath(wpath.AsyncWrappedMemoryPath, AsyncStorePath):
     ...
 
 
 @AsyncStorePath.register_subclass
-class HTTPAsyncStorePath(wpath.AsyncHTTPPath, AsyncStorePath):
+class HTTPAsyncStorePath(wpath.AsyncWrappedHTTPPath, AsyncStorePath):
     ...

@@ -187,7 +187,7 @@ class ZarrGroup(ZarrNode):
         ndim: int = 3,
         mode: tz.PyramidMode = "mean",
         no_pyramid_axis: tx.Optional[int] = None,
-    ) -> list[list[int]]:
+    ) -> tx.List[tx.List[int]]:
         """
         Generate the levels of a pyramid in an existing Zarr.
 

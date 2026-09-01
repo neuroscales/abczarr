@@ -300,7 +300,7 @@ class ZarrPythonGroup(ZarrGroupABC, ZarrPythonNode):
 
 
 def _make_compressor(
-    name: str | None, zarr_version: tz.ZarrVersion, **prm: dict
+    name: tx.Optional[str], zarr_version: tz.ZarrVersion, **prm: dict
 ) -> tx.Any:
     """Build compressor object from name and options."""
     if not isinstance(name, str):

@@ -628,7 +628,7 @@ class BaseWrappedPath(PathLike, tx.Generic[PATH_LIKE]):
                 Path('s3://bucket-name/here')
                 >>> p.parents[2]
                 Path('s3://bucket-name/')
-                >>> # Same behvior for Azure (az://) and Google (gs://)
+                >>> # Same behavior for Azure (az://) and Google (gs://)
                 ```
             === "Memory"
                 ```pycon

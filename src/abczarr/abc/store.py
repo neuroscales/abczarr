@@ -43,9 +43,9 @@ class Store:
 
     def __exit__(
         self,
-        exc_type: type[BaseException] | None,
-        exc_value: BaseException | None,
-        traceback: TracebackType | None,
+        exc_type: tx.Optional[tx.Type[BaseException]],
+        exc_value: tx.Optional[BaseException],
+        traceback: tx.Optional[TracebackType],
     ) -> None:
         """Close the store."""
         self.close()

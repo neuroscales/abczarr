@@ -10,8 +10,6 @@ import json
 import os
 import tempfile
 import threading
-from collections.abc import Iterator, MutableMapping
-from typing import Any
 
 # dependencies
 import typing_extensions as tx
@@ -21,10 +19,7 @@ from ..abc import ZarrNode
 from . import typing as tz
 from .path import Path
 
-if hasattr(MutableMapping, "__class_getitem__"):
-    AttributesBase = MutableMapping[str, Any]
-else:
-    AttributesBase = MutableMapping
+AttributesBase = tx.MutableMapping[str, tx.Any]
 
 
 class Attributes(AttributesBase):
@@ -56,7 +51,7 @@ class Attributes(AttributesBase):
         self._write_through = write_through
         self._lock = threading.RLock()
         self._loaded = False
-        self._attrs: dict[str, Any] = {}
+        self._attrs: tx.Dict[str, tx.Any] = {}
 
         # cache paths
         self._file_path = self._get_file_path()
@@ -69,13 +64,13 @@ class Attributes(AttributesBase):
 
     # ---------- public helpers ----------
 
-    def asdict(self) -> dict[str, Any]:
+    def asdict(self) -> tx.Dict[str, tx.Any]:
         """Return a snapshot of attributes as a dict."""
         with self._lock:
             self._ensure_loaded()
             return dict(self._attrs)
 
-    def put(self, d: dict[str, Any]) -> None:
+    def put(self, d: tx.Dict[str, tx.Any]) -> None:
         """Overwrite all attributes with d (in-memory), then flush."""
         with self._lock:
             self._ensure_loaded()
@@ -98,13 +93,13 @@ class Attributes(AttributesBase):
 
     # ---------- MutableMapping interface ----------
 
-    def __getitem__(self, key: str) -> Any:  # noqa: ANN401
+    def __getitem__(self, key: str) -> tx.Any:  # noqa: ANN401
         """Get an attribute by key."""
         with self._lock:
             self._ensure_loaded()
             return self._attrs[key]
 
-    def __setitem__(self, key: str, value: Any) -> None:  # noqa: ANN401
+    def __setitem__(self, key: str, value: tx.Any) -> None:  # noqa: ANN401
         """Set or update an attribute."""
         with self._lock:
             self._ensure_loaded()
@@ -120,7 +115,7 @@ class Attributes(AttributesBase):
             if self._write_through:
                 self._flush_locked()
 
-    def __iter__(self) -> Iterator[str]:
+    def __iter__(self) -> tx.Iterator[str]:
         """Iterate over a snapshot of keys."""
         with self._lock:
             self._ensure_loaded()
@@ -204,7 +199,9 @@ class Attributes(AttributesBase):
         _atomic_json_write(self._file_path, data)
 
 
-def _atomic_json_write(path: os.PathLike, data: tx.Mapping[str, Any]) -> None:
+def _atomic_json_write(
+    path: os.PathLike, data: tx.Mapping[str, tx.Any]
+) -> None:
     """
     Atomically write JSON to 'path' via a temp file + rename.
 

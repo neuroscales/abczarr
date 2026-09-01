@@ -1,6 +1,5 @@
 # stdlib
 import asyncio
-from collections.abc import Callable
 from functools import partial
 from itertools import starmap
 
@@ -15,8 +14,8 @@ V = tx.TypeVar("V")
 async def concurrent_map(
     items: tx.Iterable[T],
     func: tx.Callable[..., tx.Awaitable[V]],
-    limit: int | None = None,
-) -> list[V]:
+    limit: tx.Optional[int] = None,
+) -> tx.List[V]:
     if limit is None:
         return await asyncio.gather(*list(starmap(func, items)))
 
@@ -38,12 +37,14 @@ def get_loop() -> asyncio.AbstractEventLoop:
 
 async def run_in_loop(
     loop: asyncio.AbstractEventLoop,
-    func: Callable[..., V], *args: tx.Any, **kwargs: tx.Any
+    func: tx.Callable[..., V], *args: tx.Any, **kwargs: tx.Any
 ) -> V:
     return await loop.run_in_executor(None, func, *args, **kwargs)
 
 
-async def run_sync(func: Callable[..., V], *args: tx.Any, **kwargs: tx.Any) -> V:
+async def run_sync(
+    func: tx.Callable[..., V], *args: tx.Any, **kwargs: tx.Any
+) -> V:
     """Run a synchronous function in an asynchronous context."""
     loop = asyncio.get_event_loop()
     return await run_in_loop(loop, func, *args, **kwargs)
