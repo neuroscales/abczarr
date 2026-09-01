@@ -13,11 +13,11 @@ import threading
 
 # dependencies
 import typing_extensions as tx
+from bagof.paths import Path
 
 # locals
 from ..abc import ZarrNode
 from . import typing as tz
-from .path import Path
 
 AttributesBase = tx.MutableMapping[str, tx.Any]
 

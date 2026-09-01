@@ -45,7 +45,6 @@ def test_public_names_resolve() -> None:
         "abczarr.metadata",
         "abczarr.ome",
         "abczarr.schemas",
-        "abczarr._core.path",
     ],
 )
 def test_submodule_imports(module: str) -> None:

@@ -9,12 +9,12 @@ from urllib.parse import urlparse
 import numpy as np
 import numpy.typing as npt
 import typing_extensions as tx
+from bagof.paths import Path
 
 # abczarr
 from abczarr import abc
 from abczarr._core import typing as tz
 from abczarr._core.attributes import Attributes
-from abczarr._core.path import Path
 from abczarr._core.sharding import auto_shard, fix_shard_chunk
 from abczarr.abc import ZarrArrayConfig
 from abczarr.config import ZarrConfig

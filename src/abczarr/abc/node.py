@@ -6,9 +6,10 @@ __all__ = [
 import os
 from abc import ABC, abstractmethod
 
+from bagof.paths import Path
+
 # core
 from abczarr._core import typing as tz
-from abczarr._core.path import Path
 from abczarr.metadata.base import NodeMetadata
 
 
