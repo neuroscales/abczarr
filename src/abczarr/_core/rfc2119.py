@@ -164,13 +164,17 @@ class RequirementMixin:
         return self._requirement
 
     def _get_requirement(self) -> Requirement:
+        # A metadata factory receives its metadata (the Requirement) as its
+        # hint; older code passed it among the type args.
+        if isinstance(self.hint, Requirement):
+            return self.hint
         for arg in self.args:
             if isinstance(arg, Requirement):
                 return arg
-        raise TypeError("No Requirement instance found in args")
+        raise TypeError("No Requirement instance found")
 
 
-@AnnotatedFactory.register(Requirement)
+@AnnotatedFactory.register_metadata(Requirement)
 class RequirementFactory(RequirementMixin, AnnotatedFactory):
     """
     Factory for types annotated with a Requirement instance.
