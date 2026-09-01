@@ -1,18 +1,23 @@
 """Cross-version conversion of array metadata.
 
 Covers the structural ``v2`` <-> ``v3`` conversion -- data type, chunk grid,
-chunk-key encoding, and same-version identity.
+chunk-key encoding, endianness, and same-version identity -- and the
+lossy / warn / strict policy for a field the target version cannot hold.
 
-The lossless ``v3`` -> ``v2`` -> ``v3`` round trip is marked expected-fail: a
-``v3`` array-to-bytes codec and the default-vs-``v2`` chunk-key encoding have
-no ``v2`` equivalent, so a round trip through ``v2`` cannot yet recover them.
+A ``v2`` array survives a round trip through ``v3`` unchanged (``v3`` is the
+richer model). The other direction, ``v3`` -> ``v2`` -> ``v3``, is marked
+expected-fail: ``v2`` cannot hold a ``v3`` array-to-bytes codec or the
+default-vs-``v2`` chunk-key encoding, so a down-conversion is genuinely lossy.
 """
 
 from __future__ import annotations
 
+import warnings
+
 import pytest
 
 from abczarr.metadata import v2, v3
+from abczarr.metadata.base import UnsupportedConversion
 
 
 def _v2(**over: object) -> dict:
@@ -78,13 +83,78 @@ def test_same_version_conversion_is_identity() -> None:
 
 
 # --------------------------------------------------------------------------
-# tracked gap (executable follow-up): lossless round trips
+# up-and-back: a v2 array survives a trip through the richer v3 model
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("dtype", ["<f8", ">f8", ">i4", "<i2", "|u1"])
+def test_v2_roundtrips_through_v3_losslessly(dtype: str) -> None:
+    m2 = v2.ArrayMetadata.from_dict(_v2(dtype=dtype))
+    # endianness is carried by the v3 array-to-bytes codec and folded back
+    assert m2.to_version(3).to_version(2) == m2
+
+
+def test_v2_to_v3_carries_endianness_in_a_bytes_codec() -> None:
+    m3 = v2.ArrayMetadata.from_dict(_v2(dtype=">f8")).to_version(3)
+    endians = [
+        c.configuration.endian for c in m3.codecs if c.name == "bytes"
+    ]
+    assert endians == ["big"]
+
+
+# --------------------------------------------------------------------------
+# the policy for a field the target can't hold (a shard grid, here)
+# --------------------------------------------------------------------------
+
+
+def _v3_sharded() -> dict:
+    return _v3(
+        codecs=[
+            {
+                "name": "sharding_indexed",
+                "configuration": {
+                    "chunk_shape": [5, 5],
+                    "codecs": [
+                        {
+                            "name": "bytes",
+                            "configuration": {"endian": "little"},
+                        }
+                    ],
+                },
+            }
+        ]
+    )
+
+
+def test_lossy_policy_drops_silently() -> None:
+    m3 = v3.ArrayMetadata.from_dict(_v3_sharded())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")  # any warning would fail the test
+        m3.to_version(2, policy="lossy")
+
+
+def test_warn_policy_warns_naming_the_field() -> None:
+    m3 = v3.ArrayMetadata.from_dict(_v3_sharded())
+    with pytest.warns(UserWarning, match="sharding"):
+        m3.to_version(2, policy="warn")
+
+
+def test_strict_policy_raises_naming_the_field_and_version() -> None:
+    m3 = v3.ArrayMetadata.from_dict(_v3_sharded())
+    with pytest.raises(UnsupportedConversion) as info:
+        m3.to_version(2, policy="strict")
+    assert info.value.field == "sharding"
+    assert info.value.version == 2
+
+
+# --------------------------------------------------------------------------
+# the reverse direction is genuinely lossy (no annotation mode by design)
 # --------------------------------------------------------------------------
 
 
 @pytest.mark.xfail(
-    reason="v3->v2 drops the bytes codec and default/v2 chunk-key encoding; "
-    "needs the strict/annotate/lossy conversion policy",
+    reason="v2 cannot hold a v3 array-to-bytes codec or the default chunk-key "
+    "encoding, so a down-conversion is lossy by design",
     strict=False,
 )
 def test_v3_roundtrips_losslessly_through_v2() -> None:

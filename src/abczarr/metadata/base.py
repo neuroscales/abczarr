@@ -5,6 +5,9 @@ This file contains code from the Zarr project
 https://github.com/zarr-developers/zarr-python
 """
 __all__ = [
+    "ConversionPolicy",
+    "UnsupportedConversion",
+    "report_loss",
     "Metadata",
     "FlexibleMetadata",
     "NodeMetadata",
@@ -24,6 +27,7 @@ __all__ = [
 import json
 import os
 import tempfile
+import warnings
 
 # dependencies
 import typing_extensions as tx
@@ -38,6 +42,56 @@ from abczarr._core.metadata import (
     Metadata,
     register_subclass,
 )
+
+# ======================================================================
+#
+#                          CONVERSION POLICY
+#
+# ======================================================================
+
+#: How a conversion treats a field the target version cannot represent.
+#:
+#: * ``"lossy"`` (the default) -- drop it silently; a target-native store, and
+#:   everyone knows an older version holds fewer features.
+#: * ``"warn"`` -- drop it, but emit one warning naming what was lost.
+#: * ``"strict"`` -- raise :class:`UnsupportedConversion`.
+ConversionPolicy = tx.Literal["lossy", "warn", "strict"]
+
+
+class UnsupportedConversion(ValueError):
+    """A field cannot be represented in the target Zarr version.
+
+    Raised by a conversion running under the ``"strict"`` policy. Names the
+    field and the target version.
+    """
+
+    def __init__(self, field: str, version: tz.ZarrVersion) -> None:
+        super().__init__(
+            f"cannot represent {field!r} in Zarr v{version}"
+        )
+        self.field = field
+        self.version = version
+
+
+def report_loss(
+    policy: ConversionPolicy, field: str, version: tz.ZarrVersion
+) -> None:
+    """Apply the conversion *policy* to a field the target can't hold.
+
+    Silent under ``"lossy"``, a warning under ``"warn"``, an
+    :class:`UnsupportedConversion` under ``"strict"``.
+    """
+    if policy == "lossy":
+        return
+    if policy == "warn":
+        warnings.warn(
+            f"dropping {field!r}: not representable in Zarr v{version}",
+            stacklevel=3,
+        )
+        return
+    if policy == "strict":
+        raise UnsupportedConversion(field, version)
+    raise ValueError(f"unknown conversion policy: {policy!r}")
 
 # ======================================================================
 #
