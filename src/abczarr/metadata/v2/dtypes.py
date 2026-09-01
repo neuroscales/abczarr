@@ -30,8 +30,12 @@ class DType:
         if version in (1, 2):
             return self
         elif version == 3:
+            from abczarr._core.dtypes import to_zarr3
             from abczarr.metadata.v3.dtypes import DType as DTypeV3
-            return DTypeV3(self.numpy)
+            # Build through the zarr-v3 data-type representation (as the
+            # parser does), not by handing a numpy object straight to the
+            # subclass registry, which matches names by regex on strings.
+            return DTypeV3.from_dict(to_zarr3(self.numpy))
         else:
             raise ValueError(f"Unsupported version: {version}")
 

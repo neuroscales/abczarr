@@ -74,8 +74,16 @@ class ArrayMetadata(ArrayMetadataV2):
         from abczarr.metadata import v3
 
         separator = self.dimension_separator or "."
-        chunk_grid = v3.RegularChunkGrid(configuration=self.chunks)
-        chunk_key_encoding = v3.V2ChunkKeyEncoding(separator)
+        # Build the structural pieces through from_dict -- the same path the
+        # parser uses -- rather than positional constructors, whose argument
+        # order is easy to get wrong (the separator is not the grid/encoding
+        # name).
+        chunk_grid = v3.RegularChunkGrid.from_dict(
+            {"name": "regular", "configuration": {"chunk_shape": self.chunks}}
+        )
+        chunk_key_encoding = v3.ChunkKeyEncoding.from_dict(
+            {"name": "v2", "configuration": {"separator": separator}}
+        )
         codecs = [c.to_version(3) for c in self.filters]
         if self.compressor:
             codecs.append(self.compressor.to_version(3))
