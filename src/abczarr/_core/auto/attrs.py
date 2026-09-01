@@ -28,9 +28,24 @@ from attrs import fields as _attrs_fields
 from ..frozendict import FrozenDict
 from ._typing import ClassDecorator, FieldTransformer
 from ._utils import eq_safenan, get_default
-from .converters import get_converter
+from .converters import get_converter as _get_converter
+from .converters import wrap_converter
 from .factories import get_factory
 from .validators import get_validator as _get_validator
+
+
+def get_converter(hint: tx.Any) -> tx.Optional[tx.Callable]:
+    """A field's converter, wrapped so attrs shows the right init signature.
+
+    A bare ``bagof.converters`` converter's ``__call__`` is annotated with the
+    generic ``FROM`` type var, so attrs would type the ``__init__`` parameter
+    as that var. ``wrap_converter`` re-annotates it with the converter's
+    ``like()`` -- the hints the field actually accepts -- and the target type.
+    """
+    converter = _get_converter(hint)
+    if converter is None:
+        return None
+    return wrap_converter(converter, TO=hint)
 
 
 def get_validator(hint: tx.Any) -> tx.Optional[tx.Callable]:

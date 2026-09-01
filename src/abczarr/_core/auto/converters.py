@@ -12,5 +12,6 @@ from bagof.converters import (  # noqa: F401
     Converter,
     get_converter,
     register_converter,
+    wrap_converter,
 )
 from bagof.converters import __all__ as __all__  # noqa: F401,PLC0414
