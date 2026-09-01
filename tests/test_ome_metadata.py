@@ -93,5 +93,68 @@ def test_omero_converts_v04_to_v05_and_back() -> None:
 
 def test_conversion_to_absent_version_raises() -> None:
     m4 = v0_4.Multiscale.from_dict(_MULTISCALE_V04)
-    with pytest.raises(ValueError, match="does not exist in OME"):
-        m4.to_version("0.6.dev4")
+    with pytest.raises(ValueError, match="Unknown OME version"):
+        m4.to_version("9.9")
+
+
+# --------------------------------------------------------------------------
+# structural conversion: v0.3 <-> v0.4 (typed axes) and chaining
+# --------------------------------------------------------------------------
+
+_MULTISCALE_V03 = {
+    "version": "0.3",
+    "name": "example",
+    "type": "gaussian",
+    "axes": ["t", "c", "z", "y", "x"],
+    "datasets": [{"path": "0"}, {"path": "1"}],
+}
+
+
+def test_multiscale_v03_to_v04_types_the_axes() -> None:
+    from abczarr.ome.metadata import v0_3
+
+    m3 = v0_3.Multiscale.from_dict(_MULTISCALE_V03)
+    m4 = m3.to_version("0.4")
+    assert [(a.name, a.type) for a in m4.axes] == [
+        ("t", "time"),
+        ("c", "channel"),
+        ("z", "space"),
+        ("y", "space"),
+        ("x", "space"),
+    ]
+    # v0.4 datasets require a coordinate transform; an identity scale is added
+    assert m4.datasets[0].coordinateTransformations[0].scale == [1.0] * 5
+    assert m4.to_version("0.3") == m3
+
+
+@pytest.mark.parametrize("target", ["0.4", "0.5"])
+def test_multiscale_v03_roundtrips_up_and_back(target: str) -> None:
+    from abczarr.ome.metadata import v0_3
+
+    m3 = v0_3.Multiscale.from_dict(_MULTISCALE_V03)
+    # chains v0.3 -> v0.4 (-> v0.5) and back
+    assert m3.to_version(target).to_version("0.3") == m3
+
+
+def test_down_conversion_drops_axes() -> None:
+    from abczarr.ome.metadata import v0_3
+
+    m3 = v0_3.Multiscale.from_dict(_MULTISCALE_V03)
+    m2 = m3.to_version("0.2")
+    assert "axes" not in m2.to_dict()
+
+
+def test_underdetermined_up_conversion_raises_clearly() -> None:
+    from abczarr.ome.metadata import v0_2
+
+    m2 = v0_2.Multiscale.from_dict(
+        {
+            "version": "0.2",
+            "name": "x",
+            "type": "g",
+            "datasets": [{"path": "0"}],
+        }
+    )
+    # v0.3 requires axes, which v0.2 does not carry
+    with pytest.raises(ValueError, match="does not carry"):
+        m2.to_version("0.3")
