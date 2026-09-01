@@ -3,6 +3,7 @@ import re
 from collections import abc
 
 # dependencies
+import numpy as np
 import typing_extensions as tx
 
 # locals
@@ -238,6 +239,11 @@ def _to_json(obj: tx.Any) -> tz.JSON:
     def _serialize_item(x: tx.Any) -> None:
         if _is_metadata(x):
             return _serialize_meta(x)
+        elif isinstance(x, np.dtype):
+            # a numpy dtype is not JSON: emit its zarr string form ("<f8")
+            return x.str
+        elif isinstance(x, np.generic):
+            return x.item()
         elif _is_mapping(x):
             return _serialize_dict(x)
         elif _is_iterable(x):

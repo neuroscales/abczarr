@@ -118,14 +118,21 @@ def test_compressor_roundtrips_through_v3(compressor: dict) -> None:
     assert m2.to_version(3).to_version(2) == m2
 
 
-@pytest.mark.xfail(
-    reason="a v2 filter's dtype serializes as a numpy object, which the v3 "
-    "json config coerces away; per-filter serialization is a follow-up",
-    strict=False,
-)
 def test_filter_roundtrips_through_v3() -> None:
+    # a filter is an array->array codec carrying a dtype; the dtype must
+    # survive serialization (as a string, not a numpy object)
     m2 = v2.ArrayMetadata.from_dict(
         _v2(filters=[{"id": "delta", "dtype": "<f8"}])
+    )
+    assert m2.to_version(3).to_version(2) == m2
+
+
+def test_filter_and_compressor_roundtrip_together() -> None:
+    m2 = v2.ArrayMetadata.from_dict(
+        _v2(
+            filters=[{"id": "delta", "dtype": "<f8"}],
+            compressor={"id": "zstd", "level": 3},
+        )
     )
     assert m2.to_version(3).to_version(2) == m2
 
