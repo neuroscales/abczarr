@@ -175,6 +175,13 @@ def _pop_next(
     return None
 
 
+def _is_serializer(codec: Codec) -> bool:
+    """Whether *codec* is the array-to-bytes step of the v3 pipeline."""
+    return isinstance(codec, BytesCodec) or getattr(codec, "name", None) == (
+        "bytes"
+    )
+
+
 def _to_v1(self: ArrayMetadata) -> base.ArrayMetadata:
     from abczarr.metadata import v1
 
@@ -250,35 +257,46 @@ def _to_v2(
     # Data type
     dtype = asdtype(self.data_type)
 
-    # Preprocess codecs
-    filters = list(self.codecs)
+    # The v3 codec pipeline is ordered: array->array codecs (v2 filters),
+    # then one array->bytes serializer, then bytes->bytes codecs (v2
+    # compressor). Split on the serializer by position rather than by
+    # isinstance -- a generic codec (zstd, zlib, ...) is a plain Codec, not a
+    # CompressorCodec, so a type check would misroute it into the filters.
+    codecs = list(self.codecs)
 
-    sharding = _pop_next(filters, ShardingCodec)
+    sharding = _pop_next(codecs, ShardingCodec)
     if sharding:
         # v2 has no shard grid; keep the inner chunk shape and drop the
         # sharding structure per the policy.
         base.report_loss(policy, "sharding", 2)
         chunk_shape = sharding.configuration.chunk_shape
-        filters.extend(sharding.configuration.codecs)
+        codecs.extend(sharding.configuration.codecs)
 
-    compressor = _pop_next(filters, CompressorCodec)
-    if compressor:
-        compressor = tx.cast(CompressorCodec, compressor)
-        compressor = compressor.to_version(2)
+    split = next(
+        (i for i, c in enumerate(codecs) if _is_serializer(c)), None
+    )
+    if split is None:
+        endian = None
+        pre = [c for c in codecs if not isinstance(c, CompressorCodec)]
+        post = [c for c in codecs if isinstance(c, CompressorCodec)]
+    else:
+        endian = codecs[split].configuration.endian
+        pre = codecs[:split]
+        post = codecs[split + 1:]
 
-    endian = _pop_next(filters, BytesCodec)
-    if endian:
-        endian = tx.cast(BytesCodec, endian)
-        endian = endian.configuration.endian
+    # array->array codecs become v2 filters -- a distinct hierarchy from the
+    # v2 compressor, so route them through the filter registry rather than
+    # leaving them as v2 codecs.
+    filters = [v2.Filter.from_dict(c.to_version(2).to_dict()) for c in pre]
 
-    # Convert remaining filters
-    filters = [f.to_version(2) for f in filters]
+    # v2 holds a single bytes->bytes compressor; any extra is a loss
+    compressor = None
+    if post:
+        compressor = post[0].to_version(2)
+        if len(post) > 1:
+            base.report_loss(policy, "codecs", 2)
 
-    # Preprocess compressor
-    if compressor:
-        compressor = compressor.to_version(2)
-
-    # Fix endianness
+    # v2 folds the byte order back into the dtype
     if endian:
         endian = {"big": ">", "little": "<"}.get(endian, dtype.byteorder)
         dtype = dtype.newbyteorder(endian)
