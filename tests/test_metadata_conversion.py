@@ -1,22 +1,11 @@
-"""Cross-version array-metadata conversion.
+"""Cross-version conversion of array metadata.
 
-The conversion paths were previously untested. This suite locks in the two
-crashes fixed here and tracks the remaining gap in an executable form.
+Covers the structural ``v2`` <-> ``v3`` conversion -- data type, chunk grid,
+chunk-key encoding, and same-version identity.
 
-Fixed here -- every ``v2 -> v3`` conversion used to raise:
-  * the chunk-key encoding was built with the separator in the ``name`` slot
-    (a ``Literal["v2"]``), so construction rejected it;
-  * the dtype conversion handed a numpy object to a registry that matches
-    type names by regex on strings.
-
-Still open (see the roadmap, "all-versions metadata & lossless conversion"),
-and a larger, version-sensitive effort of its own -- a v3 round trip through
-v2 drops the array-to-bytes codec and the default-vs-v2 chunk-key encoding;
-a v2 array carrying a compressor still errors in the codec layer; conversion
-to/from Zarr v1 is not implemented; and the round trip touches attrs
-internals that differ across interpreters. These want the strict / annotate
-/ lossy policy, not a silent best effort. Only version-independent facts are
-asserted below.
+The lossless ``v3`` -> ``v2`` -> ``v3`` round trip is marked expected-fail: a
+``v3`` array-to-bytes codec and the default-vs-``v2`` chunk-key encoding have
+no ``v2`` equivalent, so a round trip through ``v2`` cannot yet recover them.
 """
 
 from __future__ import annotations
