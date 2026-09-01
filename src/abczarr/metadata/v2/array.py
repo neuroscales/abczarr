@@ -75,7 +75,7 @@ class ArrayMetadata(ArrayMetadataV2):
 
         separator = self.dimension_separator or "."
         chunk_grid = v3.RegularChunkGrid(configuration=self.chunks)
-        chunk_key_encoding = v3.V2ChunkKeyEncoding(separator)
+        chunk_key_encoding = v3.V2ChunkKeyEncoding(configuration=separator)
         codecs = [c.to_version(3) for c in self.filters]
         if self.compressor:
             codecs.append(self.compressor.to_version(3))
