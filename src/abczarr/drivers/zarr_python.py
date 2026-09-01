@@ -47,6 +47,7 @@ class ZarrPythonArray(ZarrArrayABC, ZarrPythonNode):
         """
         super().__init__(str(array.store_path))
         self._array = array
+        self._native = array
 
     @property
     def ndim(self) -> int:
@@ -127,6 +128,7 @@ class ZarrPythonGroup(ZarrGroupABC, ZarrPythonNode):
         super().__init__(str(zarr_group.store_path))
 
         self._zgroup = zarr_group
+        self._native = zarr_group
 
     @classmethod
     def from_config(

@@ -175,6 +175,7 @@ class ZarrTSArray(abc.ZarrArray, ZarrTSNode):
         store = ZarrTSStore.from_kvstore(store_spec)
         super().__init__(store)
         self._ts = ts_array
+        self._native = ts_array
         self._attrs: tx.Optional[Attributes] = None
 
     @property
