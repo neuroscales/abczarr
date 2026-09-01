@@ -143,11 +143,15 @@ class ArrayMetadata(ArrayMetadataV3):
 
     # --- Conversion ---
 
-    def to_version(self, version: tz.ZarrVersion) -> base.ArrayMetadata:
+    def to_version(
+        self,
+        version: tz.ZarrVersion,
+        policy: base.ConversionPolicy = "lossy",
+    ) -> base.ArrayMetadata:
         if version == 1:
             return _to_v1(self)
         if version == 2:
-            return _to_v2(self)
+            return _to_v2(self, policy)
         if version == 3:
             return self
         else:
@@ -228,7 +232,9 @@ def _to_v1(self: ArrayMetadata) -> base.ArrayMetadata:
     )
 
 
-def _to_v2(self: ArrayMetadata) -> base.ArrayMetadata:
+def _to_v2(
+    self: ArrayMetadata, policy: base.ConversionPolicy = "lossy"
+) -> base.ArrayMetadata:
     from abczarr.metadata import v2
 
     if self.chunk_grid.name != "regular":
@@ -249,6 +255,9 @@ def _to_v2(self: ArrayMetadata) -> base.ArrayMetadata:
 
     sharding = _pop_next(filters, ShardingCodec)
     if sharding:
+        # v2 has no shard grid; keep the inner chunk shape and drop the
+        # sharding structure per the policy.
+        base.report_loss(policy, "sharding", 2)
         chunk_shape = sharding.configuration.chunk_shape
         filters.extend(sharding.configuration.codecs)
 
@@ -281,5 +290,6 @@ def _to_v2(self: ArrayMetadata) -> base.ArrayMetadata:
         compressor=compressor,
         fill_value=self.fill_value,
         filters=filters,
-        dimension_separator=separator
+        dimension_separator=separator,
+        attributes=self.attributes,
     )

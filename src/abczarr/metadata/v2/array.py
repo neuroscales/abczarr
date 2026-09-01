@@ -2,6 +2,9 @@ __all__ = [
     "ArrayMetadata",
 ]
 
+# stdlib
+import sys
+
 # dependencies
 import typing_extensions as tx
 
@@ -10,6 +13,7 @@ from abczarr._core import typing as tz
 from abczarr._core.auto.attrs import autofrozen, eq_safenan, field
 from abczarr._core.metadata import register_subclass
 from abczarr.metadata import base
+from abczarr.metadata.base import ConversionPolicy
 
 from .base import ArrayMetadataV2
 from .codecs import Codec
@@ -41,13 +45,17 @@ class ArrayMetadata(ArrayMetadataV2):
 
     # --- Conversion ---
 
-    def to_version(self, version: tz.ZarrVersion) -> base.ArrayMetadata:
+    def to_version(
+        self,
+        version: tz.ZarrVersion,
+        policy: ConversionPolicy = "lossy",
+    ) -> base.ArrayMetadata:
         if version == 1:
             return self._to_v1()
         if version == 2:
             return self
         if version == 3:
-            return self._to_v3()
+            return self._to_v3(policy)
         else:
             raise ValueError(f"Unsupported version: {version}")
 
@@ -70,13 +78,22 @@ class ArrayMetadata(ArrayMetadataV2):
             filters=self.filters,
         )
 
-    def _to_v3(self) -> base.ArrayMetadata:
+    def _to_v3(self, policy: ConversionPolicy = "lossy") -> base.ArrayMetadata:
         from abczarr.metadata import v3
+
+        # v3 has no C/F memory-order field; only C (row-major) round-trips.
+        if self.order != "C":
+            base.report_loss(policy, "order", 3)
 
         separator = self.dimension_separator or "."
         chunk_grid = v3.RegularChunkGrid(configuration=self.chunks)
         chunk_key_encoding = v3.V2ChunkKeyEncoding(configuration=separator)
+
+        # v3 codec pipeline: array->array filters, then the array->bytes
+        # serializer that carries the endianness v2 keeps in the dtype, then
+        # the bytes->bytes compressor.
         codecs = [c.to_version(3) for c in self.filters]
+        codecs.append(_bytes_codec(v3, self.dtype.numpy))
         if self.compressor:
             codecs.append(self.compressor.to_version(3))
 
@@ -87,4 +104,15 @@ class ArrayMetadata(ArrayMetadataV2):
             chunk_key_encoding=chunk_key_encoding,
             fill_value=self.fill_value,
             codecs=codecs,
+            attributes=self.attributes,
         )
+
+
+def _bytes_codec(v3: tx.Any, dtype: tx.Any) -> tx.Any:
+    """The v3 array-to-bytes codec carrying *dtype*'s byte order."""
+    endian = {
+        "<": "little",
+        ">": "big",
+        "=": sys.byteorder,
+    }.get(dtype.byteorder)  # "|" (byte-order-agnostic) -> None
+    return v3.BytesCodec(configuration=endian)
