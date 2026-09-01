@@ -102,6 +102,18 @@ def test_v2_to_v3_carries_endianness_in_a_bytes_codec() -> None:
     assert endians == ["big"]
 
 
+@pytest.mark.parametrize(
+    "compressor",
+    [
+        {"id": "blosc", "cname": "zstd", "clevel": 5, "shuffle": 1},
+        {"id": "gzip", "level": 5},
+    ],
+)
+def test_builtin_compressor_roundtrips_through_v3(compressor: dict) -> None:
+    m2 = v2.ArrayMetadata.from_dict(_v2(compressor=compressor))
+    assert m2.to_version(3).to_version(2) == m2
+
+
 # --------------------------------------------------------------------------
 # the policy for a field the target can't hold (a shard grid, here)
 # --------------------------------------------------------------------------

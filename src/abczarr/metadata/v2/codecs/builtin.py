@@ -42,12 +42,16 @@ class BloscCodec(CodecImpl):
         if version == 3:
             from abczarr.metadata import v3
             SHUFFLE = ("noshuffle", "shuffle", "bitshuffle")
+            # v3 codecs are {name, configuration}: the settings go inside the
+            # configuration, not as top-level kwargs.
             return v3.BloscCodec(
-                cname=self.cname,
-                clevel=self.clevel,
-                shuffle=SHUFFLE[self.shuffle],
-                blocksize=self.blocksize,
-                typesize=self.typesize,
+                configuration={
+                    "cname": self.cname,
+                    "clevel": self.clevel,
+                    "shuffle": SHUFFLE[self.shuffle],
+                    "blocksize": self.blocksize,
+                    "typesize": self.typesize,
+                },
             )
         if version == 1:
             from abczarr.metadata import v1
