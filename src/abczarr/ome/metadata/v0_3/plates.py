@@ -18,7 +18,7 @@ from .version import Version
 # typing
 NonNegativeInt = tx.Annotated[int, ToNonNegative()]
 AlphaNumeric = tx.Annotated[str, re.compile(r"^[a-zA-Z0-9]+$")]
-WellPath = tx.Annotated[str, re.compile(r"^[A-Z][0-9]/[A-Z][0-9]+$")]
+WellPath = tx.Annotated[str, re.compile(r"^[A-Za-z0-9]+/[A-Za-z0-9]+$")]
 
 
 @autodefine
