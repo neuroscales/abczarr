@@ -172,7 +172,9 @@ class Metadata:
                 cls = subcls
                 break
 
-        # Split known fields from extra fields
+        # Split known fields from extra fields (on a copy -- from_dict must
+        # not mutate the caller's dict)
+        data = dict(data)
         filtered_data = {}
         for f in fields(cls):
             if f.name not in data:

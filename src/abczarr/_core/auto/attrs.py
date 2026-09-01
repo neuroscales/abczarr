@@ -45,7 +45,20 @@ def get_converter(hint: tx.Any) -> tx.Optional[tx.Callable]:
     converter = _get_converter(hint)
     if converter is None:
         return None
-    return wrap_converter(converter, TO=hint)
+    wrapped = wrap_converter(converter, TO=hint)
+
+    def convert(value: tx.Any) -> tx.Any:
+        # a required-but-unset field carries the MISSING sentinel (from an
+        # RFC-2119 requirement factory); pass it through unconverted.
+        from abczarr._core.rfc2119 import MISSING
+
+        if value is MISSING:
+            return value
+        return wrapped(value)
+
+    # keep wrap_converter's annotations so attrs still sees the right signature
+    convert.__annotations__ = dict(getattr(wrapped, "__annotations__", {}))
+    return convert
 
 
 def get_validator(hint: tx.Any) -> tx.Optional[tx.Callable]:
