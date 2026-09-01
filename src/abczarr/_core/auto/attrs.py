@@ -30,7 +30,25 @@ from ._typing import ClassDecorator, FieldTransformer
 from ._utils import eq_safenan, get_default
 from .converters import get_converter
 from .factories import get_factory
-from .validators import get_validator
+from .validators import get_validator as _get_validator
+
+
+def get_validator(hint: tx.Any) -> tx.Optional[tx.Callable]:
+    """A field's validator as attrs wants it: ``(instance, attribute, value)``.
+
+    ``bagof.validators`` validators take the value alone and raise on a bad
+    one, so adapt the arity.
+    """
+    validator = _get_validator(hint)
+    if validator is None:
+        return None
+
+    def _attrs_validator(
+        instance: tx.Any, attribute: tx.Any, value: tx.Any
+    ) -> None:
+        validator(value)
+
+    return _attrs_validator
 
 
 def fields(cls_or_instance: tx.Any) -> tx.Any:
@@ -154,7 +172,7 @@ def field(**kwargs) -> tx.Any:
 
         # Converter
         if kwargs.get("converter") is True:
-            kwargs["converter"] = get_converter(kwargs["type"], wrap=True)
+            kwargs["converter"] = get_converter(kwargs["type"])
         elif kwargs.get("converter") is False:
             kwargs.pop("converter")
 
@@ -239,7 +257,7 @@ def transform_fields(
                         f = f.evolve(default=_Factory(get_factory(f.type)))
 
                 if converter and f.converter is None:
-                    f = f.evolve(converter=get_converter(f.type, wrap=True))
+                    f = f.evolve(converter=get_converter(f.type))
 
                 if validator and f.validator is None:
                     f = f.evolve(validator=get_validator(f.type))

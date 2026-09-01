@@ -15,6 +15,13 @@ dependencies = [
     # cloudpathlib stay optional extras below -- the core wraps stdlib pathlib
     # and needs neither.
     "bagof-paths >= 0.1.0",
+    # Hint-driven converters / validators / factories. abczarr's metadata
+    # model derives per-field conversion and validation from type hints; these
+    # provide that engine (the same one bagof-magic uses), replacing the
+    # home-grown version under _core/auto.
+    "bagof-converters",
+    "bagof-validators",
+    "bagof-factories",
 ]
 
 [project.optional-dependencies]
