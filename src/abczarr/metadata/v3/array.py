@@ -8,7 +8,6 @@ __all__ = [
     "ArrayMetadata",
 ]
 # stdlib
-from warnings import warn
 
 # dependencies
 import typing_extensions as tx
@@ -149,7 +148,8 @@ class ArrayMetadata(ArrayMetadataV3):
         policy: base.ConversionPolicy = "lossy",
     ) -> base.ArrayMetadata:
         if version == 1:
-            return _to_v1(self)
+            # route through v2 -- v1 and v2 share the numcodecs model
+            return _to_v2(self, policy).to_version(1, policy)
         if version == 2:
             return _to_v2(self, policy)
         if version == 3:
@@ -179,63 +179,6 @@ def _is_serializer(codec: Codec) -> bool:
     """Whether *codec* is the array-to-bytes step of the v3 pipeline."""
     return isinstance(codec, BytesCodec) or getattr(codec, "name", None) == (
         "bytes"
-    )
-
-
-def _to_v1(self: ArrayMetadata) -> base.ArrayMetadata:
-    from abczarr.metadata import v1
-
-    if self.chunk_grid.name != "regular":
-        raise ValueError("Only regular chunk grids are supported in Zarr v1")
-    chunk_grid = tx.cast(RegularChunkGrid, self.chunk_grid)
-    chunk_shape = chunk_grid.configuration.chunk_shape
-
-    # Data type
-    dtype = asdtype(self.data_type)
-
-    # Preprocess codecs
-    filters = list(self.codecs)
-
-    sharding = _pop_next(filters, ShardingCodec)
-    if sharding:
-        chunk_shape = sharding.configuration.chunk_shape
-        filters.extend(sharding.configuration.codecs)
-
-    compression = _pop_next(filters, CompressorCodec)
-    if compression:
-        compression = tx.cast(CompressorCodec, compression)
-        compression = compression.to_version(1)
-
-    endian = _pop_next(filters, BytesCodec)
-    if endian:
-        endian = tx.cast(BytesCodec, endian)
-        endian = endian.configuration.endian
-
-    # If remaining filters, warn
-    if filters:
-        warn(
-            f"Ignoring filters incompatible with Zarr v1: {filters}",
-            stacklevel=2
-        )
-
-    # Preprocess compressor
-    compression_opts = None
-    if compression:
-        compression_opts = compression.to_version(1)
-        compression = compression_opts.id
-
-    # Fix endianness
-    if endian:
-        endian = {"big": ">", "little": "<"}.get(endian, dtype.byteorder)
-        dtype = dtype.newbyteorder(endian)
-
-    return v1.ArrayMetadata(
-        shape=self.shape,
-        chunks=chunk_shape,
-        dtype=self.data_type.to_version(1),
-        compression=compression,
-        compression_opts=compression_opts,
-        fill_value=self.fill_value,
     )
 
 

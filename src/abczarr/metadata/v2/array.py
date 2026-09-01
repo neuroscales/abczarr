@@ -51,7 +51,7 @@ class ArrayMetadata(ArrayMetadataV2):
         policy: ConversionPolicy = "lossy",
     ) -> base.ArrayMetadata:
         if version == 1:
-            return self._to_v1()
+            return self._to_v1(policy)
         if version == 2:
             return self
         if version == 3:
@@ -59,23 +59,29 @@ class ArrayMetadata(ArrayMetadataV2):
         else:
             raise ValueError(f"Unsupported version: {version}")
 
-    def _to_v1(self) -> base.ArrayMetadata:
+    def _to_v1(self, policy: ConversionPolicy = "lossy") -> base.ArrayMetadata:
         from abczarr.metadata import v1
 
-        compressor = compressor_opt = None
+        # v1 has no filters -- only a single compressor.
+        if self.filters:
+            base.report_loss(policy, "filters", 1)
+
+        # v1 splits the numcodecs codec into a name and an options dict.
+        compression = compression_opts = None
         if self.compressor:
-            self.compressor: Codec
-            compressor = self.compressor.id
-            compressor_opt = self.compressor.to_version(1)
+            options = dict(self.compressor.to_dict())
+            compression = options.pop("id")
+            compression_opts = options or None
 
         return v1.ArrayMetadata(
             shape=self.shape,
             chunks=self.chunks,
             dtype=self.dtype.to_version(1),
-            compression=compressor,
-            compression_opts=compressor_opt,
+            compression=compression,
+            compression_opts=compression_opts,
             fill_value=self.fill_value,
-            filters=self.filters,
+            order=self.order,
+            attributes=self.attributes,
         )
 
     def _to_v3(self, policy: ConversionPolicy = "lossy") -> base.ArrayMetadata:

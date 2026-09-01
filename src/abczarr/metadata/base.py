@@ -189,7 +189,10 @@ class NodeMetadataV1(NodeMetadata):
         if cls is NodeMetadataV1:
             # There are no groups in Zarr v1
             cls = getattr(ArrayMetadataV1, "_IMPL", ArrayMetadataV1)
-        return super().from_dict(cls, data)
+        # Dispatch through the base implementation bound to the resolved
+        # class (calling super().from_dict(cls, data) would pass cls as the
+        # data argument).
+        return Metadata.from_dict.__func__(cls, data)
 
 
 @register_subclass(zarr_format=1, node_type="array")
