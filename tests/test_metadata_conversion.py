@@ -16,7 +16,7 @@ import warnings
 
 import pytest
 
-from abczarr.metadata import v2, v3
+from abczarr.metadata import v1, v2, v3
 from abczarr.metadata.base import UnsupportedConversion
 
 
@@ -195,3 +195,60 @@ def test_strict_policy_raises_naming_the_field_and_version() -> None:
 def test_v3_roundtrips_losslessly_through_v2() -> None:
     m3 = v3.ArrayMetadata.from_dict(_v3())
     assert m3.to_version(2).to_version(3) == m3
+
+
+# --------------------------------------------------------------------------
+# Zarr v1, routed through v2 (v1 and v2 share the numcodecs model)
+# --------------------------------------------------------------------------
+
+
+def _v1(**over: object) -> dict:
+    base = {
+        "zarr_format": 1,
+        "shape": [10],
+        "chunks": [2],
+        "dtype": "<f8",
+        "compression": "blosc",
+        "compression_opts": {
+            "cname": "zstd",
+            "clevel": 5,
+            "shuffle": 1,
+            "blocksize": 0,
+            "typesize": None,
+        },
+        "fill_value": 0,
+        "order": "C",
+        "attributes": {},
+    }
+    base.update(over)
+    return base
+
+
+@pytest.mark.parametrize("target", [2, 3])
+def test_v1_roundtrips_through_v2_and_v3(target: int) -> None:
+    m1 = v1.ArrayMetadata.from_dict(_v1())
+    assert m1.to_version(target).to_version(1) == m1
+
+
+def test_v1_without_compressor_roundtrips() -> None:
+    m1 = v1.ArrayMetadata.from_dict(
+        _v1(compression=None, compression_opts=None)
+    )
+    assert m1.to_version(3).to_version(1) == m1
+
+
+def test_v3_to_v1_with_compressor() -> None:
+    m3 = v3.ArrayMetadata.from_dict(
+        _v3(
+            codecs=[
+                {"name": "bytes", "configuration": {"endian": "little"}},
+                {
+                    "name": "gzip",
+                    "configuration": {"level": 5},
+                },
+            ]
+        )
+    )
+    m1 = m3.to_version(1)
+    assert m1.zarr_format == 1
+    assert m1.compression == "gzip"
