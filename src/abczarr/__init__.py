@@ -11,6 +11,7 @@ __all__ = [
     "ZarrArray",
     "ZarrGroup",
     "ZarrNode",
+    "UnsupportedZarrOperation",
     "from_config",
     "open_array",
     "open_group",
@@ -19,7 +20,7 @@ __all__ = [
 import warnings
 
 from . import abc, api, config, drivers, metadata, ome, registry, schemas
-from .abc import ZarrArray, ZarrGroup, ZarrNode
+from .abc import UnsupportedZarrOperation, ZarrArray, ZarrGroup, ZarrNode
 from .api import from_config, open_array, open_group
 
 if False:
