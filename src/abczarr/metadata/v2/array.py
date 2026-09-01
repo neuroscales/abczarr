@@ -87,12 +87,6 @@ class ArrayMetadata(ArrayMetadataV2):
     def _to_v3(self, policy: ConversionPolicy = "lossy") -> base.ArrayMetadata:
         from abczarr.metadata import v3
 
-        # A source stashed by an "annotate" down-conversion is the exact
-        # original: restore it and drop the marker.
-        source = self.attributes.get(base.SOURCE_ATTR)
-        if source is not None:
-            return v3.ArrayMetadata.from_dict(source)
-
         # v3 has no C/F memory-order field; only C (row-major) round-trips.
         if self.order != "C":
             base.report_loss(policy, "order", 3)
