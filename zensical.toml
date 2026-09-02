@@ -4,6 +4,10 @@ nav = [
   {"Home" = "index.md"},
   {"API reference" = [
     "api/index.md",
+    {"Opening" = [
+      "api/open.md",
+      "api/config.md",
+    ]},
     {"Nodes" = [
       "api/node.md",
       "api/array.md",
@@ -18,7 +22,10 @@ nav = [
       "api/capabilities.md",
       "api/errors.md",
     ]},
-    {"Drivers" = ["api/drivers.md"]},
+    {"Drivers" = [
+      "api/drivers.md",
+      "api/zarr-python.md",
+    ]},
     {"Metadata" = [
       "api/metadata.md",
       "api/metadata-v1.md",
@@ -33,7 +40,7 @@ nav = [
 # Read more: https://zensical.org/docs/setup/basics/#site_name
 site_name = "abczarr"
 
-site_description = "Spatial transformations that scale."
+site_description = "One interface for reading and writing Zarr, over any backend or storage."
 
 # The site_author attribute. This is used in the HTML head element.
 #

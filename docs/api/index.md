@@ -2,6 +2,8 @@
 
 The public API, grouped by what it does.
 
+- **Opening** — [`open`][abczarr.api.open] and its array/group variants, the
+  entry point that picks a backend for a dataset and returns it wrapped.
 - **Nodes** — [`ZarrArray`][abczarr.abc.array.ZarrArray] and
   [`ZarrGroup`][abczarr.abc.group.ZarrGroup], the typed arrays and groups
   you read and write, and the [node base][abczarr.abc.node.ZarrNode] they
