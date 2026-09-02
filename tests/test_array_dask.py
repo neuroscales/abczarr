@@ -39,7 +39,7 @@ zarr = pytest.importorskip("zarr")
 da = pytest.importorskip("dask.array")
 
 import abczarr  # noqa: E402
-from abczarr.config import ArrayConfig  # noqa: E402
+from abczarr.api.config import ArrayConfig  # noqa: E402
 
 
 def _array(tmp_path: pathlib.Path) -> object:

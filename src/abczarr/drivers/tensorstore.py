@@ -27,7 +27,7 @@ from abczarr.abc.array import ZarrArray
 from abczarr.abc.capabilities import Support
 from abczarr.abc.group import PathGroup
 from abczarr.abc.node import ZarrNode
-from abczarr.config import ArrayConfig
+from abczarr.api.config import ArrayConfig
 from abczarr.drivers._metadata import metadata_from_dict
 from abczarr.drivers.base import Driver
 from abczarr.metadata.base import ArrayMetadata, NodeMetadata, _node_at

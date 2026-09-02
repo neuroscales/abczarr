@@ -1,1 +1,1 @@
-# ::: abczarr.config
+# ::: abczarr.api.config

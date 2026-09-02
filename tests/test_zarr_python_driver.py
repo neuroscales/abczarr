@@ -10,9 +10,9 @@ zarr = pytest.importorskip("zarr")
 
 from abczarr.abc.capabilities import Support  # noqa: E402
 from abczarr.abc.errors import UnsupportedZarrOperation  # noqa: E402
+from abczarr.api.registry import select_driver  # noqa: E402
 from abczarr.drivers.zarr_python import ZarrPythonDriver  # noqa: E402
 from abczarr.metadata import v3  # noqa: E402
-from abczarr.registry import select_driver  # noqa: E402
 
 
 def _array(codecs: list, **over: object) -> "v3.ArrayMetadata":
