@@ -193,7 +193,7 @@ class NodeMetadata(Metadata):
         )
 
 
-def node_type_at(root: os.PathLike) -> "tx.Optional[tz.NodeType]":
+def node_type_at(root: os.PathLike) -> tx.Optional[tz.NodeType]:
     """Report whether *root* holds a Zarr array, a group, or neither.
 
     Reads only enough to answer that -- a v3 `zarr.json`'s `node_type`
