@@ -29,7 +29,7 @@ from .abc.array import ZarrArray
 from .abc.errors import UnsupportedZarrOperation
 from .abc.group import ZarrGroup
 from .abc.node import ZarrNode
-from .abc.store import PathStore
+from .abc.store import PathBasedStore
 from .config import ArrayConfig, GroupConfig, ZarrConfig
 from .drivers.base import Driver
 from .metadata.base import ArrayMetadata, NodeMetadata
@@ -213,7 +213,7 @@ def _peek_array_metadata(path: tz.PathLike) -> tx.Any:
     from .metadata import v3
 
     try:
-        raw = PathStore(str(path)).get("zarr.json")
+        raw = PathBasedStore(str(path)).get("zarr.json")
     except Exception:
         return None
     if raw is None:

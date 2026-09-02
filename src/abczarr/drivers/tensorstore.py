@@ -276,12 +276,12 @@ def _peek_node_type(location: tx.Any) -> tx.Optional[str]:
     """The node type recorded at *location*'s ``zarr.json``, or None."""
     import json
 
-    from abczarr.abc.store import PathStore
+    from abczarr.abc.store import PathBasedStore
 
     if not isinstance(location, str) or "://" in location:
         return None
     try:
-        raw = PathStore(location).get("zarr.json")
+        raw = PathBasedStore(location).get("zarr.json")
     except Exception:
         return None
     if raw is None:

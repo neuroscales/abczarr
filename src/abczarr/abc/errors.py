@@ -38,11 +38,11 @@ class UnsupportedZarrOperation(NotImplementedError):
         ```pycon
         >>> try:
         ...     raise UnsupportedZarrOperation(
-        ...         "atomic transaction", driver="PathStore"
+        ...         "atomic transaction", driver="PathBasedStore"
         ...     )
         ... except UnsupportedZarrOperation as e:
         ...     print(e)
-        the 'PathStore' driver does not support 'atomic transaction'
+        the 'PathBasedStore' driver does not support 'atomic transaction'
         ```
     """
 
