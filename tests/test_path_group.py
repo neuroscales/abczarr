@@ -174,3 +174,38 @@ def test_bare_path_group_cannot_create_an_array(
     group = PathGroup(_hierarchy(tmp_path))
     with pytest.raises(UnsupportedZarrOperation):
         group.create_array("a", (2,), "int32")
+
+
+# --------------------------------------------------------------------------
+# a group only sees children of its own version
+# --------------------------------------------------------------------------
+
+
+def _write_v2_group(path: pathlib.Path) -> None:
+    path.mkdir(parents=True, exist_ok=True)
+    (path / ".zgroup").write_text(json.dumps({"zarr_format": 2}))
+
+
+def test_a_child_of_another_version_is_not_a_member(
+    tmp_path: pathlib.Path,
+) -> None:
+    root = _hierarchy(tmp_path)  # a v3 group
+    _write_v2_group(pathlib.Path(root) / "legacy")
+    group = _Group(root)
+    assert "legacy" not in group
+    assert "legacy" not in list(group.keys())
+    with pytest.raises(KeyError):
+        group["legacy"]
+
+
+def test_a_v3_node_without_a_node_type_is_not_detected(
+    tmp_path: pathlib.Path,
+) -> None:
+    from abczarr.metadata.base import node_at
+
+    directory = pathlib.Path(tmp_path) / "x"
+    directory.mkdir()
+    (directory / "zarr.json").write_text(
+        json.dumps({"zarr_format": 3, "shape": [4]})
+    )
+    assert node_at(directory) is None

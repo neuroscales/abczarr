@@ -18,6 +18,7 @@ from abczarr.metadata.base import (
     GroupMetadataV2,
     GroupMetadataV3,
     NodeMetadata,
+    node_at,
     node_type_at,
 )
 
@@ -150,27 +151,42 @@ class PathGroup(ZarrGroup):
     def zarr_version(self) -> tz.ZarrVersion:
         return self.metadata.zarr_format
 
+    def _member(
+        self, store_path: tz.PathLike
+    ) -> tx.Optional[tx.Tuple[tz.NodeType, tz.ZarrVersion]]:
+        """The kind and version of *store_path* when it is a member of this
+        group, else None.
+
+        A member is a Zarr node written in this group's own format version.
+        A node of a different version is not treated as a child, since a Zarr
+        hierarchy is written in a single version.
+        """
+        detected = node_at(store_path)
+        if detected is None or detected[1] != self.zarr_version:
+            return None
+        return detected
+
     def keys(self) -> tx.Iterator[str]:
         """The names of this group's members (subgroups and arrays), in
         store order."""
         if not self._store_path.is_dir():
             return
         for child in self._store_path.iterdir():
-            if child.is_dir() and node_type_at(child) is not None:
+            if child.is_dir() and self._member(child) is not None:
                 yield child.name
 
     def __iter__(self) -> tx.Iterator[str]:
         return self.keys()
 
     def __contains__(self, name: str) -> bool:
-        return node_type_at(self._store_path / name) is not None
+        return self._member(self._store_path / name) is not None
 
     def __getitem__(self, key: str) -> ZarrNode:
         child = self._store_path / key
-        kind = node_type_at(child)
-        if kind is None:
+        detected = self._member(child)
+        if detected is None:
             raise KeyError(key)
-        if kind == "group":
+        if detected[0] == "group":
             return type(self)(child, self._mode)
         return self._open_array(child)
 
@@ -179,7 +195,7 @@ class PathGroup(ZarrGroup):
 
     def __delitem__(self, key: str) -> None:
         child = self._store_path / key
-        if node_type_at(child) is None:
+        if self._member(child) is None:
             raise KeyError(key)
         child.rmdir(recursive=True)
 
