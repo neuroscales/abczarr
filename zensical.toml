@@ -32,10 +32,14 @@ nav = [
       {"v2" = [
         "api/metadata-v2.md",
         "api/metadata-v2-dtypes.md",
+        "api/metadata-v2-codecs.md",
+        "api/metadata-v2-filters.md",
       ]},
       {"v3" = [
         "api/metadata-v3.md",
         "api/metadata-v3-dtypes.md",
+        "api/metadata-v3-codecs.md",
+        "api/metadata-v3-extensions.md",
       ]},
     ]},
     {"OME" = "api/ome.md"},
@@ -139,7 +143,7 @@ show_overloads = true
 overloads_only = true
 relative_crossrefs = true
 scoped_crossrefs = true
-show_if_no_docstring = false
+show_if_no_docstring = true
 allow_inspection = true
 filters = "public"
 group_by_category = true
