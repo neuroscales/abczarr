@@ -1,6 +1,7 @@
 __all__ = [
     "ZarrNode",
     "KNOWN_CAPABILITIES",
+    "Support",
 ]
 
 # stdlib
@@ -15,29 +16,22 @@ from bagof.paths import Path
 from abczarr._core import typing as tz
 from abczarr.metadata.base import NodeMetadata
 
-#: The capability names :meth:`ZarrNode.supports` understands. A driver
-#: advertises the subset it provides; asking about any other name simply
-#: returns ``False``, so a caller written against a newer vocabulary never
-#: crashes an older driver.
-KNOWN_CAPABILITIES = frozenset(
-    {
-        "sharding",             # zarr v3 sharded chunk grids
-        "async",                # a native coroutine I/O surface
-        "consolidated_metadata",
-        "partial_read",         # read a sub-region without the whole chunk
-        "partial_write",
-        "codecs_v2",
-        "codecs_v3",
-    }
+# locals -- KNOWN_CAPABILITIES and Support are re-exported for callers that
+# reach them through this module (they are listed in __all__).
+from .capabilities import (  # noqa: F401
+    KNOWN_CAPABILITIES,
+    Support,
+    SupportsCapabilities,
 )
 
 
-class ZarrNode(ABC):
-    """Base class for any Zarr-like object (group or array)."""
+class ZarrNode(SupportsCapabilities, ABC):
+    """Base class for any Zarr-like object (group or array).
 
-    #: Capabilities this driver provides, drawn from
-    #: :data:`KNOWN_CAPABILITIES`. Overridden per driver; empty here.
-    _CAPABILITIES: tx.ClassVar[tx.FrozenSet[str]] = frozenset()
+    A driver declares what it provides in :attr:`_CAPABILITIES` (a mapping of
+    capability name to :class:`Support`) and callers branch on
+    :meth:`support` / :meth:`supports`.
+    """
 
     def __init__(self, store_path: tz.PathLike) -> None:
         if isinstance(store_path, (str, bytes)):
@@ -63,17 +57,6 @@ class ZarrNode(ABC):
         not an accident of attribute delegation.
         """
         return self._native
-
-    @classmethod
-    def supports(cls, capability: str) -> bool:
-        """Whether this driver provides *capability*.
-
-        Answered from the class, without opening or touching a live store, so
-        a caller can branch on a backend's strengths before committing to an
-        operation. ``capability`` is one of :data:`KNOWN_CAPABILITIES`; any
-        other name returns ``False``.
-        """
-        return capability in cls._CAPABILITIES
 
     @property
     @abstractmethod

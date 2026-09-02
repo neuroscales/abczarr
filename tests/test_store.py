@@ -10,6 +10,7 @@ import pathlib
 
 import pytest
 
+from abczarr.abc.capabilities import Support
 from abczarr.abc.path import StorePath
 from abczarr.abc.store import AsyncPathStore, AsyncStore, PathStore, Store
 
@@ -136,7 +137,18 @@ def test_supports_reads_declared_and_unknown_is_false(
 ) -> None:
     s = PathStore(str(tmp_path))
     assert s.supports("listing") is True
+    assert s.supports("writes") is True
+    assert s.supports("deletes") is True
     assert s.supports("teleportation") is False
+
+
+def test_support_reports_native_for_the_path_store(
+    tmp_path: pathlib.Path,
+) -> None:
+    s = PathStore(str(tmp_path))
+    assert s.support("listing") is Support.NATIVE
+    assert s.supports("listing", native=True) is True
+    assert s.support("teleportation") is Support.NONE
 
 
 def test_native_is_the_backing_path(tmp_path: pathlib.Path) -> None:

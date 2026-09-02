@@ -38,6 +38,7 @@ from types import TracebackType
 import typing_extensions as tx
 
 # locals
+from .capabilities import Support, SupportsCapabilities
 from .path import AsyncStorePath, StorePath
 
 #: The character that separates the segments of a zarr key (``"c/0/0"``).
@@ -54,17 +55,15 @@ def _child(prefix: str, key: str) -> str:
     return rest.split(_SEP, 1)[0]
 
 
-class Store(ABC):
+class Store(SupportsCapabilities, ABC):
     """A key -> bytes map, addressed under a :class:`StorePath` root.
 
     Subclasses implement the five primitives; the rest is synthesized here.
     Keys are ``"/"``-separated relative strings (``"zarr.json"``,
-    ``"c/0/0"``); values are :class:`bytes`.
+    ``"c/0/0"``); values are :class:`bytes`. What a store provides natively
+    versus by synthesis is declared in :attr:`_CAPABILITIES` and answered by
+    :meth:`support` / :meth:`supports`.
     """
-
-    #: The store capabilities this class provides, drawn from the shared
-    #: vocabulary. Overridden per store; empty here.
-    _CAPABILITIES: tx.ClassVar[tx.FrozenSet[str]] = frozenset()
 
     def __init__(self, store_path: tx.Union[str, StorePath]) -> None:
         if isinstance(store_path, Store):
@@ -103,14 +102,6 @@ class Store(ABC):
     def list_keys(self, prefix: str = "") -> tx.Iterator[str]:
         """Iterate every key at or below *prefix*, ``"/"``-joined."""
         ...
-
-    # -- capability query --------------------------------------------------
-
-    @classmethod
-    def supports(cls, capability: str) -> bool:
-        """Whether this store provides *capability* (e.g. ``"listing"``,
-        ``"partial_read"``). An unknown name returns ``False``."""
-        return capability in cls._CAPABILITIES
 
     # -- synthesized from the primitives -----------------------------------
 
@@ -190,7 +181,11 @@ class PathStore(Store):
     on the root path's ``storage_options``.
     """
 
-    _CAPABILITIES = frozenset({"listing"})
+    _CAPABILITIES = {
+        "listing": Support.NATIVE,
+        "writes": Support.NATIVE,
+        "deletes": Support.NATIVE,
+    }
 
     def __init__(self, store_path: tx.Union[str, StorePath]) -> None:
         super().__init__(store_path)
@@ -229,15 +224,13 @@ class PathStore(Store):
                 yield (dirpath / name).relative_to(base).as_posix()
 
 
-class AsyncStore(ABC):
+class AsyncStore(SupportsCapabilities, ABC):
     """The coroutine twin of :class:`Store`.
 
     The five primitives are coroutines and :meth:`list_keys` is an async
     iterator; the synthesized members mirror :class:`Store`. Location and
     capability queries never touch the backend, so they stay synchronous.
     """
-
-    _CAPABILITIES: tx.ClassVar[tx.FrozenSet[str]] = frozenset()
 
     def __init__(self, store_path: tx.Union[str, AsyncStorePath]) -> None:
         if isinstance(store_path, AsyncStore):
@@ -273,13 +266,6 @@ class AsyncStore(ABC):
     def list_keys(self, prefix: str = "") -> tx.AsyncIterator[str]:
         """Async-iterate every key at or below *prefix*."""
         ...
-
-    # -- capability query --------------------------------------------------
-
-    @classmethod
-    def supports(cls, capability: str) -> bool:
-        """Whether this store provides *capability*; else ``False``."""
-        return capability in cls._CAPABILITIES
 
     # -- synthesized -------------------------------------------------------
 
@@ -350,7 +336,12 @@ class AsyncPathStore(AsyncStore):
     same coroutine surface, so nothing here is written twice.
     """
 
-    _CAPABILITIES = frozenset({"listing", "async"})
+    _CAPABILITIES = {
+        "listing": Support.NATIVE,
+        "writes": Support.NATIVE,
+        "deletes": Support.NATIVE,
+        "async": Support.NATIVE,
+    }
 
     def __init__(self, store_path: tx.Union[str, AsyncStorePath]) -> None:
         super().__init__(store_path)
