@@ -216,8 +216,12 @@ class ArrayConfig(ZarrConfig):
         compressors = _compressor_codecs(
             config.compressor, config.compressor_options
         )
+        _fill_blosc_typesize(compressors, config.dtype)
         filters = [dict(f) for f in config.filters]
-        endian = {"name": "bytes", "configuration": {"endian": "little"}}
+        # the data's serializer carries the dtype's endianness (none for a
+        # single-byte dtype); the shard index is uint64, so it is little.
+        bytes_codec = _bytes_codec(config.dtype)
+        index_bytes = {"name": "bytes", "configuration": {"endian": "little"}}
         separator = _resolve_separator(config.dimension_separator)
 
         if config.shards:
@@ -229,8 +233,8 @@ class ArrayConfig(ZarrConfig):
                 "name": "sharding_indexed",
                 "configuration": {
                     "chunk_shape": config.chunks,
-                    "codecs": [*filters, endian, *compressors],
-                    "index_codecs": [endian, {"name": "crc32c"}],
+                    "codecs": [*filters, bytes_codec, *compressors],
+                    "index_codecs": [index_bytes, {"name": "crc32c"}],
                     "index_location": "end",
                 },
             }]
@@ -239,7 +243,7 @@ class ArrayConfig(ZarrConfig):
                 "name": "regular",
                 "configuration": {"chunk_shape": config.chunks},
             }
-            codecs = [*filters, endian, *compressors]
+            codecs = [*filters, bytes_codec, *compressors]
 
         metadata = {
             "zarr_format": 3,
@@ -381,6 +385,44 @@ def _compressor_codecs(
         "name": str(compressor).lower(),
         "configuration": dict(options or {}),
     }]
+
+
+def _bytes_codec(dtype: npt.DTypeLike) -> tz.JSONDict:
+    """The array-to-bytes codec for *dtype*.
+
+    A multi-byte dtype carries its endianness; a single-byte dtype, for which
+    endianness does not apply, carries none (the codec is written as a bare
+    name).
+    """
+    order = np.dtype(dtype).byteorder
+    if order == "|":
+        return {"name": "bytes"}
+    return {
+        "name": "bytes",
+        "configuration": {"endian": "big" if order == ">" else "little"},
+    }
+
+
+def _fill_blosc_typesize(
+    codecs: "tx.List[tz.JSONDict]", dtype: npt.DTypeLike
+) -> None:
+    """Fill a blosc codec's required `typesize` from the dtype's item size.
+
+    The v3 blosc codec requires `typesize` (a positive integer) unless
+    `shuffle` is `"noshuffle"`, where it is ignored. Set it from the dtype
+    when `shuffle` is active and it is not already given; otherwise leave it
+    out (the codec omits an unset one rather than writing null).
+    """
+    itemsize = int(np.dtype(dtype).itemsize)
+    for codec in codecs:
+        if codec.get("name") != "blosc":
+            continue
+        configuration = codec.setdefault("configuration", {})
+        if (
+            configuration.get("shuffle", "shuffle") != "noshuffle"
+            and "typesize" not in configuration
+        ):
+            configuration["typesize"] = itemsize
 
 
 def _resolve_fill(fill: tx.Any, dtype: npt.DTypeLike) -> tx.Any:
