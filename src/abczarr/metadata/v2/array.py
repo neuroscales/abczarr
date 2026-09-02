@@ -1,3 +1,14 @@
+"""Zarr v2 array metadata.
+
+Zarr v2 describes an array with a single numcodecs compressor, an
+ordered list of numcodecs filters applied before it, and a
+byte-order-bearing dtype. Converting to v1 (see
+[ArrayMetadata.to_version][abczarr.metadata.v2.array.ArrayMetadata.to_version])
+keeps only the compressor, since v1 has no filters; converting to v3
+maps the filters and compressor onto v3's codec pipeline and folds
+the dtype's byte order into an explicit serializer codec.
+"""
+
 __all__ = [
     "ArrayMetadata",
 ]
@@ -31,6 +42,31 @@ from .filters import Filter
 @register_subclass(zarr_format=2, node_type="array")
 @autofrozen(kw_only=True)
 class ArrayMetadata(ArrayMetadataV2):
+    """A Zarr v2 array's metadata: shape, dtype, chunking and codecs.
+
+    Corresponds to the contents of `.zarray`. `filters` run, in
+    order, before `compressor` when encoding a chunk, and in reverse
+    order after it when decoding.
+
+    !!! example
+        ```pycon
+        >>> from abczarr.metadata import v2
+        >>> meta = v2.ArrayMetadata.from_dict({
+        ...     "zarr_format": 2,
+        ...     "shape": [10, 10],
+        ...     "chunks": [5, 5],
+        ...     "dtype": "<f8",
+        ...     "compressor": {"id": "zstd", "level": 3},
+        ...     "fill_value": 0,
+        ...     "order": "C",
+        ...     "filters": [],
+        ...     "attributes": {},
+        ... })
+        >>> [codec.name for codec in meta.to_version(3).codecs]
+        ['bytes', 'zstd']
+
+        ```
+    """
 
     # --- Required ----
     shape: tz.Shape
@@ -51,6 +87,35 @@ class ArrayMetadata(ArrayMetadataV2):
         version: tz.ZarrVersion,
         policy: ConversionPolicy = "lossy",
     ) -> base.ArrayMetadata:
+        """Convert this array's metadata to another Zarr version.
+
+        Converting to v1 keeps only the compressor: v1 has no
+        filters, so any `filters` are subject to *policy*. Converting
+        to v3 maps each filter and the compressor onto v3's codec
+        pipeline and, when `order` is not ``"C"``, applies *policy*
+        as well, since v3 has no memory-order field.
+
+        Parameters
+        ----------
+        version : ZarrVersion
+            The target Zarr format version: 1, 2 or 3.
+        policy : ConversionPolicy
+            How to treat a field the target version can't hold.
+
+        Returns
+        -------
+        ArrayMetadata
+            Equivalent metadata for *version*. Converting to 2
+            returns this object unchanged.
+
+        Raises
+        ------
+        ValueError
+            If *version* is not 1, 2 or 3.
+        UnsupportedConversion
+            If *policy* is ``"strict"`` and a field cannot be
+            represented in *version*.
+        """
         if version == 1:
             return self._to_v1(policy)
         if version == 2:
@@ -61,6 +126,11 @@ class ArrayMetadata(ArrayMetadataV2):
             raise ValueError(f"Unsupported version: {version}")
 
     def required_features(self) -> tx.FrozenSet[str]:
+        """The features a driver needs to read or write this array.
+
+        One key per named filter and, if set, the compressor -- e.g.
+        ``{"v2:filter:delta", "v2:codec:zstd"}``.
+        """
         feats = set()  # type: tx.Set[str]
         if self.compressor is not None:
             name = getattr(self.compressor, "id", None)
