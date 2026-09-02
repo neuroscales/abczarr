@@ -44,12 +44,17 @@ tensorstore, introspected directly.
   a sync `Path` and an async `AsyncPath` over one spec — so the store abc
   inherits the hard part rather than reinventing it.
 
-- **"zarrs" and "zarrita" are not four drivers.** zarrs is a Rust **codec
-  pipeline that plugs into zarr-python**, not a separate array/store API — it
-  is a configuration under the zarr-python driver, not a driver. zarrita has
-  been absorbed into zarr-python 3.x; the standalone package is legacy. So
-  the real driver set is **zarr-python** and **tensorstore**, with zarrs as a
-  codec option and zarrita retired.
+- **Three "zarr in Rust" names, three different things — tell them apart.**
+  *zarrs-python* is a Rust **codec pipeline that plugs into zarr-python**, not
+  a separate array/store API — a configuration under the zarr-python driver,
+  not a driver. *zarrita* is the old prototype, absorbed into zarr-python
+  3.x; the standalone package is legacy — retire it. *zarrista*
+  (developmentseed) is a **full standalone implementation** on the same Rust
+  zarrs core, with its own `Array`/`Group` + `AsyncArray`/`AsyncGroup` API —
+  a real driver candidate, and the one that fits abczarr's two surfaces best.
+  So the driver set is **zarr-python** and **tensorstore** today, with
+  **zarrista** the strongest next candidate, zarrs-python a codec option, and
+  zarrita retired.
 
 ---
 
@@ -277,15 +282,17 @@ Checked against the real libraries.
 - **Verdict:** fits the surface; the `native` escape hatch is load-bearing
   here and justifies its existence.
 
-### zarrs — **not a driver: a codec pipeline under zarr-python**
+### zarrs-python — **not a driver: a codec pipeline under zarr-python**
 
-zarrs (`zarrs-python`) is a Rust reimplementation of the codec pipeline that
+`zarrs-python` is a Rust reimplementation of the codec pipeline that
 registers *into* zarr-python. It has no separate store or array API. So it is
 a **configuration of the zarr-python driver** (select the zarrs pipeline),
 surfaced — if at all — as a driver *option*, not a peer driver. The roadmap's
 "implement the zarrs driver" should become "expose zarrs as a codec-pipeline
 option on the zarr-python driver." No new abc surface is required; it changes
-only which codecs run, which the metadata layer already describes.
+only which codecs run, which the metadata layer already describes. Do not
+confuse it with **zarrista** (below), which shares the same Rust core but is
+a full standalone driver.
 
 ### zarrita — **retired into zarr-python 3.x**
 
@@ -295,13 +302,43 @@ standalone package is legacy and the in-repo `drivers/zarrita.py` is a
 registered. **Recommendation:** drop it, and drop `"zarrita"` from
 `KnownDriver`. Anyone who wanted zarrita wants zarr-python 3.
 
+### zarrista — **a real driver, and the best fit for both surfaces**
+
+zarrista (developmentseed) is a *full standalone* Zarr implementation on the
+same Rust `zarrs` core as zarrs-python — but with its own Python API, so
+unlike zarrs-python it is a peer driver, not a codec option. Two properties
+make it the strongest next candidate after the reference:
+
+- **It splits sync from async at the class level.** `Array` / `Group` (sync,
+  local filesystem) and `AsyncArray` / `AsyncGroup` (async, remote) are
+  separate types — exactly abczarr's `ZarrArray` / `AsyncZarrArray` shape.
+  tensorstore has one future-based class; zarr-python is async underneath a
+  sync facade; zarrista is the only proposed backend that earns *both*
+  surfaces natively, so it maps on with the least impedance and is the
+  cleanest test of the sync/async parity design.
+- **Its remote store is [obstore](https://github.com/developmentseed/obstore),
+  not fsspec** — a Rust object-store binding (S3/GCS/Azure, ~9× fsspec
+  throughput), plus Icechunk. This is the one backend whose store does *not*
+  slot into the bagof-paths `PathStore`: for zarrista the abc store wraps its
+  **native** obstore-backed store, which is exactly the "native store when a
+  driver is active" path the store abc already provides. It validates that
+  seam rather than straining it. (A future bagof-paths obstore driver would
+  also let `PathStore` reach obstore, but that is not required here.)
+
+Numeric arrays go through a `Tensor` numpy bridge; dtypes lean on
+`ml_dtypes`. **Caveat:** zarrista is `v0.1.0-beta.1` — a candidate to design
+for and track, not to implement yet. zarr-python stays the reference; when
+zarrista stabilizes it is a better *second* driver than tensorstore, because
+it earns the async surface honestly.
+
 ### The real driver set
 
 | target | status | as a driver? |
 |---|---|---|
 | zarr-python | present, most complete | **yes** — reference driver |
 | tensorstore | present, has store mapping | **yes** — async-capable |
-| zarrs | Rust codec pipeline for zarr-python | **no** — a codec option under zarr-python |
+| zarrista | standalone zarrs-core API, native sync+async, obstore/Icechunk | **yes** — strongest next candidate (beta) |
+| zarrs-python | Rust codec pipeline for zarr-python | **no** — a codec option under zarr-python |
 | zarrita | absorbed into zarr-python 3.x | **no** — retire the stub |
 | *(fallback)* | dependency-free store over bagof-paths | **yes, eventually** — `PathStore` + a pure-Python chunk reader |
 
@@ -352,8 +389,10 @@ testable, and none needs a backend to be installed except where noted.
    declared. This is the reference and should be the first green driver.
 5. **Re-fit the tensorstore driver**: `KvStore` wrapped, `.result()` in the
    sync path, `native` for rich indexing, groups-as-paths kept.
-6. **Retire zarrita**; record zarrs as a future codec option on the
-   zarr-python driver.
+6. **Retire zarrita**; record zarrs-python as a codec-pipeline option on the
+   zarr-python driver, and **zarrista** as a tracked driver candidate — a
+   third driver (native sync + async, obstore-backed store) once it leaves
+   beta.
 7. **(Deferred)** the dependency-free fallback: a pure-Python chunk reader on
    top of `PathStore`.
 
