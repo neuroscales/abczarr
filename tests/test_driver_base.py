@@ -8,8 +8,9 @@ import pytest
 
 from abczarr.abc.capabilities import Support
 from abczarr.abc.errors import UnsupportedZarrOperation
-from abczarr.drivers.base import Driver, Verdict, select_driver
+from abczarr.drivers.base import Driver, Verdict
 from abczarr.metadata import v3
+from abczarr.registry import select_driver
 
 
 def _array(codecs: list) -> "v3.ArrayMetadata":

@@ -3,15 +3,14 @@
 Opens a Zarr v3 array through Google's TensorStore -- a fast, C++ backed
 reader and writer -- and wraps it as a [ZarrArray][abczarr.abc.array.ZarrArray]
 so it reads and writes through the uniform surface.
-[open_node][abczarr.drivers.tensorstore.open_node] opens an array at a
-location. TensorStore has no group object, so a group is opened through
-another driver; this one handles arrays.
+[abczarr.open][abczarr.api.open] opens an array through it. TensorStore has
+no group object, so a group is opened through another driver; this one
+handles arrays.
 """
 
 __all__ = [
     "TensorStoreDriver",
     "TensorStoreArray",
-    "open_node",
 ]
 
 # dependencies
@@ -165,7 +164,15 @@ class TensorStoreDriver(Driver):
         return ts is not None
 
     def open(self, location: tx.Any, mode: str = "r") -> TensorStoreArray:
-        return open_node(location, mode)
+        if _peek_node_type(location) == "group":
+            raise UnsupportedZarrOperation(
+                "open a group (TensorStore opens arrays)", "tensorstore"
+            )
+        spec = {"driver": "zarr3", "kvstore": _kvstore_spec(location)}
+        array = ts.open(
+            spec, open=True, read=True, write=mode not in ("r", "read")
+        ).result()
+        return TensorStoreArray(array)
 
     def support(self, capability: str) -> Support:
         if ts is None:
@@ -214,21 +221,3 @@ def _peek_node_type(location: tx.Any) -> tx.Optional[str]:
         return None
 
 
-def open_node(location: tx.Any, mode: str = "r") -> TensorStoreArray:
-    """Open the v3 array at *location* with TensorStore and wrap it.
-
-    Raises
-    ------
-    [UnsupportedZarrOperation][abczarr.abc.errors.UnsupportedZarrOperation]
-        When *location* is a group -- a group has no TensorStore
-        representation, so it is opened through another driver.
-    """
-    if _peek_node_type(location) == "group":
-        raise UnsupportedZarrOperation(
-            "open a group (TensorStore opens arrays)", "tensorstore"
-        )
-    spec = {"driver": "zarr3", "kvstore": _kvstore_spec(location)}
-    array = ts.open(
-        spec, open=True, read=True, write=mode not in ("r", "read")
-    ).result()
-    return TensorStoreArray(array)

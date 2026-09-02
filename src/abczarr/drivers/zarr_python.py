@@ -6,16 +6,14 @@ it has -- by asking the installed library, so selection reflects the real
 build rather than a guess. The node adapters wrap a ``zarr.Array`` or
 ``zarr.Group`` as a [ZarrArray][abczarr.abc.array.ZarrArray] /
 [ZarrGroup][abczarr.abc.group.ZarrGroup] so data is read and written through
-the uniform surface; [open_node][abczarr.drivers.zarr_python.open_node]
-opens a location and wraps whatever is there.
+the uniform surface; [abczarr.open][abczarr.api.open] opens a location and
+returns whatever is there.
 """
 
 __all__ = [
     "ZarrPythonDriver",
     "ZarrPythonArray",
     "ZarrPythonGroup",
-    "open_node",
-    "create_group_node",
 ]
 
 # stdlib
@@ -146,13 +144,21 @@ class ZarrPythonDriver(Driver):
     def open(
         self, location: tx.Any, mode: str = "r"
     ) -> tx.Union["ZarrPythonArray", "ZarrPythonGroup"]:
-        return open_node(location, mode)
+        node = zarr.open(location, mode=mode)
+        if isinstance(node, zarr.Group):
+            return ZarrPythonGroup(node)
+        return ZarrPythonArray(node)
 
     def create_group(
         self, location: tx.Any, *, zarr_version: int = 3,
         overwrite: bool = False,
     ) -> "ZarrPythonGroup":
-        return create_group_node(location, zarr_version, overwrite)
+        group = zarr.open_group(
+            location,
+            mode="w" if overwrite else "w-",
+            zarr_format=zarr_version,
+        )
+        return ZarrPythonGroup(group)
 
     def support(self, capability: str) -> Support:
         if self._major < 3:
@@ -357,30 +363,3 @@ def _create_kwargs(options: tx.Dict[str, tx.Any]) -> tx.Dict[str, tx.Any]:
     return kwargs
 
 
-def open_node(
-    store_or_path: tx.Any, mode: str = "r"
-) -> tx.Union[ZarrPythonArray, ZarrPythonGroup]:
-    """Open a location with zarr-python and wrap it.
-
-    Returns a [ZarrPythonArray][abczarr.drivers.zarr_python.ZarrPythonArray]
-    or [ZarrPythonGroup][abczarr.drivers.zarr_python.ZarrPythonGroup]
-    depending on what is there.
-    """
-    node = zarr.open(store_or_path, mode=mode)
-    if isinstance(node, zarr.Group):
-        return ZarrPythonGroup(node)
-    return ZarrPythonArray(node)
-
-
-def create_group_node(
-    location: tx.Any, zarr_version: int = 3, overwrite: bool = False
-) -> ZarrPythonGroup:
-    """Create a new group at *location* and wrap it.
-
-    With *overwrite*, an existing group at *location* is replaced; otherwise
-    creating over one raises.
-    """
-    group = zarr.open_group(
-        location, mode="w" if overwrite else "w-", zarr_format=zarr_version
-    )
-    return ZarrPythonGroup(group)

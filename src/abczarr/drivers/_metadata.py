@@ -19,9 +19,7 @@ from abczarr._core import typing as tz
 def metadata_from_dict(data: tz.JSONDict) -> tx.Any:
     """Build the abczarr metadata for a node from its metadata dict.
 
-    The Zarr format version and node type in *data* choose the class; a v2
-    array that names no filters (zarr writes them as null) is normalised to
-    an empty list, which the v2 model expects.
+    The Zarr format version and node type in *data* choose the class.
     """
     from abczarr.metadata import base, v1, v2, v3
 
@@ -35,8 +33,6 @@ def metadata_from_dict(data: tz.JSONDict) -> tx.Any:
             2: v2.ArrayMetadata,
             3: v3.ArrayMetadata,
         }[zarr_format]
-        if zarr_format == 2 and data.get("filters") is None:
-            data = {**data, "filters": []}
         return array_cls.from_dict(data)
     group_cls = {
         2: base.GroupMetadataV2,

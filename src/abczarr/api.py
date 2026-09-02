@@ -29,11 +29,8 @@ from .abc.group import ZarrGroup
 from .abc.node import ZarrNode
 from .abc.store import PathStore
 from .config import ZarrConfig
-from .drivers.base import (
-    Driver,
-    available_drivers,
-    select_driver,
-)
+from .drivers.base import Driver
+from .registry import available_drivers, select_driver
 
 _DriverArg = tx.Optional[tx.Union[str, Driver]]
 

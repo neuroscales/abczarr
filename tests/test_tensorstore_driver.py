@@ -15,12 +15,12 @@ pytest.importorskip("tensorstore")
 import abczarr  # noqa: E402
 from abczarr.abc.capabilities import Support  # noqa: E402
 from abczarr.abc.errors import UnsupportedZarrOperation  # noqa: E402
-from abczarr.drivers.base import available_drivers  # noqa: E402
 from abczarr.drivers.tensorstore import (  # noqa: E402
     TensorStoreArray,
     TensorStoreDriver,
 )
 from abczarr.metadata.base import ArrayMetadata  # noqa: E402
+from abczarr.registry import available_drivers  # noqa: E402
 
 
 def _array_path(tmp_path: pathlib.Path, **create: object) -> str:
