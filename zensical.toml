@@ -2,21 +2,20 @@
 
 nav = [
   {"Home" = "index.md"},
-  {"API reference" = [
+  {"Tutorial" = "tutorial.md"},
+  {"Reference" = [
     "api/index.md",
-    {"Opening" = [
+    {"API" = [
       "api/open.md",
       "api/config.md",
     ]},
-    {"Nodes" = [
-      "api/node.md",
-      "api/array.md",
-      "api/group.md",
-    ]},
-    {"Stores" = [
-      "api/store.md",
-      "api/transactions.md",
-      "api/path.md",
+    {"ABC" = [
+      "api/nodes.md",
+      {"Stores" = [
+        "api/store.md",
+        "api/transactions.md",
+        "api/path.md",
+      ]},
     ]},
     {"Capabilities" = [
       "api/capabilities.md",
@@ -24,14 +23,22 @@ nav = [
     ]},
     {"Drivers" = [
       "api/drivers.md",
+      "api/registry.md",
       "api/zarr-python.md",
     ]},
     {"Metadata" = [
       "api/metadata.md",
-      "api/metadata-v1.md",
-      "api/metadata-v2.md",
-      "api/metadata-v3.md",
+      {"v1" = "api/metadata-v1.md"},
+      {"v2" = [
+        "api/metadata-v2.md",
+        "api/metadata-v2-dtypes.md",
+      ]},
+      {"v3" = [
+        "api/metadata-v3.md",
+        "api/metadata-v3-dtypes.md",
+      ]},
     ]},
+    {"OME" = "api/ome.md"},
   ]},
 ]
 

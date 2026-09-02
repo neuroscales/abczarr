@@ -29,3 +29,7 @@ group = open_group(store)  # same code, any backend or scheme
 array = group["images"]
 data = array[:100, :100]
 ```
+
+New here? The [tutorial](tutorial.md) walks through creating an
+array, reading and writing it, and navigating a group. For the full
+surface, see the [reference](api/index.md).
