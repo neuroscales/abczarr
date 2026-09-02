@@ -28,6 +28,8 @@ __all__ = [
     "NodeMetadata",
     "GroupMetadata",
     "ArrayMetadata",
+    "node_at",
+    "node_type_at",
     "NodeMetadataV1",
     "ArrayMetadataV1",
     "NodeMetadataV2",
@@ -190,6 +192,67 @@ class NodeMetadata(Metadata):
             f"{constants.Z2ARRAY_JSON}, "
             f"{constants.Z1META_JSON}"
         )
+
+
+def node_type_at(root: os.PathLike) -> tx.Optional[tz.NodeType]:
+    """Report whether *root* holds a Zarr array, a group, or neither.
+
+    Reads only enough to answer that -- a v3 `zarr.json`'s `node_type`
+    field, or which of `.zarray` and `.zgroup` a v2 node has -- never the
+    rest of the metadata. That keeps it cheap enough to call on every
+    child while listing a group.
+
+    Parameters
+    ----------
+    root : PathLike
+        The directory to inspect.
+
+    Returns
+    -------
+    str or None
+        ``"array"`` or ``"group"`` if *root* holds Zarr metadata of that
+        kind, otherwise `None`.
+    """
+    detected = node_at(root)
+    return detected[0] if detected else None
+
+
+def node_at(
+    root: os.PathLike,
+) -> tx.Optional[tx.Tuple[tz.NodeType, tz.ZarrVersion]]:
+    """The kind and Zarr version of the node stored at *root*.
+
+    Returns a ``(node_type, version)`` pair -- ``"array"`` or ``"group"``
+    with 1, 2 or 3 -- for a directory that holds Zarr metadata, or `None`
+    for one that does not. Reads only enough to answer that: a v3
+    `zarr.json`'s `node_type`, or which of `.zarray` and `.zgroup` a v2 node
+    has. A v3 `zarr.json` without a valid `node_type` is treated as no node,
+    since the format requires one, rather than guessed at from its other
+    fields.
+
+    Parameters
+    ----------
+    root : PathLike
+        The directory to inspect.
+    """
+    zarr_json = root / constants.Z3_JSON
+    if zarr_json.exists():
+        try:
+            with zarr_json.open("r", encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, ValueError):
+            return None
+        node_type = data.get("node_type")
+        if node_type in ("array", "group"):
+            return node_type, 3
+        return None
+    if (root / constants.Z2ARRAY_JSON).exists():
+        return "array", 2
+    if (root / constants.Z2GROUP_JSON).exists():
+        return "group", 2
+    if (root / constants.Z1META_JSON).exists():
+        return "array", 1
+    return None
 
 
 @register_subclass(node_type="group")

@@ -18,6 +18,7 @@ from abczarr.abc.errors import UnsupportedZarrOperation  # noqa: E402
 from abczarr.drivers.tensorstore import (  # noqa: E402
     TensorStoreArray,
     TensorStoreDriver,
+    TensorStoreGroup,
 )
 from abczarr.metadata.base import ArrayMetadata  # noqa: E402
 from abczarr.registry import available_drivers  # noqa: E402
@@ -128,16 +129,51 @@ def test_can_open_a_supported_array(tmp_path: pathlib.Path) -> None:
 
 
 # --------------------------------------------------------------------------
-# groups are not a TensorStore concept
+# groups: read from the store, arrays opened through TensorStore
 # --------------------------------------------------------------------------
 
 
-def test_opening_a_group_with_tensorstore_raises(
+def test_opening_a_group_navigates_to_its_arrays(
     tmp_path: pathlib.Path,
 ) -> None:
+    root = str(tmp_path / "g.zarr")
+    group = zarr.open_group(root, mode="w")
+    array = group.create_array(
+        "a", shape=(4,), chunks=(4,), dtype="int32"
+    )
+    array[:] = np.arange(4)
+    group.create_group("sub")
+
+    node = abczarr.open(root, mode="r", driver="tensorstore")
+    assert isinstance(node, TensorStoreGroup)
+    assert sorted(node.keys()) == ["a", "sub"]
+
+    child = node["a"]
+    assert isinstance(child, TensorStoreArray)
+    assert np.asarray(child[:]).tolist() == [0, 1, 2, 3]
+
+
+def test_a_subgroup_is_another_tensorstore_group(
+    tmp_path: pathlib.Path,
+) -> None:
+    root = str(tmp_path / "g.zarr")
+    group = zarr.open_group(root, mode="w")
+    group.create_group("sub").create_array(
+        "inner", shape=(2,), chunks=(2,), dtype="u1"
+    )
+
+    node = abczarr.open(root, mode="r", driver="tensorstore")
+    sub = node["sub"]
+    assert isinstance(sub, TensorStoreGroup)
+    assert list(sub.keys()) == ["inner"]
+    assert isinstance(sub["inner"], TensorStoreArray)
+
+
+def test_open_group_requires_a_group(tmp_path: pathlib.Path) -> None:
+    # open_array on a group raises through the api's own check
     root = str(tmp_path / "g.zarr")
     zarr.open_group(root, mode="w").create_array(
         "a", shape=(2,), chunks=(2,), dtype="u1"
     )
-    with pytest.raises(UnsupportedZarrOperation, match="group"):
-        abczarr.open(root, mode="r", driver="tensorstore")
+    with pytest.raises(UnsupportedZarrOperation):
+        abczarr.open_array(root, mode="r", driver="tensorstore")
