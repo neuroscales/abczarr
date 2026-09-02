@@ -4,6 +4,7 @@ __all__ = [
     "api",
     "config",
     "drivers",
+    "errors",
     "metadata",
     "ome",
     "registry",
@@ -12,6 +13,8 @@ __all__ = [
     "ZarrGroup",
     "ZarrNode",
     "UnsupportedZarrOperation",
+    "UnsupportedConversion",
+    "TransactionConflict",
     "open",
     "create",
     "create_group",
@@ -19,12 +22,27 @@ __all__ = [
     "open_group",
 ]
 
-from . import abc, api, config, drivers, metadata, ome, registry, schemas
-from .abc import UnsupportedZarrOperation, ZarrArray, ZarrGroup, ZarrNode
+from . import (
+    abc,
+    api,
+    config,
+    drivers,
+    errors,
+    metadata,
+    ome,
+    registry,
+    schemas,
+)
+from .abc import ZarrArray, ZarrGroup, ZarrNode
 from .api import (
     create,
     create_group,
     open,
     open_array,
     open_group,
+)
+from .errors import (
+    TransactionConflict,
+    UnsupportedConversion,
+    UnsupportedZarrOperation,
 )

@@ -1,11 +1,17 @@
 """Errors raised by the abczarr surface."""
 
+from __future__ import annotations
+
 __all__ = [
     "UnsupportedZarrOperation",
+    "UnsupportedConversion",
     "TransactionConflict",
 ]
 
 import typing_extensions as tx
+
+if tx.TYPE_CHECKING:
+    from abczarr._core import typing as tz
 
 
 class TransactionConflict(RuntimeError):
@@ -50,3 +56,20 @@ class UnsupportedZarrOperation(NotImplementedError):
         super().__init__(message)
         self.operation = operation
         self.driver = driver
+
+
+class UnsupportedConversion(ValueError):
+    """A field has no representation in the target Zarr version.
+
+    Raised by `to_version` when it is asked to convert under the
+    ``"strict"`` policy and a field cannot be carried over. The
+    message names the field and the version it could not be
+    represented in.
+    """
+
+    def __init__(self, field: str, version: tz.ZarrVersion) -> None:
+        super().__init__(
+            f"cannot represent {field!r} in Zarr v{version}"
+        )
+        self.field = field
+        self.version = version

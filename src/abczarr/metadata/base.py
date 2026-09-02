@@ -21,7 +21,6 @@ https://github.com/zarr-developers/zarr-python
 """
 __all__ = [
     "ConversionPolicy",
-    "UnsupportedConversion",
     "report_loss",
     "Metadata",
     "FlexibleMetadata",
@@ -71,26 +70,9 @@ from abczarr._core.metadata import (
 #: * ``"lossy"`` (the default) -- drop the field silently.
 #: * ``"warn"`` -- drop the field, but emit one warning naming it.
 #: * ``"strict"`` -- raise
-#:   [UnsupportedConversion][abczarr.metadata.base.UnsupportedConversion]
+#:   [UnsupportedConversion][abczarr.abc.errors.UnsupportedConversion]
 #:   instead of dropping anything.
 ConversionPolicy = tx.Literal["lossy", "warn", "strict"]
-
-
-class UnsupportedConversion(ValueError):
-    """A field has no representation in the target Zarr version.
-
-    Raised by `to_version` when it is asked to convert under the
-    ``"strict"`` policy and a field cannot be carried over. The
-    message names the field and the version it could not be
-    represented in.
-    """
-
-    def __init__(self, field: str, version: tz.ZarrVersion) -> None:
-        super().__init__(
-            f"cannot represent {field!r} in Zarr v{version}"
-        )
-        self.field = field
-        self.version = version
 
 
 def report_loss(
@@ -101,7 +83,7 @@ def report_loss(
     Called by a version's `to_version` implementation for each field
     it cannot carry over to *version*. Does nothing under
     ``"lossy"``, emits a warning under ``"warn"``, and raises
-    [UnsupportedConversion][abczarr.metadata.base.UnsupportedConversion]
+    [UnsupportedConversion][abczarr.abc.errors.UnsupportedConversion]
     under ``"strict"``.
 
     Parameters
@@ -127,6 +109,10 @@ def report_loss(
         )
         return
     if policy == "strict":
+        # imported at call time: abc/errors sits above metadata in the
+        # import graph, so a module-level import here would be a cycle
+        from abczarr.abc.errors import UnsupportedConversion
+
         raise UnsupportedConversion(field, version)
     raise ValueError(f"unknown conversion policy: {policy!r}")
 
