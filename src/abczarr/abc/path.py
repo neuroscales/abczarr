@@ -1,16 +1,15 @@
-"""Store paths, over the uniform :mod:`bagof.paths` surface.
+"""Store paths, over the uniform `bagof.paths` surface.
 
-A :class:`StorePath` is a normal :class:`bagof.paths.Path` -- one API over
-local and cloud paths -- with one extra bit of store state, ``read_only``.
-``bagof.paths`` already dispatches on the URL scheme (``s3://``, ``gs://``,
-``memory://``, a local path, ...), so there is no per-protocol subclass to
-declare here: ``StorePath("s3://bucket/key")`` picks the right driver on its
-own, and the underlying driver object is always reachable through
-``.wrapped``.
+[StorePath][abczarr.abc.path.StorePath] is a normal
+`bagof.paths.Path` -- one API over local and cloud paths -- with one
+extra bit of state, `read_only`. `bagof.paths` already dispatches on
+the URL scheme (`s3://`, `gs://`, `memory://`, a local path, ...),
+so `StorePath("s3://bucket/key")` picks the right backend on its
+own, no per-protocol subclass needed, and the underlying backend
+object is always reachable through `.wrapped`.
 
-``read_only`` rides onto every derived path (``.parent``, ``/``,
-``iterdir()``, ...) automatically: bagof.paths copies the wrapper's state
-when it derives a new path, so a child of a read-only store is read-only
+`read_only` rides along onto every path derived from it (`.parent`,
+`/`, `iterdir()`, ...), so a child of a read-only store is read-only
 too.
 """
 
@@ -25,7 +24,11 @@ from bagof.paths import AsyncPath, Path
 
 
 class StorePath(Path):
-    """A zarr store location: a path, plus a ``read_only`` flag."""
+    """A Zarr store location: a path, plus a `read_only` flag.
+
+    Accepts everything `bagof.paths.Path` accepts -- a local path or
+    a URL for any scheme it supports -- plus a `read_only` keyword.
+    """
 
     def __init__(
         self, *args: tx.Any, read_only: bool = False, **kwargs: tx.Any
@@ -35,7 +38,8 @@ class StorePath(Path):
 
 
 class AsyncStorePath(AsyncPath):
-    """The async counterpart of :class:`StorePath`."""
+    """The async counterpart of
+    [StorePath][abczarr.abc.path.StorePath]."""
 
     # Run StorePath's synchronous surface in the worker thread, so any
     # sync override here is honoured on the async side too.
