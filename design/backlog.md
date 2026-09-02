@@ -11,12 +11,14 @@ Legend: `[ ]` open, `[~]` in progress, `[x]` done.
 - [x] Path-based group recovered and generalized as `PathGroup` (abc/group.py),
   with `node_type_at` detection in the metadata layer and `TensorStoreGroup`
   as its first consumer. PR #43 (branch `claude/abczarr-roadmap-fo0yzr`).
+- [x] Creation-path defects #1 to #3 fixed (sharding loops, itemsize budget,
+  v3 zstd). PR #44. Defect #4 (fill value) moved to the config phase, below.
+- [x] OME metadata documentation (usage-first overview + base + v0.5),
+  Sonnet-written. PR #45. Nav wiring pending the docs restructure.
 - [~] Config-based creation API design: `design/config-api.md` (Fable), branch
   `claude/design/config-api`. Awaiting review/approval before implementation.
 - [x] bagof-hints adoption analysis filed as bagofseeds/bagof-hints#18
   (backburner).
-- [~] OME metadata documentation (usage-first overview + base + latest stable),
-  Sonnet-written.
 
 ## Config API (rests on approving design/config-api.md)
 
@@ -35,16 +37,28 @@ Legend: `[ ]` open, `[~]` in progress, `[x]` done.
 - [ ] Coarse-to-fine: `resolve()` turns "auto" into concrete values per version;
   `to_metadata()` builds v3 then `to_version(n, policy="strict")`. `-1` for a
   whole axis replaces `0`. Configs expose `plan()` (OME hook).
-- [ ] Open question: `open`/create accepting config attributes as keywords and/or
-  `config=` (design says opening stays access-only; confirm).
+- [ ] `config=` also accepts the plain `dict` form of a config (zarr-python
+  style), alongside a config object.
+- [ ] Config objects implement `keys()` + `__getitem__` so `create(..., **config)`
+  works. Lean: `keys()` yields only explicitly-set fields (a clean override),
+  not every field. Naming guard: never add a config field named `keys`,
+  `values`, or `items` (they would shadow the mapping protocol).
+- [ ] Resolve an unspecified v3 fill value to a concrete dtype zero during
+  creation (defect #4): the metadata model keeps `None` for reads and
+  conversions, so the default belongs in `resolve()`/`to_metadata`, not the
+  model.
+- [ ] Open question settled by the design: `open` stays access-only (`mode`,
+  `driver`); config attributes belong to `create`, not `open`.
 
 ## Defects found while probing the config design (real bugs, fix independently)
 
-- [ ] `auto_shard`/`auto_chunk` never terminate when one auto axis saturates
-  while another is capped (repro stack at `_core/sharding.py:237`).
-- [ ] `auto_shard` drops the chunk byte budget.
-- [ ] `CompressorTypeV3` rejects `"zstd"`.
-- [ ] `fill_value=None` reaches v3 metadata as JSON null.
+- [x] `auto_shard`/`auto_chunk` never terminate when one auto axis saturates
+  while another is capped. Fixed in PR #44.
+- [x] `auto_shard` drops the chunk byte budget (ignored the real itemsize).
+  Fixed in PR #44.
+- [x] `CompressorTypeV3` rejects `"zstd"`. Fixed in PR #44.
+- [ ] `fill_value=None` reaches v3 metadata as JSON null. Moved to the config
+  phase (resolve a concrete fill at creation; the model keeps None on purpose).
 - [ ] `GeneralConfig.set_default_name` references a nonexistent `self.variant`
   (moot once `GeneralConfig` is removed).
 
