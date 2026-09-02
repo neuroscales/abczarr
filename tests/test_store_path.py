@@ -7,8 +7,6 @@ and real I/O works -- on a local path (always) and on a cloud-style scheme
 (``memory://`` via universal-pathlib, no network) when a backend is present.
 """
 
-from __future__ import annotations
-
 import asyncio
 import pathlib
 

@@ -10,8 +10,6 @@ expected-fail: ``v2`` cannot hold a ``v3`` array-to-bytes codec or the
 default-vs-``v2`` chunk-key encoding, so a down-conversion is genuinely lossy.
 """
 
-from __future__ import annotations
-
 import warnings
 
 import pytest
