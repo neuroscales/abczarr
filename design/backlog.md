@@ -75,6 +75,27 @@ Legend: `[ ]` open, `[~]` in progress, `[x]` done.
 - [ ] Tutorial page.
 - [ ] Document the `registry` module (exported and tested, no page today).
 
+## PR #43 review (path-based group)
+
+- [x] #4 needless string annotation on `node_type_at` removed.
+- [x] #5 detection is version-aware (`node_at` returns type + version, no
+  guess) and a `PathGroup` only sees children of its own version.
+- [ ] #2 tensorstore `_create_array` -> lands with config increment 2
+  (the `Driver.create(metadata)` contract).
+- [ ] #1 write-through `attrs`: every node returns a dead `dict` copy today,
+  so `node.attrs["x"] = 1` is lost. Wire the existing write-through
+  `Attributes` (`_core/attributes.py`) into the node contract and all
+  drivers. Surface-wide, its own PR.
+- [ ] #3 per-driver node bases: `TensorStoreNode` (for TensorStoreArray /
+  TensorStoreGroup) and `ZarrPythonNode` (for the zarr-python pair); `open`
+  returns the driver node type. Surface-wide.
+
+## Config API
+
+- [x] Increment 1: ArrayConfig/GroupConfig/ArrayOptions merge, resolve() /
+  to_metadata with the auto semantics and dict/** unpack. Branch
+  `claude/feat/config-api` (green, PR pending the rest of the slice).
+
 ## Architecture / clarity
 
 - [ ] `errors` placement: Fable recommends keeping `errors.py` in `abc/` (bottom
