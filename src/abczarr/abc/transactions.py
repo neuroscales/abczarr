@@ -250,7 +250,7 @@ class AsyncTransaction(ABC):
 
 
 class _AsyncBufferedView(AsyncStore):
-    """The async counterpart of :class:`_BufferedView`."""
+    """The async counterpart of `_BufferedView`."""
 
     def __init__(
         self,
