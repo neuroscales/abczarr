@@ -27,7 +27,7 @@ from abczarr.abc.array import ZarrArray
 from abczarr.abc.capabilities import Support
 from abczarr.abc.group import PathGroup
 from abczarr.abc.node import ZarrNode
-from abczarr.config import ArrayConfig
+from abczarr.api.config import ArrayConfig
 from abczarr.drivers._metadata import metadata_from_dict
 from abczarr.drivers.base import Driver
 from abczarr.metadata.base import ArrayMetadata, NodeMetadata, _node_at
@@ -276,12 +276,12 @@ def _peek_node_type(location: tx.Any) -> tx.Optional[str]:
     """The node type recorded at *location*'s ``zarr.json``, or None."""
     import json
 
-    from abczarr.abc.store import PathStore
+    from abczarr.abc.store import PathBasedStore
 
     if not isinstance(location, str) or "://" in location:
         return None
     try:
-        raw = PathStore(location).get("zarr.json")
+        raw = PathBasedStore(location).get("zarr.json")
     except Exception:
         return None
     if raw is None:

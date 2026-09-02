@@ -15,7 +15,7 @@ import typing_extensions as tx
 # core
 from abczarr._core import typing as tz
 from abczarr._core.attrs import evolve
-from abczarr.config import ArrayConfig, ArrayOptions
+from abczarr.api.config import ArrayConfig, ArrayOptions
 from abczarr.metadata.base import (
     GroupMetadataV2,
     GroupMetadataV3,
@@ -45,7 +45,7 @@ def _resolve_array_config(
     options: ArrayOptions,
     version: tz.ZarrVersion,
 ) -> ArrayConfig:
-    """Build the resolved [ArrayConfig][abczarr.config.ArrayConfig] a
+    """Build the resolved [ArrayConfig][abczarr.api.config.ArrayConfig] a
     `create_array` call describes.
 
     A config (an `ArrayConfig` or a mapping of its fields) is the base;
@@ -123,8 +123,8 @@ class ZarrGroup(ZarrNode):
         dtype : numpy dtype
             The array's data type.
         config : ArrayConfig or mapping, optional
-            A reusable [ArrayConfig][abczarr.config.ArrayConfig], or a mapping
-            of the same fields. Individual fields may also be passed as
+            A reusable [ArrayConfig][abczarr.api.config.ArrayConfig], or a
+            mapping of the same fields. Individual fields may also be passed as
             keyword arguments, which override the config.
         """
         resolved = _resolve_array_config(
@@ -152,11 +152,9 @@ class PathGroup(ZarrGroup):
     It can also create subgroups on its own, since that only means writing
     group metadata.
 
-    A driver subclasses `PathGroup` and overrides
-    [_open_array][abczarr.abc.group.PathGroup._open_array] (and, to support
-    creating arrays too,
-    [_create_array][abczarr.abc.group.PathGroup._create_array]) to say how a
-    child array is opened and created with its own backend. Subgroups need
+    A driver subclasses `PathGroup` and overrides `_open_array` (and, to
+    support creating arrays too, `_create_array`) to say how a child array
+    is opened and created with its own backend. Subgroups need
     no override -- they are more `PathGroup`s of the same subclass, so a
     whole hierarchy is reachable from one opened group.
 
@@ -252,8 +250,8 @@ class PathGroup(ZarrGroup):
 
         This is the fallback for a backend with no native creation: write the
         config's metadata to the child directory and open it through
-        [_open_array][abczarr.abc.group.PathGroup._open_array]. A backend that
-        creates natively (zarr-python, TensorStore) overrides this.
+        `_open_array`. A backend that creates natively (zarr-python,
+        TensorStore) overrides this.
         """
         child = self._store_path / name
         if _node_type_at(child) is not None:

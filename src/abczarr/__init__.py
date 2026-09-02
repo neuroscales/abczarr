@@ -1,13 +1,21 @@
-"""ZarrIO module for handling Zarr data structures."""
+"""abczarr: one interface for reading and writing Zarr, over any backend.
+
+Open or create a node with [open][abczarr.api.open] and
+[create][abczarr.api.create], and read or write it through the uniform
+[ZarrArray][abczarr.abc.array.ZarrArray] /
+[ZarrGroup][abczarr.abc.group.ZarrGroup] surface, whatever backend or
+storage is behind it. The [config][abczarr.api.config] and
+[registry][abczarr.api.registry] that creation rests on live under
+[api][abczarr.api].
+"""
+
 __all__ = [
     "abc",
     "api",
-    "config",
     "drivers",
     "errors",
     "metadata",
     "ome",
-    "registry",
     "schemas",
     "ZarrArray",
     "ZarrGroup",
@@ -25,12 +33,10 @@ __all__ = [
 from . import (
     abc,
     api,
-    config,
     drivers,
     errors,
     metadata,
     ome,
-    registry,
     schemas,
 )
 from .abc import ZarrArray, ZarrGroup, ZarrNode

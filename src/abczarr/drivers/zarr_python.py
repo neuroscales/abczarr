@@ -126,7 +126,7 @@ def _has_numcodec(name: str) -> bool:
 
 
 def _zarr_create_kwargs(config: tx.Any) -> tx.Dict[str, tx.Any]:
-    """Map a resolved [ArrayConfig][abczarr.config.ArrayConfig] to the
+    """Map a resolved [ArrayConfig][abczarr.api.config.ArrayConfig] to the
     keywords ``zarr.create_array`` takes, so zarr-python creates the array and
     writes its own metadata."""
     kwargs = {
@@ -179,7 +179,7 @@ class ZarrPythonDriver(Driver):
     def create(
         self, location: tx.Any, config: tx.Any
     ) -> "ZarrPythonNode":
-        from abczarr.config import ArrayConfig
+        from abczarr.api.config import ArrayConfig
 
         if isinstance(config, ArrayConfig):
             array = zarr.create_array(

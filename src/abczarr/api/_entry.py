@@ -23,16 +23,16 @@ import json
 import typing_extensions as tx
 
 # locals
-from ._core import typing as tz
-from ._core.attrs import evolve
-from .abc.array import ZarrArray
-from .abc.errors import UnsupportedZarrOperation
-from .abc.group import ZarrGroup
-from .abc.node import ZarrNode
-from .abc.store import PathStore
+from .._core import typing as tz
+from .._core.attrs import evolve
+from ..abc.array import ZarrArray
+from ..abc.errors import UnsupportedZarrOperation
+from ..abc.group import ZarrGroup
+from ..abc.node import ZarrNode
+from ..abc.store import PathBasedStore
+from ..drivers.base import Driver
+from ..metadata.base import ArrayMetadata, NodeMetadata
 from .config import ArrayConfig, GroupConfig, ZarrConfig
-from .drivers.base import Driver
-from .metadata.base import ArrayMetadata, NodeMetadata
 from .registry import available_drivers, select_driver
 
 _DriverArg = tx.Optional[tx.Union[str, Driver]]
@@ -110,8 +110,9 @@ def create(
 ) -> ZarrNode:
     """Create the array or group *config* describes at *location*.
 
-    *config* is usually an [ArrayConfig][abczarr.config.ArrayConfig] (creates
-    an array) or a [GroupConfig][abczarr.config.GroupConfig] (creates a
+    *config* is usually an [ArrayConfig][abczarr.api.config.ArrayConfig]
+    (creates an array) or a [GroupConfig][abczarr.api.config.GroupConfig]
+    (creates a
     group), and keyword arguments override its fields; the backend creates the
     node natively. For full control beyond what the config helpers express,
     *config* may instead be an exact metadata document -- an
@@ -157,7 +158,7 @@ def create_group(
 ) -> ZarrGroup:
     """Create a group at *location*, the metadata-free way.
 
-    Pass a [GroupConfig][abczarr.config.GroupConfig] as *config*, or its
+    Pass a [GroupConfig][abczarr.api.config.GroupConfig] as *config*, or its
     fields (`zarr_version`, `overwrite`, ...) as keyword arguments.
     """
     base = config if isinstance(config, GroupConfig) else GroupConfig(
@@ -210,10 +211,10 @@ def _choose(path: tz.PathLike, drivers: "tx.List[Driver]") -> Driver:
 def _peek_array_metadata(path: tz.PathLike) -> tx.Any:
     """Read an array's metadata straight from the store, for selection, or
     ``None`` when *path* is a group or its metadata cannot be read."""
-    from .metadata import v3
+    from ..metadata import v3
 
     try:
-        raw = PathStore(str(path)).get("zarr.json")
+        raw = PathBasedStore(str(path)).get("zarr.json")
     except Exception:
         return None
     if raw is None:

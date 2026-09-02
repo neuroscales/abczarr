@@ -89,18 +89,35 @@ class ZarrArray(ZarrNode):
         """Convert this array to a NumPy array."""
         return np.asarray(self[()], dtype=dtype)
 
-    def to_dask(self) -> "da.Array":
+    def to_dask(
+        self, chunks: tx.Union[str, tz.ShapeLike, None] = None
+    ) -> "da.Array":
         """Convert this array to a Dask array.
 
-        Dask blocks align to the write unit -- the shard when the
-        array is sharded, otherwise the chunk -- so a read never
-        re-fetches the same shard once per inner chunk.
+        Parameters
+        ----------
+        chunks : optional
+            The Dask block size. `"shards"` uses the write unit (the shard
+            when sharded, otherwise the chunk); `"chunks"` uses the chunk;
+            or pass an explicit block shape. The default aligns to the write
+            unit, which reads a shard once rather than once per inner chunk.
+            Align to `"chunks"` instead when you mean to read from the array,
+            or to `"shards"` when you mean to write back into it.
         """
         import dask.array as da
 
-        return da.from_array(self, chunks=self.shards or self.chunks)
+        if chunks is None or chunks == "shards":
+            chunks = self.shards or self.chunks
+        elif chunks == "chunks":
+            chunks = self.chunks
+        return da.from_array(self, chunks=chunks)
 
-    def store(self, source: npt.ArrayLike, *, lock: bool = True) -> None:
+    def store(
+        self,
+        source: npt.ArrayLike,
+        *,
+        lock: tx.Union[bool, str] = "auto",
+    ) -> None:
         """Write *source* into this array, block by block.
 
         *source* is any array-like with a matching shape. A Dask array
@@ -120,10 +137,44 @@ class ZarrArray(ZarrNode):
         ----------
         source : array-like
             The data to write. Its shape must match this array's.
-        lock : bool, optional
-            Serialize concurrent block writes. Leave `True` unless the
-            source's blocks are known to map to disjoint chunks.
+        lock : bool or str, optional
+            Serialize concurrent block writes. The default, `"auto"`, locks
+            only when the source's blocks do not line up with this array's
+            write unit, since blocks that each fall on whole chunks never
+            write the same chunk at once. Pass `True` or `False` to decide
+            it yourself.
         """
         import dask.array as da
 
-        da.store(da.asarray(source), self, lock=lock)
+        darr = da.asarray(source)
+        if lock == "auto":
+            unit = self.shards or self.chunks
+            lock = not _blocks_align_to(darr.chunks, unit)
+        da.store(darr, self, lock=lock)
+
+
+def _blocks_align_to(
+    dask_chunks: "tx.Sequence[tx.Sequence[int]]", unit: tz.ShapeLike
+) -> bool:
+    """Whether Dask blocks fall on whole *unit*-sized chunks.
+
+    *dask_chunks* is a Dask array's `.chunks` (per axis, the block sizes);
+    *unit* is the array's write unit. True when every interior block
+    boundary lands on a multiple of the unit size, so no two blocks ever
+    write the same chunk and a lock is unnecessary. Conservative: anything
+    it cannot prove aligned counts as not aligned.
+    """
+    unit = tuple(unit)
+    if len(dask_chunks) != len(unit):
+        return False
+    for axis_blocks, size in zip(dask_chunks, unit):
+        if not size:
+            return False
+        offset = 0
+        # the final boundary is the array end; a partial last chunk there
+        # is still written by a single block, so it need not align
+        for block in tuple(axis_blocks)[:-1]:
+            offset += block
+            if offset % size:
+                return False
+    return True

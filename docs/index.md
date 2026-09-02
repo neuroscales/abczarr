@@ -22,9 +22,9 @@ your code.
   an operation, the error names exactly what is missing.
 
 ```python
-from abczarr.abc.store import PathStore
+from abczarr.abc.store import PathBasedStore
 
-store = PathStore("s3://my-bucket/dataset.zarr")
+store = PathBasedStore("s3://my-bucket/dataset.zarr")
 group = open_group(store)  # same code, any backend or scheme
 array = group["images"]
 data = array[:100, :100]
