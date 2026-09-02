@@ -8,13 +8,16 @@ import pytest
 
 from abczarr import UnsupportedZarrOperation
 from abczarr.abc import errors, node
-from abczarr.abc.node import KNOWN_CAPABILITIES, ZarrNode
+from abczarr.abc.node import KNOWN_CAPABILITIES, Support, ZarrNode
 
 
 class _FakeNode(ZarrNode):
     """A minimal concrete node, standing in for a driver."""
 
-    _CAPABILITIES = frozenset({"sharding", "async"})
+    _CAPABILITIES = {
+        "sharding": Support.NATIVE,
+        "async": Support.SYNTHESIZED,
+    }
 
     @property
     def metadata(self) -> None:
@@ -46,27 +49,41 @@ def test_native_returns_backend_object() -> None:
 
 
 # --------------------------------------------------------------------------
-# capability query -- answered from the class, no live store
+# capability query -- tri-state, answered from the instance
 # --------------------------------------------------------------------------
 
 
 def test_supports_reads_declared_capabilities() -> None:
-    assert _FakeNode.supports("sharding") is True
-    assert _FakeNode.supports("async") is True
-    assert _FakeNode.supports("consolidated_metadata") is False
+    n = _FakeNode("/store")
+    assert n.supports("sharding") is True
+    assert n.supports("async") is True
+    assert n.supports("consolidated_metadata") is False
+
+
+def test_support_reports_native_versus_synthesized() -> None:
+    n = _FakeNode("/store")
+    assert n.support("sharding") is Support.NATIVE
+    assert n.support("async") is Support.SYNTHESIZED
+    assert n.support("consolidated_metadata") is Support.NONE
+
+
+def test_supports_native_only_excludes_synthesized() -> None:
+    n = _FakeNode("/store")
+    assert n.supports("sharding", native=True) is True
+    assert n.supports("async", native=True) is False  # synthesized, not native
 
 
 def test_supports_unknown_capability_is_false_not_error() -> None:
-    assert _FakeNode.supports("teleportation") is False
+    assert _FakeNode("/store").supports("teleportation") is False
 
 
 def test_base_node_declares_no_capabilities() -> None:
-    assert ZarrNode._CAPABILITIES == frozenset()
+    assert ZarrNode._CAPABILITIES == {}
 
 
 def test_declared_capabilities_are_known() -> None:
     # a driver should only advertise names from the shared vocabulary
-    assert _FakeNode._CAPABILITIES <= KNOWN_CAPABILITIES
+    assert set(_FakeNode._CAPABILITIES) <= KNOWN_CAPABILITIES
 
 
 # --------------------------------------------------------------------------
