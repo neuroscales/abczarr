@@ -1,3 +1,21 @@
+"""The version-independent OME-Zarr metadata model.
+
+OME-Zarr (the NGFF spec) is a metadata convention for bioimaging data
+stored in Zarr: multiscale image pyramids, high-content screening
+plates, segmentation labels, and rendering settings, all described by
+JSON attached to a Zarr group. This module defines the two classes
+every version shares --
+[OMEMetadata][abczarr.ome.metadata.base.OMEMetadata], the base of
+every OME metadata class, and [OME][abczarr.ome.metadata.base.OME],
+the version-tagged top-level container a group's metadata builds on.
+
+Each supported NGFF version has its own package under
+`abczarr.ome.metadata` -- `v0_1` through `v0_5`, plus a `v0_6dev4`
+preview -- with its own typed classes for that version's shape.
+[OMEMetadata.to_version][abczarr.ome.metadata.base.OMEMetadata.to_version]
+converts an object built against one version to another.
+"""
+
 __all__ = ["OMEMetadata", "OME"]
 
 # stdlib
@@ -34,16 +52,64 @@ _AXIS_TYPE = {
 
 @autodefine
 class OMEMetadata(FlexibleMetadata):
+    """The base of every OME-Zarr metadata class.
+
+    Every piece of OME-Zarr metadata -- a multiscale pyramid, an axis,
+    a plate, a rendering setting -- is a subclass of this in the
+    version package it belongs to (`abczarr.ome.metadata.v0_5.images`,
+    and so on). Build one with
+    [from_dict][abczarr._core.metadata.Metadata.from_dict] from the
+    JSON an OME-Zarr group carries, or with keyword arguments matching
+    its fields. [to_dict][abczarr._core.metadata.Metadata.to_dict]
+    serializes it back to that same shape, and any key it does not
+    recognize survives the round trip unchanged.
+
+    Use [to_version][abczarr.ome.metadata.base.OMEMetadata.to_version]
+    to convert an object built against one NGFF version to another.
+    """
 
     def to_version(self, version: str) -> tx.Self:
         """Convert this OME metadata to another OME-NGFF version.
 
-        Conversion steps one version at a time between the source and the
-        target. Most steps map each class to its same-named counterpart in
-        the target version and rebuild it field by field, recursing into
-        nested OME objects and sequences of them. A step that changed shape
-        (v0.3 <-> v0.4 introduced typed axes and per-dataset transforms) has
-        an explicit migration.
+        Works on any piece of OME metadata, not only the top-level
+        container: a [Multiscale][abczarr.ome.metadata.v0_5.images.Multiscale]
+        or an [Omero][abczarr.ome.metadata.v0_5.omero.Omero] converts
+        just as well as an
+        [OMEImage][abczarr.ome.metadata.v0_5.ome.OMEImage]. A field
+        both versions carry is passed through unchanged; a field only
+        the newer version has is filled in with a reasonable default
+        going forward, and dropped going back.
+
+        Raises
+        ------
+        ValueError
+            If *version* names no known OME-NGFF version, or if
+            converting to it would require information this object
+            does not carry.
+
+        !!! example
+            ```pycon
+            >>> from abczarr.ome.metadata import v0_4
+            >>> m = v0_4.Multiscale.from_dict({
+            ...     "version": "0.4",
+            ...     "axes": [
+            ...         {"name": "y", "type": "space"},
+            ...         {"name": "x", "type": "space"},
+            ...     ],
+            ...     "datasets": [{
+            ...         "path": "0",
+            ...         "coordinateTransformations": [
+            ...             {"type": "scale", "scale": [1.0, 1.0]}
+            ...         ],
+            ...     }],
+            ... })
+            >>> m5 = m.to_version("0.5")
+            >>> type(m5).__module__
+            'abczarr.ome.metadata.v0_5.images'
+            >>> m5.to_version("0.4") == m
+            True
+
+            ```
         """
         if version not in _MODULES:
             raise ValueError(f"Unknown OME version: {version!r}")
@@ -177,4 +243,18 @@ _MIGRATIONS = {
 
 @autodefine
 class OME(OMEMetadata):
+    """The version-tagged, top-level OME-Zarr metadata for a group.
+
+    Every OME-Zarr group carries one of these: an image and its
+    multiscale pyramid, a collection of labels, a plate, or a well,
+    each its own subclass in every version's package. `version`
+    records which NGFF version the metadata is written against, and
+    with it what the rest of its fields mean.
+
+    Build the concrete class for your version instead of this one --
+    see [v0_5.OME][abczarr.ome.metadata.v0_5.ome.OME] and its
+    siblings, [OMEImage][abczarr.ome.metadata.v0_5.ome.OMEImage] and
+    [OMEPlate][abczarr.ome.metadata.v0_5.ome.OMEPlate] among them.
+    """
+
     version: str = field(factory=False)

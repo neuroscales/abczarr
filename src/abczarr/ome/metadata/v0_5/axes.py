@@ -1,3 +1,5 @@
+"""An axis of a multiscale pyramid: its name, type, and unit."""
+
 __all__ = [
     "Axis", "SpaceAxis", "TimeAxis", "ChannelAxis",
     "AxisType", "SpaceUnit", "TimeUnit", "Unit",
@@ -38,6 +40,20 @@ Unit = tx.Union[SpaceUnit, TimeUnit]
 
 @autodefine
 class Axis(OMEMetadata):
+    """One dimension of a
+    [Multiscale][abczarr.ome.metadata.v0_5.images.Multiscale] pyramid.
+
+    `name` is the axis's label (`"x"`, `"channel"`, ...); its position
+    in a [Multiscale][abczarr.ome.metadata.v0_5.images.Multiscale]'s
+    `axes` list is its position in every array shape and every
+    coordinate transformation the pyramid carries. `type` says what
+    kind of axis it is (`"space"`, `"time"`, or `"channel"`), and
+    `unit` its physical unit -- constructing with `type="space"` gives
+    back a [SpaceAxis][abczarr.ome.metadata.v0_5.axes.SpaceAxis], and
+    likewise for `"time"` and `"channel"`, each restricting `unit` to
+    the units that type allows.
+    """
+
     name: Required[str] = field(factory=False)
     type: Recommended[tx.Union[AxisType, str]]
     unit: Recommended[tx.Union[Unit, str]]
@@ -45,17 +61,23 @@ class Axis(OMEMetadata):
 
 @register_subclass(type="space")
 class SpaceAxis(Axis):
+    """A spatial axis (`x`, `y`, or `z`), with a length unit."""
+
     type: Recommended[tx.Literal["space"]]
     unit: Recommended[SpaceUnit]
 
 
 @register_subclass(type="time")
 class TimeAxis(Axis):
+    """A time axis, with a duration unit."""
+
     type: Recommended[tx.Literal["time"]]
     unit: Recommended[TimeUnit]
 
 
 @register_subclass(type="channel")
 class ChannelAxis(Axis):
+    """A channel axis. It carries no physical unit."""
+
     type: Recommended[tx.Literal["channel"]]
     unit: NotRecommended[Unit]

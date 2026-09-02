@@ -1,3 +1,11 @@
+"""The multiscale image pyramid.
+
+[Multiscale][abczarr.ome.metadata.v0_5.images.Multiscale] describes a
+pyramid of progressively downsampled resolution levels, each a
+[Dataset][abczarr.ome.metadata.v0_5.images.Dataset] naming a Zarr
+array and how it is positioned relative to the others.
+"""
+
 __all__ = ["Dataset", "Multiscale"]
 
 # dependencies
@@ -16,6 +24,17 @@ from .transformations import CoordinateTransformation, Scale, Translation
 
 @autodefine
 class Dataset(OMEMetadata):
+    """One resolution level of a multiscale pyramid.
+
+    `path` is the name of the Zarr array holding this level, relative
+    to the image group. `coordinateTransformations` places it in the
+    pyramid's physical space: a
+    [Scale][abczarr.ome.metadata.v0_5.transformations.Scale], optionally
+    followed by a
+    [Translation][abczarr.ome.metadata.v0_5.transformations.Translation],
+    one value per axis.
+    """
+
     path: Required[str] = field(factory=False)
     coordinateTransformations: Required[tx.Union[
         tx.Tuple[Scale],
@@ -25,9 +44,24 @@ class Dataset(OMEMetadata):
 
 @autodefine
 class Multiscale(OMEMetadata):
+    """A multiscale image pyramid: its axes and resolution levels.
+
+    `axes` names and orders the pyramid's dimensions (`t`, `c`, `z`,
+    `y`, `x`, in whatever subset and order the image uses), and
+    `datasets` lists its resolution levels from full resolution down,
+    each a [Dataset][abczarr.ome.metadata.v0_5.images.Dataset].
+    `coordinateTransformations` here, if given, applies to every
+    level before its own.
+    """
 
     @autodefine
     class Metadata(OMEMetadata):
+        """How the pyramid's lower resolutions were generated.
+
+        Free-form: `method` names the downsampling function, `args`
+        and `kwargs` are what it was called with.
+        """
+
         method: Optional[str]
         version: Optional[str]
         args: Optional[tx.List[tz.JSON]]
