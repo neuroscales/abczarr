@@ -27,10 +27,11 @@ import typing_extensions as tx
 # core
 from abczarr._core import typing as tz
 from abczarr._core.features import FEATURE_KINDS, FEATURE_VERSIONS
-from abczarr.abc.array import ZarrArray, ZarrArrayConfig
+from abczarr.abc.array import ZarrArray
 from abczarr.abc.capabilities import Support
 from abczarr.abc.group import ZarrGroup
 from abczarr.abc.node import ZarrNode
+from abczarr.config import ArrayOptions
 from abczarr.drivers._metadata import metadata_from_dict
 from abczarr.drivers.base import Driver
 
@@ -316,8 +317,8 @@ class ZarrPythonGroup(ZarrGroup):
         shape: tz.ShapeLike,
         dtype: npt.DTypeLike,
         *,
-        config: tx.Optional[ZarrArrayConfig] = None,
-        **kwargs: tx.Unpack[ZarrArrayConfig],
+        config: tx.Optional[ArrayOptions] = None,
+        **kwargs: tx.Unpack[ArrayOptions],
     ) -> ZarrPythonArray:
         options = dict(config or {})
         options.update(kwargs)
@@ -340,12 +341,12 @@ def _compressor_spec(
 
 
 def _create_kwargs(options: tx.Dict[str, tx.Any]) -> tx.Dict[str, tx.Any]:
-    """Map a ZarrArrayConfig to zarr-python ``create_array`` keywords."""
+    """Map an ArrayOptions to zarr-python ``create_array`` keywords."""
     kwargs = {}  # type: tx.Dict[str, tx.Any]
-    if options.get("chunk") is not None:
-        kwargs["chunks"] = options["chunk"]
-    if options.get("shard") is not None:
-        kwargs["shards"] = options["shard"]
+    if options.get("chunks") is not None:
+        kwargs["chunks"] = options["chunks"]
+    if options.get("shards") is not None:
+        kwargs["shards"] = options["shards"]
     if "fill_value" in options:
         kwargs["fill_value"] = options["fill_value"]
     if options.get("order") is not None:

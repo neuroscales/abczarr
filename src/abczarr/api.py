@@ -93,7 +93,7 @@ def from_config(out: tz.PathLike, zarr_config: ZarrConfig) -> ZarrGroup:
     The config's `zarr_version`, `overwrite`, and `driver` are honoured; add
     arrays to the returned group with its `create_array`.
     """
-    (driver,) = _resolve_drivers(zarr_config.driver)
+    driver = _resolve_drivers(zarr_config.driver)[0]
     node = driver.create_group(
         out,
         zarr_version=zarr_config.zarr_version,

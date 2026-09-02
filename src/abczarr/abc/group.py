@@ -13,8 +13,9 @@ import typing_extensions as tx
 
 # core
 from abczarr._core import typing as tz
+from abczarr.config import ArrayOptions
 
-from .array import ZarrArray, ZarrArrayConfig
+from .array import ZarrArray
 
 # locals
 from .node import ZarrNode
@@ -69,8 +70,8 @@ class ZarrGroup(ZarrNode):
         shape: tz.ShapeLike,
         dtype: npt.DTypeLike,
         *,
-        config: tx.Optional[ZarrArrayConfig] = None,
-        **kwargs: tx.Unpack[ZarrArrayConfig],
+        config: tx.Optional[ArrayOptions] = None,
+        **kwargs: tx.Unpack[ArrayOptions],
     ) -> ZarrArray:
         """Create a new array named *name* within this group.
 
@@ -82,9 +83,9 @@ class ZarrGroup(ZarrNode):
             The array's shape.
         dtype : numpy dtype
             The array's data type.
-        config : ZarrArrayConfig, optional
+        config : ArrayOptions, optional
             Chunking, sharding, and compression options. May also be
             passed as individual keyword arguments -- see
-            [ZarrArrayConfig][abczarr.abc.array.ZarrArrayConfig].
+            [ArrayOptions][abczarr.abc.array.ArrayOptions].
         """
         ...
