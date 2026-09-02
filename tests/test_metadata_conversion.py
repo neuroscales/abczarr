@@ -14,8 +14,8 @@ import warnings
 
 import pytest
 
+from abczarr.abc.errors import UnsupportedConversion
 from abczarr.metadata import v1, v2, v3
-from abczarr.metadata.base import UnsupportedConversion
 
 
 def _v2(**over: object) -> dict:
