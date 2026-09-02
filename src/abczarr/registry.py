@@ -1,118 +1,85 @@
+"""The registry of backend drivers, and choosing one for an array.
+
+abczarr opens Zarr through a [Driver][abczarr.drivers.base.Driver]. This
+module holds the list of drivers it knows about and, given an array's
+metadata, picks the one that can read it -- the machinery behind
+[open][abczarr.api.open].
+"""
+
+__all__ = [
+    "register_driver",
+    "available_drivers",
+    "select_driver",
+]
 
 # stdlib
-import warnings
-from types import ModuleType
+import importlib
 
 # dependencies
 import typing_extensions as tx
 
-from abczarr._core.imports import import_symbol
-
 # locals
-from ._core import typing as tz
-from .abc import ZarrNode
+from .abc.errors import UnsupportedZarrOperation
+from .drivers.base import Driver
 
-_NODE2CLS = {
-    "node": "ZarrNode",
-    "array": "ZarrArray",
-    "group": "ZarrGroup"
-}
+if tx.TYPE_CHECKING:
+    from .metadata.base import ArrayMetadata
 
-
-class UnsupportedDriverError(ValueError):
-    """Exception raised when an unsupported driver is specified."""
-
-    def __init__(self, driver: tz.AnyDriver) -> None:
-        super().__init__(f"Unsupported driver: {driver}")
-        self.driver = driver
+#: The drivers abczarr knows about, as ``(name, module, class)``. They are
+#: imported lazily, so importing abczarr never imports a backend. The order
+#: is the preference order when several drivers can open an array.
+_KNOWN_DRIVERS = [
+    ("zarr-python", "abczarr.drivers.zarr_python", "ZarrPythonDriver"),
+    ("tensorstore", "abczarr.drivers.tensorstore", "TensorStoreDriver"),
+]
 
 
-class UnavailableDriverError(ValueError):
-    """Exception raised when a driver is not available."""
+def register_driver(module: str, cls: str, name: str = "") -> None:
+    """Register a driver by the module and class that provide it.
 
-    def __init__(self, driver: tz.AnyDriver) -> None:
-        super().__init__(f"Driver not available: {driver}")
-        self.driver = driver
-
-
-class UnavailableDriverWarning(Warning):
-    """Warning raised when a driver is not available."""
-
-    def __init__(self, driver: tz.AnyDriver) -> None:
-        super().__init__(f"Driver not available: {driver}")
-        self.driver = driver
+    The driver is imported and instantiated only when
+    [available_drivers][abczarr.registry.available_drivers] is called, so
+    registering one never imports its backend.
+    """
+    _KNOWN_DRIVERS.append((name, module, cls))
 
 
-# name -> (probe_module, driver_module)
-# where *_path is "pkg.module:ClassName"
-_DRIVERS: tx.Dict[str, str] = {}
-_LOADED_DRIVERS: tx.Dict[str, ModuleType] = {}
+def available_drivers() -> "tx.List[Driver]":
+    """The installed, usable drivers, in preference order.
+
+    Each known driver is imported and instantiated; one whose backend is not
+    installed (its `available` is `False`) or that cannot be imported is left
+    out.
+    """
+    drivers = []  # type: tx.List[Driver]
+    for _name, module_path, cls_name in _KNOWN_DRIVERS:
+        try:
+            module = importlib.import_module(module_path)
+            driver = getattr(module, cls_name)()
+        except Exception:
+            continue
+        if driver.available:
+            drivers.append(driver)
+    return drivers
 
 
-def register_driver(name: str, module: str) -> None:
-    _DRIVERS[name] = module
-    _LOADED_DRIVERS.pop(name, None)
+def select_driver(
+    metadata: "ArrayMetadata", drivers: tx.Iterable[Driver]
+) -> Driver:
+    """Return the first driver in *drivers* that can open *metadata*.
 
-
-register_driver("zarr-python", "abczarr.drivers.zarr_python")
-register_driver("tensorstore", "abczarr.drivers.tensorstore")
-
-
-def reload_driver(name: str, strict: bool = True) -> ModuleType:
-    try:
-        mod = import_symbol(_DRIVERS[name])
-        _LOADED_DRIVERS[name] = mod
-        return mod
-    except UnavailableDriverError:
-        _LOADED_DRIVERS[name] = False
-        if strict:
-            raise
-        else:
-            warnings.warn(name, UnavailableDriverWarning, stacklevel=2)
-            return False
-
-
-def load_driver(name: str, strict: bool = True) -> ModuleType:
-    mod = _LOADED_DRIVERS.get(name)
-    if mod is False:
-        if strict:
-            raise UnavailableDriverError(name)
-        else:
-            return False
-    if not mod:
-        mod = reload_driver(name, strict)
-    return mod
-
-
-def get_driver(
-    driver: tx.Optional[tx.Union[str, ModuleType]] = None,
-    node_type: tx.Optional[tx.Literal["node", "array", "group"]] = None,
-    strict: tx.Optional[bool] = None
-) -> tx.Union[ModuleType, tx.Type[ZarrNode]]:
-    # Find first available driver
-    if driver is None:
-        for try_driver in _DRIVERS:
-            driver = load_driver(
-                try_driver,
-                strict=False if strict is None else strict
-            )
-            if driver:
-                break
-    if not driver:
-        raise UnavailableDriverError("No available drivers found.")
-
-    # Load driver
-    if isinstance(driver, str):
-        driver = load_driver(
-            driver,
-            strict=True if strict is None else strict
-        )
-    if node_type is None:
-        return driver
-
-    # Get node class from driver
-    node_cls = _NODE2CLS.get(node_type)
-    node_cls: tx.Type[ZarrNode] = getattr(driver, node_cls, None)
-    if node_cls is None:
-        raise UnsupportedDriverError(driver)
-    return node_cls
+    Raises
+    ------
+    [UnsupportedZarrOperation][abczarr.abc.errors.UnsupportedZarrOperation]
+        When none can. The message names each candidate driver and the
+        features it is missing, so the failure points at the exact gap
+        rather than a backend's opaque error.
+    """
+    verdicts = []
+    for driver in drivers:
+        verdict = driver.can_open(metadata)
+        if verdict:
+            return driver
+        verdicts.append(verdict)
+    detail = "; ".join(v.reason for v in verdicts) or "no drivers available"
+    raise UnsupportedZarrOperation(f"open this array -- {detail}")

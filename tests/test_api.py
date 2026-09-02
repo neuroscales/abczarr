@@ -10,10 +10,11 @@ import numpy as np
 import pytest
 
 import abczarr
+from abczarr import registry
 from abczarr.abc.capabilities import Support
 from abczarr.abc.errors import UnsupportedZarrOperation
-from abczarr.drivers import base as driver_base
-from abczarr.drivers.base import Driver, available_drivers
+from abczarr.drivers.base import Driver
+from abczarr.registry import available_drivers
 
 # --------------------------------------------------------------------------
 # registry -- no backend needed
@@ -31,7 +32,7 @@ def test_available_drivers_instantiates_registered(
     # the registry imports and instantiates each known driver; the base
     # Driver is available() by default, so it is returned
     monkeypatch.setattr(
-        driver_base,
+        registry,
         "_KNOWN_DRIVERS",
         [("base", "abczarr.drivers.base", "Driver")],
     )
@@ -40,8 +41,8 @@ def test_available_drivers_instantiates_registered(
 
 
 def test_register_driver_appends(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(driver_base, "_KNOWN_DRIVERS", [])
-    driver_base.register_driver("abczarr.drivers.base", "Driver", "x")
+    monkeypatch.setattr(registry, "_KNOWN_DRIVERS", [])
+    registry.register_driver("abczarr.drivers.base", "Driver", "x")
     assert available_drivers()  # the base Driver is available by default
 
 

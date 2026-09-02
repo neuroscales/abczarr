@@ -21,7 +21,12 @@ import typing_extensions as tx
 
 # core
 from abczarr._core import typing as tz
-from abczarr._core.auto.attrs import autofrozen, eq_safenan, field
+from abczarr._core.auto.attrs import (
+    autofrozen,
+    eq_safenan,
+    field,
+    get_converter,
+)
 from abczarr._core.features import feature_key
 from abczarr._core.metadata import register_subclass
 from abczarr.metadata import base
@@ -33,6 +38,15 @@ from .codecs import Codec
 # locals
 from .dtypes import DType
 from .filters import Filter
+
+# In Zarr v2, ``filters`` is a list or ``null``, where null means no filters;
+# accept null as an empty tuple so metadata straight from a store loads.
+_to_filter_tuple = get_converter(tx.Tuple[Filter, ...])
+
+
+def _filters_converter(value: tx.Any) -> tx.Tuple[Filter, ...]:
+    return _to_filter_tuple(() if value is None else value)
+
 
 # ----------------------------------------------------------------------
 #   ARRAY
@@ -75,7 +89,7 @@ class ArrayMetadata(ArrayMetadataV2):
     compressor: tx.Optional[Codec]
     fill_value: tx.Optional[tz.BuiltinNumber] = field(eq=eq_safenan)
     order: tz.MemoryOrder
-    filters: tx.Tuple[Filter, ...]
+    filters: tx.Tuple[Filter, ...] = field(converter=_filters_converter)
 
     # --- Optional ----
     dimension_separator: tx.Optional[tz.DimensionSeparator]
