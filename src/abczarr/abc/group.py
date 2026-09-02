@@ -152,11 +152,9 @@ class PathGroup(ZarrGroup):
     It can also create subgroups on its own, since that only means writing
     group metadata.
 
-    A driver subclasses `PathGroup` and overrides
-    [_open_array][abczarr.abc.group.PathGroup._open_array] (and, to support
-    creating arrays too,
-    [_create_array][abczarr.abc.group.PathGroup._create_array]) to say how a
-    child array is opened and created with its own backend. Subgroups need
+    A driver subclasses `PathGroup` and overrides `_open_array` (and, to
+    support creating arrays too, `_create_array`) to say how a child array
+    is opened and created with its own backend. Subgroups need
     no override -- they are more `PathGroup`s of the same subclass, so a
     whole hierarchy is reachable from one opened group.
 
@@ -252,8 +250,8 @@ class PathGroup(ZarrGroup):
 
         This is the fallback for a backend with no native creation: write the
         config's metadata to the child directory and open it through
-        [_open_array][abczarr.abc.group.PathGroup._open_array]. A backend that
-        creates natively (zarr-python, TensorStore) overrides this.
+        `_open_array`. A backend that creates natively (zarr-python,
+        TensorStore) overrides this.
         """
         child = self._store_path / name
         if _node_type_at(child) is not None:
