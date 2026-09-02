@@ -127,13 +127,10 @@ class ChunkKeyEncoding(MustUnderstandExtension):
     name: str
     configuration: ChunkKeyEncodingConfig
 
-    def __new___(cls, name: str, *a, **k) -> tx.Self:
-        if cls is ChunkKeyEncoding:
-            if name == "default":
-                return super().__new__(DefaultChunkKeyEncoding)
-            elif name == "v2":
-                return super().__new__(V2ChunkKeyEncoding)
-        return super().__new__(cls)
+    # Construction dispatches to the right subclass by name through the
+    # metadata registry (Metadata.__new__), so a "default"/"v2" name yields
+    # a DefaultChunkKeyEncoding / V2ChunkKeyEncoding without a hand-written
+    # __new__ here.
 
 
 @autofrozen(field_transformer=update(separator={"default": "/"}))
