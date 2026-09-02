@@ -14,8 +14,10 @@ import typing_extensions as tx
 
 # core
 from abczarr._core import typing as tz
-from abczarr.config import ArrayOptions
+from abczarr._core.attrs import evolve
+from abczarr.config import ArrayConfig, ArrayOptions
 from abczarr.metadata.base import (
+    ArrayMetadata,
     GroupMetadataV2,
     GroupMetadataV3,
     NodeMetadata,
@@ -35,6 +37,27 @@ _GROUP_METADATA = {
     2: GroupMetadataV2,
     3: GroupMetadataV3,
 }
+
+
+def _array_metadata(
+    shape: tz.ShapeLike,
+    dtype: "npt.DTypeLike",
+    config: "tx.Union[ArrayConfig, ArrayOptions, None]",
+    options: ArrayOptions,
+    version: tz.ZarrVersion,
+) -> ArrayMetadata:
+    """Lower a `create_array` call to array metadata.
+
+    A config (an [ArrayConfig][abczarr.config.ArrayConfig] or a mapping of its
+    fields) is the base; *shape*, *dtype* and the per-call *options* are
+    layered on top, with the array taking the group's format version.
+    """
+    base = config if isinstance(config, ArrayConfig) else ArrayConfig(
+        **dict(config or {})
+    )
+    merged = dict(options)
+    merged.update(shape=shape, dtype=dtype, zarr_version=version)
+    return evolve(base, **merged).to_metadata()
 
 
 class ZarrGroup(ZarrNode):
@@ -79,15 +102,14 @@ class ZarrGroup(ZarrNode):
         """
         ...
 
-    @abstractmethod
     def create_array(
         self,
         name: str,
         shape: tz.ShapeLike,
         dtype: npt.DTypeLike,
         *,
-        config: tx.Optional[ArrayOptions] = None,
-        **kwargs: tx.Unpack[ArrayOptions],
+        config: "tx.Union[ArrayConfig, ArrayOptions, None]" = None,
+        **options: tx.Unpack[ArrayOptions],
     ) -> ZarrArray:
         """Create a new array named *name* within this group.
 
@@ -99,11 +121,19 @@ class ZarrGroup(ZarrNode):
             The array's shape.
         dtype : numpy dtype
             The array's data type.
-        config : ArrayOptions, optional
-            Chunking, sharding, and compression options. May also be
-            passed as individual keyword arguments -- see
-            [ArrayOptions][abczarr.config.ArrayOptions].
+        config : ArrayConfig or mapping, optional
+            A reusable [ArrayConfig][abczarr.config.ArrayConfig], or a mapping
+            of the same fields. Individual fields may also be passed as
+            keyword arguments, which override the config.
         """
+        metadata = _array_metadata(
+            shape, dtype, config, options, self.zarr_version
+        )
+        return self._create_array(name, metadata)
+
+    @abstractmethod
+    def _create_array(self, name: str, metadata: ArrayMetadata) -> ZarrArray:
+        """Create the array named *name* from *metadata*, with the backend."""
         ...
 
 
@@ -216,23 +246,26 @@ class PathGroup(ZarrGroup):
         metadata_cls(attributes={}).to_file(child)
         return type(self)(child, self._mode)
 
-    def create_array(
-        self,
-        name: str,
-        shape: tz.ShapeLike,
-        dtype: npt.DTypeLike,
-        *,
-        config: tx.Optional[ArrayOptions] = None,
-        **kwargs: tx.Unpack[ArrayOptions],
-    ) -> ZarrArray:
-        return self._create_array(
-            name, shape, dtype, config=config, **kwargs
-        )
+    def _create_array(self, name: str, metadata: ArrayMetadata) -> ZarrArray:
+        """Create a child array by writing its metadata, then opening it.
 
-    # -- backend hooks -----------------------------------------------------
-    # A driver overrides these to open and create arrays with its backend.
-    # The rest of the surface -- listing, navigation, subgroups -- is
-    # backend-independent and needs no override.
+        Writing the metadata is backend-independent; only opening the result
+        needs the backend, through
+        [_open_array][abczarr.abc.group.PathGroup._open_array].
+        """
+        child = self._store_path / name
+        if node_type_at(child) is not None:
+            raise UnsupportedZarrOperation(
+                "create an array where a member already exists"
+            )
+        child.mkdir(parents=True, exist_ok=True)
+        metadata.to_file(child)
+        return self._open_array(child)
+
+    # -- backend hook ------------------------------------------------------
+    # A driver overrides this to open a child array with its backend. The
+    # rest of the surface -- listing, navigation, subgroups, and writing an
+    # array's metadata -- is backend-independent.
 
     def _open_array(self, store_path: tz.PathLike) -> ZarrArray:
         """Open the child array at *store_path*.
@@ -241,19 +274,3 @@ class PathGroup(ZarrGroup):
         overrides this method to open one with its own backend.
         """
         raise UnsupportedZarrOperation("open an array")
-
-    def _create_array(
-        self,
-        name: str,
-        shape: tz.ShapeLike,
-        dtype: npt.DTypeLike,
-        *,
-        config: tx.Optional[ArrayOptions] = None,
-        **kwargs: tx.Unpack[ArrayOptions],
-    ) -> ZarrArray:
-        """Create a child array, for a driver that can.
-
-        `PathGroup` can create subgroups on its own, but not arrays; a
-        driver overrides this method to create one with its own backend.
-        """
-        raise UnsupportedZarrOperation("create_array")

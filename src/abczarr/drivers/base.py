@@ -26,7 +26,7 @@ from abczarr.abc.errors import UnsupportedZarrOperation
 
 if tx.TYPE_CHECKING:
     from abczarr.abc.node import ZarrNode
-    from abczarr.metadata.base import ArrayMetadata
+    from abczarr.metadata.base import ArrayMetadata, NodeMetadata
 
 
 class Verdict:
@@ -90,15 +90,52 @@ class Driver(SupportsCapabilities):
         """
         raise UnsupportedZarrOperation("open", self.name or None)
 
-    def create_group(
-        self, location: tx.Any, *, zarr_version: int = 3,
-        overwrite: bool = False,
+    def create(
+        self, location: tx.Any, metadata: "NodeMetadata",
+        *, overwrite: bool = False,
     ) -> "ZarrNode":
-        """Create a new group at *location* and wrap it.
+        """Create a node at *location* from *metadata* and open it.
+
+        The default writes the metadata to the store, then opens the result.
+        That works for any backend that can open a store written this way, so
+        a driver rarely needs to override it. Creating an array and creating a
+        group differ only in the metadata handed in.
 
         Raises
         ------
         [UnsupportedZarrOperation][abczarr.abc.errors.UnsupportedZarrOperation]
-            When this driver cannot create a group.
+            When something already exists at *location* and *overwrite* is
+            false.
         """
-        raise UnsupportedZarrOperation("create_group", self.name or None)
+        from bagof.paths import Path
+
+        from abczarr.metadata.base import node_at
+
+        path = Path(str(location))
+        if node_at(path) is not None:
+            if not overwrite:
+                raise UnsupportedZarrOperation(
+                    "create where a node already exists", self.name or None
+                )
+            path.rmdir(recursive=True)
+        path.mkdir(parents=True, exist_ok=True)
+        metadata.to_file(path)
+        return self.open(location, "r+")
+
+    def create_group(
+        self, location: tx.Any, *, zarr_version: int = 3,
+        overwrite: bool = False,
+    ) -> "ZarrNode":
+        """Create a new empty group at *location* and wrap it."""
+        from abczarr.metadata.base import GroupMetadataV2, GroupMetadataV3
+
+        group_metadata = {2: GroupMetadataV2, 3: GroupMetadataV3}.get(
+            zarr_version
+        )
+        if group_metadata is None:
+            raise UnsupportedZarrOperation(
+                f"create a group in Zarr v{zarr_version}", self.name or None
+            )
+        return self.create(
+            location, group_metadata(attributes={}), overwrite=overwrite
+        )

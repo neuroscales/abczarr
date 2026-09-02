@@ -12,7 +12,7 @@ __all__ = [
     "open",
     "open_array",
     "open_group",
-    "from_config",
+    "create",
 ]
 
 # stdlib
@@ -28,8 +28,9 @@ from .abc.errors import UnsupportedZarrOperation
 from .abc.group import ZarrGroup
 from .abc.node import ZarrNode
 from .abc.store import PathStore
-from .config import ZarrConfig
+from .config import ArrayConfig, GroupConfig, ZarrConfig
 from .drivers.base import Driver
+from .metadata.base import ArrayMetadata, GroupMetadataV2, GroupMetadataV3
 from .registry import available_drivers, select_driver
 
 _DriverArg = tx.Optional[tx.Union[str, Driver]]
@@ -86,22 +87,48 @@ def open_group(
     return node
 
 
-def from_config(out: tz.PathLike, zarr_config: ZarrConfig) -> ZarrGroup:
-    """Create an empty group at *out* from a
-    [ZarrConfig][abczarr.config.ZarrConfig].
+@tx.overload
+def create(location: tz.PathLike, config: ArrayConfig) -> ZarrArray: ...
+@tx.overload
+def create(location: tz.PathLike, config: GroupConfig) -> ZarrGroup: ...
 
-    The config's `zarr_version`, `overwrite`, and `driver` are honoured; add
-    arrays to the returned group with its `create_array`.
+
+def create(location: tz.PathLike, config: ZarrConfig) -> ZarrNode:
+    """Create the array or group *config* describes at *location*.
+
+    An [ArrayConfig][abczarr.config.ArrayConfig] creates an array, a
+    [GroupConfig][abczarr.config.GroupConfig] creates a group. The config's
+    `zarr_version`, `overwrite`, and `driver` are honoured; the returned
+    group's `create_array` adds arrays to it.
     """
-    driver = _resolve_drivers(zarr_config.driver)[0]
-    node = driver.create_group(
-        out,
-        zarr_version=zarr_config.zarr_version,
-        overwrite=zarr_config.overwrite,
+    if isinstance(config, ArrayConfig):
+        metadata = config.to_metadata()
+    else:
+        metadata = _group_metadata(config)
+    driver = _choose_create_driver(config, metadata)
+    return driver.create(location, metadata, overwrite=config.overwrite)
+
+
+def _group_metadata(config: ZarrConfig) -> tx.Any:
+    group_metadata = {2: GroupMetadataV2, 3: GroupMetadataV3}.get(
+        config.zarr_version
     )
-    if not isinstance(node, ZarrGroup):
-        raise UnsupportedZarrOperation("from_config produced a non-group")
-    return node
+    if group_metadata is None:
+        raise UnsupportedZarrOperation(
+            f"create a group in Zarr v{config.zarr_version}"
+        )
+    return group_metadata(attributes=dict(config.attributes))
+
+
+def _choose_create_driver(config: ZarrConfig, metadata: tx.Any) -> Driver:
+    """The driver to create with -- the array's features decide when there is
+    a choice, else the first available."""
+    drivers = _resolve_drivers(config.driver)
+    if len(drivers) == 1:
+        return drivers[0]
+    if isinstance(metadata, ArrayMetadata):
+        return select_driver(metadata, drivers)
+    return drivers[0]
 
 
 def _resolve_drivers(driver: _DriverArg) -> "tx.List[Driver]":

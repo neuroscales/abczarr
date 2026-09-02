@@ -111,7 +111,7 @@ def test_write_through_the_surface(tmp_path: pathlib.Path) -> None:
 
 def test_create_array_and_group(tmp_path: pathlib.Path) -> None:
     node = _open(_store(tmp_path), mode="a")
-    made = node.create_array("new", shape=(3,), dtype="int16", chunk=(3,))
+    made = node.create_array("new", shape=(3,), dtype="int16", chunks=(3,))
     assert isinstance(made, ZarrPythonArray)
     assert made.shape == (3,)
     node.create_group("grp2")

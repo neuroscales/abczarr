@@ -29,11 +29,12 @@ from abczarr._core import typing as tz
 from abczarr._core.features import FEATURE_KINDS, FEATURE_VERSIONS
 from abczarr.abc.array import ZarrArray
 from abczarr.abc.capabilities import Support
+from abczarr.abc.errors import UnsupportedZarrOperation
 from abczarr.abc.group import ZarrGroup
 from abczarr.abc.node import ZarrNode
-from abczarr.config import ArrayOptions
 from abczarr.drivers._metadata import metadata_from_dict
 from abczarr.drivers.base import Driver
+from abczarr.metadata.base import node_type_at
 
 # optionals -- the module imports without zarr; a driver with no zarr simply
 # reports that it can open nothing.
@@ -311,56 +312,16 @@ class ZarrPythonGroup(ZarrGroup):
             self._group.create_group(name, overwrite=overwrite)
         )
 
-    def create_array(
-        self,
-        name: str,
-        shape: tz.ShapeLike,
-        dtype: npt.DTypeLike,
-        *,
-        config: tx.Optional[ArrayOptions] = None,
-        **kwargs: tx.Unpack[ArrayOptions],
+    def _create_array(
+        self, name: str, metadata: tx.Any
     ) -> ZarrPythonArray:
-        options = dict(config or {})
-        options.update(kwargs)
-        array = self._group.create_array(
-            name, shape=shape, dtype=dtype, **_create_kwargs(options)
-        )
-        return ZarrPythonArray(array)
-
-
-def _compressor_spec(
-    compressor: tx.Any, options: tx.Optional[tx.Mapping[str, tx.Any]]
-) -> tx.Any:
-    """Turn the surface's compressor + options into what zarr expects."""
-    if compressor is None:
-        return None
-    if isinstance(compressor, str):
-        # zarr requires a configuration key even when it is empty
-        return {"name": compressor, "configuration": dict(options or {})}
-    return compressor  # already a codec or a codec dict
-
-
-def _create_kwargs(options: tx.Dict[str, tx.Any]) -> tx.Dict[str, tx.Any]:
-    """Map an ArrayOptions to zarr-python ``create_array`` keywords."""
-    kwargs = {}  # type: tx.Dict[str, tx.Any]
-    if options.get("chunks") is not None:
-        kwargs["chunks"] = options["chunks"]
-    if options.get("shards") is not None:
-        kwargs["shards"] = options["shards"]
-    if "fill_value" in options:
-        kwargs["fill_value"] = options["fill_value"]
-    if options.get("order") is not None:
-        kwargs["order"] = options["order"]
-    if "compressor" in options:
-        kwargs["compressors"] = _compressor_spec(
-            options["compressor"], options.get("compressor_options")
-        )
-    separator = options.get("dimension_separator")
-    if separator is not None:
-        kwargs["chunk_key_encoding"] = {
-            "name": "default",
-            "configuration": {"separator": separator},
-        }
-    return kwargs
+        child = self._store_path / name
+        if node_type_at(child) is not None:
+            raise UnsupportedZarrOperation(
+                "create an array where a member already exists", "zarr-python"
+            )
+        child.mkdir(parents=True, exist_ok=True)
+        metadata.to_file(child)
+        return ZarrPythonArray(zarr.open_array(str(child), mode="r+"))
 
 
