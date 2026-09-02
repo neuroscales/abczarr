@@ -111,7 +111,7 @@ toggle.name = "Switch to light mode"
 # - https://zensical.org/docs/authoring/icons-emojis/#search
 # ----------------------------------------------------------------------------
 [project.theme.icon]
-logo = "lucide/brain-circuit"
+logo = "lucide/boxes"
 repo = "fontawesome/brands/github"
 
 # ----------------------------------------------------------------------------

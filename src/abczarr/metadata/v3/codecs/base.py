@@ -21,12 +21,29 @@ class CodecConfig(TypedConfig):
 
 @autofrozen(extra_items=False)
 class CodecConfigImpl(CodecConfig):
-    ...
+    def to_dict(self) -> tz.JSONDict:
+        # A codec configuration names only the fields the codec has, and the
+        # codec schemas allow no other keys and no nulls. An unset optional
+        # field (None) is therefore omitted rather than written as null.
+        return {
+            key: value
+            for key, value in super().to_dict().items()
+            if value is not None
+        }
 
 
 @autofrozen
 class Codec(Extension):
     configuration: CodecConfig
+
+    def to_dict(self) -> tz.JSONDict:
+        # A codec with no configuration parameters (crc32c, or a bytes codec
+        # for a single-byte dtype) is written as a bare name, not with an
+        # empty configuration object.
+        obj = super().to_dict()
+        if obj.get("configuration") == {}:
+            obj.pop("configuration")
+        return obj
 
     def to_version(self, version: tz.ZarrVersion) -> "Codec":
         if version == 3:
