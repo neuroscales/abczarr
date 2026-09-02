@@ -143,6 +143,10 @@ def _zarr_create_kwargs(config: tx.Any) -> tx.Dict[str, tx.Any]:
         kwargs["dimension_names"] = config.dimension_names
     if config.filters:
         kwargs["filters"] = [dict(f) for f in config.filters]
+    # order is Zarr v2 metadata; passing it on v3 only warns (v3 order is a
+    # runtime layout, not stored)
+    if config.zarr_version == 2:
+        kwargs["order"] = config.order
     return kwargs
 
 

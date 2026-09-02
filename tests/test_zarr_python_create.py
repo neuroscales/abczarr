@@ -136,3 +136,39 @@ def test_create_a_group_from_a_config(tmp_path: pathlib.Path) -> None:
     group = abczarr.create(str(tmp_path / "g.zarr"), GroupConfig())
     assert isinstance(group, abczarr.ZarrGroup)
     assert group.zarr_version == 3
+
+
+# --------------------------------------------------------------------------
+# the write-then-open fallback: our written metadata must be valid
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        ArrayConfig(shape=(8, 8), dtype="float32", chunks=(4, 4)),
+        ArrayConfig(
+            shape=(8, 8), dtype="float32", chunks=(4, 4), compressor="zstd"
+        ),
+        ArrayConfig(shape=(8, 8), dtype="uint8", chunks=(2, 2), shards=(4, 4)),
+        ArrayConfig(
+            shape=(4,), dtype="int16", compressor=None,
+            dimension_separator=".",
+        ),
+        ArrayConfig(
+            shape=(8, 8), dtype="float32", chunks=(4, 4), order="F",
+            zarr_version=2,
+        ),
+    ],
+)
+def test_fallback_metadata_opens_and_writes_in_zarr(
+    tmp_path: pathlib.Path, config: ArrayConfig
+) -> None:
+    from bagof.paths import Path as BagofPath
+
+    root = pathlib.Path(tmp_path) / "arr.zarr"
+    root.mkdir()
+    config.resolve().to_metadata().to_file(BagofPath(str(root)))
+    array = zarr.open_array(str(root), mode="r+")
+    array[...] = 0
+    assert tuple(array.shape) == config.shape

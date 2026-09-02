@@ -127,8 +127,8 @@ class ArrayConfig(ZarrConfig):
         The value read where nothing was written. `"auto"` is the dtype's
         zero.
     order : {"C", "F"}
-        The in-memory layout. A Zarr v2 concept; on v3 a non-`"C"` order is
-        written as a transpose codec.
+        The in-memory layout. Stored in Zarr v2 metadata; on v3 it is a
+        runtime memory-layout preference (not written to `zarr.json`).
     dimension_separator : {"/", ".", "auto"}
         The separator between chunk indices in a key, `"auto"` (or `None`)
         being `/`. A v2 concept; v3 carries it in the chunk-key encoding.
@@ -253,9 +253,14 @@ class ArrayConfig(ZarrConfig):
             "fill_value": _resolve_fill(config.fill_value, config.dtype),
             "attributes": dict(config.attributes),
         }
-        return ArrayMetadata.from_dict(metadata).to_version(
+        result = ArrayMetadata.from_dict(metadata).to_version(
             config.zarr_version
         )
+        # order is Zarr v2 metadata; v3 treats it as a runtime memory layout,
+        # not stored in zarr.json, so it is only set here for v2.
+        if config.zarr_version == 2 and config.order != "C":
+            result = evolve(result, order=config.order)
+        return result
 
     # -- resolved pieces, for a driver that creates natively rather than from
     #    a written metadata document.
@@ -284,6 +289,11 @@ class OMEZarrConfig(ArrayConfig):
     Extends [ArrayConfig][abczarr.config.ArrayConfig] with the pyramid and
     axis choices OME-Zarr adds. The pyramid construction that consumes these
     lands with the OME helpers.
+
+    The per-axis choices here (`chunk_channels`, `chunk_time`, and the shard
+    equivalents) describe a chunking *strategy*. The OME work will fold that
+    strategy into the inherited `chunks` and `shards`, rather than leaving the
+    two as separate, possibly conflicting, chunking specifications.
 
     Parameters
     ----------
