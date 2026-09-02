@@ -14,7 +14,6 @@ __all__ = [
     "open_group",
     "create",
     "create_group",
-    "create_metadata",
 ]
 
 # stdlib
@@ -32,7 +31,6 @@ from .abc.group import ZarrGroup
 from .abc.node import ZarrNode
 from .abc.store import PathStore
 from .config import ArrayConfig, GroupConfig, ZarrConfig
-from .drivers._metadata import metadata_from_dict
 from .drivers.base import Driver
 from .metadata.base import ArrayMetadata, NodeMetadata
 from .registry import available_drivers, select_driver
@@ -99,49 +97,57 @@ def create(
 def create(
     location: tz.PathLike, config: GroupConfig, **fields: tx.Any
 ) -> ZarrGroup: ...
+@tx.overload
+def create(
+    location: tz.PathLike, config: NodeMetadata, **fields: tx.Any
+) -> ZarrNode: ...
 
 
 def create(
-    location: tz.PathLike, config: ZarrConfig, **fields: tx.Any
+    location: tz.PathLike,
+    config: tx.Union[ZarrConfig, NodeMetadata],
+    **fields: tx.Any,
 ) -> ZarrNode:
     """Create the array or group *config* describes at *location*.
 
-    An [ArrayConfig][abczarr.config.ArrayConfig] creates an array, a
-    [GroupConfig][abczarr.config.GroupConfig] creates a group. Fields passed
-    as keyword arguments override the config. The config's `zarr_version`,
-    `overwrite`, and `driver` are honoured; the returned group's
-    `create_array` adds arrays to it. For full control beyond what the config
-    helpers express, see [create_metadata][abczarr.api.create_metadata].
-    """
-    if fields:
-        config = evolve(config, **fields)
-    if isinstance(config, ArrayConfig):
-        config = config.resolve()
-        metadata = config.to_metadata()
-    else:
-        metadata = None
-    return _choose_create_driver(config.driver, metadata).create(
-        location, config
-    )
-
-
-def create_metadata(
-    location: tz.PathLike,
-    metadata: tx.Union[NodeMetadata, tz.JSONDict],
-    *, driver: tx.Optional[str] = None, overwrite: bool = False,
-) -> ZarrNode:
-    """Create a node at *location* from an exact metadata document.
-
-    The escape hatch beyond [create][abczarr.api.create]: pass an
+    *config* is usually an [ArrayConfig][abczarr.config.ArrayConfig] (creates
+    an array) or a [GroupConfig][abczarr.config.GroupConfig] (creates a
+    group), and keyword arguments override its fields; the backend creates the
+    node natively. For full control beyond what the config helpers express,
+    *config* may instead be an exact metadata document -- an
     [ArrayMetadata][abczarr.metadata.base.ArrayMetadata] or
-    [GroupMetadata][abczarr.metadata.base.GroupMetadata] (or its dict) and it
-    is created as it is, with whatever fill value, codec pipeline or
-    attributes it names.
+    [GroupMetadata][abczarr.metadata.base.GroupMetadata], the lowered form a
+    config would produce -- which is created as it is; there `driver` and
+    `overwrite` are the only keywords. For a plain dict, wrap it first with
+    `ArrayMetadata.from_dict(...)` or `ArrayConfig(**...)`.
     """
-    if not isinstance(metadata, NodeMetadata):
-        metadata = metadata_from_dict(metadata)
-    return _choose_create_driver(driver, metadata).create_metadata(
-        location, metadata, overwrite=overwrite
+    if isinstance(config, ZarrConfig):
+        if fields:
+            config = evolve(config, **fields)
+        if isinstance(config, ArrayConfig):
+            config = config.resolve()
+            metadata = config.to_metadata()
+        else:
+            metadata = None
+        return _choose_create_driver(config.driver, metadata).create(
+            location, config
+        )
+    if isinstance(config, NodeMetadata):
+        overwrite = bool(fields.pop("overwrite", False))
+        driver = fields.pop("driver", None)
+        if fields:
+            names = ", ".join(sorted(fields))
+            raise TypeError(
+                "create() from a metadata document got unexpected keyword "
+                f"arguments: {names}"
+            )
+        return _choose_create_driver(
+            driver, config
+        ).create_from_metadata(location, config, overwrite=overwrite)
+    raise TypeError(
+        "create() takes a config (ArrayConfig/GroupConfig) or a metadata "
+        "document (ArrayMetadata/GroupMetadata); for a dict, wrap it with "
+        "ArrayMetadata.from_dict(...) or ArrayConfig(**...)"
     )
 
 

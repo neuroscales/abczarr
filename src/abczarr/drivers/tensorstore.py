@@ -227,14 +227,14 @@ class TensorStoreDriver(Driver):
             return TensorStoreGroup(location, mode)
         return _open_ts_array(location, mode)
 
-    def create_metadata(
+    def create_from_metadata(
         self, location: tx.Any, metadata: NodeMetadata,
         *, overwrite: bool = False,
     ) -> ZarrNode:
         if isinstance(metadata, ArrayMetadata):
             return _create_ts_array(location, metadata, overwrite=overwrite)
         # a group is just a directory; the base's write-then-open handles it
-        return super().create_metadata(
+        return super().create_from_metadata(
             location, metadata, overwrite=overwrite
         )
 

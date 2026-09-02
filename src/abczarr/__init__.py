@@ -15,7 +15,6 @@ __all__ = [
     "open",
     "create",
     "create_group",
-    "create_metadata",
     "open_array",
     "open_group",
 ]
@@ -25,7 +24,6 @@ from .abc import UnsupportedZarrOperation, ZarrArray, ZarrGroup, ZarrNode
 from .api import (
     create,
     create_group,
-    create_metadata,
     open,
     open_array,
     open_group,

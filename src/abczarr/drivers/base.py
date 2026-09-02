@@ -98,13 +98,13 @@ class Driver(SupportsCapabilities):
         backend overrides it to create through its own machinery from the
         config's coarse fields, so the backend writes its own metadata.
         """
-        return self.create_metadata(
+        return self.create_from_metadata(
             location,
             self._config_metadata(config),
             overwrite=config.overwrite,
         )
 
-    def create_metadata(
+    def create_from_metadata(
         self, location: tx.Any, metadata: "NodeMetadata",
         *, overwrite: bool = False,
     ) -> "ZarrNode":

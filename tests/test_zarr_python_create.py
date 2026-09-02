@@ -208,7 +208,7 @@ def test_create_from_a_metadata_object(tmp_path: pathlib.Path) -> None:
     from abczarr.metadata import v3
 
     meta = v3.ArrayMetadata.from_dict(_raw_v3_array())
-    arr = abczarr.create_metadata(str(tmp_path / "raw.zarr"), meta)
+    arr = abczarr.create(str(tmp_path / "raw.zarr"), meta)
     assert isinstance(arr, ZarrPythonArray)
     # the exact metadata is honoured, including a custom fill and codec level
     assert arr.metadata.to_dict()["fill_value"] == 7
@@ -216,16 +216,17 @@ def test_create_from_a_metadata_object(tmp_path: pathlib.Path) -> None:
     assert "v3:codec:zstd" in arr.metadata.required_features()
 
 
-def test_create_from_a_metadata_dict(tmp_path: pathlib.Path) -> None:
-    arr = abczarr.create_metadata(str(tmp_path / "d.zarr"), _raw_v3_array())
-    assert isinstance(arr, ZarrPythonArray)
-    assert arr.shape == (8, 8)
+def test_create_rejects_a_bare_dict(tmp_path: pathlib.Path) -> None:
+    # a dict is ambiguous (config fields vs a metadata doc); it must be wrapped
+    with pytest.raises(TypeError, match="wrap it"):
+        abczarr.create(str(tmp_path / "d.zarr"), _raw_v3_array())
 
 
 def test_create_from_metadata_rejects_stray_keywords(
     tmp_path: pathlib.Path,
 ) -> None:
-    with pytest.raises(TypeError):
-        abczarr.create_metadata(
-            str(tmp_path / "x.zarr"), _raw_v3_array(), chunks=(2, 2)
-        )
+    from abczarr.metadata import v3
+
+    meta = v3.ArrayMetadata.from_dict(_raw_v3_array())
+    with pytest.raises(TypeError, match="unexpected keyword"):
+        abczarr.create(str(tmp_path / "x.zarr"), meta, chunks=(2, 2))
