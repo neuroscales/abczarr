@@ -62,9 +62,9 @@ def test_supports_reads_declared_capabilities() -> None:
 
 def test_support_reports_native_versus_synthesized() -> None:
     n = _FakeNode("/store")
-    assert n.support("sharding") is Support.NATIVE
-    assert n.support("async") is Support.SYNTHESIZED
-    assert n.support("consolidated_metadata") is Support.NONE
+    assert n.capability("sharding") is Support.NATIVE
+    assert n.capability("async") is Support.SYNTHESIZED
+    assert n.capability("consolidated_metadata") is Support.NONE
 
 
 def test_supports_native_only_excludes_synthesized() -> None:

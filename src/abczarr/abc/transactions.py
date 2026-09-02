@@ -123,9 +123,9 @@ class _BufferedView(Store):
         self._deletes = deletes
         self._native = parent.native
 
-    def support(self, capability: str) -> Support:
+    def capability(self, capability: str) -> Support:
         # a buffered view can do whatever its parent can
-        return self._parent.support(capability)
+        return self._parent.capability(capability)
 
     def get(self, key: str) -> tx.Optional[bytes]:
         if key in self._deletes:
@@ -264,8 +264,8 @@ class _AsyncBufferedView(AsyncStore):
         self._deletes = deletes
         self._native = parent.native
 
-    def support(self, capability: str) -> Support:
-        return self._parent.support(capability)
+    def capability(self, capability: str) -> Support:
+        return self._parent.capability(capability)
 
     async def get(self, key: str) -> tx.Optional[bytes]:
         if key in self._deletes:
