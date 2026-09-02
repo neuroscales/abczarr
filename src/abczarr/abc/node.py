@@ -1,3 +1,11 @@
+"""The base of every Zarr object.
+
+[ZarrNode][abczarr.abc.node.ZarrNode] is the common ancestor of
+[ZarrArray][abczarr.abc.array.ZarrArray] and
+[ZarrGroup][abczarr.abc.group.ZarrGroup]: metadata, attributes, the
+Zarr format version, and the capability query all live here.
+"""
+
 __all__ = [
     "ZarrNode",
     "KNOWN_CAPABILITIES",
@@ -26,11 +34,13 @@ from .capabilities import (  # noqa: F401
 
 
 class ZarrNode(SupportsCapabilities, ABC):
-    """Base class for any Zarr-like object (group or array).
+    """Base class for any Zarr object: a group or an array.
 
-    A driver declares what it provides in :attr:`_CAPABILITIES` (a mapping of
-    capability name to :class:`Support`) and callers branch on
-    :meth:`support` / :meth:`supports`.
+    Use
+    [support][abczarr.abc.capabilities.SupportsCapabilities.support]
+    or
+    [supports][abczarr.abc.capabilities.SupportsCapabilities.supports]
+    to check what a node's backend can do.
     """
 
     def __init__(self, store_path: tz.PathLike) -> None:
@@ -44,34 +54,33 @@ class ZarrNode(SupportsCapabilities, ABC):
 
     @property
     def store_path(self) -> os.PathLike:
-        """Path to the Zarr store for this node."""
+        """The path to this node's location in its store."""
         return self._store_path
 
     @property
     def native(self) -> tx.Any:
-        """The underlying backend object, or ``None``.
+        """The underlying backend object, or `None`.
 
-        The escape hatch: anything the uniform surface does not name is still
-        reachable through the backend object itself -- a ``zarr.Array``, a
-        ``tensorstore.TensorStore``, and so on. This is a supported contract,
-        not an accident of attribute delegation.
+        The escape hatch: anything the uniform surface does not name
+        is still reachable through the backend object itself -- a
+        `zarr.Array`, a `tensorstore.TensorStore`, and so on.
         """
         return self._native
 
     @property
     @abstractmethod
     def metadata(self) -> NodeMetadata:
-        """Access metadata for this node."""
+        """This node's Zarr metadata."""
         ...
 
     @property
     @abstractmethod
     def attrs(self) -> tz.Attributes:
-        """Access attributes for this node."""
+        """This node's user attributes."""
         ...
 
     @property
     @abstractmethod
     def zarr_version(self) -> tz.ZarrVersion:
-        """Get the Zarr format version."""
+        """The Zarr format version this node was written with."""
         ...
