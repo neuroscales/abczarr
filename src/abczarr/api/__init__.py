@@ -11,8 +11,6 @@ Everything is loaded on first use, so importing the package never imports
 a backend and the config layer stays free of the reader and writer.
 """
 
-from __future__ import annotations
-
 import importlib
 
 import typing_extensions as tx

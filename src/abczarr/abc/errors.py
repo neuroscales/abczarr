@@ -1,7 +1,5 @@
 """Errors raised by the abczarr surface."""
 
-from __future__ import annotations
-
 __all__ = [
     "UnsupportedZarrOperation",
     "UnsupportedConversion",
@@ -10,8 +8,7 @@ __all__ = [
 
 import typing_extensions as tx
 
-if tx.TYPE_CHECKING:
-    from abczarr._core import typing as tz
+from abczarr._core import typing as tz
 
 
 class TransactionConflict(RuntimeError):

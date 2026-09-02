@@ -44,7 +44,7 @@ def register_driver(module: str, cls: str, name: str = "") -> None:
     _KNOWN_DRIVERS.append((name, module, cls))
 
 
-def available_drivers() -> "tx.List[Driver]":
+def available_drivers() -> tx.List[Driver]:
     """The installed, usable drivers, in preference order.
 
     Each known driver is imported and instantiated; one whose backend is not
