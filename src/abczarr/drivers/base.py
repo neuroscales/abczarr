@@ -119,6 +119,7 @@ class Driver(SupportsCapabilities):
 #: imported lazily so importing abczarr never imports a backend.
 _KNOWN_DRIVERS = [
     ("zarr-python", "abczarr.drivers.zarr_python", "ZarrPythonDriver"),
+    ("tensorstore", "abczarr.drivers.tensorstore", "TensorStoreDriver"),
 ]
 
 
