@@ -2,9 +2,20 @@
 
 __all__ = [
     "UnsupportedZarrOperation",
+    "TransactionConflict",
 ]
 
 import typing_extensions as tx
+
+
+class TransactionConflict(RuntimeError):
+    """A transaction could not be committed because the store changed under it.
+
+    A concurrent writer moved the store on (a versioned backend such as
+    Icechunk, or an atomic commit a backend refused), so the transaction's
+    view is stale. The operation did not apply; a caller can retry it against
+    the current state.
+    """
 
 
 class UnsupportedZarrOperation(NotImplementedError):
