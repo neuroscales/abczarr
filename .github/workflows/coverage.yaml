@@ -43,9 +43,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           # universal-pathlib (py>=3.9) lets the cloud-scheme tests run here,
-          # and zarr (py>=3.11) lets the zarr-python driver tests run; the
-          # 3.8/3.14 test matrix installs only .[test] and skips both.
-          pip install -e .[test,upath,zarr-py]
+          # and zarr (py>=3.11) + tensorstore let the backend-driver tests
+          # run; the 3.8/3.14 test matrix installs only .[test] and skips all.
+          pip install -e .[test,upath,zarr-py,tensorstore]
       - name: Run pytest with coverage
         shell: bash
         run: pytest --cov=abczarr --cov-report=term --cov-report=xml

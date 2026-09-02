@@ -33,6 +33,7 @@ from abczarr.abc.array import ZarrArray, ZarrArrayConfig
 from abczarr.abc.capabilities import Support
 from abczarr.abc.group import ZarrGroup
 from abczarr.abc.node import ZarrNode
+from abczarr.drivers._metadata import metadata_from_dict
 from abczarr.drivers.base import Driver
 
 # optionals -- the module imports without zarr; a driver with no zarr simply
@@ -196,31 +197,6 @@ _NODE_CAPABILITIES = {
 }
 
 
-def _metadata_from_dict(data: tz.JSONDict) -> tx.Any:
-    """Build abczarr metadata from a zarr node's ``metadata.to_dict()``."""
-    from abczarr.metadata import base, v1, v2, v3
-
-    zarr_format = data.get("zarr_format", 3)
-    node_type = data.get("node_type") or (
-        "array" if "shape" in data else "group"
-    )
-    if node_type == "array":
-        array_cls = {
-            1: v1.ArrayMetadata,
-            2: v2.ArrayMetadata,
-            3: v3.ArrayMetadata,
-        }[zarr_format]
-        if zarr_format == 2 and data.get("filters") is None:
-            # zarr writes no filters as null; the v2 model wants an empty list
-            data = {**data, "filters": []}
-        return array_cls.from_dict(data)
-    group_cls = {
-        2: base.GroupMetadataV2,
-        3: base.GroupMetadataV3,
-    }.get(zarr_format, base.GroupMetadata)
-    return group_cls.from_dict(data)
-
-
 class ZarrPythonArray(ZarrArray):
     """A [ZarrArray][abczarr.abc.array.ZarrArray] backed by a ``zarr.Array``.
 
@@ -238,7 +214,7 @@ class ZarrPythonArray(ZarrArray):
 
     @property
     def metadata(self) -> tx.Any:
-        return _metadata_from_dict(self._array.metadata.to_dict())
+        return metadata_from_dict(self._array.metadata.to_dict())
 
     @property
     def attrs(self) -> tz.Attributes:
@@ -293,7 +269,7 @@ class ZarrPythonGroup(ZarrGroup):
 
     @property
     def metadata(self) -> tx.Any:
-        return _metadata_from_dict(self._group.metadata.to_dict())
+        return metadata_from_dict(self._group.metadata.to_dict())
 
     @property
     def attrs(self) -> tz.Attributes:

@@ -18,33 +18,6 @@ __all__ = [
     "open_group",
 ]
 
-import warnings
-
 from . import abc, api, config, drivers, metadata, ome, registry, schemas
 from .abc import UnsupportedZarrOperation, ZarrArray, ZarrGroup, ZarrNode
 from .api import from_config, open, open_array, open_group
-
-if False:
-    try:
-        import zarr as _  # noqa: F401
-
-        from .drivers.zarr_python import ZarrPythonArray, ZarrPythonGroup
-
-        __all__ += ["ZarrPythonArray", "ZarrPythonGroup"]
-
-    except ImportError:
-        warnings.warn(
-            "zarr-python is not installed, driver disabled", stacklevel=2
-        )
-
-    try:
-        import tensorstore as _  # noqa: F401
-
-        from .drivers.tensorstore import ZarrTSArray, ZarrTSGroup
-
-        __all__ += ["ZarrTSArray", "ZarrTSGroup"]
-
-    except ImportError:
-        warnings.warn(
-            "Tensorstore is not installed, driver disabled", stacklevel=2
-        )
