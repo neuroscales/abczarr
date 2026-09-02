@@ -11,7 +11,7 @@ import typing_extensions as tx
 
 from abczarr.abc.capabilities import Support
 from abczarr.abc.errors import UnsupportedZarrOperation
-from abczarr.abc.store import PathStore, Store
+from abczarr.abc.store import PathBasedStore, Store
 from abczarr.abc.transactions import BufferedTransaction, Transaction
 
 # --------------------------------------------------------------------------
@@ -22,7 +22,7 @@ from abczarr.abc.transactions import BufferedTransaction, Transaction
 def test_transactions_are_synthesized_not_atomic(
     tmp_path: pathlib.Path,
 ) -> None:
-    s = PathStore(str(tmp_path))
+    s = PathBasedStore(str(tmp_path))
     assert s.capability("transactions") is Support.SYNTHESIZED
     assert s.supports("transactions") is True
     assert s.supports("atomic_transactions") is False
@@ -36,7 +36,7 @@ def test_transactions_are_synthesized_not_atomic(
 def test_atomic_transaction_is_refused_not_faked(
     tmp_path: pathlib.Path,
 ) -> None:
-    s = PathStore(str(tmp_path))
+    s = PathBasedStore(str(tmp_path))
     with pytest.raises(UnsupportedZarrOperation, match="atomic"):
         s.transaction(atomic=True)
 
@@ -44,7 +44,7 @@ def test_atomic_transaction_is_refused_not_faked(
 def test_buffered_transaction_defers_until_commit(
     tmp_path: pathlib.Path,
 ) -> None:
-    s = PathStore(str(tmp_path))
+    s = PathBasedStore(str(tmp_path))
     s.set("a", b"1")
     txn = s.transaction(atomic=False)
     assert isinstance(txn, BufferedTransaction)
@@ -66,7 +66,7 @@ def test_buffered_transaction_defers_until_commit(
 def test_buffered_delete_is_visible_and_applied(
     tmp_path: pathlib.Path,
 ) -> None:
-    s = PathStore(str(tmp_path))
+    s = PathBasedStore(str(tmp_path))
     s.set("a", b"1")
     txn = s.transaction(atomic=False)
     txn.store.delete("a")
@@ -80,7 +80,7 @@ def test_buffered_delete_is_visible_and_applied(
 def test_context_manager_commits_on_clean_exit(
     tmp_path: pathlib.Path,
 ) -> None:
-    s = PathStore(str(tmp_path))
+    s = PathBasedStore(str(tmp_path))
     with s.transaction(atomic=False) as txn:
         txn.store.set("c", b"ctx")
     assert s.get("c") == b"ctx"
@@ -89,7 +89,7 @@ def test_context_manager_commits_on_clean_exit(
 def test_context_manager_aborts_on_exception(
     tmp_path: pathlib.Path,
 ) -> None:
-    s = PathStore(str(tmp_path))
+    s = PathBasedStore(str(tmp_path))
     with pytest.raises(RuntimeError, match="boom"):
         with s.transaction(atomic=False) as txn:
             txn.store.set("d", b"lost")
@@ -98,7 +98,7 @@ def test_context_manager_aborts_on_exception(
 
 
 def test_abort_discards_the_batch(tmp_path: pathlib.Path) -> None:
-    s = PathStore(str(tmp_path))
+    s = PathBasedStore(str(tmp_path))
     txn = s.transaction(atomic=False)
     txn.store.set("x", b"1")
     txn.abort()
@@ -108,7 +108,7 @@ def test_abort_discards_the_batch(tmp_path: pathlib.Path) -> None:
 def test_view_lists_pending_writes_and_hides_deletes(
     tmp_path: pathlib.Path,
 ) -> None:
-    s = PathStore(str(tmp_path))
+    s = PathBasedStore(str(tmp_path))
     s.set("keep", b"1")
     s.set("gone", b"2")
     txn = s.transaction(atomic=False)
@@ -140,8 +140,10 @@ class _RecordingTransaction(Transaction):
         ...
 
 
-class _NativeTxnStore(PathStore):
-    _CAPABILITIES = dict(PathStore._CAPABILITIES, transactions=Support.NATIVE)
+class _NativeTxnStore(PathBasedStore):
+    _CAPABILITIES = dict(
+        PathBasedStore._CAPABILITIES, transactions=Support.NATIVE
+    )
 
     def _native_transaction(self, *, atomic: bool) -> Transaction:
         return _RecordingTransaction(self)
@@ -163,10 +165,10 @@ def test_native_transaction_hook_is_used(tmp_path: pathlib.Path) -> None:
 
 
 def test_async_buffered_transaction(tmp_path: pathlib.Path) -> None:
-    from abczarr.abc.store import AsyncPathStore
+    from abczarr.abc.store import AsyncPathBasedStore
 
     async def scenario() -> None:
-        a = AsyncPathStore(str(tmp_path))
+        a = AsyncPathBasedStore(str(tmp_path))
         await a.set("a", b"1")
         async with a.transaction(atomic=False) as txn:
             await txn.store.set("b", b"new")
@@ -180,8 +182,8 @@ def test_async_buffered_transaction(tmp_path: pathlib.Path) -> None:
 def test_async_atomic_transaction_is_refused(
     tmp_path: pathlib.Path,
 ) -> None:
-    from abczarr.abc.store import AsyncPathStore
+    from abczarr.abc.store import AsyncPathBasedStore
 
-    a = AsyncPathStore(str(tmp_path))
+    a = AsyncPathBasedStore(str(tmp_path))
     with pytest.raises(UnsupportedZarrOperation, match="atomic"):
         a.transaction(atomic=True)

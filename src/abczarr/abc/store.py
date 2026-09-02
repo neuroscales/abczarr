@@ -22,20 +22,20 @@ of one of those operations overrides it and advertises the faster
 path through
 [supports][abczarr.abc.capabilities.SupportsCapabilities.supports].
 
-[PathStore][abczarr.abc.store.PathStore] is the default store: it
+[PathBasedStore][abczarr.abc.store.PathBasedStore] is the default store: it
 turns each key into a path under a root and delegates to
 `bagof.paths`, so a local directory and every fsspec or cloud scheme
 (`s3://`, `gs://`, `memory://`, ...) work with no extra code.
 [AsyncStore][abczarr.abc.store.AsyncStore] and
-[AsyncPathStore][abczarr.abc.store.AsyncPathStore] are the coroutine
+[AsyncPathBasedStore][abczarr.abc.store.AsyncPathBasedStore] are the coroutine
 twins, built over `bagof.paths.AsyncPath`.
 """
 
 __all__ = [
     "Store",
-    "PathStore",
+    "PathBasedStore",
     "AsyncStore",
-    "AsyncPathStore",
+    "AsyncPathBasedStore",
 ]
 
 # stdlib
@@ -100,7 +100,7 @@ class Store(SupportsCapabilities, ABC):
 
     !!! example
         ```pycon
-        >>> store = PathStore("/tmp/demo-store")
+        >>> store = PathBasedStore("/tmp/demo-store")
         >>> store.set("a", b"1")
         >>> store.get("a")
         b'1'
@@ -122,7 +122,7 @@ class Store(SupportsCapabilities, ABC):
         #: native memory store, a session store, an in-process backend.
         self._store_path = store_path
         #: The backend object the store speaks through -- a bagof.paths
-        #: `Path` for `PathStore`, a native store for a driver. The
+        #: `Path` for `PathBasedStore`, a native store for a driver. The
         #: escape hatch for anything the surface does not name.
         self._native: tx.Any = None
 
@@ -370,10 +370,10 @@ class Store(SupportsCapabilities, ABC):
         return self._store_path.as_uri()
 
 
-class PathStore(Store):
+class PathBasedStore(Store):
     """The default store: keys are paths under a root.
 
-    A `PathStore` turns each key into a path below its root and
+    A `PathBasedStore` turns each key into a path below its root and
     delegates to `bagof.paths`. Every filesystem and cloud scheme
     bagof.paths understands works here with no extra code -- the
     root's scheme picks the driver, and credentials ride on the root
@@ -381,7 +381,7 @@ class PathStore(Store):
 
     !!! example
         ```pycon
-        >>> store = PathStore("/tmp/demo-store")
+        >>> store = PathBasedStore("/tmp/demo-store")
         >>> store.set("zarr.json", b'{"zarr_format": 3}')
         >>> store.get("zarr.json")
         b'{"zarr_format": 3}'
@@ -404,7 +404,7 @@ class PathStore(Store):
         super().__init__(store_path)
         if self._store_path is None:
             raise ValueError(
-                "a PathStore needs a location; pass a path or URL"
+                "a PathBasedStore needs a location; pass a path or URL"
             )
         # the bagof.paths root every key is resolved against
         self._native = self._store_path
@@ -636,7 +636,7 @@ class AsyncStore(SupportsCapabilities, ABC):
         return self._store_path.as_uri()
 
 
-class AsyncPathStore(AsyncStore):
+class AsyncPathBasedStore(AsyncStore):
     """The default async store, built over `bagof.paths.AsyncPath`.
 
     A local directory and every fsspec or cloud scheme work here with
@@ -656,7 +656,7 @@ class AsyncPathStore(AsyncStore):
         super().__init__(store_path)
         if self._store_path is None:
             raise ValueError(
-                "an AsyncPathStore needs a location; pass a path or URL"
+                "an AsyncPathBasedStore needs a location; pass a path or URL"
             )
         self._native = self._store_path
 

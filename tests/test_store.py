@@ -13,7 +13,12 @@ import typing_extensions as tx
 
 from abczarr.abc.capabilities import Support
 from abczarr.abc.path import StorePath
-from abczarr.abc.store import AsyncPathStore, AsyncStore, PathStore, Store
+from abczarr.abc.store import (
+    AsyncPathBasedStore,
+    AsyncStore,
+    PathBasedStore,
+    Store,
+)
 
 # --------------------------------------------------------------------------
 # the base classes are abstract -- the primitives must be supplied
@@ -36,12 +41,12 @@ def test_primitives_are_the_abstract_set() -> None:
 
 
 # --------------------------------------------------------------------------
-# PathStore: the five primitives over a directory
+# PathBasedStore: the five primitives over a directory
 # --------------------------------------------------------------------------
 
 
-def _store(tmp_path: pathlib.Path) -> PathStore:
-    s = PathStore(str(tmp_path))
+def _store(tmp_path: pathlib.Path) -> PathBasedStore:
+    s = PathBasedStore(str(tmp_path))
     s.set("zarr.json", b"{}")
     s.set("c/0/0", b"chunk-0-0")
     s.set("c/0/1", b"chunk-0-1")
@@ -56,11 +61,11 @@ def test_get_reads_back_what_was_set(tmp_path: pathlib.Path) -> None:
 
 
 def test_get_missing_key_is_none(tmp_path: pathlib.Path) -> None:
-    assert PathStore(str(tmp_path)).get("absent") is None
+    assert PathBasedStore(str(tmp_path)).get("absent") is None
 
 
 def test_set_creates_nested_parents(tmp_path: pathlib.Path) -> None:
-    s = PathStore(str(tmp_path))
+    s = PathBasedStore(str(tmp_path))
     s.set("a/b/c/d", b"deep")
     assert s.get("a/b/c/d") == b"deep"
 
@@ -96,7 +101,7 @@ def test_list_keys_walks_the_whole_subtree(tmp_path: pathlib.Path) -> None:
 def test_list_keys_missing_prefix_is_empty(
     tmp_path: pathlib.Path,
 ) -> None:
-    assert list(PathStore(str(tmp_path)).list_keys("nowhere")) == []
+    assert list(PathBasedStore(str(tmp_path)).list_keys("nowhere")) == []
 
 
 def test_list_dir_names_one_level(tmp_path: pathlib.Path) -> None:
@@ -136,7 +141,7 @@ def test_clear_empties_the_store(tmp_path: pathlib.Path) -> None:
 def test_supports_reads_declared_and_unknown_is_false(
     tmp_path: pathlib.Path,
 ) -> None:
-    s = PathStore(str(tmp_path))
+    s = PathBasedStore(str(tmp_path))
     assert s.supports("listing") is True
     assert s.supports("writes") is True
     assert s.supports("deletes") is True
@@ -146,7 +151,7 @@ def test_supports_reads_declared_and_unknown_is_false(
 def test_support_reports_native_for_the_path_store(
     tmp_path: pathlib.Path,
 ) -> None:
-    s = PathStore(str(tmp_path))
+    s = PathBasedStore(str(tmp_path))
     assert s.capability("listing") is Support.NATIVE
     assert s.supports("listing", native=True) is True
     assert s.capability("teleportation") is Support.NONE
@@ -171,7 +176,7 @@ def test_get_many_reads_several_with_none_for_missing(
 def test_get_partial_slices_and_defaults_to_end(
     tmp_path: pathlib.Path,
 ) -> None:
-    s = PathStore(str(tmp_path))
+    s = PathBasedStore(str(tmp_path))
     s.set("k", b"0123456789")
     assert s.get_partial("k", 2, 3) == b"234"
     assert s.get_partial("k", 7) == b"789"
@@ -181,21 +186,21 @@ def test_get_partial_slices_and_defaults_to_end(
 def test_partial_read_is_synthesized_not_native(
     tmp_path: pathlib.Path,
 ) -> None:
-    s = PathStore(str(tmp_path))
+    s = PathBasedStore(str(tmp_path))
     assert s.capability("partial_read") is Support.SYNTHESIZED
     assert s.supports("partial_read") is True
     assert s.supports("partial_read", native=True) is False
 
 
 def test_set_if_not_exists_writes_once(tmp_path: pathlib.Path) -> None:
-    s = PathStore(str(tmp_path))
+    s = PathBasedStore(str(tmp_path))
     assert s.set_if_not_exists("k", b"first") is True
     assert s.set_if_not_exists("k", b"second") is False
     assert s.get("k") == b"first"
 
 
 def test_set_accepts_bytes_like(tmp_path: pathlib.Path) -> None:
-    s = PathStore(str(tmp_path))
+    s = PathBasedStore(str(tmp_path))
     s.set("ba", bytearray(b"array"))
     s.set("mv", memoryview(b"view"))
     assert s.get("ba") == b"array"
@@ -248,34 +253,34 @@ def test_store_without_a_location() -> None:
 
 def test_path_store_requires_a_location() -> None:
     with pytest.raises(ValueError, match="needs a location"):
-        PathStore(None)
+        PathBasedStore(None)
 
 
 def test_native_is_the_backing_path(tmp_path: pathlib.Path) -> None:
-    s = PathStore(str(tmp_path))
+    s = PathBasedStore(str(tmp_path))
     assert s.native is s.store_path
 
 
 def test_read_only_flag_comes_from_the_path(tmp_path: pathlib.Path) -> None:
-    ro = PathStore(StorePath(str(tmp_path), read_only=True))
+    ro = PathBasedStore(StorePath(str(tmp_path), read_only=True))
     assert ro.read_only is True
-    assert PathStore(str(tmp_path)).read_only is False
+    assert PathBasedStore(str(tmp_path)).read_only is False
 
 
 def test_context_manager_closes(tmp_path: pathlib.Path) -> None:
-    with PathStore(str(tmp_path)) as s:
+    with PathBasedStore(str(tmp_path)) as s:
         s.set("k", b"v")
     assert s.get("k") == b"v"
 
 
 # --------------------------------------------------------------------------
-# AsyncPathStore: the same behaviour, awaited
+# AsyncPathBasedStore: the same behaviour, awaited
 # --------------------------------------------------------------------------
 
 
 def test_async_store_roundtrip(tmp_path: pathlib.Path) -> None:
     async def scenario() -> None:
-        s = AsyncPathStore(str(tmp_path))
+        s = AsyncPathBasedStore(str(tmp_path))
         await s.set("zarr.json", b"{}")
         await s.set("c/0/0", b"chunk")
         assert await s.get("zarr.json") == b"{}"
@@ -295,7 +300,7 @@ def test_async_store_roundtrip(tmp_path: pathlib.Path) -> None:
 
 def test_async_store_context_manager_and_clear(tmp_path: pathlib.Path) -> None:
     async def scenario() -> None:
-        async with AsyncPathStore(str(tmp_path)) as s:
+        async with AsyncPathBasedStore(str(tmp_path)) as s:
             await s.set("a", b"1")
             await s.set("b", b"2")
         await s.clear()
@@ -305,14 +310,14 @@ def test_async_store_context_manager_and_clear(tmp_path: pathlib.Path) -> None:
 
 
 def test_async_store_advertises_async(tmp_path: pathlib.Path) -> None:
-    s = AsyncPathStore(str(tmp_path))
+    s = AsyncPathBasedStore(str(tmp_path))
     assert s.supports("async") is True
     assert s.supports("listing") is True
 
 
 def test_async_store_additive_members(tmp_path: pathlib.Path) -> None:
     async def scenario() -> None:
-        s = AsyncPathStore(str(tmp_path))
+        s = AsyncPathBasedStore(str(tmp_path))
         await s.set("k", b"0123456789")
         await s.set("j", bytearray(b"buf"))
         assert await s.get_many(["k", "j", "absent"]) == {
