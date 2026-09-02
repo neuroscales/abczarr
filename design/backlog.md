@@ -39,6 +39,28 @@ Legend: `[ ]` open, `[~]` in progress, `[x]` done.
   the wrapper and only accepts a `zarr.Array` native. PR #53.
 - [x] Docs nav restructure (zensical, not mkdocs) + tutorial + registry
   page; OME page wired into nav. Sonnet-written. PR #51.
+- [x] `PathStore` -> `PathBasedStore` (and `AsyncPathBasedStore`); `StorePath`
+  kept (matches zarr-python). README fixed too. PR #54.
+- [x] `report_loss` / `node_at` / `node_type_at` made private. PR #55.
+- [x] Metadata docs render class attributes now (`show_if_no_docstring = true`)
+  + v2/v3 codecs, v2 filters, v3 extensions pages added to the nav. PR #56.
+- [x] `to_dask(chunks=...)` (align to "chunks"/"shards"/explicit) and
+  `store(lock="auto")` (locks only when the source's Dask blocks don't fall
+  on whole chunks). PR #58.
+- [x] `config` and `registry` moved under an `api/` package
+  (`abczarr.api.config` / `abczarr.api.registry`); `api/__init__` is fully
+  lazy (`__getattr__`) to keep the abc<->config graph cycle-free, with a
+  TYPE_CHECKING block for the reference builder. PR #59.
+- [~] OME `downsample_array` / `create_pyramid` draft (dask coarsen), no OME
+  metadata write yet. PR #57 (DRAFT, awaiting review: free functions vs group
+  methods, level-naming convention, then the OME multiscales metadata write).
+- [x] Doc audit (Sonnet, read-only): findings applied -- README em dashes,
+  the wrong top-level package docstring, and the OMEZarrConfig contributor
+  note (in PRs #54/#56/#59). Report at scratchpad/doc-audit.md.
+
+Standing note learned this session: the **Documentation** workflow runs only
+on pushes to `main`, not on PRs, so build docs locally (`zensical build
+--clean`) before merging anything that touches a docstring or a docs page.
 
 ## Config API design plan (all landed)
 
