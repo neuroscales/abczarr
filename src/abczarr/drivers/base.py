@@ -1,19 +1,20 @@
 """What a driver is, and how one is chosen for an array.
 
-A :class:`Driver` is the object abczarr opens Zarr through. It declares what
-it provides -- coarse capabilities (``"sharding"``, ``"async"``) and
-fine-grained feature keys (``"v3:codec:zstd"``) -- through the same
-:class:`~abczarr.abc.capabilities.Support` model the surface uses, so
-choosing a driver for an array is a set difference: the features the array
-:meth:`~abczarr.metadata.base.ArrayMetadata.required_features` says it needs,
-minus the ones the driver provides. What is left is why the driver cannot
-open it, named codec by codec -- an :class:`UnsupportedZarrOperation` that
-points at the exact gap rather than a backend's opaque error.
+A [Driver][abczarr.drivers.base.Driver] is the object abczarr opens
+Zarr through -- zarr-python, tensorstore, or another backend. It
+declares what it provides, both coarse capabilities (`"sharding"`,
+`"async"`) and fine-grained feature keys (`"v3:codec:zstd"`),
+through the same
+[Support][abczarr.abc.capabilities.Support] model the rest of the
+surface uses.
 
-A concrete driver declares its feature support in ``_CAPABILITIES`` or, for a
-backend whose support depends on the install, overrides
-:meth:`~abczarr.abc.capabilities.SupportsCapabilities.support` to probe it
-lazily.
+Choosing a driver for an array is then a simple comparison: the
+features the array's metadata requires, against the ones each
+candidate driver provides. Whatever is left over is why that driver
+cannot open the array, named feature by feature --
+[select_driver][abczarr.drivers.base.select_driver] raises an
+[UnsupportedZarrOperation][abczarr.abc.errors.UnsupportedZarrOperation]
+that points at the exact gap rather than a backend's opaque error.
 """
 
 __all__ = [
@@ -36,8 +37,8 @@ if tx.TYPE_CHECKING:
 class Verdict:
     """Whether a driver can open an array, and what it lacks if not.
 
-    ``bool(verdict)`` is ``True`` when nothing is missing; :attr:`missing`
-    lists the feature keys the driver does not provide, and :attr:`reason`
+    `bool(verdict)` is `True` when nothing is missing; `missing`
+    lists the feature keys the driver does not provide, and `reason`
     renders a one-line explanation.
     """
 
@@ -61,15 +62,17 @@ class Verdict:
 class Driver(SupportsCapabilities):
     """A backend abczarr opens Zarr through.
 
-    Declares what it provides via :attr:`_CAPABILITIES` (or a probing
-    ``support``) and answers, for a given array, whether it can open it.
+    A concrete driver declares what it provides -- capabilities and
+    feature keys -- and answers, for a given array's metadata,
+    whether it can open it.
     """
 
-    #: The driver's registered name (``"zarr-python"``, ...).
+    #: The driver's registered name (`"zarr-python"`, ...).
     name: tx.ClassVar[str] = ""
 
     def can_open(self, metadata: "ArrayMetadata") -> Verdict:
-        """Whether this driver provides every feature *metadata* requires."""
+        """Whether this driver provides every feature *metadata*
+        requires."""
         missing = [
             feature
             for feature in metadata.required_features()
@@ -81,11 +84,14 @@ class Driver(SupportsCapabilities):
 def select_driver(
     metadata: "ArrayMetadata", drivers: tx.Iterable[Driver]
 ) -> Driver:
-    """Return the first driver that can open *metadata*.
+    """Return the first driver in *drivers* that can open *metadata*.
 
-    When none can, raise :class:`UnsupportedZarrOperation` whose message names
-    each candidate and the features it is missing, so the failure points at
-    the exact codec rather than a backend's opaque error.
+    Raises
+    ------
+    [UnsupportedZarrOperation][abczarr.abc.errors.UnsupportedZarrOperation]
+        When none can. The message names each candidate driver and
+        the features it is missing, so the failure points at the
+        exact gap rather than a backend's opaque error.
     """
     verdicts = []  # type: tx.List[Verdict]
     for driver in drivers:
