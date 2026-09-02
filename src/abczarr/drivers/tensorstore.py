@@ -4,13 +4,15 @@ Opens a Zarr v3 array through Google's TensorStore -- a fast, C++ backed
 reader and writer -- and wraps it as a [ZarrArray][abczarr.abc.array.ZarrArray]
 so it reads and writes through the uniform surface.
 [abczarr.open][abczarr.api.open] opens an array through it. TensorStore has
-no group object, so a group is opened through another driver; this one
-handles arrays.
+no group object, so a group is read straight from the store by
+[PathGroup][abczarr.abc.group.PathGroup] while its arrays are opened through
+TensorStore.
 """
 
 __all__ = [
     "TensorStoreDriver",
     "TensorStoreArray",
+    "TensorStoreGroup",
 ]
 
 # dependencies
@@ -22,7 +24,8 @@ from abczarr._core import typing as tz
 from abczarr._core.features import FEATURE_KINDS, FEATURE_VERSIONS
 from abczarr.abc.array import ZarrArray
 from abczarr.abc.capabilities import Support
-from abczarr.abc.errors import UnsupportedZarrOperation
+from abczarr.abc.group import PathGroup
+from abczarr.abc.node import ZarrNode
 from abczarr.drivers._metadata import metadata_from_dict
 from abczarr.drivers.base import Driver
 
@@ -149,6 +152,30 @@ class TensorStoreArray(ZarrArray):
         self._array[index].write(value).result()
 
 
+def _open_ts_array(location: tx.Any, mode: str) -> TensorStoreArray:
+    """Open the v3 array at *location* through TensorStore and wrap it."""
+    spec = {"driver": "zarr3", "kvstore": _kvstore_spec(location)}
+    array = ts.open(
+        spec, open=True, read=True, write=mode not in ("r", "read")
+    ).result()
+    return TensorStoreArray(array)
+
+
+class TensorStoreGroup(PathGroup):
+    """The group returned when the TensorStore driver opens a group.
+
+    TensorStore has no group object of its own, so
+    [PathGroup][abczarr.abc.group.PathGroup] reads the group itself -- its
+    metadata and the names of its members -- straight from the store, while
+    each child array is opened through TensorStore. Subgroups are more
+    `TensorStoreGroup`s, so a whole hierarchy is reachable from one opened
+    group.
+    """
+
+    def _open_array(self, store_path: tz.PathLike) -> TensorStoreArray:
+        return _open_ts_array(str(store_path), self._mode)
+
+
 class TensorStoreDriver(Driver):
     """The TensorStore backend, as a driver.
 
@@ -163,16 +190,10 @@ class TensorStoreDriver(Driver):
     def available(self) -> bool:
         return ts is not None
 
-    def open(self, location: tx.Any, mode: str = "r") -> TensorStoreArray:
+    def open(self, location: tx.Any, mode: str = "r") -> ZarrNode:
         if _peek_node_type(location) == "group":
-            raise UnsupportedZarrOperation(
-                "open a group (TensorStore opens arrays)", "tensorstore"
-            )
-        spec = {"driver": "zarr3", "kvstore": _kvstore_spec(location)}
-        array = ts.open(
-            spec, open=True, read=True, write=mode not in ("r", "read")
-        ).result()
-        return TensorStoreArray(array)
+            return TensorStoreGroup(location, mode)
+        return _open_ts_array(location, mode)
 
     def support(self, capability: str) -> Support:
         if ts is None:
