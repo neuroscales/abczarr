@@ -28,6 +28,7 @@ __all__ = [
     "NodeMetadata",
     "GroupMetadata",
     "ArrayMetadata",
+    "node_type_at",
     "NodeMetadataV1",
     "ArrayMetadataV1",
     "NodeMetadataV2",
@@ -190,6 +191,45 @@ class NodeMetadata(Metadata):
             f"{constants.Z2ARRAY_JSON}, "
             f"{constants.Z1META_JSON}"
         )
+
+
+def node_type_at(root: os.PathLike) -> "tx.Optional[tz.NodeType]":
+    """Report whether *root* holds a Zarr array, a group, or neither.
+
+    Reads only enough to answer that -- a v3 `zarr.json`'s `node_type`
+    field, or which of `.zarray` and `.zgroup` a v2 node has -- never the
+    rest of the metadata. That keeps it cheap enough to call on every
+    child while listing a group.
+
+    Parameters
+    ----------
+    root : PathLike
+        The directory to inspect.
+
+    Returns
+    -------
+    str or None
+        ``"array"`` or ``"group"`` if *root* holds Zarr metadata of that
+        kind, otherwise `None`.
+    """
+    zarr_json = root / constants.Z3_JSON
+    if zarr_json.exists():
+        try:
+            with zarr_json.open("r", encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, ValueError):
+            return None
+        node_type = data.get("node_type")
+        if node_type in ("array", "group"):
+            return node_type
+        return "array" if "shape" in data else "group"
+    if (root / constants.Z2ARRAY_JSON).exists():
+        return "array"
+    if (root / constants.Z2GROUP_JSON).exists():
+        return "group"
+    if (root / constants.Z1META_JSON).exists():
+        return "array"
+    return None
 
 
 @register_subclass(node_type="group")
