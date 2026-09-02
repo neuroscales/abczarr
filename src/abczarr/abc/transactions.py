@@ -1,20 +1,33 @@
 """Transactions over a store: batch a set of writes into one commit.
 
-A transaction is a **view** of a store, not a new primitive -- its
-:attr:`~Transaction.store` is an ordinary :class:`~abczarr.abc.store.Store`
-that reads its own pending writes back (read-your-writes) and applies nothing
-until :meth:`~Transaction.commit`.
+A transaction is a **view** of a store, not a new kind of object --
+its [store][abczarr.abc.transactions.Transaction.store] property is
+an ordinary [Store][abczarr.abc.store.Store] whose reads see the
+transaction's own pending writes, and nothing is applied to the
+underlying store until
+[commit][abczarr.abc.transactions.Transaction.commit] is called.
+
+Open one with `store.transaction()`, ideally as a context manager --
+it commits on a clean exit and aborts if the block raises:
+
+```python
+with store.transaction(atomic=False) as txn:
+    txn.store.set("a", b"1")
+    txn.store.set("b", b"2")
+# both writes land together here
+```
 
 Two flavours:
 
-* a driver whose backend has real transactions (tensorstore, an Icechunk
-  session) returns a native transaction from ``store.transaction()`` and
-  declares ``transactions`` :attr:`~abczarr.abc.capabilities.Support.NATIVE`;
-* every other store gets :class:`BufferedTransaction`, which buffers writes
-  and flushes them on commit. It is **never atomic** -- a failure mid-flush
-  leaves a partial result -- so it is only offered for
-  ``transaction(atomic=False)``. The one rule: an atomic transaction is never
-  synthesized.
+* a backend with real transactions (tensorstore, an Icechunk
+  session) returns a native transaction from `store.transaction()`;
+* every other store gets
+  [BufferedTransaction][abczarr.abc.transactions.BufferedTransaction],
+  which buffers writes and flushes them on commit. It is **never
+  atomic** -- a failure part-way through the flush leaves a partial
+  result -- so it is only offered for `transaction(atomic=False)`.
+  An atomic transaction is never built this way; a store without
+  native support for one raises instead of pretending.
 """
 
 __all__ = [
@@ -46,8 +59,9 @@ _SEP = "/"
 class Transaction(ABC):
     """A batch of store operations that commit or abort together."""
 
-    #: Whether a commit is all-or-nothing. A synthesized transaction sets
-    #: this ``False`` and says so, so a caller can tell what it actually got.
+    #: Whether a commit is all-or-nothing. A non-native transaction
+    #: sets this `False` and says so, so a caller can tell what it
+    #: actually got.
     atomic: bool = False
 
     @property
@@ -58,9 +72,18 @@ class Transaction(ABC):
 
     @abstractmethod
     def commit(self, message: tx.Optional[str] = None) -> None:
-        """Apply the batch. *message* is used by backends that record one
-        (Icechunk); others ignore it. Raises
-        :class:`~abczarr.abc.errors.TransactionConflict` if the store moved on.
+        """Apply the batch.
+
+        Parameters
+        ----------
+        message : str, optional
+            Recorded by a backend that keeps commit messages
+            (Icechunk); ignored by others.
+
+        Raises
+        ------
+        [TransactionConflict][abczarr.abc.errors.TransactionConflict]
+            If the store moved on underneath this transaction.
         """
         ...
 
@@ -141,11 +164,12 @@ class _BufferedView(Store):
 class BufferedTransaction(Transaction):
     """A non-atomic transaction: buffer writes, flush them on commit.
 
-    Reads through :attr:`store` see the buffer; :meth:`commit` writes the
-    buffered keys to the parent (and deletes the removed ones) one at a time,
-    so a failure part-way leaves a partial result. Deferred, coalesced,
-    read-your-writes -- useful for batching many small writes -- but not
-    atomic, and it says so through :attr:`atomic`.
+    Reads through `store` see the buffered writes and deletes;
+    `commit` then applies them to the parent store one at a time, so
+    a failure part-way through leaves a partial result. Useful for
+    batching many small writes on a backend with no native
+    transaction support, but never atomic -- `atomic` is always
+    `False`.
     """
 
     atomic = False
@@ -185,7 +209,8 @@ class BufferedTransaction(Transaction):
 
 
 class AsyncTransaction(ABC):
-    """The coroutine twin of :class:`Transaction`."""
+    """The coroutine twin of
+    [Transaction][abczarr.abc.transactions.Transaction]."""
 
     atomic: bool = False
 
@@ -197,7 +222,11 @@ class AsyncTransaction(ABC):
 
     @abstractmethod
     async def commit(self, message: tx.Optional[str] = None) -> None:
-        """Apply the batch (see :meth:`Transaction.commit`)."""
+        """Apply the batch.
+
+        See
+        [Transaction.commit][abczarr.abc.transactions.Transaction.commit].
+        """
         ...
 
     @abstractmethod
@@ -221,7 +250,7 @@ class AsyncTransaction(ABC):
 
 
 class _AsyncBufferedView(AsyncStore):
-    """The async counterpart of :class:`_BufferedView`."""
+    """The async counterpart of `_BufferedView`."""
 
     def __init__(
         self,
@@ -273,8 +302,11 @@ class _AsyncBufferedView(AsyncStore):
 
 
 class AsyncBufferedTransaction(AsyncTransaction):
-    """The async, non-atomic buffered transaction (see
-    :class:`BufferedTransaction`)."""
+    """The async, non-atomic buffered transaction.
+
+    See
+    [BufferedTransaction][abczarr.abc.transactions.BufferedTransaction].
+    """
 
     atomic = False
 

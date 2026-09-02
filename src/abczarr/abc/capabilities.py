@@ -1,23 +1,29 @@
 """The capability vocabulary shared by nodes and stores.
 
-A member of the uniform surface is almost always *present* -- under the
-delegate -> synthesize -> raise rule a store can nearly always answer, one
-way or another. So the useful question is not "does this work?" but "is it
-**native** here, or built from primitives?". :class:`Support` answers that in
-three states, and :meth:`supports` collapses it to a bool when a caller only
-needs yes/no.
+Almost every operation on a store or a node works one way or another,
+because abczarr falls back to building an operation from simpler ones
+when a backend has no direct support for it. So the useful question
+usually is not "does this work?" but "is it fast here, or built up from
+something simpler?"
+[Support][abczarr.abc.capabilities.Support] answers that in three
+states, and
+[supports][abczarr.abc.capabilities.SupportsCapabilities.supports]
+collapses it to a plain `bool` when a caller only needs yes or no.
 
 Two granularities of name live here:
 
-* **coarse capabilities** -- broad features a caller branches on before
-  committing to an operation (:data:`KNOWN_CAPABILITIES`): ``"sharding"``,
-  ``"async"``, ``"listing"``, ``"partial_read"``, ``"transactions"``, ...
-* **feature keys** -- fine-grained, namespaced names for a single codec,
-  chunk grid, chunk-key encoding or data type the extensible Zarr spec can
-  carry: ``"v3:codec:zstd"``, ``"v2:filter:delta"``,
-  ``"v3:chunk_grid:rectilinear"``. These are open-ended -- a driver declares
-  the ones it has, an unknown one simply answers :attr:`Support.NONE`, and
-  nothing enumerates the universe. Build one with :func:`feature_key`.
+* **coarse capabilities** -- broad features a caller checks before
+  committing to an operation
+  ([KNOWN_CAPABILITIES][abczarr.abc.capabilities.KNOWN_CAPABILITIES]):
+  `"sharding"`, `"async"`, `"listing"`, `"partial_read"`,
+  `"transactions"`, and so on.
+* **feature keys** -- fine-grained, namespaced names for a single
+  codec, chunk grid, chunk-key encoding, or data type, e.g.
+  `"v3:codec:zstd"`, `"v2:filter:delta"`,
+  `"v3:chunk_grid:rectilinear"`. These are open-ended: a driver
+  declares the ones it has, and asking about an unknown one simply
+  answers `Support.NONE`. Build one with
+  [feature_key][abczarr.abc.capabilities.feature_key].
 """
 
 __all__ = [
@@ -44,14 +50,23 @@ from abczarr._core.features import (  # noqa: F401
 class Support(enum.Enum):
     """How well a driver provides a capability.
 
-    ``NATIVE`` -- delegated to the backend (the fast path).
-    ``SYNTHESIZED`` -- built from more primitive operations; correct, but
-    possibly slower than a backend that does it directly.
-    ``NONE`` -- neither possible; the operation raises
-    :class:`~abczarr.abc.errors.UnsupportedZarrOperation`.
+    `NATIVE` -- the backend does it directly, the fast path.
+    `SYNTHESIZED` -- abczarr builds it from simpler operations;
+    correct, but possibly slower than a backend that does it
+    directly.
+    `NONE` -- not available; the operation raises
+    [UnsupportedZarrOperation][abczarr.abc.errors.UnsupportedZarrOperation].
 
-    ``bool(support)`` is ``True`` unless it is ``NONE``, so a plain truth test
-    answers "can this happen at all?".
+    `bool(support)` is `True` unless it is `NONE`, so a plain truth
+    test answers "can this happen at all?".
+
+    !!! example
+        ```pycon
+        >>> bool(Support.NATIVE), bool(Support.SYNTHESIZED)
+        (True, True)
+        >>> bool(Support.NONE)
+        False
+        ```
     """
 
     NATIVE = "native"
@@ -62,10 +77,11 @@ class Support(enum.Enum):
         return self is not Support.NONE
 
 
-#: The coarse capability names :meth:`supports` understands. A driver
-#: advertises the subset it provides; asking about any other name simply
-#: answers :attr:`Support.NONE` (``supports`` returns ``False``), so a caller
-#: written against a newer vocabulary never crashes an older driver.
+#: The coarse capability names ``supports`` understands. A driver
+#: advertises the subset it provides; asking about any other name
+#: simply answers ``Support.NONE`` (``supports`` returns ``False``),
+#: so a caller written against a newer vocabulary never crashes an
+#: older driver.
 KNOWN_CAPABILITIES = frozenset(
     {
         # -- node --
@@ -86,29 +102,50 @@ KNOWN_CAPABILITIES = frozenset(
 )
 
 class SupportsCapabilities:
-    """Mixin giving a node or store the capability query.
+    """Mixin that gives a node or store the capability query.
 
-    A subclass declares what it provides in :attr:`_CAPABILITIES`, a mapping
-    from a capability name to a :class:`Support`. The query is an *instance*
-    method -- real capability is per instance and per build (a store over
-    ``memory://`` lists differently from one over ``s3://``; whether a given
-    backend build has a codec is a property of that install) -- so a subclass
-    may override :meth:`support` to answer from live state.
+    A store or driver may report different capabilities from one
+    instance to the next -- a store over `memory://` lists
+    differently from one over `s3://`, and whether a given codec is
+    available can depend on what happens to be installed. So `support`
+    can be overridden to answer from live state rather than a fixed
+    table.
     """
 
     #: What this class provides. Overridden per driver; empty here.
     _CAPABILITIES: tx.ClassVar[tx.Mapping[str, Support]] = {}
 
     def support(self, capability: str) -> Support:
-        """How this object provides *capability* (:class:`Support`)."""
+        """How this object provides *capability*.
+
+        Parameters
+        ----------
+        capability : str
+            A capability name, e.g. `"listing"` or `"transactions"`.
+
+        Returns
+        -------
+        Support
+            `Support.NONE` for a name this object does not know.
+        """
         return self._CAPABILITIES.get(capability, Support.NONE)
 
     def supports(self, capability: str, *, native: bool = False) -> bool:
         """Whether this object provides *capability*.
 
-        With ``native=True``, ``True`` only when the backend does it directly
-        (:attr:`Support.NATIVE`); otherwise ``True`` whenever it can happen at
-        all, native or synthesized. An unknown name is always ``False``.
+        Parameters
+        ----------
+        capability : str
+            A capability name, e.g. `"listing"` or `"transactions"`.
+        native : bool, optional
+            When `True`, only count it as supported if the backend
+            does it directly. Otherwise `True` whenever it can happen
+            at all, native or synthesized.
+
+        Returns
+        -------
+        bool
+            `False` for a name this object does not know.
         """
         state = self.support(capability)
         return state is Support.NATIVE if native else bool(state)

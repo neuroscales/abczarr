@@ -1,4 +1,4 @@
-"""Errors raised by the abstract zarr surface."""
+"""Errors raised by the abczarr surface."""
 
 __all__ = [
     "UnsupportedZarrOperation",
@@ -9,25 +9,35 @@ import typing_extensions as tx
 
 
 class TransactionConflict(RuntimeError):
-    """A transaction could not be committed because the store changed under it.
+    """A transaction could not commit because the store moved on.
 
-    A concurrent writer moved the store on (a versioned backend such as
-    Icechunk, or an atomic commit a backend refused), so the transaction's
-    view is stale. The operation did not apply; a caller can retry it against
-    the current state.
+    Something else changed the store while the transaction was open
+    -- another writer, a versioned backend that advanced, or an
+    atomic commit the backend refused. The transaction's writes were
+    not applied; retry the operation against the current state.
     """
 
 
 class UnsupportedZarrOperation(NotImplementedError):
-    """A zarr operation a driver can neither perform nor synthesize.
+    """An operation this driver can neither perform nor build itself.
 
-    Raised when a member of the uniform surface cannot be delegated to the
-    backend nor built from more primitive operations. The message names the
-    operation and, when known, the driver -- so it points at what happened,
-    never at an internal helper.
+    The message names the operation and, when known, the driver, so
+    it points at what happened rather than at an opaque backend
+    error.
 
-    Subclasses :class:`NotImplementedError`, so an existing
-    ``except NotImplementedError`` still catches it.
+    Subclasses `NotImplementedError`, so an existing
+    `except NotImplementedError` still catches it.
+
+    !!! example
+        ```pycon
+        >>> try:
+        ...     raise UnsupportedZarrOperation(
+        ...         "atomic transaction", driver="PathStore"
+        ...     )
+        ... except UnsupportedZarrOperation as e:
+        ...     print(e)
+        the 'PathStore' driver does not support 'atomic transaction'
+        ```
     """
 
     def __init__(

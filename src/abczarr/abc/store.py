@@ -1,26 +1,34 @@
-"""The store surface: a key -> bytes map beneath every zarr node.
+"""The store surface: a key to bytes map beneath every Zarr node.
 
-A store is the one seam shared by every driver, every metadata-version
-reader, and every synthesized fallback. It is deliberately small -- five
-primitives and a capability query:
+A store is what every Zarr array and group reads and writes
+through. Keys are `"/"`-joined relative strings (`"zarr.json"`,
+`"c/0/0"`); values are bytes. The surface is deliberately small --
+five primitives:
 
-* :meth:`~Store.get` -- read a key, ``None`` when it is missing;
-* :meth:`~Store.set` -- write a key;
-* :meth:`~Store.delete` -- remove a key;
-* :meth:`~Store.exists` -- whether a key is present;
-* :meth:`~Store.list_keys` -- iterate the keys under a prefix.
+* [get][abczarr.abc.store.Store.get] -- read a key, `None` when it
+  is missing.
+* [set][abczarr.abc.store.Store.set] -- write a key.
+* [delete][abczarr.abc.store.Store.delete] -- remove a key.
+* [exists][abczarr.abc.store.Store.exists] -- whether a key is
+  present.
+* [list_keys][abczarr.abc.store.Store.list_keys] -- iterate the keys
+  under a prefix.
 
-Everything richer -- listing one directory level, clearing the store,
-sizing a key -- is *synthesized* from those five, so a new store implements
-only the primitives. A backend whose native store can do one of the
-synthesized operations better overrides it and advertises that reach through
-:meth:`~Store.supports`.
+Everything richer -- listing one directory level, clearing the
+store, sizing a key, batching writes into a transaction -- is built
+from those five for free, so a new store only has to implement the
+primitives. A backend that can do better than the built-in version
+of one of those operations overrides it and advertises the faster
+path through
+[supports][abczarr.abc.capabilities.SupportsCapabilities.supports].
 
-:class:`PathStore` is the default: it turns each key into a path under a
-store root and delegates to :mod:`bagof.paths`, so a local directory and
-every fsspec / cloud scheme (``s3://``, ``gs://``, ``memory://``, ...) work
-with no per-backend code. :class:`AsyncStore` and :class:`AsyncPathStore`
-are the coroutine twins, over :class:`bagof.paths.AsyncPath`.
+[PathStore][abczarr.abc.store.PathStore] is the default store: it
+turns each key into a path under a root and delegates to
+`bagof.paths`, so a local directory and every fsspec or cloud scheme
+(`s3://`, `gs://`, `memory://`, ...) work with no extra code.
+[AsyncStore][abczarr.abc.store.AsyncStore] and
+[AsyncPathStore][abczarr.abc.store.AsyncPathStore] are the coroutine
+twins, built over `bagof.paths.AsyncPath`.
 """
 
 __all__ = [
@@ -46,19 +54,17 @@ from .path import AsyncStorePath, StorePath
 if tx.TYPE_CHECKING:
     from .transactions import AsyncTransaction, Transaction
 
-#: The character that separates the segments of a zarr key (``"c/0/0"``).
+#: The character that separates the segments of a key (``"c/0/0"``).
 _SEP = "/"
 
-#: What a store accepts as a value: bytes or any object that exposes the
-#: buffer protocol, so a native wrapper can pass its backend's buffer
-#: through without a copy.
+#: What a store accepts as a value: bytes or any buffer-protocol
+#: object, so a native wrapper can pass its backend's buffer through
+#: without a copy.
 _BytesLike = tx.Union[bytes, bytearray, memoryview]
 
-#: Capabilities the base store can always synthesize from the primitives, so
-#: ``support`` reports at least :attr:`Support.SYNTHESIZED` for them unless a
-#: store declares a better answer. ``transactions`` is synthesizable
-#: (a buffered, non-atomic batch); ``atomic_transactions`` is *not*, so it is
-#: absent here and only a native store may declare it.
+#: Capabilities every store can build from the primitives, so
+#: ``support`` reports at least ``Support.SYNTHESIZED`` for them
+#: unless a store declares a better answer.
 _SYNTHESIZED_FLOOR = {
     "partial_read": Support.SYNTHESIZED,
     "transactions": Support.SYNTHESIZED,
@@ -66,9 +72,9 @@ _SYNTHESIZED_FLOOR = {
 
 
 def _child(prefix: str, key: str) -> str:
-    """The first key segment below *prefix*, e.g. ``("c/", "c/0/1") -> "0"``.
-
-    An empty *prefix* returns the leading segment of *key*.
+    """The first key segment below *prefix*, e.g. ``"c/0/1"`` under
+    ``"c/"`` is ``"0"``. An empty *prefix* returns the leading
+    segment of *key*.
     """
     rest = key[len(prefix):] if prefix and key.startswith(prefix) else key
     rest = rest.lstrip(_SEP)
@@ -76,13 +82,33 @@ def _child(prefix: str, key: str) -> str:
 
 
 class Store(SupportsCapabilities, ABC):
-    """A key -> bytes map, addressed under a :class:`StorePath` root.
+    """A key to bytes map, addressed under a
+    [StorePath][abczarr.abc.path.StorePath] root.
 
-    Subclasses implement the five primitives; the rest is synthesized here.
-    Keys are ``"/"``-separated relative strings (``"zarr.json"``,
-    ``"c/0/0"``); values are :class:`bytes`. What a store provides natively
-    versus by synthesis is declared in :attr:`_CAPABILITIES` and answered by
-    :meth:`support` / :meth:`supports`.
+    A subclass implements the five primitives -- `get`, `set`,
+    `delete`, `exists`, `list_keys` -- and gets everything else for
+    free. Keys are `"/"`-separated relative strings (`"zarr.json"`,
+    `"c/0/0"`); values are `bytes`. Use
+    [support][abczarr.abc.capabilities.SupportsCapabilities.support]
+    or
+    [supports][abczarr.abc.capabilities.SupportsCapabilities.supports]
+    to check whether a given operation is native to the backend or
+    built from the primitives.
+
+    A `Store` is also a context manager, so it can be used with
+    `with` to make sure its resources are released.
+
+    !!! example
+        ```pycon
+        >>> store = PathStore("/tmp/demo-store")
+        >>> store.set("a", b"1")
+        >>> store.get("a")
+        b'1'
+        >>> store.get("missing") is None
+        True
+        >>> list(store.list_keys())
+        ['a']
+        ```
     """
 
     def __init__(
@@ -96,7 +122,7 @@ class Store(SupportsCapabilities, ABC):
         #: native memory store, a session store, an in-process backend.
         self._store_path = store_path
         #: The backend object the store speaks through -- a bagof.paths
-        #: ``Path`` for :class:`PathStore`, a native store for a driver. The
+        #: `Path` for `PathStore`, a native store for a driver. The
         #: escape hatch for anything the surface does not name.
         self._native: tx.Any = None
 
@@ -104,10 +130,19 @@ class Store(SupportsCapabilities, ABC):
 
     @abstractmethod
     def get(self, key: str) -> tx.Optional[bytes]:
-        """Read *key*, or ``None`` when it is not present.
+        """Read *key*.
 
-        The result is bytes-like; a caller that needs exactly :class:`bytes`
-        should wrap it in ``bytes(...)``.
+        Parameters
+        ----------
+        key : str
+            The key to read.
+
+        Returns
+        -------
+        bytes or None
+            The stored value, or `None` when *key* is not present.
+            The result is bytes-like; wrap it in `bytes(...)` for
+            exactly `bytes`.
         """
         ...
 
@@ -115,8 +150,13 @@ class Store(SupportsCapabilities, ABC):
     def set(self, key: str, value: _BytesLike) -> None:
         """Write *value* at *key*, creating any parent structure.
 
-        *value* is bytes or any buffer (``bytearray``, ``memoryview``), so a
-        native store can pass its backend's buffer through without a copy.
+        Parameters
+        ----------
+        key : str
+            The key to write.
+        value : bytes-like
+            The value to store -- `bytes` or any buffer object such
+            as `bytearray` or `memoryview`.
         """
         ...
 
@@ -132,7 +172,7 @@ class Store(SupportsCapabilities, ABC):
 
     @abstractmethod
     def list_keys(self, prefix: str = "") -> tx.Iterator[str]:
-        """Iterate every key at or below *prefix*, ``"/"``-joined."""
+        """Iterate every key at or below *prefix*, `"/"`-joined."""
         ...
 
     # -- capability query, with the synthesized floor ----------------------
@@ -140,10 +180,10 @@ class Store(SupportsCapabilities, ABC):
     def support(self, capability: str) -> Support:
         """How this store provides *capability*.
 
-        A store advertises what it does natively in :attr:`_CAPABILITIES`;
-        for the members the base can always build from the primitives (a
-        byte-range read), the answer is at least
-        :attr:`Support.SYNTHESIZED`.
+        A store declares what it does natively; for the operations
+        this base class can always build from the primitives (such
+        as a byte-range read), the answer is at least
+        `Support.SYNTHESIZED` even when the store declares nothing.
         """
         declared = self._CAPABILITIES.get(capability)
         if declared is not None:
@@ -155,21 +195,39 @@ class Store(SupportsCapabilities, ABC):
     def get_many(
         self, keys: tx.Iterable[str]
     ) -> tx.Dict[str, tx.Optional[bytes]]:
-        """Read several keys at once, ``{key: value-or-None}``.
+        """Read several keys at once.
 
-        A store whose backend has a real batched read overrides this to use
-        it; the default reads one key at a time.
+        Returns
+        -------
+        dict
+            Maps each key to its value, or to `None` when missing.
+            A store with a real batched read overrides this; the
+            default reads one key at a time.
         """
         return {key: self.get(key) for key in keys}
 
     def get_partial(
         self, key: str, start: int, length: tx.Optional[int] = None
     ) -> tx.Optional[bytes]:
-        """Read *length* bytes of *key* from *start* (to the end if ``None``).
+        """Read a byte range of *key*.
 
-        ``None`` when the key is missing. The default reads the whole value
-        and slices; a store with native byte-range reads overrides this and
-        declares ``partial_read`` :attr:`Support.NATIVE`.
+        Parameters
+        ----------
+        key : str
+            The key to read.
+        start : int
+            The offset, in bytes, to start reading from.
+        length : int, optional
+            How many bytes to read. Reads to the end of the value
+            when omitted.
+
+        Returns
+        -------
+        bytes or None
+            The requested range, or `None` when *key* is missing.
+            The default reads the whole value and slices it; a store
+            with a native byte-range read overrides this and
+            declares `"partial_read"` as `Support.NATIVE`.
         """
         value = self.get(key)
         if value is None:
@@ -178,10 +236,16 @@ class Store(SupportsCapabilities, ABC):
         return bytes(value[start:end])
 
     def set_if_not_exists(self, key: str, value: _BytesLike) -> bool:
-        """Write *value* only when *key* is absent; return whether it wrote.
+        """Write *value* only when *key* is absent.
 
-        Synthesized as :meth:`exists` then :meth:`set`, so it is racy under
-        concurrent writers -- a store with an atomic put overrides it.
+        Returns
+        -------
+        bool
+            Whether the write happened.
+
+        Built from `exists` then `set`, so it is racy under
+        concurrent writers -- a store with an atomic put overrides
+        it.
         """
         if self.exists(key):
             return False
@@ -194,12 +258,24 @@ class Store(SupportsCapabilities, ABC):
             self.delete(key)
 
     def transaction(self, *, atomic: bool = True) -> "Transaction":
-        """Open a transaction -- a store view whose writes commit together.
+        """Open a transaction: a store view whose writes commit
+        together.
 
-        A store whose backend has real transactions returns a native one. Any
-        other store returns a buffered, non-atomic transaction, so it can only
-        honour ``atomic=False``; ``atomic=True`` on such a store raises rather
-        than pretend a torn write is atomic.
+        A store whose backend has real transactions returns a native
+        one. Every other store returns a
+        [BufferedTransaction][abczarr.abc.transactions.BufferedTransaction],
+        which can only honor `atomic=False` -- asking for
+        `atomic=True` on such a store raises rather than pretend a
+        partial write is atomic.
+
+        Parameters
+        ----------
+        atomic : bool, optional
+            Whether the commit must be all-or-nothing.
+
+        Returns
+        -------
+        Transaction
         """
         if self.support("transactions") is Support.NATIVE:
             return self._native_transaction(atomic=atomic)
@@ -220,8 +296,9 @@ class Store(SupportsCapabilities, ABC):
     def list_dir(self, prefix: str = "") -> tx.Iterator[str]:
         """Iterate the immediate child names one level below *prefix*.
 
-        ``list_keys`` walks the whole subtree; this yields only the distinct
-        first segments below *prefix*, the way ``listdir`` names one level.
+        `list_keys` walks the whole subtree; this yields only the
+        distinct first segments below *prefix*, the way `listdir`
+        names one level.
         """
         seen = set()  # type: tx.Set[str]
         for key in self.list_keys(prefix):
@@ -231,7 +308,7 @@ class Store(SupportsCapabilities, ABC):
                 yield name
 
     def getsize(self, key: str) -> tx.Optional[int]:
-        """The size of *key* in bytes, or ``None`` when it is missing."""
+        """The size of *key* in bytes, or `None` when it is missing."""
         value = self.get(key)
         return None if value is None else len(value)
 
@@ -266,12 +343,18 @@ class Store(SupportsCapabilities, ABC):
 
     @property
     def native(self) -> tx.Any:
-        """The underlying backend object -- the escape hatch."""
+        """The underlying backend object -- the escape hatch for
+        anything the uniform surface does not name."""
         return self._native
 
     @property
     def store_path(self) -> tx.Optional[StorePath]:
-        """The store's root :class:`StorePath`, or ``None`` when unset."""
+        """The store's root, or `None` when it has no path.
+
+        Returns
+        -------
+        [StorePath][abczarr.abc.path.StorePath] or None
+        """
         return self._store_path
 
     @property
@@ -281,18 +364,34 @@ class Store(SupportsCapabilities, ABC):
 
     @property
     def url(self) -> tx.Optional[str]:
-        """The store root as a URL, or ``None`` when it has no path."""
+        """The store root as a URL, or `None` when it has no path."""
         if self._store_path is None:
             return None
         return self._store_path.as_uri()
 
 
 class PathStore(Store):
-    """The default store: keys are paths under a root, over :mod:`bagof.paths`.
+    """The default store: keys are paths under a root.
 
-    Every filesystem and cloud scheme bagof.paths understands works here with
-    no extra code -- the root's scheme picks the driver, and credentials ride
-    on the root path's ``storage_options``.
+    A `PathStore` turns each key into a path below its root and
+    delegates to `bagof.paths`. Every filesystem and cloud scheme
+    bagof.paths understands works here with no extra code -- the
+    root's scheme picks the driver, and credentials ride on the root
+    path's `storage_options`.
+
+    Parameters
+    ----------
+    store_path : str or [StorePath][abczarr.abc.path.StorePath]
+        The root all keys are resolved under -- a local path or a
+        URL such as `"s3://bucket/prefix"`.
+
+    !!! example
+        ```pycon
+        >>> store = PathStore("/tmp/demo-store")
+        >>> store.set("zarr.json", b'{"zarr_format": 3}')
+        >>> store.get("zarr.json")
+        b'{"zarr_format": 3}'
+        ```
     """
 
     _CAPABILITIES = {
@@ -343,11 +442,13 @@ class PathStore(Store):
 
 
 class AsyncStore(SupportsCapabilities, ABC):
-    """The coroutine twin of :class:`Store`.
+    """The coroutine twin of [Store][abczarr.abc.store.Store].
 
-    The five primitives are coroutines and :meth:`list_keys` is an async
-    iterator; the synthesized members mirror :class:`Store`. Location and
-    capability queries never touch the backend, so they stay synchronous.
+    The five primitives are coroutines and
+    [list_keys][abczarr.abc.store.AsyncStore.list_keys] is an async
+    iterator; everything else mirrors `Store`. Location and
+    capability queries never touch the backend, so they stay
+    synchronous.
     """
 
     def __init__(
@@ -364,7 +465,7 @@ class AsyncStore(SupportsCapabilities, ABC):
 
     @abstractmethod
     async def get(self, key: str) -> tx.Optional[bytes]:
-        """Read *key*, or ``None`` when it is not present (bytes-like)."""
+        """Read *key*, or `None` when it is not present (bytes-like)."""
         ...
 
     @abstractmethod
@@ -390,7 +491,10 @@ class AsyncStore(SupportsCapabilities, ABC):
     # -- capability query, with the synthesized floor ----------------------
 
     def support(self, capability: str) -> Support:
-        """How this store provides *capability* (see :meth:`Store.support`)."""
+        """How this store provides *capability*.
+
+        See [Store.support][abczarr.abc.store.Store.support].
+        """
         declared = self._CAPABILITIES.get(capability)
         if declared is not None:
             return declared
@@ -401,7 +505,11 @@ class AsyncStore(SupportsCapabilities, ABC):
     async def get_many(
         self, keys: tx.Iterable[str]
     ) -> tx.Dict[str, tx.Optional[bytes]]:
-        """Read several keys concurrently, ``{key: value-or-None}``."""
+        """Read several keys concurrently.
+
+        Returns a dict mapping each key to its value, or to `None`
+        when missing.
+        """
         keys = list(keys)
         values = await asyncio.gather(*(self.get(key) for key in keys))
         return dict(zip(keys, values))
@@ -409,11 +517,13 @@ class AsyncStore(SupportsCapabilities, ABC):
     async def get_partial(
         self, key: str, start: int, length: tx.Optional[int] = None
     ) -> tx.Optional[bytes]:
-        """Read *length* bytes of *key* from *start* (to the end if ``None``).
+        """Read *length* bytes of *key* from *start*.
 
-        The default reads the whole value and slices; a store with native
-        byte-range reads overrides this and declares ``partial_read``
-        :attr:`Support.NATIVE`.
+        Reads to the end of the value when *length* is `None`.
+        `None` when *key* is missing. The default reads the whole
+        value and slices it; a store with a native byte-range read
+        overrides this and declares `"partial_read"` as
+        `Support.NATIVE`.
         """
         value = await self.get(key)
         if value is None:
@@ -422,9 +532,10 @@ class AsyncStore(SupportsCapabilities, ABC):
         return bytes(value[start:end])
 
     async def set_if_not_exists(self, key: str, value: _BytesLike) -> bool:
-        """Write *value* only when *key* is absent; return whether it wrote.
+        """Write *value* only when *key* is absent.
 
-        Synthesized, so racy under concurrent writers.
+        Returns whether the write happened. Built from `exists` then
+        `set`, so it is racy under concurrent writers.
         """
         if await self.exists(key):
             return False
@@ -438,7 +549,10 @@ class AsyncStore(SupportsCapabilities, ABC):
             await self.delete(key)
 
     def transaction(self, *, atomic: bool = True) -> "AsyncTransaction":
-        """Open a transaction (see :meth:`Store.transaction`)."""
+        """Open a transaction.
+
+        See [Store.transaction][abczarr.abc.store.Store.transaction].
+        """
         if self.support("transactions") is Support.NATIVE:
             return self._native_transaction(atomic=atomic)
         if atomic:
@@ -456,7 +570,7 @@ class AsyncStore(SupportsCapabilities, ABC):
         )
 
     async def list_dir(self, prefix: str = "") -> tx.AsyncIterator[str]:
-        """Async-iterate the immediate child names one level below *prefix*."""
+        """Async-iterate the child names one level below *prefix*."""
         seen = set()  # type: tx.Set[str]
         async for key in self.list_keys(prefix):
             name = _child(prefix, key)
@@ -465,7 +579,7 @@ class AsyncStore(SupportsCapabilities, ABC):
                 yield name
 
     async def getsize(self, key: str) -> tx.Optional[int]:
-        """The size of *key* in bytes, or ``None`` when it is missing."""
+        """The size of *key* in bytes, or `None` when it is missing."""
         value = await self.get(key)
         return None if value is None else len(value)
 
@@ -495,12 +609,18 @@ class AsyncStore(SupportsCapabilities, ABC):
 
     @property
     def native(self) -> tx.Any:
-        """The underlying backend object -- the escape hatch."""
+        """The underlying backend object -- the escape hatch for
+        anything the uniform surface does not name."""
         return self._native
 
     @property
     def store_path(self) -> tx.Optional[AsyncStorePath]:
-        """The store's root :class:`AsyncStorePath`, or ``None``."""
+        """The store's root, or `None` when it has no path.
+
+        Returns
+        -------
+        [AsyncStorePath][abczarr.abc.path.AsyncStorePath] or None
+        """
         return self._store_path
 
     @property
@@ -510,18 +630,19 @@ class AsyncStore(SupportsCapabilities, ABC):
 
     @property
     def url(self) -> tx.Optional[str]:
-        """The store root as a URL, or ``None`` when it has no path."""
+        """The store root as a URL, or `None` when it has no path."""
         if self._store_path is None:
             return None
         return self._store_path.as_uri()
 
 
 class AsyncPathStore(AsyncStore):
-    """The default async store, over :class:`bagof.paths.AsyncPath`.
+    """The default async store, built over `bagof.paths.AsyncPath`.
 
-    A synchronous bagof.paths driver runs in a worker thread; a natively
-    async one (the fsspec cloud path) is awaited directly -- both behind the
-    same coroutine surface, so nothing here is written twice.
+    A local directory and every fsspec or cloud scheme work here with
+    no extra code. A synchronous backend runs in a worker thread; a
+    natively async one (such as an fsspec cloud backend) is awaited
+    directly -- both present the same coroutine surface.
     """
 
     _CAPABILITIES = {
