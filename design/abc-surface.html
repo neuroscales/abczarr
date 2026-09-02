@@ -222,8 +222,8 @@
         <p><code>node.native</code> reaches the raw backend object; <code>driver.supports(cap)</code> asks what it can do &mdash; so the shared surface never grows into the union of every backend&rsquo;s features.</p>
       </div>
       <div class="card">
-        <h3>zarrs and zarrita are not drivers <span class="chip stub">re-scope</span></h3>
-        <p>zarrs is a Rust codec pipeline <em>inside</em> zarr-python; zarrita was absorbed into zarr-python 3.x. The real driver set is <b>zarr-python + tensorstore</b>.</p>
+        <h3>Three &ldquo;zarr in Rust&rdquo; names, three things <span class="chip stub">tell apart</span></h3>
+        <p><b>zarrs-python</b> is a codec pipeline <em>inside</em> zarr-python; <b>zarrita</b> was absorbed into zarr-python 3.x (retire). <b>zarrista</b> is a full standalone driver on the same Rust core &mdash; the strongest next candidate.</p>
       </div>
     </div>
   </section>
@@ -347,14 +347,19 @@ _CAPABILITIES             -> frozenset        # what supports() reports</code></
       <p><code>ts.KvStore</code> maps on (<code>read</code>&rarr;<code>get</code>, <code>write</code>&rarr;<code>set</code>, <code>delete_range</code>&rarr;<code>delete</code>). Future-based: the sync driver calls <code>.result()</code>, an <code>AsyncStore</code> awaits. Rich indexing (<code>oindex</code>/<code>vindex</code>, transforms, labeled domains) is deliberately behind <code>native</code>. No group object &mdash; groups are paths; <code>ZarrGroup.__setitem__</code> stays a named <code>UnsupportedZarrOperation</code>. The <code>native</code> valve is load-bearing here.</p>
     </div></div>
 
+    <div class="verdict go"><div class="rail"></div><div class="verdict-body">
+      <h3>zarrista <span class="chip accent">strongest next candidate &middot; beta</span></h3>
+      <p>developmentseed&rsquo;s <em>full standalone</em> implementation on the same Rust <code>zarrs</code> core as zarrs-python &mdash; but with its own API, so a real driver, not a codec option. It splits sync from async at the class level (<code>Array</code>/<code>Group</code> vs <code>AsyncArray</code>/<code>AsyncGroup</code>), matching abczarr&rsquo;s two surfaces better than any other backend. Its remote store is <a href="https://github.com/developmentseed/obstore" style="color:var(--accent-ink)">obstore</a> (not fsspec) + Icechunk &mdash; the one backend whose store the abc <em>wraps natively</em> rather than synthesizing over bagof-paths, validating that seam. <code>v0.1.0-beta.1</code>: design for it, implement after the reference.</p>
+    </div></div>
+
     <div class="verdict no"><div class="rail"></div><div class="verdict-body">
-      <h3>zarrs <span class="chip stub">not a driver &mdash; a codec option</span></h3>
-      <p>A Rust reimplementation of the codec pipeline that registers <em>into</em> zarr-python. No separate store or array API. Surface it as a codec-pipeline option on the zarr-python driver, not a peer driver. The metadata layer already describes which codecs run.</p>
+      <h3>zarrs-python <span class="chip stub">not a driver &mdash; a codec option</span></h3>
+      <p>A Rust reimplementation of the codec pipeline that registers <em>into</em> zarr-python. No separate store or array API. Surface it as a codec-pipeline option on the zarr-python driver, not a peer driver. The metadata layer already describes which codecs run. Not to be confused with zarrista, which shares the core but is a full driver.</p>
     </div></div>
 
     <div class="verdict no"><div class="rail"></div><div class="verdict-body">
       <h3>zarrita <span class="chip stub">retire</span></h3>
-      <p>The prototype that became zarr-python&rsquo;s v3 implementation; the standalone package is legacy and <code>drivers/zarrita.py</code> is a 5-line stub that just raises and is not even registered. Drop it, and drop <code>&quot;zarrita&quot;</code> from <code>KnownDriver</code>.</p>
+      <p>The prototype that became zarr-python&rsquo;s v3 implementation; the standalone package is legacy and <code>drivers/zarrita.py</code> is a 5-line stub that just raises and is not even registered. Drop it, and drop <code>&quot;zarrita&quot;</code> from <code>KnownDriver</code>. (Different project from <b>zarrista</b>, above.)</p>
     </div></div>
 
     <h3>The real driver set</h3>
@@ -364,7 +369,8 @@ _CAPABILITIES             -> frozenset        # what supports() reports</code></
         <tbody>
           <tr><td>zarr-python</td><td>present, most complete</td><td class="yes">yes &mdash; reference</td></tr>
           <tr><td>tensorstore</td><td>present, has store mapping</td><td class="yes">yes &mdash; async-capable</td></tr>
-          <tr><td>zarrs</td><td>Rust codec pipeline for zarr-python</td><td class="no">no &mdash; codec option</td></tr>
+          <tr><td>zarrista</td><td>standalone zarrs-core API, native sync+async, obstore/Icechunk</td><td class="yes">yes &mdash; next candidate (beta)</td></tr>
+          <tr><td>zarrs-python</td><td>Rust codec pipeline for zarr-python</td><td class="no">no &mdash; codec option</td></tr>
           <tr><td>zarrita</td><td>absorbed into zarr-python 3.x</td><td class="no">no &mdash; retire the stub</td></tr>
           <tr><td><i>(fallback)</i></td><td>dependency-free store over bagof-paths</td><td class="yes">eventually &mdash; <code>PathStore</code> + pure-Python chunk reader</td></tr>
         </tbody>
@@ -402,7 +408,7 @@ _CAPABILITIES             -> frozenset        # what supports() reports</code></
       <div class="phase"><div class="dot">3</div><div class="phase-card"><h3>One surface spec + <code>test_parity.py</code></h3><p>Lock the node and store surfaces &mdash; sync vs async, abc vs driver.</p></div></div>
       <div class="phase"><div class="dot">4</div><div class="phase-card"><h3>Re-fit the zarr-python driver</h3><p>Real <code>metadata</code>, real <code>fill_value</code>, native <code>Store</code> wrapped as an abc store, capabilities declared. The reference &mdash; and the first green driver.</p></div></div>
       <div class="phase"><div class="dot">5</div><div class="phase-card"><h3>Re-fit the tensorstore driver</h3><p><code>KvStore</code> wrapped, <code>.result()</code> in the sync path, <code>native</code> for rich indexing, groups-as-paths kept.</p></div></div>
-      <div class="phase"><div class="dot">6</div><div class="phase-card"><h3>Retire zarrita; record zarrs as a codec option</h3><p>Drop the stub and the <code>KnownDriver</code> entry; note zarrs as a future codec-pipeline option on the zarr-python driver.</p></div></div>
+      <div class="phase"><div class="dot">6</div><div class="phase-card"><h3>Retire zarrita; scope zarrs-python and zarrista</h3><p>Drop the zarrita stub and its <code>KnownDriver</code> entry; record zarrs-python as a codec-pipeline option on the zarr-python driver, and zarrista as a tracked driver candidate (implement once it leaves beta).</p></div></div>
       <div class="phase defer"><div class="dot">7</div><div class="phase-card"><h3>Deferred &mdash; the dependency-free fallback</h3><p>A pure-Python chunk reader on top of <code>PathStore</code>, so a store works with no backend installed.</p></div></div>
     </div>
     <div class="divider-grid" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
