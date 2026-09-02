@@ -15,7 +15,7 @@ import typing_extensions as tx
 # core
 from abczarr._core import typing as tz
 from abczarr._core.attrs import evolve
-from abczarr.config import ArrayConfig, ArrayOptions
+from abczarr.api.config import ArrayConfig, ArrayOptions
 from abczarr.metadata.base import (
     GroupMetadataV2,
     GroupMetadataV3,
@@ -45,7 +45,7 @@ def _resolve_array_config(
     options: ArrayOptions,
     version: tz.ZarrVersion,
 ) -> ArrayConfig:
-    """Build the resolved [ArrayConfig][abczarr.config.ArrayConfig] a
+    """Build the resolved [ArrayConfig][abczarr.api.config.ArrayConfig] a
     `create_array` call describes.
 
     A config (an `ArrayConfig` or a mapping of its fields) is the base;
@@ -123,8 +123,8 @@ class ZarrGroup(ZarrNode):
         dtype : numpy dtype
             The array's data type.
         config : ArrayConfig or mapping, optional
-            A reusable [ArrayConfig][abczarr.config.ArrayConfig], or a mapping
-            of the same fields. Individual fields may also be passed as
+            A reusable [ArrayConfig][abczarr.api.config.ArrayConfig], or a
+            mapping of the same fields. Individual fields may also be passed as
             keyword arguments, which override the config.
         """
         resolved = _resolve_array_config(

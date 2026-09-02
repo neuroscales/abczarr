@@ -9,7 +9,7 @@ through the same
 surface uses, and answers whether it can open a given array.
 
 Which drivers exist and how one is chosen for an array live in
-[abczarr.registry][abczarr.registry].
+[abczarr.api.registry][abczarr.api.registry].
 """
 
 __all__ = [
@@ -26,7 +26,7 @@ from abczarr.abc.errors import UnsupportedZarrOperation
 
 if tx.TYPE_CHECKING:
     from abczarr.abc.node import ZarrNode
-    from abczarr.config import ZarrConfig
+    from abczarr.api.config import ZarrConfig
     from abczarr.metadata.base import ArrayMetadata, NodeMetadata
 
 
@@ -141,12 +141,13 @@ class Driver(SupportsCapabilities):
     ) -> "ZarrNode":
         """Create a new group at *location* and open it.
 
-        Pass a [GroupConfig][abczarr.config.GroupConfig] as *config*, or its
-        fields (`zarr_version`, `overwrite`, ...) as keyword arguments, which
+        Pass a [GroupConfig][abczarr.api.config.GroupConfig] as *config*, or
+        its fields (`zarr_version`, `overwrite`, ...) as keyword arguments,
+        which
         override the config.
         """
         from abczarr._core.attrs import evolve
-        from abczarr.config import GroupConfig
+        from abczarr.api.config import GroupConfig
 
         base = config if isinstance(config, GroupConfig) else GroupConfig(
             **dict(config or {})
@@ -157,7 +158,7 @@ class Driver(SupportsCapabilities):
     @staticmethod
     def _config_metadata(config: "ZarrConfig") -> "NodeMetadata":
         """The metadata a config lowers to: an array's, or a group's."""
-        from abczarr.config import ArrayConfig
+        from abczarr.api.config import ArrayConfig
         from abczarr.metadata.base import GroupMetadataV2, GroupMetadataV3
 
         if isinstance(config, ArrayConfig):

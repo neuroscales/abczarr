@@ -19,11 +19,11 @@ import importlib
 import typing_extensions as tx
 
 # locals
-from .abc.errors import UnsupportedZarrOperation
-from .drivers.base import Driver
+from ..abc.errors import UnsupportedZarrOperation
+from ..drivers.base import Driver
 
 if tx.TYPE_CHECKING:
-    from .metadata.base import ArrayMetadata
+    from ..metadata.base import ArrayMetadata
 
 #: The drivers abczarr knows about, as ``(name, module, class)``. They are
 #: imported lazily, so importing abczarr never imports a backend. The order
@@ -38,7 +38,7 @@ def register_driver(module: str, cls: str, name: str = "") -> None:
     """Register a driver by the module and class that provide it.
 
     The driver is imported and instantiated only when
-    [available_drivers][abczarr.registry.available_drivers] is called, so
+    [available_drivers][abczarr.api.registry.available_drivers] is called, so
     registering one never imports its backend.
     """
     _KNOWN_DRIVERS.append((name, module, cls))

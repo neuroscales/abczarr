@@ -1,8 +1,9 @@
 """Describe a Zarr array or group to create.
 
-An [ArrayConfig][abczarr.config.ArrayConfig] or
-[GroupConfig][abczarr.config.GroupConfig] is a reusable description of what to
-create. It carries the coarse choices (chunking, sharding, compression, the
+An [ArrayConfig][abczarr.api.config.ArrayConfig] or
+[GroupConfig][abczarr.api.config.GroupConfig] is a reusable description of
+what to create. It carries the coarse choices (chunking, sharding,
+compression, the
 format version) and lowers them to the exact metadata a driver writes. Hand
 one to [create][abczarr.api.create] to make the array or group it describes,
 or spread its fields into a group's `create_array` as keyword arguments.
@@ -32,11 +33,11 @@ import numpy.typing as npt
 import typing_extensions as tx
 
 # core
-from ._core import typing as tz
-from ._core.attrs import autodefine, evolve, field, fields
-from ._core.dtypes import to_zarr3 as dtype_to_zarr3
-from ._core.sharding import ChunkSpec, auto_chunk, auto_shard
-from .metadata.base import ArrayMetadata
+from .._core import typing as tz
+from .._core.attrs import autodefine, evolve, field, fields
+from .._core.dtypes import to_zarr3 as dtype_to_zarr3
+from .._core.sharding import ChunkSpec, auto_chunk, auto_shard
+from ..metadata.base import ArrayMetadata
 
 
 @autodefine
@@ -82,7 +83,7 @@ class GroupConfig(ZarrConfig):
     """A description of a group to create.
 
     A group holds no data of its own, so it adds nothing to
-    [ZarrConfig][abczarr.config.ZarrConfig].
+    [ZarrConfig][abczarr.api.config.ZarrConfig].
     """
 
 
@@ -286,14 +287,10 @@ class ArrayConfig(ZarrConfig):
 class OMEZarrConfig(ArrayConfig):
     """A description of an OME-Zarr image to create.
 
-    Extends [ArrayConfig][abczarr.config.ArrayConfig] with the pyramid and
-    axis choices OME-Zarr adds. The pyramid construction that consumes these
-    lands with the OME helpers.
-
-    The per-axis choices here (`chunk_channels`, `chunk_time`, and the shard
-    equivalents) describe a chunking *strategy*. The OME work will fold that
-    strategy into the inherited `chunks` and `shards`, rather than leaving the
-    two as separate, possibly conflicting, chunking specifications.
+    Extends [ArrayConfig][abczarr.api.config.ArrayConfig] with the pyramid and
+    axis choices OME-Zarr adds: how many resolution levels to build, which
+    axis to hold at full resolution, and whether to give each channel or time
+    point its own chunk or shard.
 
     Parameters
     ----------
@@ -326,7 +323,7 @@ class OMEZarrConfig(ArrayConfig):
 
 
 class ZarrOptions(tx.TypedDict, total=False):
-    """The keyword form of [ZarrConfig][abczarr.config.ZarrConfig]."""
+    """The keyword form of [ZarrConfig][abczarr.api.config.ZarrConfig]."""
 
     zarr_version: tz.ZarrVersion
     overwrite: bool
@@ -335,14 +332,14 @@ class ZarrOptions(tx.TypedDict, total=False):
 
 
 class GroupOptions(ZarrOptions, total=False):
-    """The keyword form of [GroupConfig][abczarr.config.GroupConfig]."""
+    """The keyword form of [GroupConfig][abczarr.api.config.GroupConfig]."""
 
 
 class ArrayOptions(ZarrOptions, total=False):
-    """The keyword form of [ArrayConfig][abczarr.config.ArrayConfig].
+    """The keyword form of [ArrayConfig][abczarr.api.config.ArrayConfig].
 
-    Every [ArrayConfig][abczarr.config.ArrayConfig] field except `shape` and
-    `dtype`, which a group's `create_array` takes as positional arguments.
+    Every [ArrayConfig][abczarr.api.config.ArrayConfig] field except `shape`
+    and `dtype`, which a group's `create_array` takes as positional arguments.
     """
 
     dimension_names: tx.Optional[tx.Tuple[tx.Optional[str], ...]]

@@ -6,7 +6,7 @@ behaves as a mapping of its fields.
 """
 
 from abczarr._core.attrs import fields
-from abczarr.config import ArrayConfig, ArrayOptions, GroupConfig
+from abczarr.api.config import ArrayConfig, ArrayOptions, GroupConfig
 
 
 def test_a_config_behaves_as_a_mapping_of_its_fields() -> None:
