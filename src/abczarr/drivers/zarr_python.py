@@ -15,6 +15,7 @@ __all__ = [
     "ZarrPythonArray",
     "ZarrPythonGroup",
     "open_node",
+    "create_group_node",
 ]
 
 # stdlib
@@ -110,6 +111,12 @@ class ZarrPythonDriver(Driver):
         self, location: tx.Any, mode: str = "r"
     ) -> tx.Union["ZarrPythonArray", "ZarrPythonGroup"]:
         return open_node(location, mode)
+
+    def create_group(
+        self, location: tx.Any, *, zarr_version: int = 3,
+        overwrite: bool = False,
+    ) -> "ZarrPythonGroup":
+        return create_group_node(location, zarr_version, overwrite)
 
     def support(self, capability: str) -> Support:
         if self._major < 3:
@@ -297,11 +304,46 @@ class ZarrPythonGroup(ZarrGroup):
     ) -> ZarrPythonArray:
         options = dict(config or {})
         options.update(kwargs)
-        chunks = options.get("chunk")
         array = self._group.create_array(
-            name, shape=shape, dtype=dtype, chunks=chunks
+            name, shape=shape, dtype=dtype, **_create_kwargs(options)
         )
         return ZarrPythonArray(array)
+
+
+def _compressor_spec(
+    compressor: tx.Any, options: tx.Optional[tx.Mapping[str, tx.Any]]
+) -> tx.Any:
+    """Turn the surface's compressor + options into what zarr expects."""
+    if compressor is None:
+        return None
+    if isinstance(compressor, str):
+        # zarr requires a configuration key even when it is empty
+        return {"name": compressor, "configuration": dict(options or {})}
+    return compressor  # already a codec or a codec dict
+
+
+def _create_kwargs(options: tx.Dict[str, tx.Any]) -> tx.Dict[str, tx.Any]:
+    """Map a ZarrArrayConfig to zarr-python ``create_array`` keywords."""
+    kwargs = {}  # type: tx.Dict[str, tx.Any]
+    if options.get("chunk") is not None:
+        kwargs["chunks"] = options["chunk"]
+    if options.get("shard") is not None:
+        kwargs["shards"] = options["shard"]
+    if "fill_value" in options:
+        kwargs["fill_value"] = options["fill_value"]
+    if options.get("order") is not None:
+        kwargs["order"] = options["order"]
+    if "compressor" in options:
+        kwargs["compressors"] = _compressor_spec(
+            options["compressor"], options.get("compressor_options")
+        )
+    separator = options.get("dimension_separator")
+    if separator is not None:
+        kwargs["chunk_key_encoding"] = {
+            "name": "default",
+            "configuration": {"separator": separator},
+        }
+    return kwargs
 
 
 def open_node(
@@ -317,3 +359,17 @@ def open_node(
     if isinstance(node, zarr.Group):
         return ZarrPythonGroup(node)
     return ZarrPythonArray(node)
+
+
+def create_group_node(
+    location: tx.Any, zarr_version: int = 3, overwrite: bool = False
+) -> ZarrPythonGroup:
+    """Create a new group at *location* and wrap it.
+
+    With *overwrite*, an existing group at *location* is replaced; otherwise
+    creating over one raises.
+    """
+    group = zarr.open_group(
+        location, mode="w" if overwrite else "w-", zarr_format=zarr_version
+    )
+    return ZarrPythonGroup(group)

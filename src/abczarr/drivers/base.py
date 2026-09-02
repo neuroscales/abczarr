@@ -101,6 +101,19 @@ class Driver(SupportsCapabilities):
         """
         raise UnsupportedZarrOperation("open", self.name or None)
 
+    def create_group(
+        self, location: tx.Any, *, zarr_version: int = 3,
+        overwrite: bool = False,
+    ) -> "ZarrNode":
+        """Create a new group at *location* and wrap it.
+
+        Raises
+        ------
+        [UnsupportedZarrOperation][abczarr.abc.errors.UnsupportedZarrOperation]
+            When this driver cannot create a group.
+        """
+        raise UnsupportedZarrOperation("create_group", self.name or None)
+
 
 #: The drivers abczarr knows about, as ``(name, module, class)``. They are
 #: imported lazily so importing abczarr never imports a backend.

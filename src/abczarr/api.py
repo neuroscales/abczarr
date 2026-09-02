@@ -90,13 +90,21 @@ def open_group(
 
 
 def from_config(out: tz.PathLike, zarr_config: ZarrConfig) -> ZarrGroup:
-    """Create a group from a [ZarrConfig][abczarr.config.ZarrConfig].
+    """Create an empty group at *out* from a
+    [ZarrConfig][abczarr.config.ZarrConfig].
 
-    !!! note
-        Creating from a full configuration is not wired to the new driver
-        surface yet -- open a group and use its `create_array` for now.
+    The config's `zarr_version`, `overwrite`, and `driver` are honoured; add
+    arrays to the returned group with its `create_array`.
     """
-    raise UnsupportedZarrOperation("from_config")
+    (driver,) = _resolve_drivers(zarr_config.driver)
+    node = driver.create_group(
+        out,
+        zarr_version=zarr_config.zarr_version,
+        overwrite=zarr_config.overwrite,
+    )
+    if not isinstance(node, ZarrGroup):
+        raise UnsupportedZarrOperation("from_config produced a non-group")
+    return node
 
 
 def _resolve_drivers(driver: _DriverArg) -> "tx.List[Driver]":
