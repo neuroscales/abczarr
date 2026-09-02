@@ -49,19 +49,19 @@ def test_tensorstore_is_registered() -> None:
 def test_coarse_capabilities() -> None:
     d = TensorStoreDriver()
     assert d.available is True
-    assert d.support("sharding") is Support.NATIVE
-    assert d.support("async") is Support.NATIVE
+    assert d.capability("sharding") is Support.NATIVE
+    assert d.capability("async") is Support.NATIVE
     assert d.supports("partial_read") is True
 
 
 def test_codec_support() -> None:
     d = TensorStoreDriver()
-    assert d.support("v3:codec:zstd") is Support.NATIVE
-    assert d.support("v3:codec:sharding_indexed") is Support.NATIVE
-    assert d.support("v3:codec:transpose") is Support.NATIVE
+    assert d.capability("v3:codec:zstd") is Support.NATIVE
+    assert d.capability("v3:codec:sharding_indexed") is Support.NATIVE
+    assert d.capability("v3:codec:transpose") is Support.NATIVE
     # a codec tensorstore does not implement
-    assert d.support("v3:codec:packbits") is Support.NONE
-    assert d.support("v3:chunk_grid:rectilinear") is Support.NONE
+    assert d.capability("v3:codec:packbits") is Support.NONE
+    assert d.capability("v3:chunk_grid:rectilinear") is Support.NONE
 
 
 # --------------------------------------------------------------------------

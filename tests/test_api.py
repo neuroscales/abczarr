@@ -109,7 +109,7 @@ def test_selection_routes_by_the_arrays_features(
     class _Blind(Driver):
         name = "blind"
 
-        def support(self, capability: str) -> Support:
+        def capability(self, capability: str) -> Support:
             return Support.NONE
 
     chosen = _choose(array_path, [_Blind(), ZarrPythonDriver()])

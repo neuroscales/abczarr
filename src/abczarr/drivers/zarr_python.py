@@ -198,7 +198,7 @@ class ZarrPythonDriver(Driver):
         )
         return ZarrPythonGroup(group)
 
-    def support(self, capability: str) -> Support:
+    def capability(self, capability: str) -> Support:
         if self._major < 3:
             # zarr 2.x uses a different library API; its support lands with
             # the version adapter.

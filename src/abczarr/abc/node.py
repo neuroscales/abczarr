@@ -38,7 +38,7 @@ class ZarrNode(SupportsCapabilities, ABC):
     """Base class for any Zarr object: a group or an array.
 
     Use
-    [support][abczarr.abc.capabilities.SupportsCapabilities.support]
+    [capability][abczarr.abc.capabilities.SupportsCapabilities.capability]
     or
     [supports][abczarr.abc.capabilities.SupportsCapabilities.supports]
     to check what a node's backend can do.

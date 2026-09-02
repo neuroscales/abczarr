@@ -23,7 +23,7 @@ def test_transactions_are_synthesized_not_atomic(
     tmp_path: pathlib.Path,
 ) -> None:
     s = PathStore(str(tmp_path))
-    assert s.support("transactions") is Support.SYNTHESIZED
+    assert s.capability("transactions") is Support.SYNTHESIZED
     assert s.supports("transactions") is True
     assert s.supports("atomic_transactions") is False
 
@@ -149,7 +149,7 @@ class _NativeTxnStore(PathStore):
 
 def test_native_transaction_hook_is_used(tmp_path: pathlib.Path) -> None:
     s = _NativeTxnStore(str(tmp_path))
-    assert s.support("transactions") is Support.NATIVE
+    assert s.capability("transactions") is Support.NATIVE
     # a native store may honour atomic=True -- it does not go through the guard
     txn = s.transaction(atomic=True)
     assert isinstance(txn, _RecordingTransaction)

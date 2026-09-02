@@ -34,9 +34,9 @@ class _Thing(SupportsCapabilities):
 
 def test_support_returns_declared_state() -> None:
     t = _Thing()
-    assert t.support("listing") is Support.NATIVE
-    assert t.support("partial_read") is Support.SYNTHESIZED
-    assert t.support("teleportation") is Support.NONE
+    assert t.capability("listing") is Support.NATIVE
+    assert t.capability("partial_read") is Support.SYNTHESIZED
+    assert t.capability("teleportation") is Support.NONE
 
 
 def test_supports_collapses_to_bool() -> None:
@@ -53,7 +53,7 @@ def test_supports_native_only() -> None:
 
 
 def test_default_declares_nothing() -> None:
-    assert SupportsCapabilities().support("listing") is Support.NONE
+    assert SupportsCapabilities().capability("listing") is Support.NONE
 
 
 # --------------------------------------------------------------------------

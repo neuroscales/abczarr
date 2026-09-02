@@ -89,7 +89,7 @@ class Store(SupportsCapabilities, ABC):
     `delete`, `exists`, `list_keys` -- and gets everything else for
     free. Keys are `"/"`-separated relative strings (`"zarr.json"`,
     `"c/0/0"`); values are `bytes`. Use
-    [support][abczarr.abc.capabilities.SupportsCapabilities.support]
+    [capability][abczarr.abc.capabilities.SupportsCapabilities.capability]
     or
     [supports][abczarr.abc.capabilities.SupportsCapabilities.supports]
     to check whether a given operation is native to the backend or
@@ -177,7 +177,7 @@ class Store(SupportsCapabilities, ABC):
 
     # -- capability query, with the synthesized floor ----------------------
 
-    def support(self, capability: str) -> Support:
+    def capability(self, capability: str) -> Support:
         """How this store provides *capability*.
 
         A store declares what it does natively; for the operations
@@ -277,7 +277,7 @@ class Store(SupportsCapabilities, ABC):
         -------
         Transaction
         """
-        if self.support("transactions") is Support.NATIVE:
+        if self.capability("transactions") is Support.NATIVE:
             return self._native_transaction(atomic=atomic)
         if atomic:
             raise UnsupportedZarrOperation(
@@ -490,10 +490,10 @@ class AsyncStore(SupportsCapabilities, ABC):
 
     # -- capability query, with the synthesized floor ----------------------
 
-    def support(self, capability: str) -> Support:
+    def capability(self, capability: str) -> Support:
         """How this store provides *capability*.
 
-        See [Store.support][abczarr.abc.store.Store.support].
+        See [Store.capability][abczarr.abc.store.Store.capability].
         """
         declared = self._CAPABILITIES.get(capability)
         if declared is not None:
@@ -553,7 +553,7 @@ class AsyncStore(SupportsCapabilities, ABC):
 
         See [Store.transaction][abczarr.abc.store.Store.transaction].
         """
-        if self.support("transactions") is Support.NATIVE:
+        if self.capability("transactions") is Support.NATIVE:
             return self._native_transaction(atomic=atomic)
         if atomic:
             raise UnsupportedZarrOperation(

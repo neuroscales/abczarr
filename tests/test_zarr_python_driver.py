@@ -49,31 +49,31 @@ def test_driver_is_named_and_present() -> None:
 
 def test_coarse_capabilities_are_native() -> None:
     d = ZarrPythonDriver()
-    assert d.support("sharding") is Support.NATIVE
-    assert d.support("async") is Support.NATIVE
+    assert d.capability("sharding") is Support.NATIVE
+    assert d.capability("async") is Support.NATIVE
     assert d.supports("codecs_v3") is True
 
 
 def test_probes_real_codecs_from_the_registry() -> None:
     d = ZarrPythonDriver()
     # codecs zarr-python 3.x registers
-    assert d.support("v3:codec:zstd") is Support.NATIVE
-    assert d.support("v3:codec:bytes") is Support.NATIVE
+    assert d.capability("v3:codec:zstd") is Support.NATIVE
+    assert d.capability("v3:codec:bytes") is Support.NATIVE
     # a codec no registry holds
-    assert d.support("v3:codec:not_a_real_codec") is Support.NONE
+    assert d.capability("v3:codec:not_a_real_codec") is Support.NONE
 
 
 def test_chunk_grid_and_key_encoding_support() -> None:
     d = ZarrPythonDriver()
-    assert d.support("v3:chunk_grid:regular") is Support.NATIVE
-    assert d.support("v3:chunk_grid:rectilinear") is Support.NONE
-    assert d.support("v3:chunk_key_encoding:default") is Support.NATIVE
+    assert d.capability("v3:chunk_grid:regular") is Support.NATIVE
+    assert d.capability("v3:chunk_grid:rectilinear") is Support.NONE
+    assert d.capability("v3:chunk_key_encoding:default") is Support.NATIVE
 
 
 def test_a_malformed_feature_name_is_unsupported() -> None:
     d = ZarrPythonDriver()
-    assert d.support("not-a-feature-key") is Support.NONE
-    assert d.support("v9:codec:zstd") is Support.NONE
+    assert d.capability("not-a-feature-key") is Support.NONE
+    assert d.capability("v9:codec:zstd") is Support.NONE
 
 
 def test_can_open_and_select_a_supported_array() -> None:

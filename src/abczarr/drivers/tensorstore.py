@@ -245,7 +245,7 @@ class TensorStoreDriver(Driver):
             location, metadata, overwrite=overwrite
         )
 
-    def support(self, capability: str) -> Support:
+    def capability(self, capability: str) -> Support:
         if ts is None:
             return Support.NONE
         if capability in _V3_CAPABILITIES:

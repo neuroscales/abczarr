@@ -147,9 +147,9 @@ def test_support_reports_native_for_the_path_store(
     tmp_path: pathlib.Path,
 ) -> None:
     s = PathStore(str(tmp_path))
-    assert s.support("listing") is Support.NATIVE
+    assert s.capability("listing") is Support.NATIVE
     assert s.supports("listing", native=True) is True
-    assert s.support("teleportation") is Support.NONE
+    assert s.capability("teleportation") is Support.NONE
 
 
 # --------------------------------------------------------------------------
@@ -182,7 +182,7 @@ def test_partial_read_is_synthesized_not_native(
     tmp_path: pathlib.Path,
 ) -> None:
     s = PathStore(str(tmp_path))
-    assert s.support("partial_read") is Support.SYNTHESIZED
+    assert s.capability("partial_read") is Support.SYNTHESIZED
     assert s.supports("partial_read") is True
     assert s.supports("partial_read", native=True) is False
 

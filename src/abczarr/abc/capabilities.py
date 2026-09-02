@@ -107,20 +107,20 @@ class SupportsCapabilities:
     A store or driver may report different capabilities from one
     instance to the next -- a store over `memory://` lists
     differently from one over `s3://`, and whether a given codec is
-    available can depend on what happens to be installed. So `support`
-    can be overridden to answer from live state rather than a fixed
-    table.
+    available can depend on what happens to be installed. So
+    `capability` can be overridden to answer from live state rather
+    than a fixed table.
     """
 
     #: What this class provides. Overridden per driver; empty here.
     _CAPABILITIES: tx.ClassVar[tx.Mapping[str, Support]] = {}
 
-    def support(self, capability: str) -> Support:
-        """How this object provides *capability*.
+    def capability(self, name: str) -> Support:
+        """How this object provides the capability *name*.
 
         Parameters
         ----------
-        capability : str
+        name : str
             A capability name, e.g. `"listing"` or `"transactions"`.
 
         Returns
@@ -128,14 +128,14 @@ class SupportsCapabilities:
         Support
             `Support.NONE` for a name this object does not know.
         """
-        return self._CAPABILITIES.get(capability, Support.NONE)
+        return self._CAPABILITIES.get(name, Support.NONE)
 
-    def supports(self, capability: str, *, native: bool = False) -> bool:
-        """Whether this object provides *capability*.
+    def supports(self, name: str, *, native: bool = False) -> bool:
+        """Whether this object provides the capability *name*.
 
         Parameters
         ----------
-        capability : str
+        name : str
             A capability name, e.g. `"listing"` or `"transactions"`.
         native : bool, optional
             When `True`, only count it as supported if the backend
@@ -147,5 +147,5 @@ class SupportsCapabilities:
         bool
             `False` for a name this object does not know.
         """
-        state = self.support(capability)
+        state = self.capability(name)
         return state is Support.NATIVE if native else bool(state)
