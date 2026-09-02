@@ -71,3 +71,87 @@ def test_array_options_mirror_the_array_config_fields() -> None:
     config_fields = {f.name for f in fields(ArrayConfig)}
     option_keys = set(ArrayOptions.__optional_keys__)
     assert option_keys == config_fields - {"shape", "dtype"}
+
+
+def test_default_zstd_compressor_writes_a_full_configuration() -> None:
+    # the v3 zstd schema requires `level` (checksum is optional), so an
+    # empty configuration is invalid; abczarr writes the full one.
+    meta = ArrayConfig(
+        shape=(4, 4), dtype="float32", chunks=(2, 2)
+    ).to_metadata()
+    zstd = [c for c in meta.to_dict()["codecs"] if c["name"] == "zstd"]
+    assert zstd == [
+        {"name": "zstd", "configuration": {"level": 0, "checksum": False}}
+    ]
+
+
+def test_zstd_survives_a_round_trip_through_v2() -> None:
+    from abczarr.metadata import v3
+
+    meta = ArrayConfig(
+        shape=(4, 4), dtype="float32", chunks=(2, 2)
+    ).to_metadata()
+    m3 = v3.ArrayMetadata.from_dict(meta.to_dict())
+    # v2's numcodecs zstd carries only the level; it comes back in full
+    again = m3.to_version(2).to_version(3)
+    zstd = [
+        c.to_dict() for c in again.codecs
+        if getattr(c, "name", "") == "zstd"
+    ]
+    assert zstd == [
+        {"name": "zstd", "configuration": {"level": 0, "checksum": False}}
+    ]
+
+
+def _codecs(**kw: object) -> list:
+    dtype = kw.pop("dtype", "float32")
+    meta = ArrayConfig(
+        shape=(4, 4), dtype=dtype, chunks=(2, 2), **kw
+    ).to_metadata()
+    return meta.to_dict()["codecs"]
+
+
+def _named(codecs: list, name: str) -> dict:
+    return next(c for c in codecs if c["name"] == name)
+
+
+def test_blosc_writes_its_required_typesize_from_the_dtype() -> None:
+    # v3 blosc requires typesize (a positive int) unless shuffle is noshuffle
+    blosc = _named(_codecs(compressor="blosc"), "blosc")
+    assert blosc["configuration"]["typesize"] == 4  # float32
+    assert _named(
+        _codecs(dtype="uint8", compressor="blosc"), "blosc"
+    )["configuration"]["typesize"] == 1
+
+
+def test_blosc_omits_typesize_when_shuffle_is_off() -> None:
+    blosc = _named(
+        _codecs(
+            compressor="blosc",
+            compressor_options={"shuffle": "noshuffle"},
+        ),
+        "blosc",
+    )
+    assert "typesize" not in blosc["configuration"]
+
+
+def test_bytes_endian_follows_the_dtype_and_is_absent_for_one_byte() -> None:
+    # multi-byte carries endianness; a single-byte dtype carries none
+    assert _named(_codecs(compressor=None), "bytes") == {
+        "name": "bytes", "configuration": {"endian": "little"}
+    }
+    assert _named(_codecs(dtype=">f8", compressor=None), "bytes") == {
+        "name": "bytes", "configuration": {"endian": "big"}
+    }
+    assert _named(_codecs(dtype="uint8", compressor=None), "bytes") == {
+        "name": "bytes"
+    }
+
+
+def test_crc32c_is_written_as_a_bare_name() -> None:
+    # the shard index uses crc32c; it takes no configuration
+    meta = ArrayConfig(
+        shape=(8, 8), dtype="float32", chunks=(2, 2), shards=(4, 4)
+    ).to_metadata()
+    index = meta.to_dict()["codecs"][0]["configuration"]["index_codecs"]
+    assert {"name": "crc32c"} in index

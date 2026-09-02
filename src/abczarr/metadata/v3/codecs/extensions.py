@@ -7,6 +7,9 @@ __all__ = [
     "ScaleOffsetCodec",
     "VLenBytesCodec",
     "VLenUTF8Codec",
+    "ReshapeCodec",
+    "ZfpCodec",
+    "ZstdCodec",
 ]
 
 # stdlib
@@ -23,7 +26,13 @@ from abczarr._core.auto import autofrozen
 # locals
 from abczarr.metadata.base import Metadata, register_subclass
 
-from .base import ArrayToArrayCodec, ArrayToBytesCodec, Codec, CodecConfigImpl
+from .base import (
+    ArrayToArrayCodec,
+    ArrayToBytesCodec,
+    Codec,
+    CodecConfigImpl,
+    CompressorCodec,
+)
 from .builtin import BytesCodec, TransposeCodec
 
 
@@ -162,3 +171,83 @@ class VLenBytesCodec(ArrayToBytesCodec):
 @autofrozen
 class VLenUTF8Codec(ArrayToBytesCodec):
     name: tx.Literal["vlen-utf8"]
+
+
+#: One axis of a reshape target: a size (with -1 for "the rest"), or a group
+#: of sizes to split that axis into.
+_ReshapeAxis = tx.Union[int, tx.Tuple[int, ...]]
+
+
+@autofrozen
+class ReshapeConfig(CodecConfigImpl):
+    shape: tx.Tuple[_ReshapeAxis, ...]
+
+
+@register_subclass(name="reshape")
+@autofrozen
+class ReshapeCodec(ArrayToArrayCodec):
+    name: tx.Literal["reshape"]
+    configuration: ReshapeConfig
+
+
+#: zfp's five modes; each carries only its own parameters.
+_ZfpMode = tx.Literal[
+    "reversible", "expert", "fixed_accuracy", "fixed_rate", "fixed_precision"
+]
+
+
+@autofrozen
+class ZfpConfig(CodecConfigImpl):
+    # zfp picks a mode, and each mode carries only its own parameters: expert
+    # takes minbits/maxbits/maxprec/minexp; fixed_accuracy takes tolerance;
+    # fixed_rate takes rate; fixed_precision takes precision; reversible takes
+    # none. The parameters of the other modes stay None and are omitted on
+    # serialization, so each mode round-trips exactly as the spec writes it.
+    mode: _ZfpMode
+    minbits: tx.Optional[int] = None
+    maxbits: tx.Optional[int] = None
+    maxprec: tx.Optional[int] = None
+    minexp: tx.Optional[int] = None
+    tolerance: tx.Optional[float] = None
+    rate: tx.Optional[float] = None
+    precision: tx.Optional[int] = None
+
+
+@register_subclass(name="zfp")
+@autofrozen
+class ZfpCodec(ArrayToBytesCodec):
+    name: tx.Literal["zfp"]
+    configuration: ZfpConfig
+
+
+@autofrozen
+class ZstdConfig(CodecConfigImpl):
+    # The v3 zstd codec schema requires `level` (checksum is optional) and
+    # declares no defaults, so an implementation picks its own. abczarr
+    # defaults level to 0, matching zarr-python, and writes both fields.
+    # Zstd levels run from -131072 to 22 (wider than the 0-9 the core
+    # compressors use, and negative for the fast modes), so the type stays
+    # a plain int.
+    level: int = 0
+    checksum: bool = False
+
+    def to_version(self, version: tz.ZarrVersion) -> Metadata:
+        if version == 3:
+            return self
+        if version in (1, 2):
+            from abczarr.metadata import v2
+            # v2's numcodecs zstd carries only the level
+            return v2.ZstdCodec(id="zstd", level=self.level)
+        raise ValueError(f"Unsupported version: {version}")
+
+
+@register_subclass(name="zstd")
+@autofrozen
+class ZstdCodec(CompressorCodec):
+    name: tx.Literal["zstd"]
+    configuration: ZstdConfig
+
+    def to_version(self, version: tz.ZarrVersion) -> Metadata:
+        if version == 3:
+            return self
+        return self.configuration.to_version(version)
