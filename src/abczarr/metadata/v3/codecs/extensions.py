@@ -7,6 +7,8 @@ __all__ = [
     "ScaleOffsetCodec",
     "VLenBytesCodec",
     "VLenUTF8Codec",
+    "ReshapeCodec",
+    "ZfpCodec",
     "ZstdCodec",
 ]
 
@@ -169,6 +171,53 @@ class VLenBytesCodec(ArrayToBytesCodec):
 @autofrozen
 class VLenUTF8Codec(ArrayToBytesCodec):
     name: tx.Literal["vlen-utf8"]
+
+
+#: One axis of a reshape target: a size (with -1 for "the rest"), or a group
+#: of sizes to split that axis into.
+_ReshapeAxis = tx.Union[int, tx.Tuple[int, ...]]
+
+
+@autofrozen
+class ReshapeConfig(CodecConfigImpl):
+    shape: tx.Tuple[_ReshapeAxis, ...]
+
+
+@register_subclass(name="reshape")
+@autofrozen
+class ReshapeCodec(ArrayToArrayCodec):
+    name: tx.Literal["reshape"]
+    configuration: ReshapeConfig
+
+
+#: zfp's five modes; each carries only its own parameters.
+_ZfpMode = tx.Literal[
+    "reversible", "expert", "fixed_accuracy", "fixed_rate", "fixed_precision"
+]
+
+
+@autofrozen
+class ZfpConfig(CodecConfigImpl):
+    # zfp picks a mode, and each mode carries only its own parameters: expert
+    # takes minbits/maxbits/maxprec/minexp; fixed_accuracy takes tolerance;
+    # fixed_rate takes rate; fixed_precision takes precision; reversible takes
+    # none. The parameters of the other modes stay None and are omitted on
+    # serialization, so each mode round-trips exactly as the spec writes it.
+    mode: _ZfpMode
+    minbits: tx.Optional[int] = None
+    maxbits: tx.Optional[int] = None
+    maxprec: tx.Optional[int] = None
+    minexp: tx.Optional[int] = None
+    tolerance: tx.Optional[float] = None
+    rate: tx.Optional[float] = None
+    precision: tx.Optional[int] = None
+
+
+@register_subclass(name="zfp")
+@autofrozen
+class ZfpCodec(ArrayToBytesCodec):
+    name: tx.Literal["zfp"]
+    configuration: ZfpConfig
 
 
 @autofrozen
