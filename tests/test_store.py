@@ -5,8 +5,6 @@ These run with no zarr / tensorstore backend installed -- the default store
 is a directory under ``tmp_path``.
 """
 
-from __future__ import annotations
-
 import asyncio
 import pathlib
 

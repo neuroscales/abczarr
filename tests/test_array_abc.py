@@ -5,8 +5,6 @@ is sharded, otherwise the chunk -- so a read never re-fetches the same shard
 once per inner chunk. Dask is imported lazily, inside the method.
 """
 
-from __future__ import annotations
-
 import numpy as np
 import numpy.typing as npt
 import typing_extensions as tx
@@ -17,7 +15,7 @@ from abczarr.abc.array import ZarrArray
 class _FakeArray(ZarrArray):
     """A minimal concrete array with a settable shard shape."""
 
-    def __init__(self, shards: tx.Tuple[int, ...] | None) -> None:
+    def __init__(self, shards: tx.Optional[tx.Tuple[int, ...]]) -> None:
         self._shards = shards
         super().__init__("/store")
 
@@ -50,7 +48,7 @@ class _FakeArray(ZarrArray):
         return (2, 2)
 
     @property
-    def shards(self) -> tx.Tuple[int, ...] | None:
+    def shards(self) -> tx.Optional[tx.Tuple[int, ...]]:
         return self._shards
 
     def __getitem__(self, index: tx.Any) -> npt.ArrayLike:

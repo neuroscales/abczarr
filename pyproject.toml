@@ -77,7 +77,7 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 79
-target-version = "py39"
+target-version = "py38"
 
 [tool.ruff.lint]
 select = ["ANN", "B", "E", "F", "I", "UP", "W"]
@@ -85,5 +85,8 @@ ignore = [
     "ANN002",  # Allow missing type annotations for *args
     "ANN003",  # Allow missing type annotations for **kwargs
     "ANN401",  # Allow annotating with Any
-    "UP006",   # Allow annotating with typing.Type instead of type
+    "UP006",   # Allow typing.List/Type over the builtin generic
+    "UP007",   # Allow typing.Optional/Union over the X | Y form
+    "UP035",   # Allow importing from typing / typing_extensions
+    "UP045",   # Allow typing.Optional[X] over X | None
 ]

@@ -6,8 +6,6 @@ codecs, sharding, and full OME-NGFF multiscales / omero / plate / well
 structures.
 """
 
-from __future__ import annotations
-
 import pytest
 
 from abczarr.metadata import v1, v2, v3
