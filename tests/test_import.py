@@ -10,8 +10,6 @@ They install no optional backend, so they also assert that importing the
 package never eagerly imports a driver (zarr-python, tensorstore, ...).
 """
 
-from __future__ import annotations
-
 import importlib
 
 import pytest
@@ -76,16 +74,18 @@ def test_store_path_classes_exist() -> None:
 import ast  # noqa: E402
 import pathlib  # noqa: E402
 
+import typing_extensions as tx  # noqa: E402
+
 _PEP585 = {"list", "dict", "tuple", "set", "frozenset", "type"}
 _SRC = pathlib.Path(__file__).resolve().parent.parent / "src" / "abczarr"
 
 
-def _modern_hint_offenders(path: pathlib.Path) -> list[str]:
+def _modern_hint_offenders(path: pathlib.Path) -> tx.List[str]:
     text = path.read_text(encoding="utf-8")
     if "from __future__ import annotations" in text:
         return []  # annotations are strings here; nothing is evaluated
     tree = ast.parse(text)
-    hits: list[str] = []
+    hits: tx.List[str] = []
 
     def scan(node: ast.AST, where: str) -> None:
         for n in ast.walk(node):

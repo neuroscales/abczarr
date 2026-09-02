@@ -5,8 +5,6 @@ those values exactly -- strings, numbers, booleans, lists and nested dicts --
 and must not coerce a value to some other type it happens to look like.
 """
 
-from __future__ import annotations
-
 import math
 
 from abczarr.metadata import v2, v3

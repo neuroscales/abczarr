@@ -9,8 +9,6 @@ Two shared-machinery guarantees that cross-version conversion depends on:
   bug that masks it.
 """
 
-from __future__ import annotations
-
 import typing_extensions as tx
 
 from abczarr._core.auto import fields

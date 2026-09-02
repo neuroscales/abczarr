@@ -4,8 +4,6 @@ These exercise the surface every driver targets, using a tiny in-repo fake
 node -- so they run with no zarr / tensorstore backend installed.
 """
 
-from __future__ import annotations
-
 import pytest
 
 from abczarr import UnsupportedZarrOperation

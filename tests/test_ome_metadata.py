@@ -6,8 +6,6 @@ factories (which mark fields required / recommended / optional) and the
 MISSING sentinel a required-but-unset field carries.
 """
 
-from __future__ import annotations
-
 import pytest
 
 from abczarr.ome.metadata import v0_4, v0_5
