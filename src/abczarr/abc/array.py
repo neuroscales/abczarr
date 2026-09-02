@@ -1,3 +1,5 @@
+"""The Zarr array interface: n-dimensional array data."""
+
 __all__ = [
     "ZarrArrayConfig",
     "ZarrArray",
@@ -22,7 +24,12 @@ if tx.TYPE_CHECKING:
 
 
 class ZarrArrayConfig(tx.TypedDict, total=False):
-    """Configuration for creating a Zarr Array."""
+    """Options for creating a Zarr array.
+
+    Every key is optional. Pass a `config` dict to a group's
+    `create_array`, or the same keys as keyword arguments, to set
+    the chunking, sharding, and compression of a new array.
+    """
 
     chunk: tz.ShapeLike
     shard: tx.Optional[tz.ShapeLike]
@@ -34,69 +41,78 @@ class ZarrArrayConfig(tx.TypedDict, total=False):
 
 
 class ZarrArray(ZarrNode):
-    """Abstract interface for a Zarr array (n-dimensional data)."""
+    """An n-dimensional Zarr array.
+
+    Read and write it like a NumPy array, with NumPy-style
+    selections:
+
+    !!! example
+        ```python
+        array[0, :10]
+        array[...] = data
+        ```
+    """
 
     @property
     @abstractmethod
     def ndim(self) -> int:
-        """Number of dimensions of the array."""
+        """The number of dimensions of the array."""
         ...
 
     @property
     @abstractmethod
     def shape(self) -> tz.Shape:
-        """Shape of the array."""
+        """The shape of the array."""
         ...
 
     @property
     @abstractmethod
     def dtype(self) -> np.dtype:
-        """Data type of the array."""
+        """The data type of the array."""
         ...
 
     @property
     @abstractmethod
     def chunks(self) -> tz.Shape:
-        """Chunk shape for the array.
+        """The chunk shape of the array.
 
-        If the chunk grid is not regular, accessing this property should
-        raise an exception.
+        Raises when the array's chunk grid is not regular.
         """
         ...
 
     @property
     @abstractmethod
     def shards(self) -> tx.Optional[tz.Shape]:
-        """
-        Shard shape, if supported; otherwise None.
+        """The shard shape of the array, or `None` if it is not
+        sharded.
 
-        If the shard grid is not regular, accessing this property should
-        raise an exception.
+        Raises when the array's shard grid is not regular.
         """
         ...
 
     @abstractmethod
     def __getitem__(self, index: tx.Any) -> npt.ArrayLike:
-        """Read data from the array at *index* (a numpy-style selection)."""
+        """Read data from the array at *index* (a NumPy-style
+        selection)."""
         ...
 
     @abstractmethod
     def __setitem__(self, index: tx.Any, value: npt.ArrayLike) -> None:
-        """Write *value* at *index* (a numpy-style selection)."""
+        """Write *value* at *index* (a NumPy-style selection)."""
         ...
 
     def __array__(
         self, dtype: tx.Optional[npt.DTypeLike] = None
     ) -> npt.ArrayLike:
-        """Convert this Zarr array to a NumPy array."""
+        """Convert this array to a NumPy array."""
         return np.asarray(self[()], dtype=dtype)
 
     def to_dask(self) -> "da.Array":
-        """Convert this Zarr array to a Dask array.
+        """Convert this array to a Dask array.
 
-        Dask blocks align to the write unit -- the shard when the array is
-        sharded, otherwise the chunk -- so a read never re-fetches the same
-        shard once per inner chunk.
+        Dask blocks align to the write unit -- the shard when the
+        array is sharded, otherwise the chunk -- so a read never
+        re-fetches the same shard once per inner chunk.
         """
         import dask.array as da
 
