@@ -379,12 +379,6 @@ class PathStore(Store):
     root's scheme picks the driver, and credentials ride on the root
     path's `storage_options`.
 
-    Parameters
-    ----------
-    store_path : str or [StorePath][abczarr.abc.path.StorePath]
-        The root all keys are resolved under -- a local path or a
-        URL such as `"s3://bucket/prefix"`.
-
     !!! example
         ```pycon
         >>> store = PathStore("/tmp/demo-store")
@@ -392,6 +386,12 @@ class PathStore(Store):
         >>> store.get("zarr.json")
         b'{"zarr_format": 3}'
         ```
+
+    Parameters
+    ----------
+    store_path : str or [StorePath][abczarr.abc.path.StorePath]
+        The root all keys are resolved under -- a local path or a
+        URL such as `"s3://bucket/prefix"`.
     """
 
     _CAPABILITIES = {

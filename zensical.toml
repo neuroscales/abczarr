@@ -2,46 +2,30 @@
 
 nav = [
   {"Home" = "index.md"},
-  # {"Getting started" = [
-  #   "index.md",
-  #    {"Command-line interface" = "start/cli.md"},
-  #    {"Python interface" = "start/python.md"},
-  # ]},
-  # {"Command-line API" = [
-  #   "cli/index.md",
-  #   {"Commands" = "cli/commands.md"},
-  # ]},
-  # {"Python API" = [
-  #   "api/index.md",
-  #   {"datamodel" = [
-  #     "api/datamodel/index.md",
-  #     "api/datamodel/base.md",
-  #     "api/datamodel/enums.md",
-  #     "api/datamodel/units.md",
-  #     "api/datamodel/orientation.md",
-  #     "api/datamodel/axes.md",
-  #     "api/datamodel/systems.md",
-  #     "api/datamodel/transformations.md",
-  #     "api/datamodel/hierarchy.md",
-  #   ]},
-  #   {"io" = [
-  #     {"transformations" = [
-  #       "api/io/index.md",
-  #       "api/io/lta.md",
-  #       "api/io/index.md",
-  #     ]},
-  #     {"images" = []},
-  #     {"vectors" = []},
-  #   ]},
-  #   {"For developers" = [
-  #       {"struct" = [
-  #         "api/_ext/struct/index.md",
-  #         "api/_ext/struct/converters.md",
-  #         "api/_ext/struct/validators.md",
-  #       ]},
-  #       {"invfield" = "api/_ext/invfield.md"},
-  #   ]}
-  # ]}
+  {"API reference" = [
+    "api/index.md",
+    {"Nodes" = [
+      "api/node.md",
+      "api/array.md",
+      "api/group.md",
+    ]},
+    {"Stores" = [
+      "api/store.md",
+      "api/transactions.md",
+      "api/path.md",
+    ]},
+    {"Capabilities" = [
+      "api/capabilities.md",
+      "api/errors.md",
+    ]},
+    {"Drivers" = ["api/drivers.md"]},
+    {"Metadata" = [
+      "api/metadata.md",
+      "api/metadata-v1.md",
+      "api/metadata-v2.md",
+      "api/metadata-v3.md",
+    ]},
+  ]},
 ]
 
 # The site_name is shown in the page header and the browser window title
@@ -122,7 +106,11 @@ repo = "fontawesome/brands/github"
 # mkdocstrings
 # ----------------------------------------------------------------------------
 [project.plugins.mkdocstrings.handlers.python]
-inventories = ["https://docs.python.org/3/objects.inv"]
+inventories = [
+  "https://docs.python.org/3/objects.inv",
+  "https://typing-extensions.readthedocs.io/en/latest/objects.inv",
+  "https://numpy.org/doc/stable/objects.inv",
+]
 paths = ["src"]
 
 [project.plugins.mkdocstrings.handlers.python.options]
@@ -142,6 +130,10 @@ allow_inspection = true
 filters = "public"
 group_by_category = true
 show_category_heading = true
+show_signature_annotations = true
+signature_crossrefs = true
+modernize_annotations = true
+extensions = ["griffe_typing_extensions:TypingExtensionsToTyping"]
 
 # ----------------------------------------------------------------------------
 # Markdown extras
