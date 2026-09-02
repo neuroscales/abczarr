@@ -80,8 +80,8 @@ Legend: `[ ]` open, `[~]` in progress, `[x]` done.
 - [x] #4 needless string annotation on `node_type_at` removed.
 - [x] #5 detection is version-aware (`node_at` returns type + version, no
   guess) and a `PathGroup` only sees children of its own version.
-- [ ] #2 tensorstore `_create_array` -> lands with config increment 2
-  (the `Driver.create(metadata)` contract).
+- [x] #2 tensorstore `_create_array` -> done in config increment 2 (PR #46);
+  tensorstore creates arrays via native `ts.open(create=True)`.
 - [ ] #1 write-through `attrs`: every node returns a dead `dict` copy today,
   so `node.attrs["x"] = 1` is lost. Wire the existing write-through
   `Attributes` (`_core/attributes.py`) into the node contract and all
@@ -93,8 +93,16 @@ Legend: `[ ]` open, `[~]` in progress, `[x]` done.
 ## Config API
 
 - [x] Increment 1: ArrayConfig/GroupConfig/ArrayOptions merge, resolve() /
-  to_metadata with the auto semantics and dict/** unpack. Branch
-  `claude/feat/config-api` (green, PR pending the rest of the slice).
+  to_metadata with the auto semantics and dict/** unpack.
+- [x] Increment 2: `create(location, config)`, the `Driver.create(metadata)`
+  primitive, `ZarrGroup.create_array` concrete over `_create_array(metadata)`,
+  and tensorstore array creation. The whole slice is PR #46 (green, 305 tests).
+- [x] Serialization-conformance fixes surfaced by making metadata
+  backend-writable: nested metadata now serializes through its own `to_dict`
+  (core v3 data_type is a bare string), and v3 omits unset `dimension_names` /
+  `storage_transformers`. Both in PR #46.
+- [ ] Defect #4 (v3 fill value) is closed by the auto-fill resolution in
+  increment 1.
 
 ## Architecture / clarity
 
