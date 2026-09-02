@@ -21,7 +21,12 @@ __all__ = [
     "Driver",
     "Verdict",
     "select_driver",
+    "available_drivers",
+    "register_driver",
 ]
+
+# stdlib
+import importlib
 
 # dependencies
 import typing_extensions as tx
@@ -31,6 +36,7 @@ from abczarr.abc.capabilities import SupportsCapabilities
 from abczarr.abc.errors import UnsupportedZarrOperation
 
 if tx.TYPE_CHECKING:
+    from abczarr.abc.node import ZarrNode
     from abczarr.metadata.base import ArrayMetadata
 
 
@@ -70,6 +76,11 @@ class Driver(SupportsCapabilities):
     #: The driver's registered name (`"zarr-python"`, ...).
     name: tx.ClassVar[str] = ""
 
+    @property
+    def available(self) -> bool:
+        """Whether this driver's backend is installed and usable."""
+        return True
+
     def can_open(self, metadata: "ArrayMetadata") -> Verdict:
         """Whether this driver provides every feature *metadata*
         requires."""
@@ -79,6 +90,51 @@ class Driver(SupportsCapabilities):
             if not self.supports(feature)
         ]
         return Verdict(self.name or type(self).__name__, missing)
+
+    def open(self, location: tx.Any, mode: str = "r") -> "ZarrNode":
+        """Open *location* and wrap it as a node.
+
+        Raises
+        ------
+        [UnsupportedZarrOperation][abczarr.abc.errors.UnsupportedZarrOperation]
+            When this driver cannot open a location.
+        """
+        raise UnsupportedZarrOperation("open", self.name or None)
+
+
+#: The drivers abczarr knows about, as ``(name, module, class)``. They are
+#: imported lazily so importing abczarr never imports a backend.
+_KNOWN_DRIVERS = [
+    ("zarr-python", "abczarr.drivers.zarr_python", "ZarrPythonDriver"),
+]
+
+
+def register_driver(module: str, cls: str, name: str = "") -> None:
+    """Register a driver by the module and class that provide it.
+
+    The driver is imported and instantiated only when
+    [available_drivers][abczarr.drivers.base.available_drivers] is called.
+    """
+    _KNOWN_DRIVERS.append((name, module, cls))
+
+
+def available_drivers() -> "tx.List[Driver]":
+    """The installed, usable drivers, in registration order.
+
+    Each known driver is imported and instantiated; one whose backend is not
+    installed (its `available` is `False`) or that cannot be imported is left
+    out.
+    """
+    drivers = []  # type: tx.List[Driver]
+    for _name, module_path, cls_name in _KNOWN_DRIVERS:
+        try:
+            module = importlib.import_module(module_path)
+            driver = getattr(module, cls_name)()
+        except Exception:
+            continue
+        if driver.available:
+            drivers.append(driver)
+    return drivers
 
 
 def select_driver(
