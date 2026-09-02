@@ -21,14 +21,11 @@ https://github.com/zarr-developers/zarr-python
 """
 __all__ = [
     "ConversionPolicy",
-    "report_loss",
     "Metadata",
     "FlexibleMetadata",
     "NodeMetadata",
     "GroupMetadata",
     "ArrayMetadata",
-    "node_at",
-    "node_type_at",
     "NodeMetadataV1",
     "ArrayMetadataV1",
     "NodeMetadataV2",
@@ -75,7 +72,7 @@ from abczarr._core.metadata import (
 ConversionPolicy = tx.Literal["lossy", "warn", "strict"]
 
 
-def report_loss(
+def _report_loss(
     policy: ConversionPolicy, field: str, version: tz.ZarrVersion
 ) -> None:
     """Apply a conversion policy to a field the target can't hold.
@@ -180,7 +177,7 @@ class NodeMetadata(Metadata):
         )
 
 
-def node_type_at(root: os.PathLike) -> tx.Optional[tz.NodeType]:
+def _node_type_at(root: os.PathLike) -> tx.Optional[tz.NodeType]:
     """Report whether *root* holds a Zarr array, a group, or neither.
 
     Reads only enough to answer that -- a v3 `zarr.json`'s `node_type`
@@ -199,11 +196,11 @@ def node_type_at(root: os.PathLike) -> tx.Optional[tz.NodeType]:
         ``"array"`` or ``"group"`` if *root* holds Zarr metadata of that
         kind, otherwise `None`.
     """
-    detected = node_at(root)
+    detected = _node_at(root)
     return detected[0] if detected else None
 
 
-def node_at(
+def _node_at(
     root: os.PathLike,
 ) -> tx.Optional[tx.Tuple[tz.NodeType, tz.ZarrVersion]]:
     """The kind and Zarr version of the node stored at *root*.

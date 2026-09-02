@@ -175,7 +175,7 @@ class ArrayMetadata(ArrayMetadataV2):
 
         # v1 has no filters -- only a single compressor.
         if self.filters:
-            base.report_loss(policy, "filters", 1)
+            base._report_loss(policy, "filters", 1)
 
         # v1 splits the numcodecs codec into a name and an options dict.
         compression = compression_opts = None
@@ -200,7 +200,7 @@ class ArrayMetadata(ArrayMetadataV2):
 
         # v3 has no C/F memory-order field; only C (row-major) round-trips.
         if self.order != "C":
-            base.report_loss(policy, "order", 3)
+            base._report_loss(policy, "order", 3)
 
         separator = self.dimension_separator or "."
         chunk_grid = v3.RegularChunkGrid(configuration=self.chunks)

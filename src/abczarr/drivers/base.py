@@ -124,10 +124,10 @@ class Driver(SupportsCapabilities):
         """
         from bagof.paths import Path
 
-        from abczarr.metadata.base import node_at
+        from abczarr.metadata.base import _node_at
 
         path = Path(str(location))
-        if node_at(path) is not None:
+        if _node_at(path) is not None:
             if not overwrite:
                 raise FileExistsError(f"a node already exists at {location}")
             path.rmdir(recursive=True)
