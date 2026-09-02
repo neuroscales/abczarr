@@ -40,7 +40,11 @@ import typing_extensions as tx
 
 # locals
 from .capabilities import Support, SupportsCapabilities
+from .errors import UnsupportedZarrOperation
 from .path import AsyncStorePath, StorePath
+
+if tx.TYPE_CHECKING:
+    from .transactions import AsyncTransaction, Transaction
 
 #: The character that separates the segments of a zarr key (``"c/0/0"``).
 _SEP = "/"
@@ -52,8 +56,13 @@ _BytesLike = tx.Union[bytes, bytearray, memoryview]
 
 #: Capabilities the base store can always synthesize from the primitives, so
 #: ``support`` reports at least :attr:`Support.SYNTHESIZED` for them unless a
-#: store declares a better answer.
-_SYNTHESIZED_FLOOR = {"partial_read": Support.SYNTHESIZED}
+#: store declares a better answer. ``transactions`` is synthesizable
+#: (a buffered, non-atomic batch); ``atomic_transactions`` is *not*, so it is
+#: absent here and only a native store may declare it.
+_SYNTHESIZED_FLOOR = {
+    "partial_read": Support.SYNTHESIZED,
+    "transactions": Support.SYNTHESIZED,
+}
 
 
 def _child(prefix: str, key: str) -> str:
@@ -183,6 +192,30 @@ class Store(SupportsCapabilities, ABC):
         """Delete every key at or below *prefix*."""
         for key in list(self.list_keys(prefix)):
             self.delete(key)
+
+    def transaction(self, *, atomic: bool = True) -> "Transaction":
+        """Open a transaction -- a store view whose writes commit together.
+
+        A store whose backend has real transactions returns a native one. Any
+        other store returns a buffered, non-atomic transaction, so it can only
+        honour ``atomic=False``; ``atomic=True`` on such a store raises rather
+        than pretend a torn write is atomic.
+        """
+        if self.support("transactions") is Support.NATIVE:
+            return self._native_transaction(atomic=atomic)
+        if atomic:
+            raise UnsupportedZarrOperation(
+                "atomic transaction", driver=type(self).__name__
+            )
+        from .transactions import BufferedTransaction
+
+        return BufferedTransaction(self)
+
+    def _native_transaction(self, *, atomic: bool) -> "Transaction":
+        """A driver with native transactions overrides this."""
+        raise UnsupportedZarrOperation(
+            "transaction", driver=type(self).__name__
+        )
 
     def list_dir(self, prefix: str = "") -> tx.Iterator[str]:
         """Iterate the immediate child names one level below *prefix*.
@@ -403,6 +436,24 @@ class AsyncStore(SupportsCapabilities, ABC):
         keys = [key async for key in self.list_keys(prefix)]
         for key in keys:
             await self.delete(key)
+
+    def transaction(self, *, atomic: bool = True) -> "AsyncTransaction":
+        """Open a transaction (see :meth:`Store.transaction`)."""
+        if self.support("transactions") is Support.NATIVE:
+            return self._native_transaction(atomic=atomic)
+        if atomic:
+            raise UnsupportedZarrOperation(
+                "atomic transaction", driver=type(self).__name__
+            )
+        from .transactions import AsyncBufferedTransaction
+
+        return AsyncBufferedTransaction(self)
+
+    def _native_transaction(self, *, atomic: bool) -> "AsyncTransaction":
+        """A driver with native transactions overrides this."""
+        raise UnsupportedZarrOperation(
+            "transaction", driver=type(self).__name__
+        )
 
     async def list_dir(self, prefix: str = "") -> tx.AsyncIterator[str]:
         """Async-iterate the immediate child names one level below *prefix*."""
