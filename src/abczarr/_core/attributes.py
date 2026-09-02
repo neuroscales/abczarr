@@ -16,8 +16,12 @@ import typing_extensions as tx
 from bagof.paths import Path
 
 # locals
-from ..abc import ZarrNode
 from . import typing as tz
+
+if tx.TYPE_CHECKING:
+    # imported for the type only; a runtime import would cycle, since the node
+    # contract (abc.node) reaches back here for its `attrs` property
+    from ..abc import ZarrNode
 
 AttributesBase = tx.MutableMapping[str, tx.Any]
 
@@ -35,7 +39,7 @@ class Attributes(AttributesBase):
       - .zarr_version (2 or 3)
     """
 
-    def __init__(self, obj: ZarrNode, *, write_through: bool = True) -> None:
+    def __init__(self, obj: "ZarrNode", *, write_through: bool = True) -> None:
         """
         Parameters
         ----------

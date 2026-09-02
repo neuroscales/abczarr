@@ -122,3 +122,13 @@ def test_delete_a_member(tmp_path: pathlib.Path) -> None:
     node = _open(_store(tmp_path), mode="a")
     del node["sub"]
     assert "sub" not in list(node.keys())
+
+
+def test_attrs_write_through(tmp_path: pathlib.Path) -> None:
+    root = _store(tmp_path)
+    node = _open(root, "a")["img"]
+    node.attrs["scale"] = 0.5
+    # a freshly opened array reads the attribute back
+    assert _open(root, "r")["img"].attrs["scale"] == 0.5
+    del node.attrs["scale"]
+    assert "scale" not in _open(root, "r")["img"].attrs

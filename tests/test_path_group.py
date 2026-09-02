@@ -223,3 +223,19 @@ def test_create_array_writes_metadata_and_opens_via_the_hook(
     assert isinstance(made, _StubArray)
     # the array metadata was written, in the group's own version
     assert node_at(group.store_path / "fresh") == ("array", 3)
+
+
+# --------------------------------------------------------------------------
+# attrs are a live, write-through mapping (inherited from ZarrNode)
+# --------------------------------------------------------------------------
+
+
+def test_attrs_persist_on_mutation(tmp_path: pathlib.Path) -> None:
+    group = _Group(_hierarchy(tmp_path))
+    group.attrs["author"] = "me"
+    group.attrs["levels"] = 3
+    # a freshly opened group reads them back from the store
+    reopened = _Group(group.store_path)
+    assert dict(reopened.attrs) == {"author": "me", "levels": 3}
+    del group.attrs["levels"]
+    assert "levels" not in _Group(group.store_path).attrs

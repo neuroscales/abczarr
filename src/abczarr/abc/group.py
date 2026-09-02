@@ -176,9 +176,8 @@ class PathGroup(ZarrGroup):
     def metadata(self) -> NodeMetadata:
         return NodeMetadata.from_file(self._store_path)
 
-    @property
-    def attrs(self) -> tz.Attributes:
-        return dict(self.metadata.attributes)
+    # attrs is inherited from ZarrNode: a write-through mapping over the
+    # group's metadata file.
 
     @property
     def zarr_version(self) -> tz.ZarrVersion:

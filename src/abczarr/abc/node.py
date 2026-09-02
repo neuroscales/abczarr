@@ -22,6 +22,7 @@ from bagof.paths import Path
 
 # core
 from abczarr._core import typing as tz
+from abczarr._core.attributes import Attributes
 from abczarr.metadata.base import NodeMetadata
 
 # locals -- KNOWN_CAPABILITIES and Support are re-exported for callers that
@@ -74,10 +75,15 @@ class ZarrNode(SupportsCapabilities, ABC):
         ...
 
     @property
-    @abstractmethod
-    def attrs(self) -> tz.Attributes:
-        """This node's user attributes."""
-        ...
+    def attrs(self) -> Attributes:
+        """This node's user attributes, as a live, write-through mapping.
+
+        Mutations persist: `node.attrs["k"] = v` writes `k` to the node's
+        metadata, and `del node.attrs["k"]` removes it. The default reads and
+        writes the metadata file directly; a driver whose backend keeps its
+        own live attributes overrides this to return that.
+        """
+        return Attributes(self)
 
     @property
     @abstractmethod

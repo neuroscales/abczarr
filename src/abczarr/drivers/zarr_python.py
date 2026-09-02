@@ -260,8 +260,9 @@ class ZarrPythonArray(ZarrArray):
         return metadata_from_dict(self._array.metadata.to_dict())
 
     @property
-    def attrs(self) -> tz.Attributes:
-        return dict(self._array.attrs)
+    def attrs(self) -> tx.MutableMapping[str, tx.Any]:
+        # zarr-python's own attributes are already a live, write-through view
+        return self._array.attrs
 
     @property
     def zarr_version(self) -> tz.ZarrVersion:
@@ -315,8 +316,9 @@ class ZarrPythonGroup(ZarrGroup):
         return metadata_from_dict(self._group.metadata.to_dict())
 
     @property
-    def attrs(self) -> tz.Attributes:
-        return dict(self._group.attrs)
+    def attrs(self) -> tx.MutableMapping[str, tx.Any]:
+        # zarr-python's own attributes are already a live, write-through view
+        return self._group.attrs
 
     @property
     def zarr_version(self) -> tz.ZarrVersion:

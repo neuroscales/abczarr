@@ -207,3 +207,14 @@ def test_create_an_array_inside_a_group(tmp_path: pathlib.Path) -> None:
     arr[:] = np.arange(4, dtype="int32")
     assert np.asarray(arr[:]).tolist() == [0, 1, 2, 3]
     assert "img" in list(group.keys())
+
+
+def test_attrs_write_through(tmp_path: pathlib.Path) -> None:
+    root = str(tmp_path / "g.zarr")
+    zarr.open_group(root, mode="w").create_array(
+        "a", shape=(2,), chunks=(2,), dtype="u1"
+    )
+    node = abczarr.open(root + "/a", mode="a", driver="tensorstore")
+    node.attrs["unit"] = "micrometer"
+    reopened = abczarr.open(root + "/a", mode="r", driver="tensorstore")
+    assert reopened.attrs["unit"] == "micrometer"
