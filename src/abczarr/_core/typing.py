@@ -204,7 +204,7 @@ ChunkCoords = Shape
 # Enums
 LogLevel = tx.Literal["debug", "info", "warning", "error", "critical"]
 AccessMode = tx.Literal["r", "r+", "a", "w", "w-"]
-KnownDriver = tx.Literal["zarr-python", "tensorstore", "zarrita"]
+KnownDriver = tx.Literal["zarr-python", "tensorstore"]
 ZarrVersion = tx.Literal[1, 2, 3]
 OMEVersion = tx.Literal["0.1", "0.2", "0.3", "0.4", "0.5", "0.6"]
 CompressorTypeV1 = tx.Literal[
