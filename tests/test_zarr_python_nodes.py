@@ -120,6 +120,17 @@ def test_write_through_the_surface(tmp_path: pathlib.Path) -> None:
     assert float(np.asarray(arr[0, 0])) == 999.0
 
 
+def test_store_writes_a_dask_array_block_by_block(
+    tmp_path: pathlib.Path,
+) -> None:
+    da = pytest.importorskip("dask.array")
+    node = _open(_store(tmp_path), mode="a")
+    arr = node["img"]
+    source = da.zeros((8, 8), dtype="float32", chunks=(4, 4)) + 7.0
+    arr.store(source)
+    assert np.asarray(arr).tolist() == np.full((8, 8), 7.0).tolist()
+
+
 def test_create_array_and_group(tmp_path: pathlib.Path) -> None:
     node = _open(_store(tmp_path), mode="a")
     made = node.create_array("new", shape=(3,), dtype="int16", chunks=(3,))

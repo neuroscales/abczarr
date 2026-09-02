@@ -99,3 +99,31 @@ class ZarrArray(ZarrNode):
         import dask.array as da
 
         return da.from_array(self, chunks=self.shards or self.chunks)
+
+    def store(self, source: npt.ArrayLike, *, lock: bool = True) -> None:
+        """Write *source* into this array, block by block.
+
+        *source* is any array-like with a matching shape. A Dask array
+        is written one block at a time, so a source too large to hold
+        in memory never is; a plain array is written in one go. This is
+        the write counterpart of
+        [to_dask][abczarr.abc.array.ZarrArray.to_dask], and it works
+        for every backend (unlike `dask.array.to_zarr`, which requires
+        a native `zarr.Array`).
+
+        Parameters
+        ----------
+        source : array-like
+            The data to write. Its shape must match this array's.
+        lock : bool, optional
+            Serialize concurrent block writes. Leave `True` unless the
+            source's blocks are known to map to disjoint chunks.
+
+        !!! example
+            ```python
+            array.store(dask_array)
+            ```
+        """
+        import dask.array as da
+
+        da.store(da.asarray(source), self, lock=lock)
