@@ -154,8 +154,11 @@ def auto_chunk(
             if math.prod(chunks) > max_numel:
                 # If chunk is too large, stop and keep previous chunk
                 chunks[d] = old_chunk
-            else:
-                # Otherwise, use larger chunk and continue
+            elif new_chunk > old_chunk:
+                # Only an actual growth counts as an improvement. A dimension
+                # already at its full size does not, so the loop settles
+                # instead of spinning when one axis is capped and another is
+                # saturated.
                 improved = True
 
         if not improved:
@@ -253,16 +256,25 @@ def auto_shard(
             if math.prod(shards) > max_numel:
                 # If shard is too large, stop and keep previous shard
                 shards[d] = old_shard
-            else:
-                # Otherwise, use larger shard and continue
+            elif new_shard > old_shard:
+                # Only an actual growth counts as an improvement. A dimension
+                # already at its full size does not, so the loop settles
+                # instead of spinning when one axis is capped and another is
+                # saturated.
                 improved = True
 
         if not improved:
             # We cannot improve any further, so we stop
             break
 
-    # replace "auto" chunk size
-    chunks = auto_chunk(shape, chunk_spec, compression_ratio=compression_ratio)
+    # replace "auto" chunk size, sizing chunks against the real itemsize so
+    # the chunk byte budget is respected for the actual dtype
+    chunks = auto_chunk(
+        shape,
+        chunk_spec,
+        itemsize=itemsize,
+        compression_ratio=compression_ratio,
+    )
     chunks = [min(c, s) for c, s in zip(chunks, shards)]
 
     # Fix incompatibilities between chunk and shard size

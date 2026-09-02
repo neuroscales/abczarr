@@ -212,7 +212,7 @@ CompressorTypeV1 = tx.Literal[
     "none"
 ]
 CompressorTypeV2 = CompressorTypeV1
-CompressorTypeV3 = tx.Literal["blosc", "gzip", "none"]
+CompressorTypeV3 = tx.Literal["blosc", "gzip", "zstd", "none"]
 CompressorType = tx.Union[CompressorTypeV1, CompressorTypeV2, CompressorTypeV3]
 NodeType = tx.Literal["group", "array"]
 MemoryOrder = tx.Literal["C", "F"]
