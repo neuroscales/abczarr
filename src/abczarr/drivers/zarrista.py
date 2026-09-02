@@ -26,7 +26,6 @@ from abczarr._core.dtypes import asdtype
 from abczarr._core.features import FEATURE_KINDS, FEATURE_VERSIONS
 from abczarr.abc.array import ZarrArray
 from abczarr.abc.capabilities import Support
-from abczarr.abc.errors import UnsupportedZarrOperation
 from abczarr.abc.group import PathGroup
 from abczarr.abc.node import ZarrNode
 from abczarr.drivers._metadata import metadata_from_dict
@@ -120,7 +119,7 @@ class ZarristaArray(ZarristaNode, ZarrArray):
         return tuple(self.metadata.shape)
 
     @property
-    def dtype(self) -> "npt.DTypeLike":
+    def dtype(self) -> npt.DTypeLike:
         return asdtype(self.metadata.data_type)
 
     @property
@@ -197,15 +196,9 @@ class ZarristaDriver(Driver):
             return ZarristaGroup(location, mode)
         return _open_zarrista_array(location)
 
-    def create_from_metadata(
-        self, location: tx.Any, metadata: tx.Any, *, overwrite: bool = False,
-    ) -> ZarristaNode:
-        # This first version reads and writes existing v3 arrays and groups.
-        # Creation is not wired yet: zarrista's reader is stricter about a
-        # codec's configuration than the metadata the config layer writes
-        # (it requires a zstd/gzip level, for one), so it is left for a
-        # follow-up that builds through zarrista's own ArrayBuilder.
-        raise UnsupportedZarrOperation("create", "zarrista")
+    # Creation uses the base write-then-open: abczarr writes the metadata
+    # document (now schema-conformant, so zarrista's stricter reader accepts
+    # it) and this driver opens it.
 
     def capability(self, capability: str) -> Support:
         if zarrista is None:

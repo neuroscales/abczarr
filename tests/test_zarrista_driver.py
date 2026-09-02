@@ -14,6 +14,7 @@ pytest.importorskip("zarrista")
 
 import abczarr  # noqa: E402
 from abczarr.abc.capabilities import Support  # noqa: E402
+from abczarr.api.config import ArrayConfig  # noqa: E402
 from abczarr.api.registry import available_drivers  # noqa: E402
 from abczarr.drivers.zarrista import (  # noqa: E402
     ZarristaArray,
@@ -159,3 +160,43 @@ def test_attrs_write_through(tmp_path: pathlib.Path) -> None:
     node.attrs["unit"] = "micrometer"
     reopened = abczarr.open(root + "/a", mode="r", driver="zarrista")
     assert reopened.attrs["unit"] == "micrometer"
+
+
+# --------------------------------------------------------------------------
+# creating arrays through the base write-then-open path
+# --------------------------------------------------------------------------
+
+
+def test_create_a_default_array(tmp_path: pathlib.Path) -> None:
+    # the default compressor is zstd; the codec metadata is now conformant,
+    # so zarrista's stricter reader opens what abczarr wrote
+    arr = abczarr.create(
+        str(tmp_path / "a.zarr"),
+        ArrayConfig(shape=(8, 8), dtype="float32", chunks=(4, 4),
+                    driver="zarrista"),
+    )
+    assert isinstance(arr, ZarristaArray)
+    arr[0:4, 0:4] = np.arange(16, dtype="float32").reshape(4, 4)
+    assert np.asarray(arr[0:1, 0:2]).tolist() == [[0.0, 1.0]]
+
+
+def test_create_with_blosc_and_sharding(tmp_path: pathlib.Path) -> None:
+    arr = abczarr.create(
+        str(tmp_path / "b.zarr"),
+        ArrayConfig(shape=(8, 8), dtype="uint8", chunks=(2, 2),
+                    shards=(4, 4), compressor="blosc", driver="zarrista"),
+    )
+    assert arr.chunks == (2, 2)
+    assert arr.shards == (4, 4)
+    arr[0:8, 0:8] = np.full((8, 8), 7, "uint8")
+    assert int(np.asarray(arr[0:1, 0:1])[0, 0]) == 7
+
+
+def test_create_with_gzip(tmp_path: pathlib.Path) -> None:
+    arr = abczarr.create(
+        str(tmp_path / "g.zarr"),
+        ArrayConfig(shape=(4,), dtype="int32", chunks=(4,),
+                    compressor="gzip", driver="zarrista"),
+    )
+    arr[0:4] = np.arange(4, dtype="int32")
+    assert np.asarray(arr[0:4]).tolist() == [0, 1, 2, 3]
