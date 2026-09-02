@@ -209,3 +209,19 @@ def test_a_v3_node_without_a_node_type_is_not_detected(
         json.dumps({"zarr_format": 3, "shape": [4]})
     )
     assert node_at(directory) is None
+
+
+# --------------------------------------------------------------------------
+# attrs are a live, write-through mapping (inherited from ZarrNode)
+# --------------------------------------------------------------------------
+
+
+def test_attrs_persist_on_mutation(tmp_path: pathlib.Path) -> None:
+    group = _Group(_hierarchy(tmp_path))
+    group.attrs["author"] = "me"
+    group.attrs["levels"] = 3
+    # a freshly opened group reads them back from the store
+    reopened = _Group(group.store_path)
+    assert dict(reopened.attrs) == {"author": "me", "levels": 3}
+    del group.attrs["levels"]
+    assert "levels" not in _Group(group.store_path).attrs
