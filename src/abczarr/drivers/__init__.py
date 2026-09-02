@@ -1,1 +1,1 @@
-"""Implmenetaiton of ZarrIO using different libraries."""
+"""Backend drivers: one adapter per library abczarr can read Zarr through."""
