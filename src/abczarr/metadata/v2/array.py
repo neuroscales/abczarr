@@ -11,6 +11,7 @@ import typing_extensions as tx
 # core
 from abczarr._core import typing as tz
 from abczarr._core.auto.attrs import autofrozen, eq_safenan, field
+from abczarr._core.features import feature_key
 from abczarr._core.metadata import register_subclass
 from abczarr.metadata import base
 from abczarr.metadata.base import ConversionPolicy
@@ -58,6 +59,18 @@ class ArrayMetadata(ArrayMetadataV2):
             return self._to_v3(policy)
         else:
             raise ValueError(f"Unsupported version: {version}")
+
+    def required_features(self) -> tx.FrozenSet[str]:
+        feats = set()  # type: tx.Set[str]
+        if self.compressor is not None:
+            name = getattr(self.compressor, "id", None)
+            if name:
+                feats.add(feature_key("v2", "codec", name))
+        for filt in self.filters:
+            name = getattr(filt, "id", None)
+            if name:
+                feats.add(feature_key("v2", "filter", name))
+        return frozenset(feats)
 
     def _to_v1(self, policy: ConversionPolicy = "lossy") -> base.ArrayMetadata:
         from abczarr.metadata import v1
