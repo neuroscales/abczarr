@@ -32,6 +32,14 @@ import enum
 # dependencies
 import typing_extensions as tx
 
+# core -- the feature-key vocabulary is shared with the metadata layer, so it
+# is defined in _core and re-exported here (feature_key stays in __all__).
+from abczarr._core.features import (  # noqa: F401
+    FEATURE_KINDS,
+    FEATURE_VERSIONS,
+    feature_key,
+)
+
 
 class Support(enum.Enum):
     """How well a driver provides a capability.
@@ -76,47 +84,6 @@ KNOWN_CAPABILITIES = frozenset(
         "atomic_transactions",   # ... and commit them all-or-nothing
     }
 )
-
-#: The namespace prefixes a :func:`feature_key` starts with -- the Zarr
-#: format version the feature belongs to.
-FEATURE_VERSIONS = ("v1", "v2", "v3")
-
-#: The kinds of extension a feature key names.
-FEATURE_KINDS = (
-    "codec",
-    "filter",
-    "compressor",
-    "chunk_grid",
-    "chunk_key_encoding",
-    "data_type",
-    "storage_transformer",
-    "extension",
-)
-
-
-def feature_key(version: str, kind: str, name: str) -> str:
-    """Build a fine-grained feature key, e.g. ``feature_key("v3", "codec",
-    "zstd") -> "v3:codec:zstd"``.
-
-    *version* is one of :data:`FEATURE_VERSIONS`, *kind* one of
-    :data:`FEATURE_KINDS`; *name* is the codec/grid/dtype name as it appears
-    in the metadata. The parts are validated so a typo becomes an error here
-    rather than a key that silently never matches.
-    """
-    if version not in FEATURE_VERSIONS:
-        raise ValueError(
-            "unknown feature version {!r}; expected one of {}".format(
-                version, ", ".join(FEATURE_VERSIONS)
-            )
-        )
-    if kind not in FEATURE_KINDS:
-        raise ValueError(
-            "unknown feature kind {!r}; expected one of {}".format(
-                kind, ", ".join(FEATURE_KINDS)
-            )
-        )
-    return f"{version}:{kind}:{name}"
-
 
 class SupportsCapabilities:
     """Mixin giving a node or store the capability query.

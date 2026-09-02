@@ -147,6 +147,19 @@ class ArrayMetadata(NodeMetadata):
 
     node_type: tx.Literal["array"] = "array"
 
+    def required_features(self) -> tx.FrozenSet[str]:
+        """The features a driver must provide to read or write this array.
+
+        Returns the array's codecs, chunk grid, chunk-key encoding and data
+        type as namespaced feature keys -- e.g. ``"v3:codec:zstd"``,
+        ``"v2:filter:delta"`` (see
+        :func:`abczarr._core.features.feature_key`). A driver compares these
+        against what it provides to decide whether it can open the array; an
+        unknown codec is named here rather than crashing selection. The set
+        is version-specific, so each version's array metadata overrides this.
+        """
+        return frozenset()
+
 
 # ======================================================================
 #

@@ -8,6 +8,7 @@ import typing_extensions as tx
 # core
 from abczarr._core import typing as tz
 from abczarr._core.auto.attrs import autofrozen, eq_safenan, field
+from abczarr._core.features import feature_key
 from abczarr.metadata import base
 from abczarr.metadata.base import ConversionPolicy, register_subclass
 from abczarr.schemas.v1 import Codec
@@ -51,6 +52,13 @@ class ArrayMetadata(ArrayMetadataV1):
             # route through v2 -- v1 and v2 share the numcodecs model
             return self._to_v2(policy).to_version(3, policy)
         raise ValueError(f"Unsupported version: {version}")
+
+    def required_features(self) -> tx.FrozenSet[str]:
+        if not self.compression:
+            return frozenset()
+        # v1 carries the compressor as its numcodecs name (a string)
+        name = getattr(self.compression, "id", None) or self.compression
+        return frozenset({feature_key("v1", "codec", str(name))})
 
     def _to_v2(self, policy: ConversionPolicy = "lossy") -> base.ArrayMetadata:
         from abczarr.metadata import v2

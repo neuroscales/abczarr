@@ -15,6 +15,7 @@ import typing_extensions as tx
 from abczarr._core import typing as tz
 from abczarr._core.auto.attrs import autofrozen, eq_safenan, field, update
 from abczarr._core.dtypes import asdtype
+from abczarr._core.features import feature_key
 from abczarr._core.metadata import register_subclass
 
 # metadata
@@ -155,6 +156,39 @@ class ArrayMetadata(ArrayMetadataV3):
             return self
         else:
             raise ValueError(f"Unsupported version: {version}")
+
+    def required_features(self) -> tx.FrozenSet[str]:
+        feats = {
+            feature_key("v3", "chunk_grid", self.chunk_grid.name),
+            feature_key(
+                "v3", "chunk_key_encoding", self.chunk_key_encoding.name
+            ),
+            feature_key("v3", "data_type", self.data_type.name),
+        }
+        for codec in self.codecs:
+            _collect_codec_features(codec, feats)
+        for transformer in self.storage_transformers:
+            name = transformer.get("name")
+            if name:
+                feats.add(feature_key("v3", "storage_transformer", name))
+        return frozenset(feats)
+
+
+# ----------------------------------------------------------------------
+#   FEATURES
+# ----------------------------------------------------------------------
+
+
+def _collect_codec_features(codec: Codec, feats: tx.Set[str]) -> None:
+    """Add *codec*'s feature key, recursing into a sharding codec's inner and
+    index codecs so a nested codec is named too."""
+    name = getattr(codec, "name", None)
+    if name:
+        feats.add(feature_key("v3", "codec", name))
+    config = getattr(codec, "configuration", None)
+    for attr in ("codecs", "index_codecs"):
+        for inner in getattr(config, attr, None) or ():
+            _collect_codec_features(inner, feats)
 
 
 # ----------------------------------------------------------------------
