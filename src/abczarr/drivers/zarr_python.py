@@ -102,6 +102,15 @@ class ZarrPythonDriver(Driver):
     def __init__(self) -> None:
         self._major = _installed_major()
 
+    @property
+    def available(self) -> bool:
+        return self._major >= 3
+
+    def open(
+        self, location: tx.Any, mode: str = "r"
+    ) -> tx.Union["ZarrPythonArray", "ZarrPythonGroup"]:
+        return open_node(location, mode)
+
     def support(self, capability: str) -> Support:
         if self._major < 3:
             # zarr 2.x uses a different library API; its support lands with
