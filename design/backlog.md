@@ -15,40 +15,41 @@ Legend: `[ ]` open, `[~]` in progress, `[x]` done.
   v3 zstd). PR #44. Defect #4 (fill value) moved to the config phase, below.
 - [x] OME metadata documentation (usage-first overview + base + v0.5),
   Sonnet-written. PR #45. Nav wiring pending the docs restructure.
-- [~] Config-based creation API design: `design/config-api.md` (Fable), branch
-  `claude/design/config-api`. Awaiting review/approval before implementation.
+- [x] Config-based creation API: designed (`design/config-api.md`, Fable),
+  approved, and landed across PR #46 (increments 1+2) and PR #47
+  (write-through attrs).
 - [x] bagof-hints adoption analysis filed as bagofseeds/bagof-hints#18
   (backburner).
 
-## Config API (rests on approving design/config-api.md)
+### Session of 2026-09-02 (branch `claude/abczarr-roadmap-fo0yzr`)
 
-- [ ] Merge the two `ZarrArrayConfig`: a rich config object (`ArrayConfig`) plus
-  a per-call options mapping (`ArrayOptions`, a `TypedDict`). `abc/array.py`
-  stops defining a config. This merge is the crux and depends on the design.
-- [ ] `ZarrConfig` base with `GroupConfig` / `ArrayConfig`; frozen, keyword-only.
-- [ ] Creation surface: `create_array(name, shape, dtype, *, config=None,
-  **options)`, effective config = `replace(config or ArrayConfig(), **options)`,
-  keyword wins; a keyword contradicting a fact the target fixes is a `ValueError`.
-- [ ] `from_config` becomes `abczarr.create(location, config)`, returning a group
-  or an array by the node type the config lowers to (typing overloads).
-- [ ] Driver contract: `Driver.create(location, metadata, *, overwrite)` +
-  `can_create`; `ZarrGroup.create_array` becomes concrete, drivers implement
-  `_create_array(name, metadata)`. Unblocks tensorstore array creation.
-- [ ] Coarse-to-fine: `resolve()` turns "auto" into concrete values per version;
-  `to_metadata()` builds v3 then `to_version(n, policy="strict")`. `-1` for a
-  whole axis replaces `0`. Configs expose `plan()` (OME hook).
-- [ ] `config=` also accepts the plain `dict` form of a config (zarr-python
-  style), alongside a config object.
-- [ ] Config objects implement `keys()` + `__getitem__` so `create(..., **config)`
-  works. Lean: `keys()` yields only explicitly-set fields (a clean override),
-  not every field. Naming guard: never add a config field named `keys`,
-  `values`, or `items` (they would shadow the mapping protocol).
-- [ ] Resolve an unspecified v3 fill value to a concrete dtype zero during
-  creation (defect #4): the metadata model keeps `None` for reads and
-  conversions, so the default belongs in `resolve()`/`to_metadata`, not the
-  model.
-- [ ] Open question settled by the design: `open` stays access-only (`mode`,
-  `driver`); config attributes belong to `create`, not `open`.
+- [x] Per-driver node bases: `ZarrPythonNode` (real dedup of the shared
+  metadata/attrs/version accessors) and `TensorStoreNode` (common type so
+  `open` returns one node kind). PR #48.
+- [x] Dead code removed: the `zarrita` stub, the unused `_core/constants.py`
+  tuples, and `"zarrita"` dropped from the `KnownDriver` Literal. PR #49.
+  (`GeneralConfig` was already gone.)
+- [x] Errors consolidated in `abc/errors.py` with top-level re-exports;
+  `UnsupportedConversion` moved there, `report_loss` imports it lazily to
+  avoid the abc<->metadata cycle. PR #50.
+- [x] Capability query renamed `support()` -> `capability()` (returns
+  `Support`); `supports()` (returns `bool`) unchanged. PR #52.
+- [x] `ZarrArray.store(dask_array)`: a uniform, driver-independent dask
+  write path (block by block via `da.store`), since `da.to_zarr` rejects
+  the wrapper and only accepts a `zarr.Array` native. PR #53.
+- [x] Docs nav restructure (zensical, not mkdocs) + tutorial + registry
+  page; OME page wired into nav. Sonnet-written. PR #51.
+
+## Config API design plan (all landed)
+
+The full plan from `design/config-api.md` shipped across PR #46 and #47:
+`ArrayConfig`/`GroupConfig`/`ArrayOptions`; the `create(location, config)`
+surface returning array-or-group by config type; the `create_from_metadata`
+driver primitive (also accepting a raw metadata object, not only a config);
+`resolve()`/`to_metadata()` with the auto semantics and `-1`/`None` for a
+whole axis; `config=` accepting a dict plus `**`-unpack; `keys()`/
+`__getitem__` on configs; and `open` staying access-only. See the "Config
+API" increments section below for the as-built record.
 
 ## Defects found while probing the config design (real bugs, fix independently)
 
@@ -57,23 +58,24 @@ Legend: `[ ]` open, `[~]` in progress, `[x]` done.
 - [x] `auto_shard` drops the chunk byte budget (ignored the real itemsize).
   Fixed in PR #44.
 - [x] `CompressorTypeV3` rejects `"zstd"`. Fixed in PR #44.
-- [ ] `fill_value=None` reaches v3 metadata as JSON null. Moved to the config
-  phase (resolve a concrete fill at creation; the model keeps None on purpose).
-- [ ] `GeneralConfig.set_default_name` references a nonexistent `self.variant`
-  (moot once `GeneralConfig` is removed).
+- [x] `fill_value=None` reaching v3 metadata as JSON null: closed by the
+  auto-fill resolution in the config phase, and verified (an unspecified
+  fill resolves to a concrete dtype zero, e.g. `0.0`, not null).
+- [x] `GeneralConfig.set_default_name` bug: moot, `GeneralConfig` is gone.
 
 ## Documentation (Sonnet-written, no em dashes, no history/impl detail)
 
-- [ ] Nav: "API Reference" to "Reference"; "Opening" to "API".
-- [ ] "Nodes" to "ABC/Nodes", all node types on one page; "Stores" to
-  "ABC/Stores".
-- [ ] Metadata section: base, v1, v2, v3 as sub-pages, each with array/codecs/etc
-  as sub-pages.
-- [~] OME metadata page (missing today).
+- [x] Nav: "API Reference" to "Reference"; "Opening" to "API". PR #51.
+- [x] "Nodes" to "ABC/Nodes", all node types on one page; "Stores" to
+  "ABC/Stores". PR #51.
+- [x] Metadata section: base, v1, v2, v3 as sub-pages (v2/v3 with a dtypes
+  sub-page; codecs/filters/extensions have no class docstrings, so no stub
+  pages). PR #51.
+- [x] OME metadata page written (PR #45) and wired into the nav (PR #51).
 - [ ] Icons on Home and Reference menu items.
-- [ ] A more Zarr-relevant logo (cube / voxel).
-- [ ] Tutorial page.
-- [ ] Document the `registry` module (exported and tested, no page today).
+- [ ] A more Zarr-relevant logo (cube / voxel). (Needs an image asset.)
+- [x] Tutorial page. PR #51.
+- [x] Document the `registry` module. PR #51.
 
 ## PR #43 review (path-based group)
 
@@ -82,13 +84,11 @@ Legend: `[ ]` open, `[~]` in progress, `[x]` done.
   guess) and a `PathGroup` only sees children of its own version.
 - [x] #2 tensorstore `_create_array` -> done in config increment 2 (PR #46);
   tensorstore creates arrays via native `ts.open(create=True)`.
-- [ ] #1 write-through `attrs`: every node returns a dead `dict` copy today,
-  so `node.attrs["x"] = 1` is lost. Wire the existing write-through
-  `Attributes` (`_core/attributes.py`) into the node contract and all
-  drivers. Surface-wide, its own PR.
-- [ ] #3 per-driver node bases: `TensorStoreNode` (for TensorStoreArray /
-  TensorStoreGroup) and `ZarrPythonNode` (for the zarr-python pair); `open`
-  returns the driver node type. Surface-wide.
+- [x] #1 write-through `attrs`: wired the write-through `Attributes` into the
+  node contract; zarr-python delegates to its live attrs, tensorstore uses
+  the metadata-file mapping. PR #47.
+- [x] #3 per-driver node bases: `ZarrPythonNode` and `TensorStoreNode`; `open`
+  returns the driver node type. PR #48.
 
 ## Config API
 
@@ -101,45 +101,46 @@ Legend: `[ ]` open, `[~]` in progress, `[x]` done.
   backend-writable: nested metadata now serializes through its own `to_dict`
   (core v3 data_type is a bare string), and v3 omits unset `dimension_names` /
   `storage_transformers`. Both in PR #46.
-- [ ] Defect #4 (v3 fill value) is closed by the auto-fill resolution in
-  increment 1.
+- [x] Defect #4 (v3 fill value) closed by the auto-fill resolution; verified.
 
 ## Architecture / clarity
 
-- [ ] `errors` placement: Fable recommends keeping `errors.py` in `abc/` (bottom
-  of the import graph) with top-level re-exports; my earlier lean was a
-  top-level `errors.py`. Decide, and consolidate `UnsupportedConversion` (now in
-  metadata/base.py) with the rest.
-- [ ] Rename the `support()`/`supports()` pair so the enum-vs-bool split is
-  obvious (e.g. `capability()` returns `Support`, `supports()` returns `bool`).
+- [x] `errors` placement: DECIDED (abc/errors.py + top-level re-exports) and
+  landed. `UnsupportedConversion` consolidated there. PR #50.
+- [x] Rename the `support()`/`supports()` pair: DECIDED and landed as
+  `capability()` (returns `Support`) / `supports()` (returns `bool`). PR #52.
 - [ ] Clarify `StorePath`/`AsyncStorePath` (locations) vs `PathStore`/
-  `AsyncPathStore` (stores): docs, and possibly a rename.
+  `AsyncPathStore` (stores): docs, and possibly a rename. (User priority #1 of
+  the remaining larger items; do after the docs restructure so the docs part
+  does not conflict.)
 - [ ] Capabilities vocabulary: consolidate the coarse `KNOWN_CAPABILITIES` and
   the generated feature keys into one defined, validated, documented registry
   (a queried capability is currently unvalidated and silently returns NONE).
 - [ ] Module layout: an `api/` package (private `_open.py` / `_create.py` /
   `_registry.py`), per the config design. `config.py` stays top level;
-  `open.py` as a public name collides with the `open()` function.
+  `open.py` as a public name collides with the `open()` function. (User
+  priority #2. Note: moving `registry.py` would break the new registry doc
+  page from PR #51, so update that page in the same change.)
 
 ## Features
 
 - [ ] OME helpers in the ABC + pyramid construction. Write OME metadata as soon
   as the first level array exists; the next-level generator edits the existing
-  OME metadata to append the new levels.
+  OME metadata to append the new levels. (User priority #3.)
 - [ ] Transactions extended to array/group writes (today they are store-key only;
-  a user cannot write array chunks in a transaction).
-- [ ] Remove the broken `zarrita` stub and its `KnownDriver` / `DRIVERS`
-  references; implement a real `zarrista` driver.
-- [ ] Verify and optimize dask `to_zarr` / `to_store` interop with the array
-  classes.
+  a user cannot write array chunks in a transaction). (User priority #4;
+  entangled with the StorePath/PathStore clarity item.)
+- [ ] Implement a real `zarrista` driver. (The broken `zarrita` stub and its
+  dead `DRIVERS`/`KnownDriver` references were removed in PR #49.)
+- [x] Dask write interop verified and closed: `da.store(darr, array)` works for
+  every driver; `da.to_zarr` only accepts a `zarr.Array` native (zarr-python
+  only). Added `ZarrArray.store(dask_array)` as the uniform path. PR #53.
 
 ## Cleanup
 
-- [ ] Dead code: the `zarrita` stub, `config.GeneralConfig`, unused
-  `_core/constants.py` constants (`DRIVERS`, and probably `FILE_MODES`,
-  `LOG_LEVELS`, `COMPRESSORS_V2`, `COMPRESSORS_V3`, `ZARR_VERSIONS`,
-  `OME_VERSIONS`). Note: `config.ZarrArrayConfig`, `OMEZarrConfig` are NOT dead;
-  they get wired by the config redesign / OME work.
+- [x] Dead code removed (PR #49): the `zarrita` stub and the unused
+  `_core/constants.py` tuples. `GeneralConfig` was already gone. Note:
+  `OMEZarrConfig` is NOT dead; it gets wired by the OME work.
 
 ## Typing
 
