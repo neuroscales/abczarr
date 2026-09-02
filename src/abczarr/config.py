@@ -1,4 +1,11 @@
-"""Configuration related to output Zarr Archive."""
+"""Configuration for creating a new Zarr store.
+
+[ZarrConfig][abczarr.config.ZarrConfig] carries the choices
+[from_config][abczarr.api.from_config] needs to create an empty
+group: the Zarr format version, whether to overwrite what is already
+there, and which [Driver][abczarr.drivers.base.Driver] to create it
+with.
+"""
 
 # dependencies
 import numpy as np
@@ -15,15 +22,21 @@ from .metadata.base import ArrayMetadata
 
 @autodefine
 class ZarrConfig:
-    """
+    """The choices behind creating a new Zarr store.
+
+    Pass an instance to [from_config][abczarr.api.from_config] to
+    create an empty group with these settings.
+
     Parameters
     ----------
-    zarr_version
-        Zarr version to use.
-    overwrite
-        Overwrite the existing zarr file if it exists.
-    driver
-        library used for Zarr IO Operation
+    zarr_version : int
+        The Zarr format version to create the store with.
+    overwrite : bool
+        Replace an existing store at the target location instead of
+        raising.
+    driver : str
+        The name of the [Driver][abczarr.drivers.base.Driver] to
+        create the store with, e.g. `"zarr-python"`.
     """
     zarr_version: tz.ZarrVersion = 3
     overwrite: bool = False
