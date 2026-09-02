@@ -161,3 +161,33 @@ def test_zarray_v2() -> None:
     metadata = v2.ArrayMetadata.from_dict(EXAMPLE_JSON)
 
     assert metadata == EXAMPLE_META
+
+
+def test_a_core_data_type_serializes_as_a_bare_string() -> None:
+    meta = v3.ArrayMetadata.from_dict(
+        {
+            "zarr_format": 3,
+            "node_type": "array",
+            "shape": [4],
+            "data_type": "float32",
+            "chunk_grid": {
+                "name": "regular",
+                "configuration": {"chunk_shape": [4]},
+            },
+            "chunk_key_encoding": {
+                "name": "default",
+                "configuration": {"separator": "/"},
+            },
+            "codecs": [
+                {"name": "bytes", "configuration": {"endian": "little"}}
+            ],
+            "fill_value": 0,
+            "attributes": {},
+        }
+    )
+    out = meta.to_dict()
+    # a core data type is a bare string, per the Zarr v3 spec
+    assert out["data_type"] == "float32"
+    # a codec keeps its object form
+    assert isinstance(out["codecs"][0], dict)
+    assert out["codecs"][0]["name"] == "bytes"

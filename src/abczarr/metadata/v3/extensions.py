@@ -39,10 +39,8 @@ class Extension(Metadata):
 
         self.__attrs_init__(*args, **kwargs)
 
-    def to_dict(self) -> tx.Union[str, tz.JSONDict]:
-        if not self.configuration.to_dict() and self.must_understand:
-            # We can serialize as a name
-            return self.name
+    def to_dict(self) -> tz.JSONDict:
+        # A default ``must_understand`` (True) is left implicit in the output.
         obj = super().to_dict()
         if obj.get("must_understand", True) is True:
             obj.pop("must_understand")
