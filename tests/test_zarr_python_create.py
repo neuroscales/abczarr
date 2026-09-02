@@ -12,7 +12,6 @@ import pytest
 zarr = pytest.importorskip("zarr")
 
 import abczarr  # noqa: E402
-from abczarr.abc.errors import UnsupportedZarrOperation  # noqa: E402
 from abczarr.config import ArrayConfig, GroupConfig  # noqa: E402
 from abczarr.drivers.zarr_python import ZarrPythonArray  # noqa: E402
 
@@ -39,7 +38,7 @@ def test_create_without_overwrite_refuses_existing(
 ) -> None:
     root = str(tmp_path / "d.zarr")
     abczarr.create(root, GroupConfig(zarr_version=3, overwrite=True))
-    with pytest.raises(UnsupportedZarrOperation):
+    with pytest.raises(FileExistsError):
         abczarr.create(root, GroupConfig(zarr_version=3, overwrite=False))
 
 

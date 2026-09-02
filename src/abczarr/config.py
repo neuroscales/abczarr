@@ -103,9 +103,9 @@ class ArrayConfig(ZarrConfig):
     dimension_names : tuple of str, optional
         A name for each axis, used by a chunk mapping and written to v3
         metadata.
-    chunks : int, "auto", sequence or mapping
-        The chunk size per axis. `"auto"` fits `max_chunk_bytes`; `-1` means
-        the whole axis. A short sequence repeats its last entry.
+    chunks : int, "auto", None, sequence or mapping
+        The chunk size per axis. `"auto"` (or `None`) fits `max_chunk_bytes`;
+        `-1` means the whole axis. A short sequence repeats its last entry.
     shards : int, "auto", sequence, mapping or None
         The shard size per axis, or `None` for no sharding (Zarr v3 only).
     max_chunk_bytes : int
@@ -115,8 +115,10 @@ class ArrayConfig(ZarrConfig):
     compression_ratio : float
         The compression factor the byte budgets assume.
     compressor : str, mapping, "auto" or None
-        The compressor. `"auto"` is the version default; `None` (or `"none"`)
-        is no compression; a mapping is a codec spec passed through untouched.
+        The compressor. `"auto"` picks abczarr's default, which is `zstd` (the
+        Zarr v3 spec names no default; this follows zarr-python 3.x, which
+        tensorstore also reads). `None` (or `"none"`) is no compression; a
+        mapping is a codec spec passed through untouched.
     compressor_options : mapping
         Options for a named compressor.
     filters : tuple of mapping
@@ -125,15 +127,17 @@ class ArrayConfig(ZarrConfig):
         The value read where nothing was written. `"auto"` is the dtype's
         zero.
     order : {"C", "F"}
-        The in-memory layout.
+        The in-memory layout. A Zarr v2 concept; on v3 a non-`"C"` order is
+        written as a transpose codec.
     dimension_separator : {"/", ".", "auto"}
-        The separator between chunk indices in a key.
+        The separator between chunk indices in a key, `"auto"` (or `None`)
+        being `/`. A v2 concept; v3 carries it in the chunk-key encoding.
     """
 
     shape: tx.Optional[tz.Shape] = None
     dtype: tx.Optional[np.dtype] = None
     dimension_names: tx.Optional[tx.Tuple[tx.Optional[str], ...]] = None
-    chunks: ChunkSpec = "auto"
+    chunks: tx.Optional[ChunkSpec] = "auto"
     shards: tx.Optional[ChunkSpec] = None
     max_chunk_bytes: int = 8 * 1024**2
     max_shard_bytes: int = 2 * 1024**3
@@ -171,9 +175,11 @@ class ArrayConfig(ZarrConfig):
         shape = tuple(shape)
         dtype = np.dtype(dtype)
 
+        # a None chunk size means "auto" (shards keep None for "no sharding")
+        chunk_spec = "auto" if self.chunks is None else self.chunks
         chunks = auto_chunk(
             shape,
-            _normalize_axis(self.chunks),
+            _normalize_axis(chunk_spec),
             names=names or (),
             itemsize=dtype,
             maxsize=self.max_chunk_bytes,
@@ -184,7 +190,7 @@ class ArrayConfig(ZarrConfig):
             shards, chunks = auto_shard(
                 shape,
                 _normalize_axis(shards),
-                _normalize_axis(self.chunks),
+                _normalize_axis(chunk_spec),
                 names=names or (),
                 itemsize=dtype,
                 maxsize=self.max_shard_bytes,
@@ -250,6 +256,25 @@ class ArrayConfig(ZarrConfig):
         return ArrayMetadata.from_dict(metadata).to_version(
             config.zarr_version
         )
+
+    # -- resolved pieces, for a driver that creates natively rather than from
+    #    a written metadata document.
+
+    def compressor_codecs(self) -> "tx.List[tz.JSONDict]":
+        """The compressor as a list of zero or one v3 codec specs.
+
+        `"auto"` becomes the version default (zstd); `None` (or `"none"`) is
+        no compressor; a mapping passes through.
+        """
+        return _compressor_codecs(self.compressor, self.compressor_options)
+
+    def resolved_fill_value(self) -> tx.Any:
+        """The fill value, with `"auto"` turned into the dtype's zero."""
+        return _resolve_fill(self.fill_value, self.dtype)
+
+    def resolved_separator(self) -> str:
+        """The chunk-key separator, with `"auto"` (or `None`) resolved."""
+        return _resolve_separator(self.dimension_separator)
 
 
 @autodefine
@@ -359,5 +384,5 @@ def _resolve_fill(fill: tx.Any, dtype: npt.DTypeLike) -> tx.Any:
 
 
 def _resolve_separator(separator: tx.Any) -> str:
-    """Turn an `"auto"` separator into the v3 default."""
-    return "/" if separator == "auto" else separator
+    """Turn an `"auto"` (or `None`) separator into the v3 default."""
+    return "/" if separator in ("auto", None) else separator

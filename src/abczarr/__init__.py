@@ -14,10 +14,11 @@ __all__ = [
     "UnsupportedZarrOperation",
     "open",
     "create",
+    "create_group",
     "open_array",
     "open_group",
 ]
 
 from . import abc, api, config, drivers, metadata, ome, registry, schemas
 from .abc import UnsupportedZarrOperation, ZarrArray, ZarrGroup, ZarrNode
-from .api import create, open, open_array, open_group
+from .api import create, create_group, open, open_array, open_group

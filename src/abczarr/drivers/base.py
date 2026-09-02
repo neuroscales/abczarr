@@ -26,6 +26,7 @@ from abczarr.abc.errors import UnsupportedZarrOperation
 
 if tx.TYPE_CHECKING:
     from abczarr.abc.node import ZarrNode
+    from abczarr.config import ZarrConfig
     from abczarr.metadata.base import ArrayMetadata, NodeMetadata
 
 
@@ -90,52 +91,66 @@ class Driver(SupportsCapabilities):
         """
         raise UnsupportedZarrOperation("open", self.name or None)
 
-    def create(
-        self, location: tx.Any, metadata: "NodeMetadata",
-        *, overwrite: bool = False,
-    ) -> "ZarrNode":
-        """Create a node at *location* from *metadata* and open it.
+    def create(self, location: tx.Any, config: "ZarrConfig") -> "ZarrNode":
+        """Create the node *config* describes at *location* and open it.
 
-        The default writes the metadata to the store, then opens the result.
-        That works for any backend that can open a store written this way, so
-        a driver rarely needs to override it. Creating an array and creating a
-        group differ only in the metadata handed in.
+        The default lowers the config to metadata, writes it to the store,
+        then opens the result. It is the fallback for a backend with no native
+        creation; zarr-python and TensorStore override it to create through
+        their own backend, so the backend writes its own metadata.
 
         Raises
         ------
         [UnsupportedZarrOperation][abczarr.abc.errors.UnsupportedZarrOperation]
-            When something already exists at *location* and *overwrite* is
-            false.
+            When something already exists at *location* and the config's
+            `overwrite` is false.
         """
         from bagof.paths import Path
 
         from abczarr.metadata.base import node_at
 
+        metadata = self._config_metadata(config)
         path = Path(str(location))
         if node_at(path) is not None:
-            if not overwrite:
-                raise UnsupportedZarrOperation(
-                    "create where a node already exists", self.name or None
-                )
+            if not config.overwrite:
+                raise FileExistsError(f"a node already exists at {location}")
             path.rmdir(recursive=True)
         path.mkdir(parents=True, exist_ok=True)
         metadata.to_file(path)
         return self.open(location, "r+")
 
     def create_group(
-        self, location: tx.Any, *, zarr_version: int = 3,
-        overwrite: bool = False,
+        self, location: tx.Any, *,
+        config: "tx.Optional[ZarrConfig]" = None, **fields: tx.Any,
     ) -> "ZarrNode":
-        """Create a new empty group at *location* and wrap it."""
+        """Create a new group at *location* and open it.
+
+        Pass a [GroupConfig][abczarr.config.GroupConfig] as *config*, or its
+        fields (`zarr_version`, `overwrite`, ...) as keyword arguments, which
+        override the config.
+        """
+        from abczarr._core.attrs import evolve
+        from abczarr.config import GroupConfig
+
+        base = config if isinstance(config, GroupConfig) else GroupConfig(
+            **dict(config or {})
+        )
+        resolved = evolve(base, **fields) if fields else base
+        return self.create(location, resolved)
+
+    @staticmethod
+    def _config_metadata(config: "ZarrConfig") -> "NodeMetadata":
+        """The metadata a config lowers to: an array's, or a group's."""
+        from abczarr.config import ArrayConfig
         from abczarr.metadata.base import GroupMetadataV2, GroupMetadataV3
 
+        if isinstance(config, ArrayConfig):
+            return config.to_metadata()
         group_metadata = {2: GroupMetadataV2, 3: GroupMetadataV3}.get(
-            zarr_version
+            config.zarr_version
         )
         if group_metadata is None:
             raise UnsupportedZarrOperation(
-                f"create a group in Zarr v{zarr_version}", self.name or None
+                f"create a group in Zarr v{config.zarr_version}"
             )
-        return self.create(
-            location, group_metadata(attributes={}), overwrite=overwrite
-        )
+        return group_metadata(attributes=dict(config.attributes))

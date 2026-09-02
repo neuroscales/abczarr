@@ -137,7 +137,7 @@ def test_create_group_refuses_an_existing_member(
     tmp_path: pathlib.Path,
 ) -> None:
     group = _Group(_hierarchy(tmp_path))
-    with pytest.raises(UnsupportedZarrOperation):
+    with pytest.raises(FileExistsError):
         group.create_group("img")
 
 

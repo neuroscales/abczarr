@@ -17,7 +17,6 @@ from abczarr._core import typing as tz
 from abczarr._core.attrs import evolve
 from abczarr.config import ArrayConfig, ArrayOptions
 from abczarr.metadata.base import (
-    ArrayMetadata,
     GroupMetadataV2,
     GroupMetadataV3,
     NodeMetadata,
@@ -39,25 +38,27 @@ _GROUP_METADATA = {
 }
 
 
-def _array_metadata(
+def _resolve_array_config(
     shape: tz.ShapeLike,
-    dtype: "npt.DTypeLike",
-    config: "tx.Union[ArrayConfig, ArrayOptions, None]",
+    dtype: npt.DTypeLike,
+    config: tx.Union[ArrayConfig, ArrayOptions, None],
     options: ArrayOptions,
     version: tz.ZarrVersion,
-) -> ArrayMetadata:
-    """Lower a `create_array` call to array metadata.
+) -> ArrayConfig:
+    """Build the resolved [ArrayConfig][abczarr.config.ArrayConfig] a
+    `create_array` call describes.
 
-    A config (an [ArrayConfig][abczarr.config.ArrayConfig] or a mapping of its
-    fields) is the base; *shape*, *dtype* and the per-call *options* are
-    layered on top, with the array taking the group's format version.
+    A config (an `ArrayConfig` or a mapping of its fields) is the base;
+    *shape*, *dtype* and the per-call *options* are layered on top, with the
+    array taking the group's format version. `"auto"` chunking and sharding
+    are worked out, so a driver receives concrete values.
     """
     base = config if isinstance(config, ArrayConfig) else ArrayConfig(
         **dict(config or {})
     )
     merged = dict(options)
     merged.update(shape=shape, dtype=dtype, zarr_version=version)
-    return evolve(base, **merged).to_metadata()
+    return evolve(base, **merged).resolve()
 
 
 class ZarrGroup(ZarrNode):
@@ -108,7 +109,7 @@ class ZarrGroup(ZarrNode):
         shape: tz.ShapeLike,
         dtype: npt.DTypeLike,
         *,
-        config: "tx.Union[ArrayConfig, ArrayOptions, None]" = None,
+        config: tx.Union[ArrayConfig, ArrayOptions, None] = None,
         **options: tx.Unpack[ArrayOptions],
     ) -> ZarrArray:
         """Create a new array named *name* within this group.
@@ -126,14 +127,15 @@ class ZarrGroup(ZarrNode):
             of the same fields. Individual fields may also be passed as
             keyword arguments, which override the config.
         """
-        metadata = _array_metadata(
+        resolved = _resolve_array_config(
             shape, dtype, config, options, self.zarr_version
         )
-        return self._create_array(name, metadata)
+        return self._create_array(name, resolved)
 
     @abstractmethod
-    def _create_array(self, name: str, metadata: ArrayMetadata) -> ZarrArray:
-        """Create the array named *name* from *metadata*, with the backend."""
+    def _create_array(self, name: str, config: ArrayConfig) -> ZarrArray:
+        """Create the array named *name* from a resolved *config*, with the
+        backend's own creation, so the backend writes its own metadata."""
         ...
 
 
@@ -233,8 +235,8 @@ class PathGroup(ZarrGroup):
     def create_group(self, name: str, overwrite: bool = False) -> tx.Self:
         child = self._store_path / name
         if node_type_at(child) is not None and not overwrite:
-            raise UnsupportedZarrOperation(
-                "create a group where a member already exists"
+            raise FileExistsError(
+                f"a member named {name!r} already exists"
             )
         version = self.zarr_version
         metadata_cls = _GROUP_METADATA.get(version)
@@ -246,20 +248,21 @@ class PathGroup(ZarrGroup):
         metadata_cls(attributes={}).to_file(child)
         return type(self)(child, self._mode)
 
-    def _create_array(self, name: str, metadata: ArrayMetadata) -> ZarrArray:
+    def _create_array(self, name: str, config: ArrayConfig) -> ZarrArray:
         """Create a child array by writing its metadata, then opening it.
 
-        Writing the metadata is backend-independent; only opening the result
-        needs the backend, through
-        [_open_array][abczarr.abc.group.PathGroup._open_array].
+        This is the fallback for a backend with no native creation: write the
+        config's metadata to the child directory and open it through
+        [_open_array][abczarr.abc.group.PathGroup._open_array]. A backend that
+        creates natively (zarr-python, TensorStore) overrides this.
         """
         child = self._store_path / name
         if node_type_at(child) is not None:
-            raise UnsupportedZarrOperation(
-                "create an array where a member already exists"
+            raise FileExistsError(
+                f"a member named {name!r} already exists"
             )
         child.mkdir(parents=True, exist_ok=True)
-        metadata.to_file(child)
+        config.to_metadata().to_file(child)
         return self._open_array(child)
 
     # -- backend hook ------------------------------------------------------

@@ -24,9 +24,9 @@ from abczarr._core import typing as tz
 from abczarr._core.features import FEATURE_KINDS, FEATURE_VERSIONS
 from abczarr.abc.array import ZarrArray
 from abczarr.abc.capabilities import Support
-from abczarr.abc.errors import UnsupportedZarrOperation
 from abczarr.abc.group import PathGroup
 from abczarr.abc.node import ZarrNode
+from abczarr.config import ArrayConfig, ZarrConfig
 from abczarr.drivers._metadata import metadata_from_dict
 from abczarr.drivers.base import Driver
 from abczarr.metadata.base import ArrayMetadata, node_at
@@ -164,7 +164,7 @@ def _open_ts_array(location: tx.Any, mode: str) -> TensorStoreArray:
 
 
 def _create_ts_array(
-    location: tx.Any, metadata: tx.Any, *, overwrite: bool
+    location: tx.Any, metadata: ArrayMetadata, *, overwrite: bool
 ) -> TensorStoreArray:
     """Create the v3 array *metadata* describes at *location*.
 
@@ -174,9 +174,7 @@ def _create_ts_array(
     from bagof.paths import Path
 
     if node_at(Path(str(location))) is not None and not overwrite:
-        raise UnsupportedZarrOperation(
-            "create where a node already exists", "tensorstore"
-        )
+        raise FileExistsError(f"a node already exists at {location}")
     spec = {
         "driver": "zarr3",
         "kvstore": _kvstore_spec(location),
@@ -201,10 +199,12 @@ class TensorStoreGroup(PathGroup):
         return _open_ts_array(str(store_path), self._mode)
 
     def _create_array(
-        self, name: str, metadata: tx.Any
+        self, name: str, config: ArrayConfig
     ) -> TensorStoreArray:
+        # tensorstore validates and fills a codec's defaults on create, so we
+        # hand it the config's metadata document
         return _create_ts_array(
-            str(self._store_path / name), metadata, overwrite=False
+            str(self._store_path / name), config.to_metadata(), overwrite=False
         )
 
 
@@ -227,13 +227,13 @@ class TensorStoreDriver(Driver):
             return TensorStoreGroup(location, mode)
         return _open_ts_array(location, mode)
 
-    def create(
-        self, location: tx.Any, metadata: tx.Any, *, overwrite: bool = False
-    ) -> ZarrNode:
-        if isinstance(metadata, ArrayMetadata):
-            return _create_ts_array(location, metadata, overwrite=overwrite)
+    def create(self, location: tx.Any, config: ZarrConfig) -> ZarrNode:
+        if isinstance(config, ArrayConfig):
+            return _create_ts_array(
+                location, config.to_metadata(), overwrite=config.overwrite
+            )
         # a group is just a directory; the base's write-then-open handles it
-        return super().create(location, metadata, overwrite=overwrite)
+        return super().create(location, config)
 
     def support(self, capability: str) -> Support:
         if ts is None:

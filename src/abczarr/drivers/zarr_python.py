@@ -29,12 +29,10 @@ from abczarr._core import typing as tz
 from abczarr._core.features import FEATURE_KINDS, FEATURE_VERSIONS
 from abczarr.abc.array import ZarrArray
 from abczarr.abc.capabilities import Support
-from abczarr.abc.errors import UnsupportedZarrOperation
 from abczarr.abc.group import ZarrGroup
 from abczarr.abc.node import ZarrNode
 from abczarr.drivers._metadata import metadata_from_dict
 from abczarr.drivers.base import Driver
-from abczarr.metadata.base import node_type_at
 
 # optionals -- the module imports without zarr; a driver with no zarr simply
 # reports that it can open nothing.
@@ -126,6 +124,28 @@ def _has_numcodec(name: str) -> bool:
     return True
 
 
+def _zarr_create_kwargs(config: tx.Any) -> tx.Dict[str, tx.Any]:
+    """Map a resolved [ArrayConfig][abczarr.config.ArrayConfig] to the
+    keywords ``zarr.create_array`` takes, so zarr-python creates the array and
+    writes its own metadata."""
+    kwargs = {
+        "chunks": config.chunks,
+        "fill_value": config.resolved_fill_value(),
+        "compressors": config.compressor_codecs(),
+        "chunk_key_encoding": {
+            "name": "default",
+            "configuration": {"separator": config.resolved_separator()},
+        },
+    }  # type: tx.Dict[str, tx.Any]
+    if config.shards is not None:
+        kwargs["shards"] = config.shards
+    if config.dimension_names is not None:
+        kwargs["dimension_names"] = config.dimension_names
+    if config.filters:
+        kwargs["filters"] = [dict(f) for f in config.filters]
+    return kwargs
+
+
 class ZarrPythonDriver(Driver):
     """The zarr-python backend, as a driver.
 
@@ -151,14 +171,25 @@ class ZarrPythonDriver(Driver):
             return ZarrPythonGroup(node)
         return ZarrPythonArray(node)
 
-    def create_group(
-        self, location: tx.Any, *, zarr_version: int = 3,
-        overwrite: bool = False,
-    ) -> "ZarrPythonGroup":
+    def create(
+        self, location: tx.Any, config: tx.Any
+    ) -> tx.Union["ZarrPythonArray", "ZarrPythonGroup"]:
+        from abczarr.config import ArrayConfig
+
+        if isinstance(config, ArrayConfig):
+            array = zarr.create_array(
+                store=str(location),
+                shape=config.shape,
+                dtype=config.dtype,
+                overwrite=config.overwrite,
+                zarr_format=config.zarr_version,
+                **_zarr_create_kwargs(config),
+            )
+            return ZarrPythonArray(array)
         group = zarr.open_group(
-            location,
-            mode="w" if overwrite else "w-",
-            zarr_format=zarr_version,
+            str(location),
+            mode="w" if config.overwrite else "w-",
+            zarr_format=config.zarr_version,
         )
         return ZarrPythonGroup(group)
 
@@ -313,15 +344,13 @@ class ZarrPythonGroup(ZarrGroup):
         )
 
     def _create_array(
-        self, name: str, metadata: tx.Any
+        self, name: str, config: tx.Any
     ) -> ZarrPythonArray:
-        child = self._store_path / name
-        if node_type_at(child) is not None:
-            raise UnsupportedZarrOperation(
-                "create an array where a member already exists", "zarr-python"
-            )
-        child.mkdir(parents=True, exist_ok=True)
-        metadata.to_file(child)
-        return ZarrPythonArray(zarr.open_array(str(child), mode="r+"))
+        # delegate to zarr-python, so it writes its own metadata
+        array = self._group.create_array(
+            name, shape=config.shape, dtype=config.dtype,
+            **_zarr_create_kwargs(config),
+        )
+        return ZarrPythonArray(array)
 
 
