@@ -9,6 +9,7 @@ __all__ = [
     "VLenUTF8Codec",
     "ReshapeCodec",
     "ZfpCodec",
+    "ZstdCodec",
 ]
 
 # stdlib
@@ -25,7 +26,13 @@ from abczarr._core.auto import autofrozen
 # locals
 from abczarr.metadata.base import Metadata, register_subclass
 
-from .base import ArrayToArrayCodec, ArrayToBytesCodec, Codec, CodecConfigImpl
+from .base import (
+    ArrayToArrayCodec,
+    ArrayToBytesCodec,
+    Codec,
+    CodecConfigImpl,
+    CompressorCodec,
+)
 from .builtin import BytesCodec, TransposeCodec
 
 
@@ -211,3 +218,36 @@ class ZfpConfig(CodecConfigImpl):
 class ZfpCodec(ArrayToBytesCodec):
     name: tx.Literal["zfp"]
     configuration: ZfpConfig
+
+
+@autofrozen
+class ZstdConfig(CodecConfigImpl):
+    # The v3 zstd codec schema requires `level` (checksum is optional) and
+    # declares no defaults, so an implementation picks its own. abczarr
+    # defaults level to 0, matching zarr-python, and writes both fields.
+    # Zstd levels run from -131072 to 22 (wider than the 0-9 the core
+    # compressors use, and negative for the fast modes), so the type stays
+    # a plain int.
+    level: int = 0
+    checksum: bool = False
+
+    def to_version(self, version: tz.ZarrVersion) -> Metadata:
+        if version == 3:
+            return self
+        if version in (1, 2):
+            from abczarr.metadata import v2
+            # v2's numcodecs zstd carries only the level
+            return v2.ZstdCodec(id="zstd", level=self.level)
+        raise ValueError(f"Unsupported version: {version}")
+
+
+@register_subclass(name="zstd")
+@autofrozen
+class ZstdCodec(CompressorCodec):
+    name: tx.Literal["zstd"]
+    configuration: ZstdConfig
+
+    def to_version(self, version: tz.ZarrVersion) -> Metadata:
+        if version == 3:
+            return self
+        return self.configuration.to_version(version)
