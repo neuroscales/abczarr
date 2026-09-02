@@ -34,6 +34,7 @@ anypath = ["cloudpathlib"]
 # drivers
 zarr-py = ["zarr"]
 tensorstore = ["tensorstore"]
+zarrista = ["zarrista"]
 
 # test
 test = ["pytest", "pytest-cov"]

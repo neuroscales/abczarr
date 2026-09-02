@@ -25,6 +25,7 @@ nav = [
       "api/drivers.md",
       "api/registry.md",
       "api/zarr-python.md",
+      "api/zarrista.md",
     ]},
     {"Metadata" = [
       "api/metadata.md",
