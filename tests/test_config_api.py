@@ -71,3 +71,34 @@ def test_array_options_mirror_the_array_config_fields() -> None:
     config_fields = {f.name for f in fields(ArrayConfig)}
     option_keys = set(ArrayOptions.__optional_keys__)
     assert option_keys == config_fields - {"shape", "dtype"}
+
+
+def test_default_zstd_compressor_writes_a_full_configuration() -> None:
+    # zstd's level and checksum default in the spec, but the reference
+    # implementation writes them and a stricter reader can require them, so
+    # abczarr emits them in full rather than an empty configuration.
+    meta = ArrayConfig(
+        shape=(4, 4), dtype="float32", chunks=(2, 2)
+    ).to_metadata()
+    zstd = [c for c in meta.to_dict()["codecs"] if c["name"] == "zstd"]
+    assert zstd == [
+        {"name": "zstd", "configuration": {"level": 0, "checksum": False}}
+    ]
+
+
+def test_zstd_survives_a_round_trip_through_v2() -> None:
+    from abczarr.metadata import v3
+
+    meta = ArrayConfig(
+        shape=(4, 4), dtype="float32", chunks=(2, 2)
+    ).to_metadata()
+    m3 = v3.ArrayMetadata.from_dict(meta.to_dict())
+    # v2's numcodecs zstd carries only the level; it comes back in full
+    again = m3.to_version(2).to_version(3)
+    zstd = [
+        c.to_dict() for c in again.codecs
+        if getattr(c, "name", "") == "zstd"
+    ]
+    assert zstd == [
+        {"name": "zstd", "configuration": {"level": 0, "checksum": False}}
+    ]

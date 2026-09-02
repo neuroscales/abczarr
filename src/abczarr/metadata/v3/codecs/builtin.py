@@ -7,6 +7,7 @@ __all__ = [
     "BytesCodec",
     "CRC32CCodec",
     "GzipCodec",
+    "ZstdCodec",
     "ShardingCodec",
     "TransposeCodec",
 ]
@@ -112,6 +113,38 @@ class GzipConfig(CodecConfigImpl):
 class GzipCodec(CompressorCodec):
     name: tx.Literal["gzip"]
     configuration: GzipConfig
+
+
+@autofrozen
+class ZstdConfig(CodecConfigImpl):
+    # `level` and `checksum` both default in the spec, but the reference
+    # implementation always writes them and a stricter reader can require
+    # them, so they are given defaults here and serialized in full. Zstd
+    # levels run wider than the 0-9 range the other compressors use (up to
+    # 22, and negative for the fast modes), so the type stays a plain int.
+    level: int = 0
+    checksum: bool = False
+
+    def to_version(self, version: tz.ZarrVersion) -> Metadata:
+        if version == 3:
+            return self
+        if version in (1, 2):
+            from abczarr.metadata import v2
+            # v2's numcodecs zstd carries only the level
+            return v2.ZstdCodec(id="zstd", level=self.level)
+        raise ValueError(f"Unsupported version: {version}")
+
+
+@register_subclass(name="zstd")
+@autofrozen
+class ZstdCodec(CompressorCodec):
+    name: tx.Literal["zstd"]
+    configuration: ZstdConfig
+
+    def to_version(self, version: tz.ZarrVersion) -> Metadata:
+        if version == 3:
+            return self
+        return self.configuration.to_version(version)
 
 
 @autofrozen
