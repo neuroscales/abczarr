@@ -30,7 +30,7 @@ from abczarr.abc.node import ZarrNode
 from abczarr.config import ArrayConfig
 from abczarr.drivers._metadata import metadata_from_dict
 from abczarr.drivers.base import Driver
-from abczarr.metadata.base import ArrayMetadata, NodeMetadata, node_at
+from abczarr.metadata.base import ArrayMetadata, NodeMetadata, _node_at
 
 # optionals -- the module imports without tensorstore; a driver with no
 # tensorstore reports that it can open nothing.
@@ -180,7 +180,7 @@ def _create_ts_array(
     """
     from bagof.paths import Path
 
-    if node_at(Path(str(location))) is not None and not overwrite:
+    if _node_at(Path(str(location))) is not None and not overwrite:
         raise FileExistsError(f"a node already exists at {location}")
     spec = {
         "driver": "zarr3",

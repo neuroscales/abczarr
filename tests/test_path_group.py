@@ -13,7 +13,7 @@ import pytest
 
 from abczarr.abc.errors import UnsupportedZarrOperation
 from abczarr.abc.group import PathGroup
-from abczarr.metadata.base import GroupMetadataV3, node_type_at
+from abczarr.metadata.base import GroupMetadataV3, _node_type_at
 
 
 class _StubArray:
@@ -130,7 +130,7 @@ def test_create_group_writes_metadata_and_appears(
     made = group.create_group("new")
     assert isinstance(made, _Group)
     assert "new" in group
-    assert node_type_at(group.store_path / "new") == "group"
+    assert _node_type_at(group.store_path / "new") == "group"
 
 
 def test_create_group_refuses_an_existing_member(
@@ -201,20 +201,20 @@ def test_a_child_of_another_version_is_not_a_member(
 def test_a_v3_node_without_a_node_type_is_not_detected(
     tmp_path: pathlib.Path,
 ) -> None:
-    from abczarr.metadata.base import node_at
+    from abczarr.metadata.base import _node_at
 
     directory = pathlib.Path(tmp_path) / "x"
     directory.mkdir()
     (directory / "zarr.json").write_text(
         json.dumps({"zarr_format": 3, "shape": [4]})
     )
-    assert node_at(directory) is None
+    assert _node_at(directory) is None
 
 
 def test_create_array_writes_metadata_and_opens_via_the_hook(
     tmp_path: pathlib.Path,
 ) -> None:
-    from abczarr.metadata.base import node_at
+    from abczarr.metadata.base import _node_at
 
     group = _Group(_hierarchy(tmp_path))
     made = group.create_array(
@@ -222,7 +222,7 @@ def test_create_array_writes_metadata_and_opens_via_the_hook(
     )
     assert isinstance(made, _StubArray)
     # the array metadata was written, in the group's own version
-    assert node_at(group.store_path / "fresh") == ("array", 3)
+    assert _node_at(group.store_path / "fresh") == ("array", 3)
 
 
 # --------------------------------------------------------------------------

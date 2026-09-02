@@ -20,8 +20,8 @@ from abczarr.metadata.base import (
     GroupMetadataV2,
     GroupMetadataV3,
     NodeMetadata,
-    node_at,
-    node_type_at,
+    _node_at,
+    _node_type_at,
 )
 
 from .array import ZarrArray
@@ -193,7 +193,7 @@ class PathGroup(ZarrGroup):
         A node of a different version is not treated as a child, since a Zarr
         hierarchy is written in a single version.
         """
-        detected = node_at(store_path)
+        detected = _node_at(store_path)
         if detected is None or detected[1] != self.zarr_version:
             return None
         return detected
@@ -233,7 +233,7 @@ class PathGroup(ZarrGroup):
 
     def create_group(self, name: str, overwrite: bool = False) -> tx.Self:
         child = self._store_path / name
-        if node_type_at(child) is not None and not overwrite:
+        if _node_type_at(child) is not None and not overwrite:
             raise FileExistsError(
                 f"a member named {name!r} already exists"
             )
@@ -256,7 +256,7 @@ class PathGroup(ZarrGroup):
         creates natively (zarr-python, TensorStore) overrides this.
         """
         child = self._store_path / name
-        if node_type_at(child) is not None:
+        if _node_type_at(child) is not None:
             raise FileExistsError(
                 f"a member named {name!r} already exists"
             )

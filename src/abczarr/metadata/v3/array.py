@@ -393,7 +393,7 @@ def _to_v2(
     if sharding:
         # v2 has no shard grid; keep the inner chunk shape and drop the
         # sharding structure per the policy.
-        base.report_loss(policy, "sharding", 2)
+        base._report_loss(policy, "sharding", 2)
         chunk_shape = sharding.configuration.chunk_shape
         codecs.extend(sharding.configuration.codecs)
 
@@ -419,7 +419,7 @@ def _to_v2(
     if post:
         compressor = post[0].to_version(2)
         if len(post) > 1:
-            base.report_loss(policy, "codecs", 2)
+            base._report_loss(policy, "codecs", 2)
 
     # v2 folds the byte order back into the dtype
     if endian:
