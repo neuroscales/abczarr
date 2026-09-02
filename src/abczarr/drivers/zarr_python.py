@@ -3,13 +3,18 @@
 Declares what a given install of zarr-python can read and write -- coarse
 capabilities and the individual codecs, chunk grids and chunk-key encodings
 it has -- by asking the installed library, so selection reflects the real
-build rather than a guess. Reading and writing array data through it lands
-with the node adapters in a later change; this module is the driver's
-feature declaration and its part in driver selection.
+build rather than a guess. The node adapters wrap a ``zarr.Array`` or
+``zarr.Group`` as a [ZarrArray][abczarr.abc.array.ZarrArray] /
+[ZarrGroup][abczarr.abc.group.ZarrGroup] so data is read and written through
+the uniform surface; [open_node][abczarr.drivers.zarr_python.open_node]
+opens a location and wraps whatever is there.
 """
 
 __all__ = [
     "ZarrPythonDriver",
+    "ZarrPythonArray",
+    "ZarrPythonGroup",
+    "open_node",
 ]
 
 # stdlib
@@ -17,11 +22,16 @@ from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _dist_version
 
 # dependencies
+import numpy.typing as npt
 import typing_extensions as tx
 
 # core
+from abczarr._core import typing as tz
 from abczarr._core.features import FEATURE_KINDS, FEATURE_VERSIONS
+from abczarr.abc.array import ZarrArray, ZarrArrayConfig
 from abczarr.abc.capabilities import Support
+from abczarr.abc.group import ZarrGroup
+from abczarr.abc.node import ZarrNode
 from abczarr.drivers.base import Driver
 
 # optionals -- the module imports without zarr; a driver with no zarr simply
@@ -123,3 +133,178 @@ class ZarrPythonDriver(Driver):
         else:
             found = False
         return Support.NATIVE if found else Support.NONE
+
+
+# ----------------------------------------------------------------------
+#   NODES
+# ----------------------------------------------------------------------
+
+#: Node capabilities a zarr-python 3.x array or group provides.
+_NODE_CAPABILITIES = {
+    "sharding": Support.NATIVE,
+    "async": Support.NATIVE,
+    "codecs_v3": Support.NATIVE,
+    "consolidated_metadata": Support.NATIVE,
+}
+
+
+def _metadata_from_dict(data: tz.JSONDict) -> tx.Any:
+    """Build abczarr metadata from a zarr node's ``metadata.to_dict()``."""
+    from abczarr.metadata import base, v1, v2, v3
+
+    zarr_format = data.get("zarr_format", 3)
+    node_type = data.get("node_type") or (
+        "array" if "shape" in data else "group"
+    )
+    if node_type == "array":
+        array_cls = {
+            1: v1.ArrayMetadata,
+            2: v2.ArrayMetadata,
+            3: v3.ArrayMetadata,
+        }[zarr_format]
+        return array_cls.from_dict(data)
+    group_cls = {
+        2: base.GroupMetadataV2,
+        3: base.GroupMetadataV3,
+    }.get(zarr_format, base.GroupMetadata)
+    return group_cls.from_dict(data)
+
+
+class ZarrPythonArray(ZarrArray):
+    """A [ZarrArray][abczarr.abc.array.ZarrArray] backed by a ``zarr.Array``.
+
+    Wraps an open array so it reads and writes through the uniform surface.
+    The underlying ``zarr.Array`` is reachable as
+    [native][abczarr.abc.node.ZarrNode.native].
+    """
+
+    _CAPABILITIES = _NODE_CAPABILITIES
+
+    def __init__(self, array: tx.Any) -> None:
+        super().__init__(str(array.store_path))
+        self._array = array
+        self._native = array
+
+    @property
+    def metadata(self) -> tx.Any:
+        return _metadata_from_dict(self._array.metadata.to_dict())
+
+    @property
+    def attrs(self) -> tz.Attributes:
+        return dict(self._array.attrs)
+
+    @property
+    def zarr_version(self) -> tz.ZarrVersion:
+        return self._array.metadata.zarr_format
+
+    @property
+    def ndim(self) -> int:
+        return self._array.ndim
+
+    @property
+    def shape(self) -> tz.Shape:
+        return tuple(self._array.shape)
+
+    @property
+    def dtype(self) -> "npt.DTypeLike":
+        return self._array.dtype
+
+    @property
+    def chunks(self) -> tz.Shape:
+        return tuple(self._array.chunks)
+
+    @property
+    def shards(self) -> tx.Optional[tz.Shape]:
+        shards = getattr(self._array, "shards", None)
+        return None if shards is None else tuple(shards)
+
+    def __getitem__(self, index: tx.Any) -> npt.ArrayLike:
+        return self._array[index]
+
+    def __setitem__(self, index: tx.Any, value: npt.ArrayLike) -> None:
+        self._array[index] = value
+
+
+class ZarrPythonGroup(ZarrGroup):
+    """A [ZarrGroup][abczarr.abc.group.ZarrGroup] backed by a ``zarr.Group``.
+
+    Indexing returns a wrapped child array or group; the underlying
+    ``zarr.Group`` is reachable as
+    [native][abczarr.abc.node.ZarrNode.native].
+    """
+
+    _CAPABILITIES = _NODE_CAPABILITIES
+
+    def __init__(self, group: tx.Any) -> None:
+        super().__init__(str(group.store_path))
+        self._group = group
+        self._native = group
+
+    @property
+    def metadata(self) -> tx.Any:
+        return _metadata_from_dict(self._group.metadata.to_dict())
+
+    @property
+    def attrs(self) -> tz.Attributes:
+        return dict(self._group.attrs)
+
+    @property
+    def zarr_version(self) -> tz.ZarrVersion:
+        return self._group.metadata.zarr_format
+
+    def keys(self) -> tx.Iterator[str]:
+        yield from self._group.keys()
+
+    def __iter__(self) -> tx.Iterator[str]:
+        yield from self._group.keys()
+
+    def __getitem__(self, key: str) -> ZarrNode:
+        item = self._group[key]
+        if isinstance(item, zarr.Group):
+            return ZarrPythonGroup(item)
+        if isinstance(item, zarr.Array):
+            return ZarrPythonArray(item)
+        raise TypeError(f"unexpected child type for {key!r}: {item}")
+
+    def __setitem__(self, key: str, value: ZarrNode) -> None:
+        self._group[key] = value.native
+
+    def __delitem__(self, key: str) -> None:
+        del self._group[key]
+
+    def create_group(self, name: str, overwrite: bool = False) -> tx.Self:
+        return ZarrPythonGroup(
+            self._group.create_group(name, overwrite=overwrite)
+        )
+
+    def create_array(
+        self,
+        name: str,
+        shape: tz.ShapeLike,
+        dtype: npt.DTypeLike,
+        *,
+        config: tx.Optional[ZarrArrayConfig] = None,
+        **kwargs: tx.Unpack[ZarrArrayConfig],
+    ) -> ZarrPythonArray:
+        options = dict(config or {})
+        options.update(kwargs)
+        chunks = options.get("chunk")
+        array = self._group.create_array(
+            name, shape=shape, dtype=dtype, chunks=chunks
+        )
+        return ZarrPythonArray(array)
+
+
+def open_node(
+    store_or_path: tx.Any, mode: str = "r"
+) -> tx.Union[ZarrPythonArray, ZarrPythonGroup]:
+    """Open a location with zarr-python and wrap it.
+
+    Returns a [ZarrPythonArray][abczarr.drivers.zarr_python.ZarrPythonArray]
+    or [ZarrPythonGroup][abczarr.drivers.zarr_python.ZarrPythonGroup]
+    depending on what is there.
+    """
+    node = zarr.open(store_or_path, mode=mode)
+    if isinstance(node, zarr.Group):
+        return ZarrPythonGroup(node)
+    return ZarrPythonArray(node)
