@@ -94,25 +94,41 @@ class Driver(SupportsCapabilities):
     def create(self, location: tx.Any, config: "ZarrConfig") -> "ZarrNode":
         """Create the node *config* describes at *location* and open it.
 
-        The default lowers the config to metadata, writes it to the store,
-        then opens the result. It is the fallback for a backend with no native
-        creation; zarr-python and TensorStore override it to create through
-        their own backend, so the backend writes its own metadata.
+        The default lowers the config to metadata and creates from that. A
+        backend overrides it to create through its own machinery from the
+        config's coarse fields, so the backend writes its own metadata.
+        """
+        return self.create_metadata(
+            location,
+            self._config_metadata(config),
+            overwrite=config.overwrite,
+        )
+
+    def create_metadata(
+        self, location: tx.Any, metadata: "NodeMetadata",
+        *, overwrite: bool = False,
+    ) -> "ZarrNode":
+        """Create a node from an exact *metadata* document and open it.
+
+        The escape hatch for a setup the config helpers do not express: hand
+        in an [ArrayMetadata][abczarr.metadata.base.ArrayMetadata] or
+        [GroupMetadata][abczarr.metadata.base.GroupMetadata] and it is written
+        and opened as it is. The default writes the metadata to the store and
+        opens it; a driver may override to create through its backend.
 
         Raises
         ------
-        [UnsupportedZarrOperation][abczarr.abc.errors.UnsupportedZarrOperation]
-            When something already exists at *location* and the config's
-            `overwrite` is false.
+        FileExistsError
+            When something already exists at *location* and *overwrite* is
+            false.
         """
         from bagof.paths import Path
 
         from abczarr.metadata.base import node_at
 
-        metadata = self._config_metadata(config)
         path = Path(str(location))
         if node_at(path) is not None:
-            if not config.overwrite:
+            if not overwrite:
                 raise FileExistsError(f"a node already exists at {location}")
             path.rmdir(recursive=True)
         path.mkdir(parents=True, exist_ok=True)

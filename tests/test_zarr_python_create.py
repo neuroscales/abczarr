@@ -172,3 +172,60 @@ def test_fallback_metadata_opens_and_writes_in_zarr(
     array = zarr.open_array(str(root), mode="r+")
     array[...] = 0
     assert tuple(array.shape) == config.shape
+
+
+# --------------------------------------------------------------------------
+# create from raw metadata (the escape hatch beyond the config helpers)
+# --------------------------------------------------------------------------
+
+
+def _raw_v3_array(**over: object) -> dict:
+    doc = {
+        "zarr_format": 3,
+        "node_type": "array",
+        "shape": [8, 8],
+        "data_type": "float32",
+        "chunk_grid": {
+            "name": "regular",
+            "configuration": {"chunk_shape": [4, 4]},
+        },
+        "chunk_key_encoding": {
+            "name": "default",
+            "configuration": {"separator": "/"},
+        },
+        "codecs": [
+            {"name": "bytes", "configuration": {"endian": "little"}},
+            {"name": "zstd", "configuration": {"level": 5}},
+        ],
+        "fill_value": 7,
+        "attributes": {"note": "custom"},
+    }
+    doc.update(over)
+    return doc
+
+
+def test_create_from_a_metadata_object(tmp_path: pathlib.Path) -> None:
+    from abczarr.metadata import v3
+
+    meta = v3.ArrayMetadata.from_dict(_raw_v3_array())
+    arr = abczarr.create(str(tmp_path / "raw.zarr"), meta)
+    assert isinstance(arr, ZarrPythonArray)
+    # the exact metadata is honoured, including a custom fill and codec level
+    assert arr.metadata.to_dict()["fill_value"] == 7
+    assert arr.attrs["note"] == "custom"
+    assert "v3:codec:zstd" in arr.metadata.required_features()
+
+
+def test_create_from_a_metadata_dict(tmp_path: pathlib.Path) -> None:
+    arr = abczarr.create(str(tmp_path / "d.zarr"), _raw_v3_array())
+    assert isinstance(arr, ZarrPythonArray)
+    assert arr.shape == (8, 8)
+
+
+def test_create_from_metadata_rejects_stray_keywords(
+    tmp_path: pathlib.Path,
+) -> None:
+    with pytest.raises(TypeError, match="unexpected keyword"):
+        abczarr.create(
+            str(tmp_path / "x.zarr"), _raw_v3_array(), chunks=(2, 2)
+        )

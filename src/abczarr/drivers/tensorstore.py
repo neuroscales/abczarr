@@ -26,10 +26,10 @@ from abczarr.abc.array import ZarrArray
 from abczarr.abc.capabilities import Support
 from abczarr.abc.group import PathGroup
 from abczarr.abc.node import ZarrNode
-from abczarr.config import ArrayConfig, ZarrConfig
+from abczarr.config import ArrayConfig
 from abczarr.drivers._metadata import metadata_from_dict
 from abczarr.drivers.base import Driver
-from abczarr.metadata.base import ArrayMetadata, node_at
+from abczarr.metadata.base import ArrayMetadata, NodeMetadata, node_at
 
 # optionals -- the module imports without tensorstore; a driver with no
 # tensorstore reports that it can open nothing.
@@ -227,13 +227,16 @@ class TensorStoreDriver(Driver):
             return TensorStoreGroup(location, mode)
         return _open_ts_array(location, mode)
 
-    def create(self, location: tx.Any, config: ZarrConfig) -> ZarrNode:
-        if isinstance(config, ArrayConfig):
-            return _create_ts_array(
-                location, config.to_metadata(), overwrite=config.overwrite
-            )
+    def create_metadata(
+        self, location: tx.Any, metadata: NodeMetadata,
+        *, overwrite: bool = False,
+    ) -> ZarrNode:
+        if isinstance(metadata, ArrayMetadata):
+            return _create_ts_array(location, metadata, overwrite=overwrite)
         # a group is just a directory; the base's write-then-open handles it
-        return super().create(location, config)
+        return super().create_metadata(
+            location, metadata, overwrite=overwrite
+        )
 
     def support(self, capability: str) -> Support:
         if ts is None:

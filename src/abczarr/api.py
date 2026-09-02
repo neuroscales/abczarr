@@ -31,8 +31,9 @@ from .abc.group import ZarrGroup
 from .abc.node import ZarrNode
 from .abc.store import PathStore
 from .config import ArrayConfig, GroupConfig, ZarrConfig
+from .drivers._metadata import metadata_from_dict
 from .drivers.base import Driver
-from .metadata.base import ArrayMetadata
+from .metadata.base import ArrayMetadata, NodeMetadata
 from .registry import available_drivers, select_driver
 
 _DriverArg = tx.Optional[tx.Union[str, Driver]]
@@ -91,34 +92,56 @@ def open_group(
 
 @tx.overload
 def create(
-    location: tz.PathLike, config: ArrayConfig, **fields: tx.Any
+    location: tz.PathLike, spec: ArrayConfig, **fields: tx.Any
 ) -> ZarrArray: ...
 @tx.overload
 def create(
-    location: tz.PathLike, config: GroupConfig, **fields: tx.Any
+    location: tz.PathLike, spec: GroupConfig, **fields: tx.Any
 ) -> ZarrGroup: ...
+@tx.overload
+def create(
+    location: tz.PathLike, spec: NodeMetadata, **fields: tx.Any
+) -> ZarrNode: ...
 
 
 def create(
-    location: tz.PathLike, config: ZarrConfig, **fields: tx.Any
+    location: tz.PathLike,
+    spec: "tx.Union[ZarrConfig, NodeMetadata, tz.JSONDict]",
+    **fields: tx.Any,
 ) -> ZarrNode:
-    """Create the array or group *config* describes at *location*.
+    """Create the array or group *spec* describes at *location*.
 
-    An [ArrayConfig][abczarr.config.ArrayConfig] creates an array, a
-    [GroupConfig][abczarr.config.GroupConfig] creates a group. Fields passed
-    as keyword arguments override the config. The config's `zarr_version`,
-    `overwrite`, and `driver` are honoured; the returned group's
-    `create_array` adds arrays to it.
+    *spec* is usually a config: an [ArrayConfig][abczarr.config.ArrayConfig]
+    creates an array, a [GroupConfig][abczarr.config.GroupConfig] a group, and
+    keyword arguments override the config's fields. For full control beyond
+    what the config helpers express, *spec* may instead be an exact metadata
+    document -- an [ArrayMetadata][abczarr.metadata.base.ArrayMetadata] or
+    [GroupMetadata][abczarr.metadata.base.GroupMetadata], or its dict -- which
+    is created as it is; then `overwrite` and `driver` may be passed as
+    keywords.
     """
+    if isinstance(spec, ZarrConfig):
+        config = evolve(spec, **fields) if fields else spec
+        if isinstance(config, ArrayConfig):
+            config = config.resolve()
+            metadata = config.to_metadata()
+        else:
+            metadata = None
+        return _choose_create_driver(config.driver, metadata).create(
+            location, config
+        )
+
+    metadata = spec if isinstance(spec, NodeMetadata) else metadata_from_dict(
+        spec
+    )
+    overwrite = bool(fields.pop("overwrite", False))
+    driver = fields.pop("driver", None)
     if fields:
-        config = evolve(config, **fields)
-    if isinstance(config, ArrayConfig):
-        config = config.resolve()
-        metadata = config.to_metadata()
-    else:
-        metadata = None
-    driver = _choose_create_driver(config, metadata)
-    return driver.create(location, config)
+        names = ", ".join(sorted(fields))
+        raise TypeError(f"create() got unexpected keyword arguments: {names}")
+    return _choose_create_driver(driver, metadata).create_metadata(
+        location, metadata, overwrite=overwrite
+    )
 
 
 def create_group(
@@ -139,10 +162,10 @@ def create_group(
     return node
 
 
-def _choose_create_driver(config: ZarrConfig, metadata: tx.Any) -> Driver:
+def _choose_create_driver(driver: _DriverArg, metadata: tx.Any) -> Driver:
     """The driver to create with -- the array's features decide when there is
     a choice, else the first available."""
-    drivers = _resolve_drivers(config.driver)
+    drivers = _resolve_drivers(driver)
     if len(drivers) == 1:
         return drivers[0]
     if isinstance(metadata, ArrayMetadata):
