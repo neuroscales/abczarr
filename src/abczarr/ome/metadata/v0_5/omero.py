@@ -47,7 +47,7 @@ class Omero(OMEMetadata):
 
     Attach one of these to an image group, alongside its
     [Multiscale][abczarr.ome.metadata.v0_5.images.Multiscale], to
-    suggest how a viewer should display it -- `channels` lists a
+    suggest how a viewer should display it. `channels` lists a
     [Channel][abczarr.ome.metadata.v0_5.omero.Channel] for each
     channel of the image, in order.
     """

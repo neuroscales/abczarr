@@ -23,8 +23,8 @@ class ImageLabel(OMEMetadata):
 
     Attach one of these to a label image group alongside its own
     [Multiscale][abczarr.ome.metadata.v0_5.images.Multiscale]. `colors`
-    maps each integer label value to a display color; `properties`
-    and `source` carry, per label value, any further attributes and
+    maps each integer label value to a display color. `properties`
+    and `source` carry any further attributes for a label value, and
     where the label image was derived from.
     """
 
@@ -45,7 +45,7 @@ class ImageLabel(OMEMetadata):
         """Extra, application-defined attributes for one label value.
 
         Beyond `label_value`, any other key is carried through as
-        extra data -- see
+        extra data. See
         [OMEMetadata][abczarr.ome.metadata.base.OMEMetadata].
         """
 

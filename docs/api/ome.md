@@ -4,9 +4,10 @@ OME-Zarr (the NGFF spec) is a metadata convention for bioimaging data
 stored in Zarr: multiscale image pyramids, high-content screening
 plates, segmentation labels, and rendering settings, all described by
 JSON attached to a Zarr group. abczarr models that metadata as typed
-classes under `abczarr.ome.metadata`, one package per NGFF version --
-`v0_1` through `v0_5`, plus a `v0_6dev4` preview of the next one. The
-latest stable version is 0.5, and every example below targets it.
+classes under `abczarr.ome.metadata`. There is one package per NGFF
+version, `v0_1` through `v0_5`, plus a `v0_6dev4` preview of the next
+release. The latest stable version is 0.5, and every example below
+targets it.
 
 ## Describing a multiscale image
 
@@ -48,12 +49,12 @@ from a plain dict shaped like the JSON the spec defines:
 ```
 
 Each axis in `axes` becomes an
-[Axis][abczarr.ome.metadata.v0_5.axes.Axis] (a
-[SpaceAxis][abczarr.ome.metadata.v0_5.axes.SpaceAxis], here, since it
-carries `type="space"`), and each entry in `datasets` a
-[Dataset][abczarr.ome.metadata.v0_5.images.Dataset] naming an array
-and the [Scale][abczarr.ome.metadata.v0_5.transformations.Scale] that
-places it in physical space -- one value per axis, in that axis's
+[Axis][abczarr.ome.metadata.v0_5.axes.Axis]. Here that's a
+[SpaceAxis][abczarr.ome.metadata.v0_5.axes.SpaceAxis], since each one
+carries `type="space"`. Each entry in `datasets` becomes a
+[Dataset][abczarr.ome.metadata.v0_5.images.Dataset]. It names an array
+and carries the [Scale][abczarr.ome.metadata.v0_5.transformations.Scale]
+that places it in physical space, one value per axis, in that axis's
 unit.
 
 A `Multiscale` describes the pyramid, not the whole group. Wrap it in
@@ -90,7 +91,7 @@ screen, wrapped in
 
 ## Reading and writing OME metadata on a group
 
-OME-Zarr metadata lives in a group's user attributes -- the same
+OME-Zarr metadata lives in a group's user attributes, the same
 `attrs` mapping any Zarr group exposes. NGFF 0.5 nests it all under
 one `"ome"` key, so an object round-trips through
 [to_dict][abczarr._core.metadata.Metadata.to_dict] and
@@ -139,12 +140,12 @@ True
 
 ```
 
-Fields both versions share carry over unchanged. A field only the
-newer version has is filled in with a reasonable default going
-forward -- axes gained a `type`, defaulted from the axis's name, when
-NGFF 0.4 introduced them -- and dropped going back. Converting to a
-version that would need information the source does not carry raises
-`ValueError` rather than guessing.
+Fields both versions share carry over unchanged. Converting forward,
+a field only the newer version has gets a reasonable default. Axes,
+for example, gained a `type` when NGFF 0.4 introduced them, defaulted
+from the axis's name. Converting back, that field is dropped.
+Converting to a version that would need information the source does
+not carry raises `ValueError` rather than guessing.
 
 !!! example
     ```pycon

@@ -26,7 +26,7 @@ class CoordinateTransformation(OMEMetadata):
 
     Build [Scale][abczarr.ome.metadata.v0_5.transformations.Scale] or
     [Translation][abczarr.ome.metadata.v0_5.transformations.Translation]
-    directly rather than this base class -- constructing with
+    directly rather than this base class. Constructing with
     `type="scale"` or `type="translation"` returns the matching one.
     """
 
@@ -48,7 +48,7 @@ class Scale(CoordinateTransformation):
     """A per-axis scale factor from array indices to physical units.
 
     For a resolution level, this is the physical size of one array
-    element along each axis -- what turns a pixel index into a
+    element along each axis. It's what turns a pixel index into a
     micrometer, and what makes coarser levels of a pyramid line up
     with the finest one.
     """
