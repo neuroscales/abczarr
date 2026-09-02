@@ -215,11 +215,10 @@ class ArrayMetadata(NodeMetadata):
     [ArrayMetadataV1][abczarr.metadata.base.ArrayMetadataV1],
     [ArrayMetadataV2][abczarr.metadata.base.ArrayMetadataV2] and
     [ArrayMetadataV3][abczarr.metadata.base.ArrayMetadataV3]. What
-    they share is `to_version`, which converts between versions,
-    and
+    they share is `to_version`, which converts between versions, and
     [required_features][abczarr.metadata.base.ArrayMetadata.required_features],
-    which reports what a driver needs to support to read or write the
-    array.
+    which reports what a driver needs to support to read or write
+    the array.
     """
 
     node_type: tx.Literal["array"] = "array"
