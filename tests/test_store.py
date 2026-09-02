@@ -9,6 +9,7 @@ import asyncio
 import pathlib
 
 import pytest
+import typing_extensions as tx
 
 from abczarr.abc.capabilities import Support
 from abczarr.abc.path import StorePath
@@ -151,6 +152,105 @@ def test_support_reports_native_for_the_path_store(
     assert s.support("teleportation") is Support.NONE
 
 
+# --------------------------------------------------------------------------
+# additive synthesized members
+# --------------------------------------------------------------------------
+
+
+def test_get_many_reads_several_with_none_for_missing(
+    tmp_path: pathlib.Path,
+) -> None:
+    s = _store(tmp_path)
+    assert s.get_many(["zarr.json", "c/0/0", "absent"]) == {
+        "zarr.json": b"{}",
+        "c/0/0": b"chunk-0-0",
+        "absent": None,
+    }
+
+
+def test_get_partial_slices_and_defaults_to_end(
+    tmp_path: pathlib.Path,
+) -> None:
+    s = PathStore(str(tmp_path))
+    s.set("k", b"0123456789")
+    assert s.get_partial("k", 2, 3) == b"234"
+    assert s.get_partial("k", 7) == b"789"
+    assert s.get_partial("absent", 0) is None
+
+
+def test_partial_read_is_synthesized_not_native(
+    tmp_path: pathlib.Path,
+) -> None:
+    s = PathStore(str(tmp_path))
+    assert s.support("partial_read") is Support.SYNTHESIZED
+    assert s.supports("partial_read") is True
+    assert s.supports("partial_read", native=True) is False
+
+
+def test_set_if_not_exists_writes_once(tmp_path: pathlib.Path) -> None:
+    s = PathStore(str(tmp_path))
+    assert s.set_if_not_exists("k", b"first") is True
+    assert s.set_if_not_exists("k", b"second") is False
+    assert s.get("k") == b"first"
+
+
+def test_set_accepts_bytes_like(tmp_path: pathlib.Path) -> None:
+    s = PathStore(str(tmp_path))
+    s.set("ba", bytearray(b"array"))
+    s.set("mv", memoryview(b"view"))
+    assert s.get("ba") == b"array"
+    assert s.get("mv") == b"view"
+
+
+def test_delete_prefix_removes_a_subtree(tmp_path: pathlib.Path) -> None:
+    s = _store(tmp_path)
+    s.delete_prefix("c")
+    assert sorted(s.list_keys()) == ["zarr.json"]
+
+
+# --------------------------------------------------------------------------
+# a store with no location
+# --------------------------------------------------------------------------
+
+
+class _DictStore(Store):
+    """A minimal store backed by a dict, with no path -- exercises the
+    optional-location branch a native backend store needs."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._data = {}  # type: dict
+
+    def get(self, key: str) -> tx.Optional[bytes]:
+        return self._data.get(key)
+
+    def set(self, key: str, value: tx.Any) -> None:
+        self._data[key] = bytes(value)
+
+    def delete(self, key: str) -> None:
+        self._data.pop(key, None)
+
+    def exists(self, key: str) -> bool:
+        return key in self._data
+
+    def list_keys(self, prefix: str = "") -> tx.Iterator[str]:
+        return (k for k in self._data if k.startswith(prefix))
+
+
+def test_store_without_a_location() -> None:
+    s = _DictStore()
+    assert s.store_path is None
+    assert s.url is None
+    assert s.read_only is False
+    s.set("a", b"1")
+    assert s.get_many(["a", "b"]) == {"a": b"1", "b": None}
+
+
+def test_path_store_requires_a_location() -> None:
+    with pytest.raises(ValueError, match="needs a location"):
+        PathStore(None)
+
+
 def test_native_is_the_backing_path(tmp_path: pathlib.Path) -> None:
     s = PathStore(str(tmp_path))
     assert s.native is s.store_path
@@ -208,3 +308,23 @@ def test_async_store_advertises_async(tmp_path: pathlib.Path) -> None:
     s = AsyncPathStore(str(tmp_path))
     assert s.supports("async") is True
     assert s.supports("listing") is True
+
+
+def test_async_store_additive_members(tmp_path: pathlib.Path) -> None:
+    async def scenario() -> None:
+        s = AsyncPathStore(str(tmp_path))
+        await s.set("k", b"0123456789")
+        await s.set("j", bytearray(b"buf"))
+        assert await s.get_many(["k", "j", "absent"]) == {
+            "k": b"0123456789",
+            "j": b"buf",
+            "absent": None,
+        }
+        assert await s.get_partial("k", 2, 3) == b"234"
+        assert await s.get_partial("k", 7) == b"789"
+        assert await s.set_if_not_exists("k", b"x") is False
+        assert await s.set_if_not_exists("new", b"y") is True
+        await s.delete_prefix("")
+        assert [key async for key in s.list_keys()] == []
+
+    asyncio.run(scenario())
