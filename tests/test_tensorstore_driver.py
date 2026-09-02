@@ -210,6 +210,20 @@ def test_create_an_array_inside_a_group(tmp_path: pathlib.Path) -> None:
     assert "img" in list(group.keys())
 
 
+def test_store_writes_a_dask_array(tmp_path: pathlib.Path) -> None:
+    # da.to_zarr rejects a tensorstore, but store() works through da.store
+    da = pytest.importorskip("dask.array")
+    arr = abczarr.create(
+        str(tmp_path / "d.zarr"),
+        ArrayConfig(
+            shape=(8, 8), dtype="float32", chunks=(4, 4), driver="tensorstore"
+        ),
+    )
+    arr.store(da.zeros((8, 8), dtype="float32", chunks=(4, 4)) + 3.0)
+    assert float(np.asarray(arr[0, 0])) == 3.0
+    assert float(np.asarray(arr[7, 7])) == 3.0
+
+
 def test_both_node_kinds_share_a_common_base(tmp_path: pathlib.Path) -> None:
     # array and group are both TensorStoreNodes, so open returns one type
     root = str(tmp_path / "g.zarr")
