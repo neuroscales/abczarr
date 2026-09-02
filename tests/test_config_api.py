@@ -74,9 +74,8 @@ def test_array_options_mirror_the_array_config_fields() -> None:
 
 
 def test_default_zstd_compressor_writes_a_full_configuration() -> None:
-    # zstd's level and checksum default in the spec, but the reference
-    # implementation writes them and a stricter reader can require them, so
-    # abczarr emits them in full rather than an empty configuration.
+    # the v3 zstd schema requires `level` (checksum is optional), so an
+    # empty configuration is invalid; abczarr writes the full one.
     meta = ArrayConfig(
         shape=(4, 4), dtype="float32", chunks=(2, 2)
     ).to_metadata()

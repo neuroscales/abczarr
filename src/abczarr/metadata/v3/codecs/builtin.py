@@ -117,11 +117,12 @@ class GzipCodec(CompressorCodec):
 
 @autofrozen
 class ZstdConfig(CodecConfigImpl):
-    # `level` and `checksum` both default in the spec, but the reference
-    # implementation always writes them and a stricter reader can require
-    # them, so they are given defaults here and serialized in full. Zstd
-    # levels run wider than the 0-9 range the other compressors use (up to
-    # 22, and negative for the fast modes), so the type stays a plain int.
+    # The v3 zstd codec schema requires `level` (checksum is optional) and
+    # declares no defaults, so an implementation picks its own. abczarr
+    # defaults level to 0, matching zarr-python, and writes both fields.
+    # Zstd levels run from -131072 to 22 (wider than the 0-9 the other
+    # compressors use, and negative for the fast modes), so the type stays
+    # a plain int.
     level: int = 0
     checksum: bool = False
 
