@@ -10,11 +10,11 @@ version, and the shared vocabulary
 [GroupMetadata][abczarr.metadata.base.GroupMetadata]) that lets code
 work with a node's metadata without caring which version produced it.
 
-[ArrayMetadata.to_version][abczarr.metadata.base.ArrayMetadata.to_version]
-converts a node's metadata to another format version. Not every
+`ArrayMetadata.to_version` converts a node's metadata to another
+format version. Not every
 version can represent everything another one can; how such a
 conversion treats a field it cannot carry over is set by a
-[ConversionPolicy][abczarr.metadata.base.ConversionPolicy].
+`ConversionPolicy`.
 
 This file contains code from the Zarr project
 https://github.com/zarr-developers/zarr-python
@@ -77,11 +77,10 @@ ConversionPolicy = tx.Literal["lossy", "warn", "strict"]
 class UnsupportedConversion(ValueError):
     """A field has no representation in the target Zarr version.
 
-    Raised by
-    [to_version][abczarr.metadata.base.ArrayMetadata.to_version]
-    when it is asked to convert under the ``"strict"`` policy and a
-    field cannot be carried over. The message names the field and the
-    version it could not be represented in.
+    Raised by `to_version` when it is asked to convert under the
+    ``"strict"`` policy and a field cannot be carried over. The
+    message names the field and the version it could not be
+    represented in.
     """
 
     def __init__(self, field: str, version: tz.ZarrVersion) -> None:
@@ -216,12 +215,10 @@ class ArrayMetadata(NodeMetadata):
     [ArrayMetadataV1][abczarr.metadata.base.ArrayMetadataV1],
     [ArrayMetadataV2][abczarr.metadata.base.ArrayMetadataV2] and
     [ArrayMetadataV3][abczarr.metadata.base.ArrayMetadataV3]. What
-    they share is
-    [to_version][abczarr.metadata.base.ArrayMetadata.to_version],
-    which converts between versions, and
+    they share is `to_version`, which converts between versions, and
     [required_features][abczarr.metadata.base.ArrayMetadata.required_features],
-    which reports what a driver needs to support to read or write the
-    array.
+    which reports what a driver needs to support to read or write
+    the array.
     """
 
     node_type: tx.Literal["array"] = "array"

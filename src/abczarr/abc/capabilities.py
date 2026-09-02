@@ -14,7 +14,7 @@ Two granularities of name live here:
 
 * **coarse capabilities** -- broad features a caller checks before
   committing to an operation
-  ([KNOWN_CAPABILITIES][abczarr.abc.capabilities.KNOWN_CAPABILITIES]):
+  (`KNOWN_CAPABILITIES`):
   `"sharding"`, `"async"`, `"listing"`, `"partial_read"`,
   `"transactions"`, and so on.
 * **feature keys** -- fine-grained, namespaced names for a single

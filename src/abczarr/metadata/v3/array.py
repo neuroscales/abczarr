@@ -191,9 +191,9 @@ class ArrayMetadata(ArrayMetadataV3):
     Corresponds to the contents of `zarr.json` for an array node.
     `codecs` is an ordered pipeline: zero or more array-to-array
     codecs, exactly one array-to-bytes codec (a plain serializer, or
-    a [ShardingCodec][abczarr.metadata.v3.codecs.builtin.ShardingCodec]
-    that groups several chunks into one shard file), then zero or
-    more bytes-to-bytes codecs such as a compressor.
+    a `ShardingCodec` that groups several chunks into one shard
+    file), then zero or more bytes-to-bytes codecs such as a
+    compressor.
 
     !!! example
         ```pycon
@@ -287,10 +287,8 @@ class ArrayMetadata(ArrayMetadataV3):
 
         One key each for the chunk grid, the chunk-key encoding and
         the data type, plus one per codec in `codecs` -- including,
-        for a
-        [ShardingCodec][abczarr.metadata.v3.codecs.builtin.ShardingCodec],
-        the codecs nested inside it -- and one per named storage
-        transformer.
+        for a `ShardingCodec`, the codecs nested inside it -- and one
+        per named storage transformer.
         """
         feats = {
             feature_key("v3", "chunk_grid", self.chunk_grid.name),
