@@ -112,13 +112,6 @@ class TensorStoreArray(ZarrArray):
         return metadata_from_dict(self._array.spec().to_json()["metadata"])
 
     @property
-    def attrs(self) -> tz.Attributes:
-        attributes = self._array.spec().to_json()["metadata"].get(
-            "attributes", {}
-        )
-        return dict(attributes)
-
-    @property
     def zarr_version(self) -> tz.ZarrVersion:
         return self._array.spec().to_json()["metadata"]["zarr_format"]
 
