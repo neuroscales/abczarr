@@ -38,9 +38,11 @@ from abczarr.drivers.base import Driver
 # optionals -- the module imports without zarr; a driver with no zarr simply
 # reports that it can open nothing.
 try:
+    import numcodecs
     import zarr
     import zarr.registry as _registry
 except ImportError:  # pragma: no cover - exercised only without zarr
+    numcodecs = None
     zarr = None
     _registry = None
 
@@ -90,6 +92,39 @@ def _resolves(lookup: tx.Callable[[str], object], name: str) -> bool:
         return False
 
 
+def _supports_v3_feature(kind: str, name: str) -> bool:
+    """Whether zarr-python's v3 registry provides one codec / grid / etc."""
+    if kind == "codec":
+        return _resolves(_registry.get_codec_class, name)
+    if kind == "chunk_key_encoding":
+        return _resolves(_registry.get_chunk_key_encoding_class, name)
+    if kind == "chunk_grid":
+        # only the regular grid has a zarr-python representation
+        return name == "regular"
+    if kind == "data_type":
+        # zarr-python handles the standard numeric data types
+        return True
+    return False
+
+
+def _has_numcodec(name: str) -> bool:
+    """Whether numcodecs provides the v1/v2 codec or filter *name*.
+
+    A name numcodecs does not know raises ``UnknownCodecError``; a known one
+    that merely needs more configuration (a filter like ``delta`` wants a
+    dtype) raises something else -- and is still provided.
+    """
+    if numcodecs is None:
+        return False
+    try:
+        numcodecs.get_codec({"id": name})
+    except numcodecs.errors.UnknownCodecError:
+        return False
+    except Exception:
+        return True
+    return True
+
+
 class ZarrPythonDriver(Driver):
     """The zarr-python backend, as a driver.
 
@@ -133,19 +168,16 @@ class ZarrPythonDriver(Driver):
     def _feature_support(
         self, version: str, kind: str, name: str
     ) -> Support:
-        """Whether the installed zarr provides one v3 codec / grid / etc."""
-        if version != "v3":
-            return Support.NONE
-        if kind == "codec":
-            found = _resolves(_registry.get_codec_class, name)
-        elif kind == "chunk_key_encoding":
-            found = _resolves(_registry.get_chunk_key_encoding_class, name)
-        elif kind == "chunk_grid":
-            # only the regular grid has a zarr-python representation
-            found = name == "regular"
-        elif kind == "data_type":
-            # zarr-python handles the standard numeric data types
-            found = True
+        """Whether the installed zarr provides one codec / grid / etc.
+
+        zarr-python 3.x reads and writes both the v3 codec pipeline (through
+        its own registry) and the v2 numcodecs model (through numcodecs).
+        """
+        if version == "v3":
+            found = _supports_v3_feature(kind, name)
+        elif version in ("v1", "v2"):
+            # v1 and v2 name a numcodecs compressor or filter
+            found = kind in ("codec", "filter") and _has_numcodec(name)
         else:
             found = False
         return Support.NATIVE if found else Support.NONE
@@ -178,6 +210,9 @@ def _metadata_from_dict(data: tz.JSONDict) -> tx.Any:
             2: v2.ArrayMetadata,
             3: v3.ArrayMetadata,
         }[zarr_format]
+        if zarr_format == 2 and data.get("filters") is None:
+            # zarr writes no filters as null; the v2 model wants an empty list
+            data = {**data, "filters": []}
         return array_cls.from_dict(data)
     group_cls = {
         2: base.GroupMetadataV2,
