@@ -1,7 +1,6 @@
 """The Zarr array interface: n-dimensional array data."""
 
 __all__ = [
-    "ZarrArrayConfig",
     "ZarrArray",
 ]
 
@@ -21,23 +20,6 @@ from .node import ZarrNode
 
 if tx.TYPE_CHECKING:
     import dask.array as da
-
-
-class ZarrArrayConfig(tx.TypedDict, total=False):
-    """Options for creating a Zarr array.
-
-    Every key is optional. Pass a `config` dict to a group's
-    `create_array`, or the same keys as keyword arguments, to set
-    the chunking, sharding, and compression of a new array.
-    """
-
-    chunk: tz.ShapeLike
-    shard: tx.Optional[tz.ShapeLike]
-    compressor: tx.Optional[tz.CompressorType]
-    compressor_options: tx.Mapping[str, tx.Any]
-    dimension_separator: tz.DimensionSeparator
-    order: tz.MemoryOrder
-    fill_value: tx.Optional[tz.JSONNumber]
 
 
 class ZarrArray(ZarrNode):

@@ -94,6 +94,20 @@ class ArrayMetadata(ArrayMetadataV2):
     # --- Optional ----
     dimension_separator: tx.Optional[tz.DimensionSeparator]
 
+    # --- Serialization ---
+
+    def to_dict(self) -> tz.JSONDict:
+        """Serialize to `.zarray`, writing `filters` as null when there are
+        none.
+
+        The model normalizes a missing `filters` to an empty tuple, but the
+        Zarr v2 spec wants `null` for no filters, not an empty list.
+        """
+        data = super().to_dict()
+        if not data.get("filters"):
+            data["filters"] = None
+        return data
+
     # --- Conversion ---
 
     def to_version(

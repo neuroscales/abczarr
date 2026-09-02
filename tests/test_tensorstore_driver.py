@@ -15,6 +15,7 @@ pytest.importorskip("tensorstore")
 import abczarr  # noqa: E402
 from abczarr.abc.capabilities import Support  # noqa: E402
 from abczarr.abc.errors import UnsupportedZarrOperation  # noqa: E402
+from abczarr.config import ArrayConfig  # noqa: E402
 from abczarr.drivers.tensorstore import (  # noqa: E402
     TensorStoreArray,
     TensorStoreDriver,
@@ -177,6 +178,35 @@ def test_open_group_requires_a_group(tmp_path: pathlib.Path) -> None:
     )
     with pytest.raises(UnsupportedZarrOperation):
         abczarr.open_array(root, mode="r", driver="tensorstore")
+
+
+# --------------------------------------------------------------------------
+# creating arrays through TensorStore
+# --------------------------------------------------------------------------
+
+
+def test_create_a_top_level_array(tmp_path: pathlib.Path) -> None:
+    arr = abczarr.create(
+        str(tmp_path / "a.zarr"),
+        ArrayConfig(
+            shape=(8, 8), dtype="float32", chunks=(4, 4), driver="tensorstore"
+        ),
+    )
+    assert isinstance(arr, TensorStoreArray)
+    arr[:] = np.arange(64, dtype="float32").reshape(8, 8)
+    assert float(np.asarray(arr[1, 0])) == 8.0
+
+
+def test_create_an_array_inside_a_group(tmp_path: pathlib.Path) -> None:
+    root = str(tmp_path / "g.zarr")
+    zarr.open_group(root, mode="w")
+    group = abczarr.open(root, mode="a", driver="tensorstore")
+    assert isinstance(group, TensorStoreGroup)
+    arr = group.create_array("img", shape=(4,), dtype="int32", chunks=(4,))
+    assert isinstance(arr, TensorStoreArray)
+    arr[:] = np.arange(4, dtype="int32")
+    assert np.asarray(arr[:]).tolist() == [0, 1, 2, 3]
+    assert "img" in list(group.keys())
 
 
 def test_attrs_write_through(tmp_path: pathlib.Path) -> None:

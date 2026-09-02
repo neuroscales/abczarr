@@ -23,6 +23,14 @@ class DTypeConfig(TypedConfig):
 class DType(MustUnderstandExtension):
     configuration: DTypeConfig
 
+    def to_dict(self) -> tx.Union[str, tz.JSONDict]:
+        # A core data type with no configuration is written as a bare name
+        # ("float32"), as the Zarr v3 spec requires; an extension data type
+        # keeps the full object form.
+        if not self.configuration.to_dict():
+            return self.name
+        return super().to_dict()
+
     @property
     def numpy(self) -> np.dtype:
         """

@@ -125,8 +125,14 @@ class Metadata:
     # --- JSON conversion ----------------------------------------------
 
     def to_dict(self) -> tz.JSONDict:
-        """Convert this metadata to a JSON-serializable dict."""
-        return _to_json(self)
+        """Convert this metadata to a JSON-serializable dict.
+
+        Serializes this object's own fields. A nested metadata value is
+        serialized through its own `to_dict`, so a subclass that overrides it
+        (an [Extension][abczarr.metadata.v3.extensions.Extension] that writes
+        itself as a bare name) is respected.
+        """
+        return _serialize_meta(self)
 
     @classmethod
     def from_dict(cls, data: tz.JSONDict) -> tx.Self:
@@ -217,43 +223,42 @@ class FlexibleMetadata(Metadata):
 # ======================================================================
 
 
+def _serialize_dict(x: tx.Mapping) -> tx.Dict[str, tz.JSON]:
+    if not callable(getattr(x, "items", None)):
+        x = dict(**x)
+    return {k: _to_json(v) for k, v in x.items()}
+
+
+def _serialize_meta(x: "Metadata") -> tx.Dict[str, tz.JSON]:
+    """Serialize a metadata object's own fields (not respecting a to_dict
+    override on *x* itself -- that is the caller's job)."""
+    extra = getattr(x, "extra_items", False)
+    out = {
+        f.name: _to_json(getattr(x, f.name))
+        for f in fields(x)
+        if f.name != "extra_items"
+    }
+    if extra:
+        out.update(_serialize_dict(extra))
+    return out
+
+
 def _to_json(obj: tx.Any) -> tz.JSON:
-
-    def _serialize_list(x: tx.Iterable) -> tx.List[tz.JSON]:
-        return [_to_json(v) for v in x]
-
-    def _serialize_dict(x: tx.Mapping) -> tx.Dict[str, tz.JSON]:
-        if not callable(getattr(x, "items", None)):
-            x = dict(**x)
-        return {k: _to_json(v) for k, v in x.items()}
-
-    def _serialize_meta(x: Metadata) -> tx.Dict[str, tz.JSON]:
-        extra = getattr(x, "extra_items", False)
-        out = {
-            f.name: _to_json(getattr(x, f.name))
-            for f in fields(x)
-            if f.name != "extra_items"
-        }
-        if extra:
-            out.update(_serialize_dict(extra))
-        return out
-
-    def _serialize_item(x: tx.Any) -> None:
-        if _is_metadata(x):
-            return _serialize_meta(x)
-        elif isinstance(x, np.dtype):
-            # a numpy dtype is not JSON: emit its zarr string form ("<f8")
-            return x.str
-        elif isinstance(x, np.generic):
-            return x.item()
-        elif _is_mapping(x):
-            return _serialize_dict(x)
-        elif _is_iterable(x):
-            return _serialize_list(x)
-        else:
-            return x
-
-    return _serialize_item(obj)
+    if _is_metadata(obj):
+        # delegate to the value's own to_dict, so a subclass that serializes
+        # itself specially (an Extension written as a bare name) is honored
+        return obj.to_dict()
+    elif isinstance(obj, np.dtype):
+        # a numpy dtype is not JSON: emit its zarr string form ("<f8")
+        return obj.str
+    elif isinstance(obj, np.generic):
+        return obj.item()
+    elif _is_mapping(obj):
+        return _serialize_dict(obj)
+    elif _is_iterable(obj):
+        return [_to_json(v) for v in obj]
+    else:
+        return obj
 
 
 def _is_iterable(obj: tx.Any) -> bool:

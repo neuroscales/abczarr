@@ -27,7 +27,7 @@ import typing_extensions as tx
 # core
 from abczarr._core import typing as tz
 from abczarr._core.features import FEATURE_KINDS, FEATURE_VERSIONS
-from abczarr.abc.array import ZarrArray, ZarrArrayConfig
+from abczarr.abc.array import ZarrArray
 from abczarr.abc.capabilities import Support
 from abczarr.abc.group import ZarrGroup
 from abczarr.abc.node import ZarrNode
@@ -124,6 +124,32 @@ def _has_numcodec(name: str) -> bool:
     return True
 
 
+def _zarr_create_kwargs(config: tx.Any) -> tx.Dict[str, tx.Any]:
+    """Map a resolved [ArrayConfig][abczarr.config.ArrayConfig] to the
+    keywords ``zarr.create_array`` takes, so zarr-python creates the array and
+    writes its own metadata."""
+    kwargs = {
+        "chunks": config.chunks,
+        "fill_value": config.resolved_fill_value(),
+        "compressors": config.compressor_codecs(),
+        "chunk_key_encoding": {
+            "name": "default",
+            "configuration": {"separator": config.resolved_separator()},
+        },
+    }  # type: tx.Dict[str, tx.Any]
+    if config.shards is not None:
+        kwargs["shards"] = config.shards
+    if config.dimension_names is not None:
+        kwargs["dimension_names"] = config.dimension_names
+    if config.filters:
+        kwargs["filters"] = [dict(f) for f in config.filters]
+    # order is Zarr v2 metadata; passing it on v3 only warns (v3 order is a
+    # runtime layout, not stored)
+    if config.zarr_version == 2:
+        kwargs["order"] = config.order
+    return kwargs
+
+
 class ZarrPythonDriver(Driver):
     """The zarr-python backend, as a driver.
 
@@ -149,14 +175,25 @@ class ZarrPythonDriver(Driver):
             return ZarrPythonGroup(node)
         return ZarrPythonArray(node)
 
-    def create_group(
-        self, location: tx.Any, *, zarr_version: int = 3,
-        overwrite: bool = False,
-    ) -> "ZarrPythonGroup":
+    def create(
+        self, location: tx.Any, config: tx.Any
+    ) -> tx.Union["ZarrPythonArray", "ZarrPythonGroup"]:
+        from abczarr.config import ArrayConfig
+
+        if isinstance(config, ArrayConfig):
+            array = zarr.create_array(
+                store=str(location),
+                shape=config.shape,
+                dtype=config.dtype,
+                overwrite=config.overwrite,
+                zarr_format=config.zarr_version,
+                **_zarr_create_kwargs(config),
+            )
+            return ZarrPythonArray(array)
         group = zarr.open_group(
-            location,
-            mode="w" if overwrite else "w-",
-            zarr_format=zarr_version,
+            str(location),
+            mode="w" if config.overwrite else "w-",
+            zarr_format=config.zarr_version,
         )
         return ZarrPythonGroup(group)
 
@@ -312,56 +349,14 @@ class ZarrPythonGroup(ZarrGroup):
             self._group.create_group(name, overwrite=overwrite)
         )
 
-    def create_array(
-        self,
-        name: str,
-        shape: tz.ShapeLike,
-        dtype: npt.DTypeLike,
-        *,
-        config: tx.Optional[ZarrArrayConfig] = None,
-        **kwargs: tx.Unpack[ZarrArrayConfig],
+    def _create_array(
+        self, name: str, config: tx.Any
     ) -> ZarrPythonArray:
-        options = dict(config or {})
-        options.update(kwargs)
+        # delegate to zarr-python, so it writes its own metadata
         array = self._group.create_array(
-            name, shape=shape, dtype=dtype, **_create_kwargs(options)
+            name, shape=config.shape, dtype=config.dtype,
+            **_zarr_create_kwargs(config),
         )
         return ZarrPythonArray(array)
-
-
-def _compressor_spec(
-    compressor: tx.Any, options: tx.Optional[tx.Mapping[str, tx.Any]]
-) -> tx.Any:
-    """Turn the surface's compressor + options into what zarr expects."""
-    if compressor is None:
-        return None
-    if isinstance(compressor, str):
-        # zarr requires a configuration key even when it is empty
-        return {"name": compressor, "configuration": dict(options or {})}
-    return compressor  # already a codec or a codec dict
-
-
-def _create_kwargs(options: tx.Dict[str, tx.Any]) -> tx.Dict[str, tx.Any]:
-    """Map a ZarrArrayConfig to zarr-python ``create_array`` keywords."""
-    kwargs = {}  # type: tx.Dict[str, tx.Any]
-    if options.get("chunk") is not None:
-        kwargs["chunks"] = options["chunk"]
-    if options.get("shard") is not None:
-        kwargs["shards"] = options["shard"]
-    if "fill_value" in options:
-        kwargs["fill_value"] = options["fill_value"]
-    if options.get("order") is not None:
-        kwargs["order"] = options["order"]
-    if "compressor" in options:
-        kwargs["compressors"] = _compressor_spec(
-            options["compressor"], options.get("compressor_options")
-        )
-    separator = options.get("dimension_separator")
-    if separator is not None:
-        kwargs["chunk_key_encoding"] = {
-            "name": "default",
-            "configuration": {"separator": separator},
-        }
-    return kwargs
 
 

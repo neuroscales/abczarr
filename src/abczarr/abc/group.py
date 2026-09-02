@@ -14,6 +14,8 @@ import typing_extensions as tx
 
 # core
 from abczarr._core import typing as tz
+from abczarr._core.attrs import evolve
+from abczarr.config import ArrayConfig, ArrayOptions
 from abczarr.metadata.base import (
     GroupMetadataV2,
     GroupMetadataV3,
@@ -22,7 +24,7 @@ from abczarr.metadata.base import (
     node_type_at,
 )
 
-from .array import ZarrArray, ZarrArrayConfig
+from .array import ZarrArray
 from .errors import UnsupportedZarrOperation
 
 # locals
@@ -34,6 +36,29 @@ _GROUP_METADATA = {
     2: GroupMetadataV2,
     3: GroupMetadataV3,
 }
+
+
+def _resolve_array_config(
+    shape: tz.ShapeLike,
+    dtype: npt.DTypeLike,
+    config: tx.Union[ArrayConfig, ArrayOptions, None],
+    options: ArrayOptions,
+    version: tz.ZarrVersion,
+) -> ArrayConfig:
+    """Build the resolved [ArrayConfig][abczarr.config.ArrayConfig] a
+    `create_array` call describes.
+
+    A config (an `ArrayConfig` or a mapping of its fields) is the base;
+    *shape*, *dtype* and the per-call *options* are layered on top, with the
+    array taking the group's format version. `"auto"` chunking and sharding
+    are worked out, so a driver receives concrete values.
+    """
+    base = config if isinstance(config, ArrayConfig) else ArrayConfig(
+        **dict(config or {})
+    )
+    merged = dict(options)
+    merged.update(shape=shape, dtype=dtype, zarr_version=version)
+    return evolve(base, **merged).resolve()
 
 
 class ZarrGroup(ZarrNode):
@@ -78,15 +103,14 @@ class ZarrGroup(ZarrNode):
         """
         ...
 
-    @abstractmethod
     def create_array(
         self,
         name: str,
         shape: tz.ShapeLike,
         dtype: npt.DTypeLike,
         *,
-        config: tx.Optional[ZarrArrayConfig] = None,
-        **kwargs: tx.Unpack[ZarrArrayConfig],
+        config: tx.Union[ArrayConfig, ArrayOptions, None] = None,
+        **options: tx.Unpack[ArrayOptions],
     ) -> ZarrArray:
         """Create a new array named *name* within this group.
 
@@ -98,11 +122,20 @@ class ZarrGroup(ZarrNode):
             The array's shape.
         dtype : numpy dtype
             The array's data type.
-        config : ZarrArrayConfig, optional
-            Chunking, sharding, and compression options. May also be
-            passed as individual keyword arguments -- see
-            [ZarrArrayConfig][abczarr.abc.array.ZarrArrayConfig].
+        config : ArrayConfig or mapping, optional
+            A reusable [ArrayConfig][abczarr.config.ArrayConfig], or a mapping
+            of the same fields. Individual fields may also be passed as
+            keyword arguments, which override the config.
         """
+        resolved = _resolve_array_config(
+            shape, dtype, config, options, self.zarr_version
+        )
+        return self._create_array(name, resolved)
+
+    @abstractmethod
+    def _create_array(self, name: str, config: ArrayConfig) -> ZarrArray:
+        """Create the array named *name* from a resolved *config*, with the
+        backend's own creation, so the backend writes its own metadata."""
         ...
 
 
@@ -201,8 +234,8 @@ class PathGroup(ZarrGroup):
     def create_group(self, name: str, overwrite: bool = False) -> tx.Self:
         child = self._store_path / name
         if node_type_at(child) is not None and not overwrite:
-            raise UnsupportedZarrOperation(
-                "create a group where a member already exists"
+            raise FileExistsError(
+                f"a member named {name!r} already exists"
             )
         version = self.zarr_version
         metadata_cls = _GROUP_METADATA.get(version)
@@ -214,23 +247,27 @@ class PathGroup(ZarrGroup):
         metadata_cls(attributes={}).to_file(child)
         return type(self)(child, self._mode)
 
-    def create_array(
-        self,
-        name: str,
-        shape: tz.ShapeLike,
-        dtype: npt.DTypeLike,
-        *,
-        config: tx.Optional[ZarrArrayConfig] = None,
-        **kwargs: tx.Unpack[ZarrArrayConfig],
-    ) -> ZarrArray:
-        return self._create_array(
-            name, shape, dtype, config=config, **kwargs
-        )
+    def _create_array(self, name: str, config: ArrayConfig) -> ZarrArray:
+        """Create a child array by writing its metadata, then opening it.
 
-    # -- backend hooks -----------------------------------------------------
-    # A driver overrides these to open and create arrays with its backend.
-    # The rest of the surface -- listing, navigation, subgroups -- is
-    # backend-independent and needs no override.
+        This is the fallback for a backend with no native creation: write the
+        config's metadata to the child directory and open it through
+        [_open_array][abczarr.abc.group.PathGroup._open_array]. A backend that
+        creates natively (zarr-python, TensorStore) overrides this.
+        """
+        child = self._store_path / name
+        if node_type_at(child) is not None:
+            raise FileExistsError(
+                f"a member named {name!r} already exists"
+            )
+        child.mkdir(parents=True, exist_ok=True)
+        config.to_metadata().to_file(child)
+        return self._open_array(child)
+
+    # -- backend hook ------------------------------------------------------
+    # A driver overrides this to open a child array with its backend. The
+    # rest of the surface -- listing, navigation, subgroups, and writing an
+    # array's metadata -- is backend-independent.
 
     def _open_array(self, store_path: tz.PathLike) -> ZarrArray:
         """Open the child array at *store_path*.
@@ -239,19 +276,3 @@ class PathGroup(ZarrGroup):
         overrides this method to open one with its own backend.
         """
         raise UnsupportedZarrOperation("open an array")
-
-    def _create_array(
-        self,
-        name: str,
-        shape: tz.ShapeLike,
-        dtype: npt.DTypeLike,
-        *,
-        config: tx.Optional[ZarrArrayConfig] = None,
-        **kwargs: tx.Unpack[ZarrArrayConfig],
-    ) -> ZarrArray:
-        """Create a child array, for a driver that can.
-
-        `PathGroup` can create subgroups on its own, but not arrays; a
-        driver overrides this method to create one with its own backend.
-        """
-        raise UnsupportedZarrOperation("create_array")

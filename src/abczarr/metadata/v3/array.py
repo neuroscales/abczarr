@@ -231,6 +231,23 @@ class ArrayMetadata(ArrayMetadataV3):
     dimension_names: tx.Optional[_AxisNames]
     storage_transformers: tx.Tuple[tz.FrozenJSONDict, ...]
 
+    # --- Serialization ---
+
+    def to_dict(self) -> tz.JSONDict:
+        """Serialize to ``zarr.json``, omitting the optional fields that carry
+        nothing.
+
+        Zarr v3 leaves ``dimension_names`` and ``storage_transformers`` out of
+        the document when they are unset, rather than writing ``null`` or an
+        empty list, and a strict reader (TensorStore) requires that.
+        """
+        data = super().to_dict()
+        if data.get("dimension_names") is None:
+            data.pop("dimension_names", None)
+        if not data.get("storage_transformers"):
+            data.pop("storage_transformers", None)
+        return data
+
     # --- Conversion ---
 
     def to_version(

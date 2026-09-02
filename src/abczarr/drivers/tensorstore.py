@@ -26,8 +26,10 @@ from abczarr.abc.array import ZarrArray
 from abczarr.abc.capabilities import Support
 from abczarr.abc.group import PathGroup
 from abczarr.abc.node import ZarrNode
+from abczarr.config import ArrayConfig
 from abczarr.drivers._metadata import metadata_from_dict
 from abczarr.drivers.base import Driver
+from abczarr.metadata.base import ArrayMetadata, NodeMetadata, node_at
 
 # optionals -- the module imports without tensorstore; a driver with no
 # tensorstore reports that it can open nothing.
@@ -154,6 +156,27 @@ def _open_ts_array(location: tx.Any, mode: str) -> TensorStoreArray:
     return TensorStoreArray(array)
 
 
+def _create_ts_array(
+    location: tx.Any, metadata: ArrayMetadata, *, overwrite: bool
+) -> TensorStoreArray:
+    """Create the v3 array *metadata* describes at *location*.
+
+    TensorStore creates from the metadata document, filling in each codec's
+    defaults and validating it, which a bare write of the metadata would not.
+    """
+    from bagof.paths import Path
+
+    if node_at(Path(str(location))) is not None and not overwrite:
+        raise FileExistsError(f"a node already exists at {location}")
+    spec = {
+        "driver": "zarr3",
+        "kvstore": _kvstore_spec(location),
+        "metadata": metadata.to_dict(),
+    }
+    array = ts.open(spec, create=True, delete_existing=overwrite).result()
+    return TensorStoreArray(array)
+
+
 class TensorStoreGroup(PathGroup):
     """The group returned when the TensorStore driver opens a group.
 
@@ -167,6 +190,15 @@ class TensorStoreGroup(PathGroup):
 
     def _open_array(self, store_path: tz.PathLike) -> TensorStoreArray:
         return _open_ts_array(str(store_path), self._mode)
+
+    def _create_array(
+        self, name: str, config: ArrayConfig
+    ) -> TensorStoreArray:
+        # tensorstore validates and fills a codec's defaults on create, so we
+        # hand it the config's metadata document
+        return _create_ts_array(
+            str(self._store_path / name), config.to_metadata(), overwrite=False
+        )
 
 
 class TensorStoreDriver(Driver):
@@ -187,6 +219,17 @@ class TensorStoreDriver(Driver):
         if _peek_node_type(location) == "group":
             return TensorStoreGroup(location, mode)
         return _open_ts_array(location, mode)
+
+    def create_from_metadata(
+        self, location: tx.Any, metadata: NodeMetadata,
+        *, overwrite: bool = False,
+    ) -> ZarrNode:
+        if isinstance(metadata, ArrayMetadata):
+            return _create_ts_array(location, metadata, overwrite=overwrite)
+        # a group is just a directory; the base's write-then-open handles it
+        return super().create_from_metadata(
+            location, metadata, overwrite=overwrite
+        )
 
     def support(self, capability: str) -> Support:
         if ts is None:

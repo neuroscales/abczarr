@@ -460,7 +460,6 @@ class NodeMetadataV2(NodeMetadata):
 
         return cls.from_dict({**meta, "attributes": attrs})
 
-    @classmethod
     def to_file(self, root: os.PathLike) -> None:
         """Write this metadata to its directory.
 

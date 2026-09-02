@@ -26,7 +26,8 @@ from abczarr.abc.errors import UnsupportedZarrOperation
 
 if tx.TYPE_CHECKING:
     from abczarr.abc.node import ZarrNode
-    from abczarr.metadata.base import ArrayMetadata
+    from abczarr.config import ZarrConfig
+    from abczarr.metadata.base import ArrayMetadata, NodeMetadata
 
 
 class Verdict:
@@ -90,15 +91,82 @@ class Driver(SupportsCapabilities):
         """
         raise UnsupportedZarrOperation("open", self.name or None)
 
-    def create_group(
-        self, location: tx.Any, *, zarr_version: int = 3,
-        overwrite: bool = False,
+    def create(self, location: tx.Any, config: "ZarrConfig") -> "ZarrNode":
+        """Create the node *config* describes at *location* and open it.
+
+        The default lowers the config to metadata and creates from that. A
+        backend overrides it to create through its own machinery from the
+        config's coarse fields, so the backend writes its own metadata.
+        """
+        return self.create_from_metadata(
+            location,
+            self._config_metadata(config),
+            overwrite=config.overwrite,
+        )
+
+    def create_from_metadata(
+        self, location: tx.Any, metadata: "NodeMetadata",
+        *, overwrite: bool = False,
     ) -> "ZarrNode":
-        """Create a new group at *location* and wrap it.
+        """Create a node from an exact *metadata* document and open it.
+
+        The escape hatch for a setup the config helpers do not express: hand
+        in an [ArrayMetadata][abczarr.metadata.base.ArrayMetadata] or
+        [GroupMetadata][abczarr.metadata.base.GroupMetadata] and it is written
+        and opened as it is. The default writes the metadata to the store and
+        opens it; a driver may override to create through its backend.
 
         Raises
         ------
-        [UnsupportedZarrOperation][abczarr.abc.errors.UnsupportedZarrOperation]
-            When this driver cannot create a group.
+        FileExistsError
+            When something already exists at *location* and *overwrite* is
+            false.
         """
-        raise UnsupportedZarrOperation("create_group", self.name or None)
+        from bagof.paths import Path
+
+        from abczarr.metadata.base import node_at
+
+        path = Path(str(location))
+        if node_at(path) is not None:
+            if not overwrite:
+                raise FileExistsError(f"a node already exists at {location}")
+            path.rmdir(recursive=True)
+        path.mkdir(parents=True, exist_ok=True)
+        metadata.to_file(path)
+        return self.open(location, "r+")
+
+    def create_group(
+        self, location: tx.Any, *,
+        config: "tx.Optional[ZarrConfig]" = None, **fields: tx.Any,
+    ) -> "ZarrNode":
+        """Create a new group at *location* and open it.
+
+        Pass a [GroupConfig][abczarr.config.GroupConfig] as *config*, or its
+        fields (`zarr_version`, `overwrite`, ...) as keyword arguments, which
+        override the config.
+        """
+        from abczarr._core.attrs import evolve
+        from abczarr.config import GroupConfig
+
+        base = config if isinstance(config, GroupConfig) else GroupConfig(
+            **dict(config or {})
+        )
+        resolved = evolve(base, **fields) if fields else base
+        return self.create(location, resolved)
+
+    @staticmethod
+    def _config_metadata(config: "ZarrConfig") -> "NodeMetadata":
+        """The metadata a config lowers to: an array's, or a group's."""
+        from abczarr.config import ArrayConfig
+        from abczarr.metadata.base import GroupMetadataV2, GroupMetadataV3
+
+        if isinstance(config, ArrayConfig):
+            return config.to_metadata()
+        group_metadata = {2: GroupMetadataV2, 3: GroupMetadataV3}.get(
+            config.zarr_version
+        )
+        if group_metadata is None:
+            raise UnsupportedZarrOperation(
+                f"create a group in Zarr v{config.zarr_version}"
+            )
+        return group_metadata(attributes=dict(config.attributes))

@@ -137,7 +137,7 @@ def test_create_group_refuses_an_existing_member(
     tmp_path: pathlib.Path,
 ) -> None:
     group = _Group(_hierarchy(tmp_path))
-    with pytest.raises(UnsupportedZarrOperation):
+    with pytest.raises(FileExistsError):
         group.create_group("img")
 
 
@@ -209,6 +209,20 @@ def test_a_v3_node_without_a_node_type_is_not_detected(
         json.dumps({"zarr_format": 3, "shape": [4]})
     )
     assert node_at(directory) is None
+
+
+def test_create_array_writes_metadata_and_opens_via_the_hook(
+    tmp_path: pathlib.Path,
+) -> None:
+    from abczarr.metadata.base import node_at
+
+    group = _Group(_hierarchy(tmp_path))
+    made = group.create_array(
+        "fresh", shape=(4,), dtype="int32", chunks=(4,)
+    )
+    assert isinstance(made, _StubArray)
+    # the array metadata was written, in the group's own version
+    assert node_at(group.store_path / "fresh") == ("array", 3)
 
 
 # --------------------------------------------------------------------------
