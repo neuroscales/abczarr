@@ -17,6 +17,7 @@ from abczarr.drivers.zarr_python import (  # noqa: E402
     ZarrPythonArray,
     ZarrPythonDriver,
     ZarrPythonGroup,
+    ZarrPythonNode,
 )
 from abczarr.metadata.base import ArrayMetadata  # noqa: E402
 
@@ -35,6 +36,16 @@ def _store(tmp_path: pathlib.Path) -> str:
     array[:] = np.arange(64).reshape(8, 8)
     group.create_group("sub")
     return root
+
+
+def test_both_node_kinds_share_a_common_base(tmp_path: pathlib.Path) -> None:
+    # the array and group adapters share ZarrPythonNode, so open returns one
+    # node type and the metadata/attrs/version accessors are written once
+    root = _store(tmp_path)
+    array = _open(root + "/img")
+    group = _open(root)
+    assert isinstance(array, ZarrPythonNode)
+    assert isinstance(group, ZarrPythonNode)
 
 
 # --------------------------------------------------------------------------

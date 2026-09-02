@@ -20,6 +20,7 @@ from abczarr.drivers.tensorstore import (  # noqa: E402
     TensorStoreArray,
     TensorStoreDriver,
     TensorStoreGroup,
+    TensorStoreNode,
 )
 from abczarr.metadata.base import ArrayMetadata  # noqa: E402
 from abczarr.registry import available_drivers  # noqa: E402
@@ -207,6 +208,18 @@ def test_create_an_array_inside_a_group(tmp_path: pathlib.Path) -> None:
     arr[:] = np.arange(4, dtype="int32")
     assert np.asarray(arr[:]).tolist() == [0, 1, 2, 3]
     assert "img" in list(group.keys())
+
+
+def test_both_node_kinds_share_a_common_base(tmp_path: pathlib.Path) -> None:
+    # array and group are both TensorStoreNodes, so open returns one type
+    root = str(tmp_path / "g.zarr")
+    zarr.open_group(root, mode="w").create_array(
+        "a", shape=(2,), chunks=(2,), dtype="u1"
+    )
+    group = abczarr.open(root, mode="r", driver="tensorstore")
+    array = abczarr.open(root + "/a", mode="r", driver="tensorstore")
+    assert isinstance(group, TensorStoreNode)
+    assert isinstance(array, TensorStoreNode)
 
 
 def test_attrs_write_through(tmp_path: pathlib.Path) -> None:

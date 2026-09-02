@@ -11,6 +11,7 @@ TensorStore.
 
 __all__ = [
     "TensorStoreDriver",
+    "TensorStoreNode",
     "TensorStoreArray",
     "TensorStoreGroup",
 ]
@@ -88,7 +89,20 @@ def _looks_like_path(location: tx.Any) -> bool:
     return isinstance(location, str) and "://" not in location
 
 
-class TensorStoreArray(ZarrArray):
+class TensorStoreNode(ZarrNode):
+    """Common base for the TensorStore array and group adapters.
+
+    It marks a node as one the TensorStore driver produced, so
+    [open][abczarr.drivers.tensorstore.TensorStoreDriver.open] has one return
+    type covering both. TensorStore keeps no user attributes of its own, so
+    both nodes read and write attributes through the metadata file -- the
+    write-through mapping inherited from
+    [ZarrNode][abczarr.abc.node.ZarrNode] -- and there is nothing driver-wide
+    to override here.
+    """
+
+
+class TensorStoreArray(TensorStoreNode, ZarrArray):
     """A [ZarrArray][abczarr.abc.array.ZarrArray] backed by a TensorStore.
 
     Wraps an open ``tensorstore.TensorStore`` so it reads and writes through
@@ -177,7 +191,7 @@ def _create_ts_array(
     return TensorStoreArray(array)
 
 
-class TensorStoreGroup(PathGroup):
+class TensorStoreGroup(TensorStoreNode, PathGroup):
     """The group returned when the TensorStore driver opens a group.
 
     TensorStore has no group object of its own, so
@@ -215,7 +229,7 @@ class TensorStoreDriver(Driver):
     def available(self) -> bool:
         return ts is not None
 
-    def open(self, location: tx.Any, mode: str = "r") -> ZarrNode:
+    def open(self, location: tx.Any, mode: str = "r") -> TensorStoreNode:
         if _peek_node_type(location) == "group":
             return TensorStoreGroup(location, mode)
         return _open_ts_array(location, mode)
