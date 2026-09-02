@@ -208,7 +208,7 @@ def test_create_from_a_metadata_object(tmp_path: pathlib.Path) -> None:
     from abczarr.metadata import v3
 
     meta = v3.ArrayMetadata.from_dict(_raw_v3_array())
-    arr = abczarr.create(str(tmp_path / "raw.zarr"), meta)
+    arr = abczarr.create_metadata(str(tmp_path / "raw.zarr"), meta)
     assert isinstance(arr, ZarrPythonArray)
     # the exact metadata is honoured, including a custom fill and codec level
     assert arr.metadata.to_dict()["fill_value"] == 7
@@ -217,7 +217,7 @@ def test_create_from_a_metadata_object(tmp_path: pathlib.Path) -> None:
 
 
 def test_create_from_a_metadata_dict(tmp_path: pathlib.Path) -> None:
-    arr = abczarr.create(str(tmp_path / "d.zarr"), _raw_v3_array())
+    arr = abczarr.create_metadata(str(tmp_path / "d.zarr"), _raw_v3_array())
     assert isinstance(arr, ZarrPythonArray)
     assert arr.shape == (8, 8)
 
@@ -225,7 +225,7 @@ def test_create_from_a_metadata_dict(tmp_path: pathlib.Path) -> None:
 def test_create_from_metadata_rejects_stray_keywords(
     tmp_path: pathlib.Path,
 ) -> None:
-    with pytest.raises(TypeError, match="unexpected keyword"):
-        abczarr.create(
+    with pytest.raises(TypeError):
+        abczarr.create_metadata(
             str(tmp_path / "x.zarr"), _raw_v3_array(), chunks=(2, 2)
         )

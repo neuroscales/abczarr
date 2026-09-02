@@ -14,6 +14,7 @@ __all__ = [
     "open_group",
     "create",
     "create_group",
+    "create_metadata",
 ]
 
 # stdlib
@@ -92,53 +93,53 @@ def open_group(
 
 @tx.overload
 def create(
-    location: tz.PathLike, spec: ArrayConfig, **fields: tx.Any
+    location: tz.PathLike, config: ArrayConfig, **fields: tx.Any
 ) -> ZarrArray: ...
 @tx.overload
 def create(
-    location: tz.PathLike, spec: GroupConfig, **fields: tx.Any
+    location: tz.PathLike, config: GroupConfig, **fields: tx.Any
 ) -> ZarrGroup: ...
-@tx.overload
-def create(
-    location: tz.PathLike, spec: NodeMetadata, **fields: tx.Any
-) -> ZarrNode: ...
 
 
 def create(
-    location: tz.PathLike,
-    spec: "tx.Union[ZarrConfig, NodeMetadata, tz.JSONDict]",
-    **fields: tx.Any,
+    location: tz.PathLike, config: ZarrConfig, **fields: tx.Any
 ) -> ZarrNode:
-    """Create the array or group *spec* describes at *location*.
+    """Create the array or group *config* describes at *location*.
 
-    *spec* is usually a config: an [ArrayConfig][abczarr.config.ArrayConfig]
-    creates an array, a [GroupConfig][abczarr.config.GroupConfig] a group, and
-    keyword arguments override the config's fields. For full control beyond
-    what the config helpers express, *spec* may instead be an exact metadata
-    document -- an [ArrayMetadata][abczarr.metadata.base.ArrayMetadata] or
-    [GroupMetadata][abczarr.metadata.base.GroupMetadata], or its dict -- which
-    is created as it is; then `overwrite` and `driver` may be passed as
-    keywords.
+    An [ArrayConfig][abczarr.config.ArrayConfig] creates an array, a
+    [GroupConfig][abczarr.config.GroupConfig] creates a group. Fields passed
+    as keyword arguments override the config. The config's `zarr_version`,
+    `overwrite`, and `driver` are honoured; the returned group's
+    `create_array` adds arrays to it. For full control beyond what the config
+    helpers express, see [create_metadata][abczarr.api.create_metadata].
     """
-    if isinstance(spec, ZarrConfig):
-        config = evolve(spec, **fields) if fields else spec
-        if isinstance(config, ArrayConfig):
-            config = config.resolve()
-            metadata = config.to_metadata()
-        else:
-            metadata = None
-        return _choose_create_driver(config.driver, metadata).create(
-            location, config
-        )
-
-    metadata = spec if isinstance(spec, NodeMetadata) else metadata_from_dict(
-        spec
-    )
-    overwrite = bool(fields.pop("overwrite", False))
-    driver = fields.pop("driver", None)
     if fields:
-        names = ", ".join(sorted(fields))
-        raise TypeError(f"create() got unexpected keyword arguments: {names}")
+        config = evolve(config, **fields)
+    if isinstance(config, ArrayConfig):
+        config = config.resolve()
+        metadata = config.to_metadata()
+    else:
+        metadata = None
+    return _choose_create_driver(config.driver, metadata).create(
+        location, config
+    )
+
+
+def create_metadata(
+    location: tz.PathLike,
+    metadata: tx.Union[NodeMetadata, tz.JSONDict],
+    *, driver: tx.Optional[str] = None, overwrite: bool = False,
+) -> ZarrNode:
+    """Create a node at *location* from an exact metadata document.
+
+    The escape hatch beyond [create][abczarr.api.create]: pass an
+    [ArrayMetadata][abczarr.metadata.base.ArrayMetadata] or
+    [GroupMetadata][abczarr.metadata.base.GroupMetadata] (or its dict) and it
+    is created as it is, with whatever fill value, codec pipeline or
+    attributes it names.
+    """
+    if not isinstance(metadata, NodeMetadata):
+        metadata = metadata_from_dict(metadata)
     return _choose_create_driver(driver, metadata).create_metadata(
         location, metadata, overwrite=overwrite
     )
