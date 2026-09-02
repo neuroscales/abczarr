@@ -111,6 +111,11 @@ class ZarrArray(ZarrNode):
         for every backend (unlike `dask.array.to_zarr`, which requires
         a native `zarr.Array`).
 
+        !!! example
+            ```python
+            array.store(dask_array)
+            ```
+
         Parameters
         ----------
         source : array-like
@@ -118,11 +123,6 @@ class ZarrArray(ZarrNode):
         lock : bool, optional
             Serialize concurrent block writes. Leave `True` unless the
             source's blocks are known to map to disjoint chunks.
-
-        !!! example
-            ```python
-            array.store(dask_array)
-            ```
         """
         import dask.array as da
 
