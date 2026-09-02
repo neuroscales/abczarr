@@ -20,8 +20,6 @@ is left at full resolution, which is what you want for a channel or time
 axis that should not be blurred together.
 """
 
-from __future__ import annotations
-
 __all__ = [
     "downsample_array",
     "create_pyramid",
@@ -37,15 +35,18 @@ import typing_extensions as tx
 # core
 from abczarr._core import typing as tz
 
-if tx.TYPE_CHECKING:
-    from abczarr.abc.array import ZarrArray
-    from abczarr.abc.group import ZarrGroup
+# abc
+from abczarr.abc.array import ZarrArray
+from abczarr.abc.group import ZarrGroup
 
-#: How much each axis shrinks per level. One number applies to every axis;
-#: a sequence gives one per axis; a mapping keys a factor by axis index or
-#: dimension name, halving any axis it does not mention.
+#: How much each axis shrinks per level. One number applies to every axis; a
+#: sequence gives one per axis; a mapping keys a factor by axis index or
+#: dimension name, and a None key sets the default for the axes it does not
+#: mention (2, a halving, when there is no None key).
 FactorSpec = tx.Union[
-    int, "tx.Sequence[int]", "tx.Mapping[tx.Union[int, str], int]"
+    int,
+    tx.Sequence[int],
+    tx.Mapping[tx.Optional[tx.Union[int, str]], int],
 ]
 
 #: The `dask.array` reduction each named downsampling mode uses. The window
@@ -86,14 +87,18 @@ def _resolve_factors(
 
     - an `int` applies to every axis;
     - a sequence gives one factor per axis (its length must be *ndim*);
-    - a mapping keys a factor by axis index or dimension name, and every
-      axis it does not mention is halved.
+    - a mapping keys a factor by axis index or dimension name; a None key
+      sets the default for the axes it does not mention (2, a halving, when
+      there is no None key), the way the array config's chunk mapping does.
     """
     if isinstance(factor, int) and not isinstance(factor, bool):
         return (factor,) * ndim
     if hasattr(factor, "keys"):  # a mapping of some axes to their factor
-        resolved = [2] * ndim
+        default = factor.get(None, 2)
+        resolved = [default] * ndim
         for key, value in factor.items():  # type: ignore[union-attr]
+            if key is None:
+                continue
             resolved[_axis_index(key, ndim, names)] = int(value)
         return tuple(resolved)
     factors = tuple(int(f) for f in factor)  # type: ignore[union-attr]
@@ -220,6 +225,7 @@ def create_pyramid(
     factor: FactorSpec = 2,
     reduction: str = "mean",
     name: tx.Union[str, tx.Callable[[int], str]] = "{level}",
+    write_metadata: bool = True,
 ) -> tx.List[ZarrArray]:
     """Build a pyramid of downsampled arrays from *source*.
 
@@ -253,6 +259,11 @@ def create_pyramid(
         names them by factor, `"2"`, `"4"`, ... for a halving pyramid. A
         callable is passed the level index and returns the name. Level 0
         keeps the name *source*.
+    write_metadata : bool, optional
+        Whether to record the pyramid as OME multiscales metadata on the
+        group (the default). The metadata names each level's array and the
+        scale transformation that maps it back onto the base resolution, so
+        an OME-Zarr reader sees the arrays as one multiscale image.
     """
     base = group[source]
     names = getattr(base.metadata, "dimension_names", None)
@@ -260,6 +271,7 @@ def create_pyramid(
     if levels is None:
         levels = default_levels(base.shape, base.chunks, factors)
     pyramid = [base]
+    paths = [source]
     previous = source
     for level in range(1, levels + 1):
         if callable(name):
@@ -276,5 +288,69 @@ def create_pyramid(
             del group[target]
             break
         pyramid.append(made)
+        paths.append(target)
         previous = target
+    if write_metadata:
+        _write_multiscales(group, paths, factors, names)
     return pyramid
+
+
+#: How an axis name maps to an OME axis type. OME-Zarr distinguishes space,
+#: time and channel axes; anything unrecognised is treated as a space axis.
+_AXIS_TYPES = {
+    "x": "space",
+    "y": "space",
+    "z": "space",
+    "t": "time",
+    "c": "channel",
+}
+
+
+def _axis_type(name: tx.Optional[str]) -> str:
+    """The OME axis type for a dimension *name* (space, time or channel)."""
+    return _AXIS_TYPES.get((name or "").lower(), "space")
+
+
+def _write_multiscales(
+    group: ZarrGroup,
+    paths: tx.Sequence[str],
+    factors: tz.ShapeLike,
+    names: tx.Optional[tx.Sequence[tx.Optional[str]]],
+) -> None:
+    """Record *paths* as an OME multiscales image on *group*.
+
+    Writes the OME v0.5 `multiscales` metadata under the group's `"ome"`
+    attribute: one axis per dimension, and one dataset per pyramid level
+    carrying the scale transformation that maps that level back onto the
+    base resolution (a level shrunk by *f* along an axis is `f` times
+    coarser, so its scale along that axis is `f ** level`).
+    """
+    from abczarr.ome.metadata.v0_5.version import VERSION
+
+    ndim = len(tuple(factors))
+    if names is None:
+        axis_names: tx.List[str] = [f"dim_{i}" for i in range(ndim)]
+    else:
+        axis_names = [
+            axis if axis is not None else f"dim_{i}"
+            for i, axis in enumerate(names)
+        ]
+    axes = [
+        {"name": str(axis), "type": _axis_type(axis)} for axis in axis_names
+    ]
+    datasets = [
+        {
+            "path": path,
+            "coordinateTransformations": [
+                {
+                    "type": "scale",
+                    "scale": [float(f) ** level for f in factors],
+                }
+            ],
+        }
+        for level, path in enumerate(paths)
+    ]
+    group.attrs["ome"] = {
+        "version": VERSION,
+        "multiscales": [{"axes": axes, "datasets": datasets}],
+    }
