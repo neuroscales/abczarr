@@ -1,0 +1,559 @@
+<title>abczarr Async &amp; Transactions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo:wght@500;700;900&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --ground: #eef1f2;
+    --surface: #ffffff;
+    --surface-2: #f5f7f8;
+    --ink: #16202a;
+    --muted: #5c6b78;
+    --faint: #8595a1;
+    --line: #dce2e5;
+    --line-strong: #c3ccd1;
+    --accent: #0d7d8a;
+    --accent-ink: #095a64;
+    --accent-wash: #e2f0f1;
+    --native: #2f8f5b;
+    --native-wash: #e3f1e8;
+    --synth: #b8791f;
+    --synth-wash: #f6ecd9;
+    --none: #c1443c;
+    --none-wash: #f7e2e0;
+    --defer: #6f5f92;
+    --defer-wash: #ece7f3;
+    --code-bg: #f4f7f8;
+    --code-kw: #095a64;
+    --code-str: #9a5a2b;
+    --code-com: #7c8a94;
+    --shadow: 0 1px 2px rgba(22,32,42,.05), 0 8px 24px -12px rgba(22,32,42,.18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0e1519; --surface: #16212a; --surface-2: #1b2933;
+      --ink: #e6edf2; --muted: #9db0bd; --faint: #6b7d8a;
+      --line: #263640; --line-strong: #33474f;
+      --accent: #35b6c4; --accent-ink: #7fd6df; --accent-wash: #123037;
+      --native: #4dbb7f; --native-wash: #123024;
+      --synth: #d9a24a; --synth-wash: #33280f;
+      --none: #e2695f; --none-wash: #331815;
+      --defer: #a996cf; --defer-wash: #221b33;
+      --code-bg: #0f1a20; --code-kw: #7fd6df; --code-str: #d7a373; --code-com: #647581;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0e1519; --surface: #16212a; --surface-2: #1b2933;
+    --ink: #e6edf2; --muted: #9db0bd; --faint: #6b7d8a;
+    --line: #263640; --line-strong: #33474f;
+    --accent: #35b6c4; --accent-ink: #7fd6df; --accent-wash: #123037;
+    --native: #4dbb7f; --native-wash: #123024;
+    --synth: #d9a24a; --synth-wash: #33280f;
+    --none: #e2695f; --none-wash: #331815;
+    --defer: #a996cf; --defer-wash: #221b33;
+    --code-bg: #0f1a20; --code-kw: #7fd6df; --code-str: #d7a373; --code-com: #647581;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 16.5px; line-height: 1.62; -webkit-font-smoothing: antialiased;
+  }
+  code, .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+
+  .topbar {
+    position: sticky; top: 0; z-index: 40;
+    background: color-mix(in srgb, var(--ground) 88%, transparent);
+    backdrop-filter: blur(10px); border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    max-width: 1000px; margin: 0 auto; padding: 10px 24px;
+    display: flex; align-items: center; gap: 18px;
+  }
+  .brand { font-family: "Chivo", sans-serif; font-weight: 900; letter-spacing: -.01em; font-size: 15px; }
+  .brand span { color: var(--accent); }
+  .topnav { display: flex; gap: 2px; margin-left: auto; flex-wrap: wrap; }
+  .topnav a {
+    font-family: "IBM Plex Mono", monospace; font-size: 12px; letter-spacing: .02em;
+    color: var(--muted); text-decoration: none; padding: 5px 9px; border-radius: 6px;
+  }
+  .topnav a:hover { color: var(--accent-ink); background: var(--accent-wash); }
+  .theme-btn {
+    font-family: "IBM Plex Mono", monospace; font-size: 12px;
+    background: var(--surface); color: var(--muted);
+    border: 1px solid var(--line-strong); border-radius: 6px;
+    padding: 5px 10px; cursor: pointer;
+  }
+  .theme-btn:hover { color: var(--accent-ink); border-color: var(--accent); }
+  .theme-btn:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  main { max-width: 1000px; margin: 0 auto; padding: 0 24px 96px; }
+
+  /* hero */
+  .hero { padding: 54px 0 30px; border-bottom: 1px solid var(--line); }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace; font-size: 12.5px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent-ink); margin: 0 0 14px;
+  }
+  h1 {
+    font-family: "Chivo", sans-serif; font-weight: 900; letter-spacing: -.02em;
+    font-size: clamp(30px, 5vw, 46px); line-height: 1.04; margin: 0 0 16px;
+    text-wrap: balance;
+  }
+  .lede { font-size: 19px; color: var(--muted); max-width: 64ch; margin: 0 0 22px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    font-family: "IBM Plex Mono", monospace; font-size: 12px;
+    padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line-strong);
+    color: var(--muted); background: var(--surface);
+  }
+  .chip b { color: var(--ink); font-weight: 600; }
+
+  section { padding: 42px 0 8px; }
+  h2 {
+    font-family: "Chivo", sans-serif; font-weight: 700; letter-spacing: -.01em;
+    font-size: 25px; margin: 0 0 6px; scroll-margin-top: 72px;
+    display: flex; align-items: baseline; gap: 12px;
+  }
+  h2 .n {
+    font-family: "IBM Plex Mono", monospace; font-size: 14px; font-weight: 500;
+    color: var(--accent); }
+  .sub { color: var(--muted); margin: 0 0 22px; max-width: 70ch; }
+  h3 {
+    font-family: "Chivo", sans-serif; font-weight: 700; font-size: 16.5px;
+    margin: 26px 0 10px; letter-spacing: -.005em;
+  }
+  p { max-width: 72ch; }
+  a.ref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px solid var(--accent-wash); }
+  a.ref:hover { border-bottom-color: var(--accent); }
+
+  /* decision list */
+  .decisions { display: grid; gap: 12px; counter-reset: d; }
+  .decision {
+    display: grid; grid-template-columns: 34px 1fr; gap: 14px; align-items: start;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px 18px; box-shadow: var(--shadow);
+  }
+  .decision::before {
+    counter-increment: d; content: counter(d);
+    font-family: "Chivo", sans-serif; font-weight: 900; font-size: 18px;
+    color: var(--accent); background: var(--accent-wash);
+    width: 34px; height: 34px; border-radius: 9px;
+    display: grid; place-items: center;
+  }
+  .decision h4 { margin: 2px 0 4px; font-family: "IBM Plex Sans"; font-weight: 600; font-size: 16px; }
+  .decision p { margin: 0; color: var(--muted); font-size: 15px; }
+
+  /* code */
+  .code-label {
+    font-family: "IBM Plex Mono", monospace; font-size: 12px; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--faint); margin: 22px 0 7px;
+  }
+  pre {
+    margin: 0 0 6px; background: var(--code-bg); border: 1px solid var(--line);
+    border-left: 3px solid var(--accent); border-radius: 10px;
+    padding: 15px 17px; overflow-x: auto; box-shadow: var(--shadow);
+  }
+  pre code { font-size: 13.6px; line-height: 1.66; color: var(--ink); white-space: pre; }
+  .c { color: var(--code-com); font-style: italic; }
+  .k { color: var(--code-kw); font-weight: 600; }
+  .s { color: var(--code-str); }
+  figcaption { color: var(--muted); font-size: 14px; margin: 0 0 26px; max-width: 72ch; }
+  figure { margin: 0; }
+
+  /* tables */
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; background: var(--surface); font-size: 14.5px; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th {
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px; letter-spacing: .05em;
+    text-transform: uppercase; color: var(--faint); font-weight: 500;
+    background: var(--surface-2);
+  }
+  tr:last-child td { border-bottom: none; }
+  td b { font-weight: 600; }
+  .cell-note { color: var(--muted); }
+
+  .pill {
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px; font-weight: 500;
+    padding: 2px 8px; border-radius: 999px; white-space: nowrap; display: inline-block;
+  }
+  .p-native { color: var(--native); background: var(--native-wash); }
+  .p-synth  { color: var(--synth);  background: var(--synth-wash); }
+  .p-none   { color: var(--none);   background: var(--none-wash); }
+  .p-defer  { color: var(--defer);  background: var(--defer-wash); }
+
+  /* bridge matrix */
+  .matrix { display: grid; grid-template-columns: auto 1fr 1fr; gap: 1px; background: var(--line);
+            border: 1px solid var(--line); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+  .matrix > div { background: var(--surface); padding: 13px 15px; font-size: 14px; }
+  .matrix .mh { background: var(--surface-2); font-family: "IBM Plex Mono", monospace;
+                font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--faint); }
+  .matrix .rh { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: var(--accent-ink); }
+
+  /* phases */
+  .phase { border-left: 2px solid var(--line-strong); padding: 2px 0 2px 20px; margin: 0 0 8px; position: relative; }
+  .phase::before {
+    content: ""; position: absolute; left: -6px; top: 6px; width: 10px; height: 10px;
+    border-radius: 999px; background: var(--accent); border: 2px solid var(--ground);
+  }
+  .phase.defer::before { background: var(--defer); }
+  .phase .ph-when {
+    font-family: "IBM Plex Mono", monospace; font-size: 12px; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--accent-ink);
+  }
+  .phase.defer .ph-when { color: var(--defer); }
+  ul.tight { margin: 8px 0 0; padding-left: 20px; }
+  ul.tight li { margin: 4px 0; color: var(--muted); }
+  ul.tight li b { color: var(--ink); font-weight: 600; }
+
+  .callout {
+    background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px 18px; margin: 20px 0 0;
+  }
+  .callout h4 { margin: 0 0 6px; font-size: 14px; font-family: "IBM Plex Mono", monospace;
+                letter-spacing: .03em; text-transform: uppercase; color: var(--faint); }
+  .callout p { margin: 6px 0 0; color: var(--muted); font-size: 15px; }
+
+  footer {
+    max-width: 1000px; margin: 0 auto; padding: 26px 24px 60px; border-top: 1px solid var(--line);
+    color: var(--faint); font-size: 13px; font-family: "IBM Plex Mono", monospace;
+  }
+  footer a { color: var(--accent-ink); text-decoration: none; }
+</style>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">abc<span>zarr</span> / design</div>
+    <nav class="topnav">
+      <a href="#decisions">decisions</a>
+      <a href="#today">today</a>
+      <a href="#surface">surface</a>
+      <a href="#model">model</a>
+      <a href="#backends">backends</a>
+      <a href="#plan">plan</a>
+      <a href="#open">open</a>
+    </nav>
+    <button class="theme-btn" id="theme" aria-label="Toggle theme">theme</button>
+  </div>
+</div>
+
+<main>
+  <header class="hero">
+    <p class="eyebrow">Design · async &amp; transactions</p>
+    <h1>Async and transactions belong on the nodes</h1>
+    <p class="lede">A <b>Store</b> in abczarr is mostly a path-holder — no node's chunk I/O passes through
+      one. So the sync, async, and transaction surfaces belong on the objects users actually hold:
+      <span class="mono">ZarrArray</span> and <span class="mono">ZarrGroup</span>. This is the plan for
+      getting them there while leveraging each backend's native machinery.</p>
+    <div class="chips">
+      <span class="chip">status <b>design — nothing built</b></span>
+      <span class="chip">floor <b>Python 3.8</b></span>
+      <span class="chip">verified against <b>zarr 3.1.6 · tensorstore · zarrista 0.1.0</b></span>
+      <span class="chip">extends <b>roadmap §4</b></span>
+    </div>
+  </header>
+
+  <section id="decisions">
+    <h2><span class="n">01</span> The decisions</h2>
+    <p class="sub">Six calls carry the plan. Two of them reverse the first sketch — noted where they do.</p>
+    <div class="decisions">
+      <div class="decision"><div></div>
+        <h4>The surface lives on nodes, not stores</h4>
+        <p>Sync / async / transactional APIs go on <span class="mono">ZarrArray</span> /
+        <span class="mono">ZarrGroup</span>. The async + transaction scaffolding currently sits, unused,
+        at the store layer — the wrong layer.</p></div>
+      <div class="decision"><div></div>
+        <h4>Two colors, one native — synthesize async-from-sync only</h4>
+        <p>A driver implements its node ops once, in its native color. abczarr threads sync→async; it does
+        <b>not</b> build the background-loop <span class="mono">sync()</span> in v1 — every real backend is
+        already bi-colored, so it has no customer. <em>(Reverses the first sketch's two-way symmetry.)</em></p></div>
+      <div class="decision"><div></div>
+        <h4>Transactions are first-class objects, spawned by the node</h4>
+        <p>A <span class="mono">Transaction</span> collects operations;
+        <span class="mono">node.with_transaction(txn)</span> returns a node <em>view</em> whose writes enlist;
+        one transaction can span many nodes.</p></div>
+      <div class="decision"><div></div>
+        <h4><span class="mono">with_transaction</span> = "an equivalent node whose writes enlist"</h4>
+        <p>Not "rebind this handle." tensorstore rebinds an open handle; Icechunk re-opens the node on a
+        session. Both satisfy one contract only if it's written the general way from day one.</p></div>
+      <div class="decision"><div></div>
+        <h4>No faked transactions</h4>
+        <p>A backend without native support reports <span class="pill p-none">transactions NONE</span> and
+        <span class="mono">with_transaction</span> raises. No buffered <em>node</em> fallback — buffering
+        arbitrary NumPy selections is not read-your-writes. <em>(Reverses the first sketch.)</em></p></div>
+      <div class="decision"><div></div>
+        <h4>Atomicity is a (driver × store) property, decided at commit</h4>
+        <p>Not a class constant: tensorstore's <span class="mono">atomic=True</span> succeeds on
+        <span class="mono">memory</span>/<span class="mono">ocdbt</span> and fails <em>at commit</em> on the
+        <span class="mono">file</span> kvstore — for even a single chunk.</p></div>
+    </div>
+  </section>
+
+  <section id="today">
+    <h2><span class="n">02</span> Where it stands today</h2>
+    <p class="sub">Verified against the tree and live backend probes, not memory.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Fact</th><th>Evidence</th></tr></thead>
+        <tbody>
+          <tr><td>Nodes are <b>sync-only</b>.</td>
+              <td class="cell-note"><span class="mono">abc/array.py</span>,
+              <span class="mono">group.py</span>, <span class="mono">node.py</span> — no coroutines.</td></tr>
+          <tr><td>Async + transaction scaffolding lives at the <b>store</b> layer and <b>no driver uses it</b>.</td>
+              <td class="cell-note">No <span class="mono">_native_transaction</span> override anywhere; no driver builds an <span class="mono">AsyncStore</span>.</td></tr>
+          <tr><td>The tensorstore node reads via a <b>blocking</b> <span class="mono">.result()</span> yet declares <span class="pill p-native">async NATIVE</span>.</td>
+              <td class="cell-note"><span class="mono">drivers/tensorstore.py:158–161</span> — the declaration is aspirational; there is no async path.</td></tr>
+          <tr><td><b>Nodes have no link to their driver.</b></td>
+              <td class="cell-note">Node <span class="mono">__init__</span> takes only the backend object; <span class="mono">available_drivers()</span> builds a fresh stateless driver per call.</td></tr>
+          <tr><td><b>Attributes bypass every layer.</b></td>
+              <td class="cell-note"><span class="mono">attrs</span> writes the metadata file directly (<span class="mono">mkstemp+fsync+replace</span>) — through neither store nor backend, so it cannot enlist in a transaction.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <h4>Why the reversal on synthesis</h4>
+      <p>tensorstore futures are awaitable <em>and</em> block via <span class="mono">.result()</span>;
+      zarr-python is async-first with a sync wrapper; zarrista ships both <span class="mono">Array</span> and
+      <span class="mono">AsyncArray</span>. All three real backends are natively bi-colored, so
+      sync-from-async synthesis has zero customers — building it now is building for a backend that doesn't exist.</p>
+    </div>
+  </section>
+
+  <section id="surface">
+    <h2><span class="n">03</span> The user surface</h2>
+    <p class="sub">Proposed spelling, not existing API. <span class="mono">open(…)</span> is abczarr's façade;
+      <span class="mono">asynchronous=True</span> selects the async twin. Async uses
+      <span class="mono">getitem</span>/<span class="mono">setitem</span> methods, not <span class="mono">[]</span>,
+      because an assignment expression can't be awaited — zarr-python's choice.</p>
+
+    <figure>
+      <p class="code-label">Async node — fan reads out onto the backend's own executor</p>
+<pre><code><span class="k">import</span> abczarr, asyncio
+
+arr = abczarr.open(<span class="s">"data.zarr"</span>, mode=<span class="s">"a"</span>, asynchronous=<span class="k">True</span>)   <span class="c"># AsyncZarrArray</span>
+
+block = <span class="k">await</span> arr.getitem((<span class="k">slice</span>(0, 64), <span class="k">slice</span>(0, 64)))
+<span class="k">await</span> arr.setitem((<span class="k">slice</span>(0, 64), <span class="k">slice</span>(0, 64)), block * 2)
+
+<span class="c"># many chunk reads, concurrently</span>
+regions = [(<span class="k">slice</span>(i, i + 64), <span class="k">slice</span>(0, 64)) <span class="k">for</span> i <span class="k">in</span> range(0, 512, 64)]
+blocks = <span class="k">await</span> asyncio.gather(*(arr.getitem(r) <span class="k">for</span> r <span class="k">in</span> regions))</code></pre>
+      <figcaption>For tensorstore each <span class="mono">getitem</span> is <span class="mono">await handle[r].read()</span>;
+        for zarr-python it delegates to <span class="mono">AsyncArray.getitem</span>; a sync-only backend runs in a
+        bounded thread pool and reports <span class="pill p-synth">async SYNTHESIZED</span> rather than NATIVE.</figcaption>
+    </figure>
+
+    <figure>
+      <p class="code-label">One transaction, several nodes — the reason it's an object</p>
+<pre><code>group  = abczarr.open(<span class="s">"dataset.zarr"</span>, mode=<span class="s">"a"</span>)
+raw    = group[<span class="s">"raw"</span>]
+labels = group[<span class="s">"labels"</span>]
+
+<span class="k">with</span> group.transaction(atomic=<span class="k">True</span>) <span class="k">as</span> txn:
+    raw.with_transaction(txn)[0:2, 0:2]    = data
+    labels.with_transaction(txn)[0:2, 0:2] = mask
+<span class="c"># both arrays land together, or neither</span></code></pre>
+      <figcaption>The transaction is standalone, so it binds as many nodes as you like and commits once.
+        <span class="mono">arr.transaction(…)</span> is just the convenience that asks the driver to spawn one.</figcaption>
+    </figure>
+
+    <figure>
+      <p class="code-label">Identical code across backends — rebind vs. re-open is the driver's job</p>
+<pre><code>txn = group.transaction()
+group[<span class="s">"raw"</span>].with_transaction(txn)[...] = data
+txn.commit(message=<span class="s">"ingest run 2026-09-03"</span>)   <span class="c"># Icechunk records it; tensorstore ignores it</span></code></pre>
+      <figcaption>tensorstore rebinds an open handle; Icechunk re-opens the node on a session and commits with the
+        message. The "equivalent node whose writes enlist" contract is what lets one line of user code mean both.</figcaption>
+    </figure>
+
+    <figure>
+      <p class="code-label">Async + transaction</p>
+<pre><code>arr = abczarr.open(<span class="s">"data.zarr"</span>, mode=<span class="s">"a"</span>, asynchronous=<span class="k">True</span>)
+
+<span class="k">async with</span> arr.transaction(atomic=<span class="k">True</span>) <span class="k">as</span> txn:     <span class="c"># AsyncTransaction</span>
+    view = arr.with_transaction(txn)
+    <span class="k">await</span> view.setitem((<span class="k">slice</span>(0, 2),), 1)
+    <span class="k">await</span> view.setitem((<span class="k">slice</span>(2, 4),), 2)
+<span class="c"># clean exit awaits txn.commit()  (commit_async under the hood)</span></code></pre>
+      <figcaption>Both facades share one transaction core, so <span class="mono">txn.as_async()</span> /
+        <span class="mono">atxn.as_sync()</span> cross colors without re-opening, and read-your-writes is shared.</figcaption>
+    </figure>
+
+    <figure>
+      <p class="code-label">What raises</p>
+<pre><code>arr.transaction(atomic=<span class="k">False</span>)          <span class="c"># backend w/o native txns -> UnsupportedZarrOperation</span>
+arr.supports(<span class="s">"atomic_transactions"</span>)    <span class="c"># per instance: file -> False, memory/ocdbt -> True</span></code></pre>
+    </figure>
+  </section>
+
+  <section id="model">
+    <h2><span class="n">04</span> The model</h2>
+
+    <h3>Color bridge — synthesize only async-from-sync</h3>
+    <p class="sub">The facades adapt each op to the caller's color. The top-right cell has no customer today,
+      so it's deferred, not built.</p>
+    <div class="matrix">
+      <div class="mh"></div><div class="mh">native sync op</div><div class="mh">native async op</div>
+      <div class="rh">sync facade</div>
+        <div>direct call</div>
+        <div><span class="pill p-defer">deferred</span> needs background-loop <span class="mono">sync()</span></div>
+      <div class="rh">async facade</div>
+        <div><span class="pill p-synth">synthesized</span> <span class="mono">await to_thread(fn)</span>, bounded pool</div>
+        <div>direct <span class="mono">await future / coro</span></div>
+    </div>
+
+    <h3>Transactions — shared core, two thin facades</h3>
+    <p>A color-neutral <span class="mono">_TransactionCore</span> holds the native handle plus
+      <span class="mono">open / committed / aborted / atomic</span>. <span class="mono">Transaction</span> and
+      <span class="mono">AsyncTransaction</span> are thin facades over it, mirroring the node twins;
+      <span class="mono">as_async()</span> / <span class="mono">as_sync()</span> return the other facade over the
+      <em>same</em> core. The base ABC loses its abstract <span class="mono">store</span> property; the buffered
+      store-view flavour moves to a <span class="mono">StoreTransaction</span> that stays the fallback for the
+      path-based store only.</p>
+
+    <h3>The view — four rules</h3>
+    <p><span class="mono">with_transaction</span> returns a <b>new</b> node (never mutates
+      <span class="mono">self._native</span>); identity stays distinct; after commit/abort the view is dead
+      (a new <span class="mono">TransactionClosed</span> naming the node and op); and every child derived from a
+      view inherits the transaction — which needs a single <span class="mono">_derive()</span> seam on
+      <span class="mono">PathGroup</span> (it builds children in four places today) <em>before</em> views exist,
+      or the transaction leaks at the first <span class="mono">__getitem__</span>.</p>
+  </section>
+
+  <section id="backends">
+    <h2><span class="n">05</span> Backend compatibility</h2>
+    <p class="sub">Icechunk isn't installed here; its row is reasoned from its documented
+      <span class="mono">writable_session</span> / <span class="mono">commit</span> API.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Backend</th><th>Async</th><th>Transactions</th><th>with_transaction</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><b>tensorstore</b></td>
+              <td><span class="pill p-native">native</span></td>
+              <td><span class="pill p-native">native</span> <span class="mono">ts.Transaction</span></td>
+              <td>rebind open handle</td>
+              <td class="cell-note">atomic per (driver × kvstore), decided at commit; no conflict detection by default</td></tr>
+          <tr><td><b>zarr-python</b></td>
+              <td><span class="pill p-native">native</span> <span class="mono">AsyncArray</span></td>
+              <td><span class="pill p-none">none of its own</span></td>
+              <td>n/a → raises</td>
+              <td class="cell-note">gains transactions only via an Icechunk store</td></tr>
+          <tr><td><b>Icechunk</b> <span class="mono" style="color:var(--faint)">(inferred)</span></td>
+              <td><span class="pill p-native">via zarr</span></td>
+              <td><span class="pill p-native">native</span> <span class="mono">Session</span></td>
+              <td>re-open node on session</td>
+              <td class="cell-note"><span class="mono">commit(message)</span>, snapshot isolation, real conflicts — wants the re-open contract</td></tr>
+          <tr><td><b>zarrista</b></td>
+              <td><span class="pill p-native">native</span> <span class="mono">AsyncArray</span></td>
+              <td><span class="pill p-none">none known</span></td>
+              <td>raises</td>
+              <td class="cell-note">bi-colored; no transaction API observed</td></tr>
+          <tr><td><b>path-based</b></td>
+              <td><span class="pill p-synth">threaded</span></td>
+              <td><span class="pill p-synth">store-level buffered</span></td>
+              <td>raises at node level</td>
+              <td class="cell-note">the demoted store <span class="mono">BufferedTransaction</span> lives here</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <h4>Why the contract is "equivalent node," not "rebind"</h4>
+      <p>Icechunk has no way to bind an already-open <span class="mono">zarr.Array</span> to a session, so its
+      <span class="mono">with_transaction</span> re-opens on <span class="mono">session.store</span> and returns a new
+      node. Write the contract that way from day one, or tensorstore's <span class="mono">native.with_transaction()</span>
+      becomes the accidental spec.</p>
+    </div>
+  </section>
+
+  <section id="plan">
+    <h2><span class="n">06</span> The plan</h2>
+    <p class="sub">A real sequence: settle the contract, prove it on one backend, widen, then defer the hard parts.</p>
+
+    <div class="phase">
+      <div class="ph-when">Before writing a line</div>
+      <ul class="tight">
+        <li><b>Async-from-sync only</b> — drop the background-loop <span class="mono">sync()</span> from v1.</li>
+        <li><b>No buffered node transaction</b> — node-level <span class="mono">transactions</span> is NONE without native support.</li>
+        <li><b>"Equivalent node" contract</b> so Icechunk's re-open fits; <span class="mono">atomic_transactions</span> answered per instance.</li>
+        <li><b>Spawn hook on the node</b>, not the driver; add the <span class="mono">PathGroup</span> derivation seam.</li>
+        <li><b>Transaction = shared core + facades</b>; base ABC loses <span class="mono">store</span>.</li>
+      </ul>
+    </div>
+
+    <div class="phase">
+      <div class="ph-when">Prototype first — tensorstore only</div>
+      <ul class="tight">
+        <li><span class="mono">TensorStoreTransaction</span> over <span class="mono">ts.Transaction</span>; <span class="mono">with_transaction</span> returns a rebound array.</li>
+        <li>Multi-array atomic commit (<span class="mono">memory</span>/<span class="mono">ocdbt</span>); commit-time atomicity failure on <span class="mono">file</span> → clear error.</li>
+        <li><span class="mono">TransactionClosed</span> on reuse; group children inherit the transaction.</li>
+        <li><span class="mono">AsyncTensorStoreArray</span> with <span class="mono">getitem</span>/<span class="mono">setitem</span> awaiting futures; a parity test.</li>
+      </ul>
+    </div>
+
+    <div class="phase">
+      <div class="ph-when">Second</div>
+      <ul class="tight">
+        <li><span class="mono">AsyncZarrPythonArray/Group</span> wrapping <span class="mono">zarr.AsyncArray/AsyncGroup</span> directly — no bridge.</li>
+        <li>zarr-python <span class="mono">with_transaction</span> raises until an Icechunk driver exists.</li>
+        <li>Generic thread-synthesized async twin, on a bounded executor, for any driver that ships none.</li>
+      </ul>
+    </div>
+
+    <div class="phase defer">
+      <div class="ph-when">Defer</div>
+      <ul class="tight">
+        <li>Background-loop <span class="mono">sync()</span> — build when a coroutine-only backend arrives (stricter re-entrancy guard, fork reset, atexit cleanup).</li>
+        <li>The Icechunk driver — design the re-open path then.</li>
+        <li>Transactional <span class="mono">attrs</span> / group-structure writes via <span class="mono">ts.KvStore.with_transaction</span>.</li>
+        <li>Timeouts on the sync surface and on <span class="mono">commit()</span>.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="open">
+    <h2><span class="n">07</span> Open questions</h2>
+    <div class="tablewrap">
+      <table>
+        <tbody>
+          <tr><td><b>Timeouts</b></td><td class="cell-note">tensorstore has <span class="mono">.result(timeout=)</span> and zarr's <span class="mono">sync()</span> takes one; abczarr's surface has neither. Add optional <span class="mono">timeout=</span> to sync I/O and <span class="mono">commit()</span>?</td></tr>
+          <tr><td><b>Partial failure</b></td><td class="cell-note">a non-atomic multi-node commit can partially apply with no rollback — the API must say so, and that the transaction closes regardless.</td></tr>
+          <tr><td><b>Cross-loop stores</b></td><td class="cell-note">a remote (fsspec) store's aiohttp session is bound to one loop; an async twin on the user's loop beside a sync facade on another is a hazard for remote backends. Guard or document.</td></tr>
+          <tr><td><b><span class="mono">store()</span> on a view</b></td><td class="cell-note">an atomic dask write holds the whole array in the backend's writeback cache until <span class="mono">commit()</span> — refuse above a size, or warn?</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<footer>
+  abczarr design note · async &amp; transactions · companion to <a href="./roadmap.html">roadmap.html</a>.
+  Verified against zarr-python 3.1.6, tensorstore, zarrista 0.1.0; Icechunk reasoned from its documented API.
+</footer>
+
+<script>
+  (function () {
+    var btn = document.getElementById("theme");
+    var root = document.documentElement;
+    var order = ["system", "light", "dark"];
+    var i = 0;
+    try {
+      var saved = localStorage.getItem("abczarr-theme");
+      if (saved && order.indexOf(saved) !== -1) i = order.indexOf(saved);
+    } catch (e) {}
+    function apply() {
+      var mode = order[i];
+      if (mode === "system") root.removeAttribute("data-theme");
+      else root.setAttribute("data-theme", mode);
+      btn.textContent = "theme: " + mode;
+      try { localStorage.setItem("abczarr-theme", mode); } catch (e) {}
+    }
+    btn.addEventListener("click", function () { i = (i + 1) % order.length; apply(); });
+    apply();
+  })();
+</script>
