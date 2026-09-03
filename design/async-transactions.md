@@ -453,9 +453,11 @@ surface and on `commit()`.
 - **Timeouts.** tensorstore has `.result(timeout=)` and zarr's `sync()` takes a
   timeout; the abczarr surface has neither. Add optional `timeout=` to the sync
   I/O and to `commit()`?
-- **Partial failure** of a non-atomic multi-node commit leaves some chunks
-  written with no rollback — the API must say `commit()` on a non-atomic
-  transaction can partially apply and closes regardless.
+- **Partial failure** *(settled)*. A non-atomic multi-node commit leaves some
+  chunks written with no rollback, so the contract is: `commit()` on a
+  non-atomic transaction **may partially apply, and the transaction is closed
+  regardless** (matching tensorstore's double-commit no-op). Atomic commits
+  stay all-or-nothing.
 - **Cross-loop stores.** A remote (fsspec) store's aiohttp session is bound to
   one loop; an async twin awaiting on a user's loop while a sync facade drives
   the same store on another is a hazard for remote backends (local is fine).
