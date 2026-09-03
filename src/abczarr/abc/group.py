@@ -30,6 +30,9 @@ from .errors import UnsupportedZarrOperation
 # locals
 from .node import ZarrNode
 
+if tx.TYPE_CHECKING:
+    from .asyncnode import AsyncZarrGroup
+
 #: The group-metadata class to write for each Zarr format version. Zarr v1
 #: has no groups, so it is absent.
 _GROUP_METADATA = {
@@ -137,6 +140,18 @@ class ZarrGroup(ZarrNode):
         """Create the array named *name* from a resolved *config*, with the
         backend's own creation, so the backend writes its own metadata."""
         ...
+
+    def as_async(self) -> "AsyncZarrGroup":
+        """The coroutine twin of this group, over the same backend handle.
+
+        The default runs this group's navigation and creation in a bounded
+        thread pool and reports `"async"` as `Support.SYNTHESIZED`. A driver
+        whose backend has a native async group overrides this to return a
+        `Support.NATIVE` twin.
+        """
+        from .asyncnode import ThreadedAsyncGroup
+
+        return ThreadedAsyncGroup(self)
 
 
 class PathGroup(ZarrGroup):

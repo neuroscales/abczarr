@@ -15,6 +15,8 @@ __all__ = [
     "ZarrPythonNode",
     "ZarrPythonArray",
     "ZarrPythonGroup",
+    "AsyncZarrPythonArray",
+    "AsyncZarrPythonGroup",
 ]
 
 # stdlib
@@ -29,6 +31,11 @@ import typing_extensions as tx
 from abczarr._core import typing as tz
 from abczarr._core.features import FEATURE_KINDS, FEATURE_VERSIONS
 from abczarr.abc.array import ZarrArray
+from abczarr.abc.asyncnode import (
+    AsyncZarrArray,
+    AsyncZarrGroup,
+    AsyncZarrNode,
+)
 from abczarr.abc.capabilities import Support
 from abczarr.abc.group import ZarrGroup
 from abczarr.abc.node import ZarrNode
@@ -306,6 +313,11 @@ class ZarrPythonArray(ZarrPythonNode, ZarrArray):
     def __setitem__(self, index: tx.Any, value: npt.ArrayLike) -> None:
         self._obj[index] = value
 
+    def as_async(self) -> "AsyncZarrPythonArray":
+        """The native async twin, delegating to zarr-python's own
+        ``AsyncArray``."""
+        return AsyncZarrPythonArray(self)
+
 
 class ZarrPythonGroup(ZarrPythonNode, ZarrGroup):
     """A [ZarrGroup][abczarr.abc.group.ZarrGroup] backed by a ``zarr.Group``.
@@ -349,5 +361,87 @@ class ZarrPythonGroup(ZarrPythonNode, ZarrGroup):
             **_zarr_create_kwargs(config),
         )
         return ZarrPythonArray(array)
+
+    def as_async(self) -> "AsyncZarrPythonGroup":
+        """The native async twin, delegating to zarr-python's own
+        ``AsyncGroup``."""
+        return AsyncZarrPythonGroup(self)
+
+
+# ----------------------------------------------------------------------
+#   ASYNC NODES -- native, over zarr-python's AsyncArray / AsyncGroup
+# ----------------------------------------------------------------------
+
+
+def _wrap_async(obj: tx.Any) -> ZarrPythonNode:
+    """Wrap a zarr-python ``AsyncArray`` / ``AsyncGroup`` as the abczarr sync
+    node over its reconstructed sync twin, ready for ``as_async``.
+
+    zarr-python's sync ``Array``/``Group`` are thin covers over the async
+    ones, so rebuilding the sync wrapper keeps a single backend handle
+    behind both colors.
+    """
+    if isinstance(obj, zarr.AsyncGroup):
+        return ZarrPythonGroup(zarr.Group(obj))
+    return ZarrPythonArray(zarr.Array(obj))
+
+
+class AsyncZarrPythonArray(AsyncZarrArray):
+    """The native async twin of a
+    [ZarrPythonArray][abczarr.drivers.zarr_python.ZarrPythonArray].
+
+    Reads and writes delegate straight to zarr-python's ``AsyncArray`` -- the
+    real coroutine implementation the sync ``Array`` itself drives -- so its
+    `"async"` capability is `Support.NATIVE`.
+    """
+
+    _async_support = Support.NATIVE
+
+    def _async(self) -> tx.Any:
+        return tx.cast(ZarrPythonArray, self._sync)._obj.async_array
+
+    async def getitem(self, index: tx.Any) -> npt.ArrayLike:
+        return await self._async().getitem(index)
+
+    async def setitem(self, index: tx.Any, value: npt.ArrayLike) -> None:
+        await self._async().setitem(index, value)
+
+
+class AsyncZarrPythonGroup(AsyncZarrGroup):
+    """The native async twin of a
+    [ZarrPythonGroup][abczarr.drivers.zarr_python.ZarrPythonGroup].
+
+    Navigation and creation delegate to zarr-python's ``AsyncGroup``; its
+    `"async"` capability is `Support.NATIVE`. Members come back in the async
+    color.
+    """
+
+    _async_support = Support.NATIVE
+
+    def _async(self) -> tx.Any:
+        return tx.cast(ZarrPythonGroup, self._sync)._obj._async_group
+
+    async def getitem(self, key: str) -> AsyncZarrNode:
+        item = await self._async().getitem(key)
+        return _wrap_async(item).as_async()
+
+    async def keys(self) -> tx.AsyncIterator[str]:
+        async for name in self._async().keys():
+            yield name
+
+    async def _create_array(
+        self, name: str, config: tx.Any
+    ) -> AsyncZarrPythonArray:
+        array = await self._async().create_array(
+            name, shape=config.shape, dtype=config.dtype,
+            **_zarr_create_kwargs(config),
+        )
+        return AsyncZarrPythonArray(ZarrPythonArray(zarr.Array(array)))
+
+    async def create_group(
+        self, name: str, overwrite: bool = False
+    ) -> "AsyncZarrPythonGroup":
+        group = await self._async().create_group(name, overwrite=overwrite)
+        return AsyncZarrPythonGroup(ZarrPythonGroup(zarr.Group(group)))
 
 

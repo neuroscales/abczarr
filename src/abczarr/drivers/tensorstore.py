@@ -14,6 +14,7 @@ __all__ = [
     "TensorStoreNode",
     "TensorStoreArray",
     "TensorStoreGroup",
+    "AsyncTensorStoreArray",
 ]
 
 # dependencies
@@ -24,6 +25,7 @@ import typing_extensions as tx
 from abczarr._core import typing as tz
 from abczarr._core.features import FEATURE_KINDS, FEATURE_VERSIONS
 from abczarr.abc.array import ZarrArray
+from abczarr.abc.asyncnode import AsyncZarrArray
 from abczarr.abc.capabilities import Support
 from abczarr.abc.group import PathGroup
 from abczarr.abc.node import ZarrNode
@@ -159,6 +161,33 @@ class TensorStoreArray(TensorStoreNode, ZarrArray):
 
     def __setitem__(self, index: tx.Any, value: npt.ArrayLike) -> None:
         self._array[index].write(value).result()
+
+    def as_async(self) -> "AsyncTensorStoreArray":
+        """The native coroutine twin: reads and writes await TensorStore's
+        own futures rather than blocking on `.result()`."""
+        return AsyncTensorStoreArray(self)
+
+
+class AsyncTensorStoreArray(AsyncZarrArray):
+    """The native async twin of a
+    [TensorStoreArray][abczarr.drivers.tensorstore.TensorStoreArray].
+
+    Every TensorStore op returns an awaitable future, so `getitem` and
+    `setitem` await it directly -- the fast path, never `.result()`. Its
+    `"async"` capability is `Support.NATIVE`.
+    """
+
+    _async_support = Support.NATIVE
+
+    async def getitem(self, index: tx.Any) -> npt.ArrayLike:
+        return await self._array()[index].read()
+
+    async def setitem(self, index: tx.Any, value: npt.ArrayLike) -> None:
+        await self._array()[index].write(value)
+
+    def _array(self) -> tx.Any:
+        """The wrapped ``tensorstore.TensorStore`` handle."""
+        return tx.cast(TensorStoreArray, self._sync)._array
 
 
 def _open_ts_array(location: tx.Any, mode: str) -> TensorStoreArray:

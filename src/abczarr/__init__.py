@@ -20,6 +20,9 @@ __all__ = [
     "ZarrArray",
     "ZarrGroup",
     "ZarrNode",
+    "AsyncZarrArray",
+    "AsyncZarrGroup",
+    "AsyncZarrNode",
     "UnsupportedZarrOperation",
     "UnsupportedConversion",
     "TransactionConflict",
@@ -39,7 +42,14 @@ from . import (
     ome,
     schemas,
 )
-from .abc import ZarrArray, ZarrGroup, ZarrNode
+from .abc import (
+    AsyncZarrArray,
+    AsyncZarrGroup,
+    AsyncZarrNode,
+    ZarrArray,
+    ZarrGroup,
+    ZarrNode,
+)
 from .api import (
     create,
     create_group,
