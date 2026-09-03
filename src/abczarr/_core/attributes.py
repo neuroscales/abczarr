@@ -1,21 +1,30 @@
-"""
-In-memory, write-through (configurable) attributes mapping for Zarr.
+"""The node attributes mapping and the store-routed persistence of them.
+
+A node's user attributes live in one place: the node's cached metadata
+([NodeMetadata.attributes][abczarr.metadata.base.NodeMetadata]). Reads are
+served from there, so the mapping and `node.metadata.attributes` never
+disagree. Writes go through the node's persistence path -- for a backend that
+wraps a real Zarr object, its own `update_attributes`; for everything else, a
+rewrite of the metadata document through the [Store][abczarr.abc.store.Store]
+-- so no attribute write ever bypasses the store.
 
 This file contains code from the Zarr project
 https://github.com/zarr-developers/zarr-python
 """
 
+__all__ = [
+    "NodeAttributes",
+    "attribute_writes",
+]
+
 # stdlib
 import json
-import os
-import tempfile
-import threading
 
 # dependencies
 import typing_extensions as tx
-from bagof.paths import Path
 
 # locals
+from . import constants
 from . import typing as tz
 
 if tx.TYPE_CHECKING:
@@ -26,207 +35,106 @@ if tx.TYPE_CHECKING:
 AttributesBase = tx.MutableMapping[str, tx.Any]
 
 
-class Attributes(AttributesBase):
+class NodeAttributes(AttributesBase):
+    """A live, write-through view of a node's user attributes.
+
+    Reads come from the node's cached metadata, so this mapping and
+    ``node.metadata.attributes`` are always the same values. A write persists
+    through the node -- `node.attrs["k"] = v` adds or replaces ``k``, and
+    `del node.attrs["k"]` removes it -- routed through the node's own
+    persistence path rather than a separate file.
+
+    Works for both arrays and groups, and for either Zarr format version:
+    the node it wraps supplies the metadata and does the writing.
     """
-    In-memory, write-through (configurable) attributes mapping for Zarr v2/v3.
 
-    Reads are served from an in-memory cache. On mutation, the cache is updated
-    and, if `write_through=True`, the file is flushed atomically.
-    Otherwise, call `flush()` explicitly to persist.
-
-    Works for both arrays and groups, as long as the parent exposes:
-      - .store_path (path-like, directory)
-      - .zarr_version (2 or 3)
-    """
-
-    def __init__(self, obj: "ZarrNode", *, write_through: bool = True) -> None:
+    def __init__(self, node: "ZarrNode") -> None:
         """
         Parameters
         ----------
-        obj : ZarrNode
-            The Zarr array or group object to which these attributes belong.
-        write_through : bool, default True
-            If True, writes to the attributes mapping are immediately
-            flushed to disk.
-            If False, writes are cached in memory and must be flushed
-            explicitly.
+        node : ZarrNode
+            The Zarr array or group whose attributes this mapping views.
         """
-        self._obj = obj
-        self._write_through = write_through
-        self._lock = threading.RLock()
-        self._loaded = False
-        self._attrs: tx.Dict[str, tx.Any] = {}
+        self._node = node
 
-        # cache paths
-        self._file_path = self._get_file_path()
-        self._key_path = self._get_key_path()
-
-    @property
-    def zarr_version(self) -> tz.ZarrVersion:
-        """Return the Zarr version (2 or 3) for this attributes mapping."""
-        return self._obj.zarr_version
-
-    # ---------- public helpers ----------
-
-    def asdict(self) -> tx.Dict[str, tx.Any]:
-        """Return a snapshot of attributes as a dict."""
-        with self._lock:
-            self._ensure_loaded()
-            return dict(self._attrs)
-
-    def put(self, d: tx.Dict[str, tx.Any]) -> None:
-        """Overwrite all attributes with d (in-memory), then flush."""
-        with self._lock:
-            self._ensure_loaded()
-            self._attrs = dict(d)
-            if self._write_through:
-                self._flush_locked()
-
-    def flush(self) -> None:
-        """Persist current in-memory attributes to disk atomically."""
-        with self._lock:
-            self._ensure_loaded()
-            self._flush_locked()
-
-    def refresh(self) -> None:
-        """Discard in-memory cache and re-read from disk."""
-        with self._lock:
-            self._loaded = False
-            self._attrs.clear()
-            self._ensure_loaded()
+    def _current(self) -> tx.Mapping[str, tx.Any]:
+        """The node's current attributes, from its cached metadata."""
+        return self._node.metadata.attributes
 
     # ---------- MutableMapping interface ----------
 
     def __getitem__(self, key: str) -> tx.Any:  # noqa: ANN401
         """Get an attribute by key."""
-        with self._lock:
-            self._ensure_loaded()
-            return self._attrs[key]
+        return self._current()[key]
 
     def __setitem__(self, key: str, value: tx.Any) -> None:  # noqa: ANN401
-        """Set or update an attribute."""
-        with self._lock:
-            self._ensure_loaded()
-            self._attrs[key] = value
-            if self._write_through:
-                self._flush_locked()
+        """Set or update a single attribute, and persist it."""
+        self._node.update_attributes({key: value})
 
     def __delitem__(self, key: str) -> None:
-        """Delete an attribute."""
-        with self._lock:
-            self._ensure_loaded()
-            del self._attrs[key]
-            if self._write_through:
-                self._flush_locked()
+        """Delete a single attribute, and persist the removal."""
+        remaining = dict(self._current())
+        del remaining[key]
+        self._node._replace_attributes(remaining)
 
     def __iter__(self) -> tx.Iterator[str]:
         """Iterate over a snapshot of keys."""
-        with self._lock:
-            self._ensure_loaded()
-            # iterate over a snapshot
-            # TODO: deepcopy?
-            return iter(dict(self._attrs))
+        return iter(dict(self._current()))
 
     def __len__(self) -> int:
-        """Return number of attributes."""
-        with self._lock:
-            self._ensure_loaded()
-            return len(self._attrs)
+        """Return the number of attributes."""
+        return len(self._current())
 
-    # ---------- internals ----------
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({dict(self._current())!r})"
 
-    def _get_file_path(self) -> os.PathLike:
-        """Return the path to the attributes file on disk."""
-        if self.zarr_version == 1:
-            return Path(self._obj.store_path) / "attrs"
-        if self.zarr_version == 2:
-            return Path(self._obj.store_path) / ".zattrs"
-        if self.zarr_version == 3:
-            return Path(self._obj.store_path) / "zarr.json"
-        raise ValueError(f"Unsupported zarr_version: {self.zarr_version}")
-
-    def _get_key_path(self) -> tx.Tuple[str]:
-        """
-        Return the key path to the attributes object in the attributes file.
-        """
-        if self.zarr_version >= 3:
-            return ("attributes",)
-        return ()
-
-    def _load_all(self) -> dict:
-        """Load the entire file (including non-attributes keys)"""
-
-        if not self._file_path.exists():
-            return {}
-
-        with self._file_path.open("r", encoding="utf-8") as f:
-            data = json.load(f) or {}
-
-        if not isinstance(data, dict):
-            raise ValueError(
-                f"Invalid attributes file: {self._file_path} "
-                f"(expected JSON object, got {type(data).__name__})"
-            )
-
-        return data
+    def asdict(self) -> tx.Dict[str, tx.Any]:
+        """Return a plain-dict snapshot of the attributes."""
+        return dict(self._current())
 
 
-    def _ensure_loaded(self) -> None:
-        """Load if not already loaded."""
-        if self._loaded:
-            return
+def attribute_writes(
+    version: tz.ZarrVersion,
+    attributes: tx.Mapping[str, tx.Any],
+    existing_document: tx.Optional[tx.Dict[str, tx.Any]] = None,
+) -> tx.List[tx.Tuple[str, bytes]]:
+    """The store writes that persist *attributes* for a node of *version*.
 
-        # Load entire file
-        data = self._load_all()
+    Returns a list of ``(key, value)`` pairs to write through a
+    [Store][abczarr.abc.store.Store] (or its async twin). A Zarr v3 node
+    keeps its attributes inside the single ``zarr.json`` document, so the
+    other fields of *existing_document* are preserved and only its
+    ``attributes`` are replaced. A v2 or v1 node keeps them in a separate
+    attributes file, which is rewritten whole.
 
-        # Extract target key
-        for key in  self._key_path:
-            data = data.get(key, {})
+    Parameters
+    ----------
+    version : int
+        The node's Zarr format version (1, 2 or 3).
+    attributes : mapping
+        The attributes to persist.
+    existing_document : dict, optional
+        The current ``zarr.json`` document, for a v3 node -- its
+        non-attribute fields are carried over. Ignored for v1 and v2.
 
-        # Save
-        self._attrs = data
-        self._loaded = True
-
-    def _flush_locked(self) -> None:
-        if self._key_path:
-            # Load entire file
-            data = self._load_all()
-            # Update target key
-            d = data
-            for key in self._key_path[:-1]:
-                d = d.setdefault(key, {})
-            d[self._key_path[-1]] = self._attrs
-
-        else:
-            data = self._attrs
-
-        _atomic_json_write(self._file_path, data)
-
-
-def _atomic_json_write(
-    path: os.PathLike, data: tx.Mapping[str, tx.Any]
-) -> None:
+    Returns
+    -------
+    list of (str, bytes)
+        The store key and the bytes to write at it.
     """
-    Atomically write JSON to 'path' via a temp file + rename.
+    if version >= 3:
+        document = dict(existing_document or {})
+        document["attributes"] = dict(attributes)
+        return [(constants.Z3_JSON, _dumps(document))]
+    if version == 2:
+        return [(constants.Z2ATTRS_JSON, _dumps(dict(attributes)))]
+    if version == 1:
+        return [(constants.Z1ATTRS_JSON, _dumps(dict(attributes)))]
+    raise ValueError(f"Unsupported zarr_version: {version}")
 
-    Works with local and fsspec-backed paths that expose .open / .parent.
-    """
-    parent = path.parent
-    parent.mkdir(parents=True, exist_ok=True)
-    # Use a temp file in the same directory to keep rename atomic on POSIX FS.
-    tmp_fd, tmp_name = tempfile.mkstemp(prefix=".attrs_tmp_", dir=str(parent))
-    try:
-        with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
-            f.flush()
-            os.fsync(f.fileno())
-        # UPath may wrap non-local FS; try best-effort replace
-        # pathlib.Path has replace(); UPath typically forwards.
-        Path(tmp_name).replace(path)
-    finally:
-        # If replace failed, clean up temp file best-effort
-        try:
-            if Path(tmp_name).exists():
-                Path(tmp_name).unlink()
-        except Exception:
-            pass
+
+def _dumps(data: tx.Mapping[str, tx.Any]) -> bytes:
+    """Serialize *data* to compact UTF-8 JSON bytes."""
+    return json.dumps(
+        data, ensure_ascii=False, separators=(",", ":")
+    ).encode("utf-8")

@@ -97,10 +97,10 @@ class TensorStoreNode(ZarrNode):
     It marks a node as one the TensorStore driver produced, so
     [open][abczarr.drivers.tensorstore.TensorStoreDriver.open] has one return
     type covering both. TensorStore keeps no user attributes of its own, so
-    both nodes read and write attributes through the metadata file -- the
-    write-through mapping inherited from
-    [ZarrNode][abczarr.abc.node.ZarrNode] -- and there is nothing driver-wide
-    to override here.
+    both nodes read attributes from the cached metadata and persist a write by
+    rewriting the metadata document through the store -- the behaviour
+    inherited from [ZarrNode][abczarr.abc.node.ZarrNode] -- and there is
+    nothing driver-wide to override here.
     """
 
 
@@ -127,11 +127,18 @@ class TensorStoreArray(TensorStoreNode, ZarrArray):
 
     @property
     def metadata(self) -> tx.Any:
-        return metadata_from_dict(self._array.spec().to_json()["metadata"])
+        # read from TensorStore's spec once, then cached (an attribute write
+        # updates this cache; TensorStore's own spec would not see a
+        # store-routed rewrite)
+        if self._cached_metadata is None:
+            self._cached_metadata = metadata_from_dict(
+                self._array.spec().to_json()["metadata"]
+            )
+        return self._cached_metadata
 
     @property
     def zarr_version(self) -> tz.ZarrVersion:
-        return self._array.spec().to_json()["metadata"]["zarr_format"]
+        return self.metadata.zarr_format
 
     @property
     def ndim(self) -> int:

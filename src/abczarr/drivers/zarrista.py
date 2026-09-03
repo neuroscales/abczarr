@@ -79,8 +79,9 @@ class ZarristaNode(ZarrNode):
     It marks a node as one the zarrista driver produced, so
     [open][abczarr.drivers.zarrista.ZarristaDriver.open] has one return type
     covering both. zarrista keeps no user attributes of its own, so both
-    nodes read and write attributes through the metadata file -- the
-    write-through mapping inherited from [ZarrNode][abczarr.abc.node.ZarrNode].
+    nodes read attributes from the cached metadata and persist a write by
+    rewriting the metadata document through the store -- the behaviour
+    inherited from [ZarrNode][abczarr.abc.node.ZarrNode].
     """
 
 
@@ -104,7 +105,12 @@ class ZarristaArray(ZarristaNode, ZarrArray):
 
     @property
     def metadata(self) -> tx.Any:
-        return metadata_from_dict(self._array.metadata)
+        # read from the zarrista array once, then cached (an attribute write
+        # updates this cache; zarrista's own copy would not see a store-routed
+        # rewrite)
+        if self._cached_metadata is None:
+            self._cached_metadata = metadata_from_dict(self._array.metadata)
+        return self._cached_metadata
 
     @property
     def zarr_version(self) -> tz.ZarrVersion:

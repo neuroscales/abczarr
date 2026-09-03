@@ -188,10 +188,15 @@ class PathGroup(ZarrGroup):
 
     @property
     def metadata(self) -> NodeMetadata:
-        return NodeMetadata.from_file(self._store_path)
+        # loaded from the store once, then kept in memory (the I/O is the
+        # open); an attribute write updates this cache in place
+        if self._cached_metadata is None:
+            self._cached_metadata = NodeMetadata.from_file(self._store_path)
+        return self._cached_metadata
 
-    # attrs is inherited from ZarrNode: a write-through mapping over the
-    # group's metadata file.
+    # attrs and update_attributes are inherited from ZarrNode: reads come from
+    # the cached metadata above, and writes rewrite the metadata document
+    # through the store.
 
     @property
     def zarr_version(self) -> tz.ZarrVersion:

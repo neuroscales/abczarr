@@ -18,6 +18,7 @@ __all__ = [
 ]
 
 # stdlib
+import json
 import os
 from abc import ABC, abstractmethod
 
@@ -25,8 +26,9 @@ from abc import ABC, abstractmethod
 import typing_extensions as tx
 
 # core
+from abczarr._core import constants
 from abczarr._core import typing as tz
-from abczarr._core.attributes import Attributes
+from abczarr._core.attributes import NodeAttributes, attribute_writes
 from abczarr.metadata.base import NodeMetadata
 
 # locals
@@ -72,15 +74,76 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
         return self.as_sync().metadata
 
     @property
-    def attrs(self) -> Attributes:
-        """This node's user attributes, as a live, write-through mapping.
+    def attrs(self) -> NodeAttributes:
+        """This node's user attributes, as a read-cached mapping.
 
-        Attributes stay synchronous on the async twin: the write-through
-        mapping goes straight to the metadata file rather than through the
-        node's data path, so there is nothing to await. An async, batched
-        attribute surface is a separate concern.
+        Reads stay synchronous on the async twin -- they come from the cached
+        metadata, so there is nothing to await. Writing a single key cannot be
+        awaited (an assignment expression is not a coroutine), so there is no
+        per-key async setter; use
+        [update_attributes][abczarr.abc.async_node.AsyncZarrNode.update_attributes]
+        to persist a change, the same reason the async array writes with
+        `setitem` rather than `[]`.
         """
         return self.as_sync().attrs
+
+    async def update_attributes(
+        self, attributes: tz.JSONDict
+    ) -> "AsyncZarrNode":
+        """Add or replace several attributes at once, and persist them.
+
+        The coroutine twin of
+        [ZarrNode.update_attributes][abczarr.abc.node.ZarrNode.update_attributes]:
+        the *attributes* are merged into this node's existing attributes and
+        the change is written through the node's async persistence path.
+        Mirrors zarr-python's async `update_attributes`.
+
+        Parameters
+        ----------
+        attributes : dict
+            The attributes to add or replace. Values must be JSON-compatible.
+
+        Returns
+        -------
+        AsyncZarrNode
+            This node, with the updated attributes visible on `attrs` and
+            `metadata`.
+
+        !!! example
+            ```python
+            await node.update_attributes({"unit": "micrometer"})
+            ```
+        """
+        sync = self.as_sync()
+        merged = dict(sync.metadata.attributes)
+        merged.update(attributes)
+        new_metadata = sync.metadata.update_attributes(merged)
+        await self._awrite_metadata(new_metadata)
+        return self
+
+    async def _awrite_metadata(self, new_metadata: NodeMetadata) -> None:
+        """Persist *new_metadata*, then update the sync twin's cache.
+
+        The default rewrites the node's metadata document through an
+        [AsyncStore][abczarr.abc.store.AsyncStore] over the node's location,
+        so the write goes through the store rather than straight to a file. A
+        driver that wraps a live Zarr object overrides this to delegate to
+        that object's own async `update_attributes`.
+        """
+        from abczarr.abc.store import AsyncPathBasedStore
+
+        sync = self.as_sync()
+        store = AsyncPathBasedStore(str(sync.store_path))
+        version = new_metadata.zarr_format
+        existing = None  # type: tx.Optional[tx.Dict[str, tx.Any]]
+        if version >= 3:
+            raw = await store.get(constants.Z3_JSON)
+            existing = json.loads(raw) if raw else new_metadata.to_dict()
+        for key, value in attribute_writes(
+            version, new_metadata.attributes, existing
+        ):
+            await store.set(key, value)
+        sync._cache_metadata(new_metadata)
 
     @property
     def zarr_version(self) -> tz.ZarrVersion:

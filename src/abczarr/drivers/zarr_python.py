@@ -264,12 +264,27 @@ class ZarrPythonNode(ZarrNode):
 
     @property
     def metadata(self) -> tx.Any:
+        # read live from the wrapped zarr object, which keeps its own cache
         return metadata_from_dict(self._obj.metadata.to_dict())
 
-    @property
-    def attrs(self) -> tx.MutableMapping[str, tx.Any]:
-        # zarr-python's own attributes are already a live, write-through view
-        return self._obj.attrs
+    # attrs and update_attributes are inherited from ZarrNode: reads come from
+    # the metadata above (zarr-python's live cache), and a write is delegated
+    # to zarr-python by _write_metadata.
+
+    def _write_metadata(self, new_metadata: tx.Any) -> None:
+        """Persist new attributes by delegating to zarr-python.
+
+        zarr-python's own `update_attributes` writes the metadata and keeps
+        the object's caches consistent; going through it -- rather than
+        writing the store directly -- means abczarr and zarr-python never
+        disagree about the attributes. The new attributes are applied whole
+        (clear, then update), so a removed key is removed, matching
+        zarr-python's own attribute mapping.
+        """
+        obj = self._obj
+        obj.metadata.attributes.clear()
+        self._obj = obj.update_attributes(dict(new_metadata.attributes))
+        self._native = self._obj
 
     @property
     def zarr_version(self) -> tz.ZarrVersion:
@@ -398,6 +413,13 @@ class AsyncZarrPythonArray(AsyncZarrArray):
     def _async(self) -> tx.Any:
         return tx.cast(ZarrPythonArray, self._sync)._obj.async_array
 
+    async def _awrite_metadata(self, new_metadata: tx.Any) -> None:
+        """Persist new attributes by delegating to zarr-python's own async
+        `update_attributes`, so zarr-python's caches stay consistent."""
+        async_array = self._async()
+        async_array.metadata.attributes.clear()
+        await async_array.update_attributes(dict(new_metadata.attributes))
+
     async def getitem(self, index: tx.Any) -> npt.ArrayLike:
         return await self._async().getitem(index)
 
@@ -418,6 +440,13 @@ class AsyncZarrPythonGroup(AsyncZarrGroup):
 
     def _async(self) -> tx.Any:
         return tx.cast(ZarrPythonGroup, self._sync)._obj._async_group
+
+    async def _awrite_metadata(self, new_metadata: tx.Any) -> None:
+        """Persist new attributes by delegating to zarr-python's own async
+        `update_attributes`, so zarr-python's caches stay consistent."""
+        async_group = self._async()
+        async_group.metadata.attributes.clear()
+        await async_group.update_attributes(dict(new_metadata.attributes))
 
     async def getitem(self, key: str) -> AsyncZarrNode:
         item = await self._async().getitem(key)
