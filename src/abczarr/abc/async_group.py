@@ -121,16 +121,23 @@ class AsyncPathGroup(AsyncZarrGroup):
     listing and navigating members with `await store.list_dir(...)` /
     `await store.get(...)` rather than threading the sync group. Array
     children are opened in the async color -- a natively async backend's
-    array comes back as its native async array. Its `"async"` capability is
-    `Support.NATIVE`, because the listing runs on the async store.
+    array comes back as its native async array (whose own `"async"` is
+    `NATIVE`).
+
+    Its own `"async"` capability is `Support.SYNTHESIZED`: a path group is
+    abczarr assembling group semantics over a key-value store, not a group
+    a backend provides natively -- so it reports synthesized even when the
+    underlying store awaits a natively async backend. `NATIVE` is reserved
+    for a surface the backend itself supplies.
 
     Creation still writes through the sync group in a thread pool -- writing
     metadata or building a backend array blocks, and is not the listing work
     this group makes asynchronous.
     """
 
-    # the listing runs on the async store, not by threading the sync group
-    _async_support = Support.NATIVE
+    # a path group synthesizes group semantics over a store; async is
+    # synthesized even when the store itself awaits natively
+    _async_support = Support.SYNTHESIZED
 
     def __init__(self, sync: PathGroup) -> None:
         super().__init__(sync)

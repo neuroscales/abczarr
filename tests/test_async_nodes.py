@@ -266,9 +266,11 @@ def test_tensorstore_async_group_is_a_real_path_group(
     )
     # tensorstore has no group object, so its async group IS the async path
     # group -- listing/navigation run on an AsyncStore, not by threading the
-    # sync group -- so "async" is NATIVE, not SYNTHESIZED
+    # sync group. A path group synthesizes group semantics over a store, so
+    # its own "async" is SYNTHESIZED even though its array children are NATIVE.
     assert isinstance(grp, AsyncPathGroup)
-    assert grp.capability("async") is Support.NATIVE
+    assert grp.capability("async") is Support.SYNTHESIZED
+    assert grp.supports("async")  # synthesized still counts as supported
 
     async def go() -> object:
         # listing goes through the async store
