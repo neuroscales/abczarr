@@ -31,6 +31,7 @@ if tx.TYPE_CHECKING:
 _KNOWN_DRIVERS = [
     ("zarr-python", "abczarr.drivers.zarr_python", "ZarrPythonDriver"),
     ("tensorstore", "abczarr.drivers.tensorstore", "TensorStoreDriver"),
+    ("zarrista", "abczarr.drivers.zarrista", "ZarristaDriver"),
 ]
 
 
