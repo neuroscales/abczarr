@@ -24,6 +24,7 @@ nav = [
     {"Drivers" = [
       "api/drivers.md",
       "api/registry.md",
+      "api/tensorstore.md",
       "api/zarr-python.md",
       "api/zarrista.md",
     ]},
