@@ -20,7 +20,7 @@ mapping: `group["images"]`, `group.keys()`, `"images" in group`.
 Every node has a coroutine twin. Open one with `asynchronous=True`, or
 convert a node you already hold with
 [as_async][abczarr.abc.array.ZarrArray.as_async]; go back with
-[as_sync][abczarr.abc.asyncnode.AsyncZarrArray.as_sync]. The async array
+[as_sync][abczarr.abc.async_node.AsyncZarrNode.as_sync]. The async array
 reads and writes through **methods**, not `[]` -- an assignment expression
 cannot be awaited:
 
@@ -46,6 +46,14 @@ futures; one that is not runs its blocking ops in a bounded thread pool.
 
 ::: abczarr.abc.group
 
-## `abczarr.abc.asyncnode`
+## `abczarr.abc.async_node`
 
-::: abczarr.abc.asyncnode
+::: abczarr.abc.async_node
+
+## `abczarr.abc.async_array`
+
+::: abczarr.abc.async_array
+
+## `abczarr.abc.async_group`
+
+::: abczarr.abc.async_group

@@ -21,7 +21,7 @@ from .node import ZarrNode
 if tx.TYPE_CHECKING:
     import dask.array as da
 
-    from .asyncnode import AsyncZarrArray
+    from .async_array import AsyncZarrArray
 
 
 class ZarrArray(ZarrNode):
@@ -104,7 +104,7 @@ class ZarrArray(ZarrNode):
             block = await array.as_async().getitem((slice(0, 8),))
             ```
         """
-        from .asyncnode import ThreadedAsyncArray
+        from .async_array import ThreadedAsyncArray
 
         return ThreadedAsyncArray(self)
 

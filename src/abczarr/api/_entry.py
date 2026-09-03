@@ -26,7 +26,9 @@ import typing_extensions as tx
 from .._core import typing as tz
 from .._core.attrs import evolve
 from ..abc.array import ZarrArray
-from ..abc.asyncnode import AsyncZarrArray, AsyncZarrGroup, AsyncZarrNode
+from ..abc.async_array import AsyncZarrArray
+from ..abc.async_group import AsyncZarrGroup
+from ..abc.async_node import AsyncZarrNode
 from ..abc.errors import UnsupportedZarrOperation
 from ..abc.group import ZarrGroup
 from ..abc.node import ZarrNode
@@ -54,8 +56,8 @@ def open(
         `"a"`, `"w"`).
     asynchronous : bool, optional
         Return the coroutine twin -- an
-        [AsyncZarrArray][abczarr.abc.asyncnode.AsyncZarrArray] or
-        [AsyncZarrGroup][abczarr.abc.asyncnode.AsyncZarrGroup] -- whose I/O
+        [AsyncZarrArray][abczarr.abc.async_array.AsyncZarrArray] or
+        [AsyncZarrGroup][abczarr.abc.async_group.AsyncZarrGroup] -- whose I/O
         is awaited. The open itself stays synchronous and does no async I/O;
         it hands back the async handle to read and write through. Whether
         that surface is native to the backend or synthesized in a thread

@@ -22,10 +22,10 @@ import pytest
 
 import abczarr
 from abczarr.abc.array import ZarrArray
-from abczarr.abc.asyncnode import (
-    AsyncZarrArray,
+from abczarr.abc.async_array import AsyncZarrArray, ThreadedAsyncArray
+from abczarr.abc.async_group import (
+    AsyncPathGroup,
     AsyncZarrGroup,
-    ThreadedAsyncArray,
     ThreadedAsyncGroup,
 )
 from abczarr.abc.capabilities import Support
@@ -254,7 +254,7 @@ def test_tensorstore_concurrent_fanout(tmp_path: pathlib.Path) -> None:
     assert total == np.arange(64).sum()
 
 
-def test_tensorstore_group_children_are_native(
+def test_tensorstore_async_group_is_a_real_path_group(
     tmp_path: pathlib.Path,
 ) -> None:
     pytest.importorskip("tensorstore")
@@ -264,17 +264,124 @@ def test_tensorstore_group_children_are_native(
     grp = abczarr.open(
         root, mode="r", asynchronous=True, driver="tensorstore"
     )
-    # tensorstore has no group object, so the group is thread-synthesized...
-    assert isinstance(grp, ThreadedAsyncGroup)
-    assert grp.capability("async") is Support.SYNTHESIZED
+    # tensorstore has no group object, so its async group IS the async path
+    # group -- listing/navigation run on an AsyncStore, not by threading the
+    # sync group -- so "async" is NATIVE, not SYNTHESIZED
+    assert isinstance(grp, AsyncPathGroup)
+    assert grp.capability("async") is Support.NATIVE
 
-    # ...but a child array it opens comes back in tensorstore's native color
     async def go() -> object:
+        # listing goes through the async store
+        names = [name async for name in grp]
+        assert "img" in names
+        # ...and a child array comes back in tensorstore's native color
         return await grp.getitem("img")
 
     child = asyncio.run(go())
     assert isinstance(child, AsyncTensorStoreArray)
     assert child.supports("async", native=True)
+
+
+def test_async_path_group_lists_and_navigates_nested(
+    tmp_path: pathlib.Path,
+) -> None:
+    # a real async path group over a nested hierarchy: members are listed
+    # and opened through the async store, and subgroups stay async path
+    # groups (so the whole tree is reachable asynchronously)
+    zarr = pytest.importorskip("zarr")
+    pytest.importorskip("tensorstore")
+    root = str(tmp_path / "nested.zarr")
+    group = zarr.open_group(root, mode="w")
+    group.create_array("img", shape=(4, 4), chunks=(2, 2), dtype="float32")
+    sub = group.create_group("sub")
+    sub.create_array("inner", shape=(4, 4), chunks=(2, 2), dtype="uint8")
+
+    grp = abczarr.open(
+        root, mode="r", asynchronous=True, driver="tensorstore"
+    )
+    assert isinstance(grp, AsyncPathGroup)
+
+    async def go() -> None:
+        names = sorted([name async for name in grp])
+        assert names == ["img", "sub"]
+        subgrp = await grp.getitem("sub")
+        assert isinstance(subgrp, AsyncPathGroup)
+        inner_names = [name async for name in subgrp]
+        assert inner_names == ["inner"]
+        inner = await subgrp.getitem("inner")
+        assert inner.shape == (4, 4)
+
+    asyncio.run(go())
+
+
+def test_async_path_group_creates_children(tmp_path: pathlib.Path) -> None:
+    # the real async path group can create arrays and subgroups too
+    zarr = pytest.importorskip("zarr")
+    pytest.importorskip("tensorstore")
+    from abczarr.drivers.tensorstore import AsyncTensorStoreArray
+
+    root = str(tmp_path / "make.zarr")
+    zarr.open_group(root, mode="w")
+    grp = abczarr.open(
+        root, mode="a", asynchronous=True, driver="tensorstore"
+    )
+    assert isinstance(grp, AsyncPathGroup)
+
+    async def go() -> None:
+        arr = await grp.create_array("img", (8, 8), "float32")
+        assert isinstance(arr, AsyncTensorStoreArray)
+        await arr.setitem(
+            (slice(0, 4), slice(0, 4)), np.ones((4, 4), "float32")
+        )
+        got = await arr.getitem((slice(0, 4), slice(0, 4)))
+        assert np.asarray(got).sum() == 16.0
+
+        sub = await grp.create_group("sub")
+        assert isinstance(sub, AsyncPathGroup)
+        names = sorted([name async for name in grp])
+        assert names == ["img", "sub"]
+
+    asyncio.run(go())
+
+
+def test_threaded_async_group_is_the_generic_fallback() -> None:
+    # a group that is neither natively async nor path-based falls to the
+    # thread-pool default, honestly reported as synthesized
+    from abczarr.abc.group import ZarrGroup
+    from abczarr.abc.node import ZarrNode
+
+    class _FakeGroup(ZarrGroup):
+        _CAPABILITIES = {"sharding": Support.NATIVE}
+
+        @property
+        def metadata(self) -> None:
+            return None
+
+        @property
+        def zarr_version(self) -> int:
+            return 3
+
+        def __getitem__(self, key: str) -> ZarrNode:
+            raise KeyError(key)
+
+        def __setitem__(self, key: str, value: ZarrNode) -> None:
+            ...
+
+        def __delitem__(self, key: str) -> None:
+            ...
+
+        def create_group(
+            self, name: str, overwrite: bool = False
+        ) -> ZarrGroup:
+            raise NotImplementedError
+
+        def _create_array(self, name: str, config: object) -> None:
+            raise NotImplementedError
+
+    twin = _FakeGroup("/store").as_async()
+    assert isinstance(twin, ThreadedAsyncGroup)
+    assert twin.capability("async") is Support.SYNTHESIZED
+    assert twin.capability("sharding") is Support.NATIVE  # delegated to sync
 
 
 # --------------------------------------------------------------------------

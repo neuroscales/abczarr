@@ -31,7 +31,7 @@ from .errors import UnsupportedZarrOperation
 from .node import ZarrNode
 
 if tx.TYPE_CHECKING:
-    from .asyncnode import AsyncZarrGroup
+    from .async_group import AsyncPathGroup, AsyncZarrGroup
 
 #: The group-metadata class to write for each Zarr format version. Zarr v1
 #: has no groups, so it is absent.
@@ -145,11 +145,12 @@ class ZarrGroup(ZarrNode):
         """The coroutine twin of this group, over the same backend handle.
 
         The default runs this group's navigation and creation in a bounded
-        thread pool and reports `"async"` as `Support.SYNTHESIZED`. A driver
-        whose backend has a native async group overrides this to return a
-        `Support.NATIVE` twin.
+        thread pool and reports `"async"` as `Support.SYNTHESIZED`. A group
+        that stores its members as directories (a
+        [PathGroup][abczarr.abc.group.PathGroup]) or a backend with its own
+        async group overrides this to return a `Support.NATIVE` twin.
         """
-        from .asyncnode import ThreadedAsyncGroup
+        from .async_group import ThreadedAsyncGroup
 
         return ThreadedAsyncGroup(self)
 
@@ -289,3 +290,15 @@ class PathGroup(ZarrGroup):
         overrides this method to open one with its own backend.
         """
         raise UnsupportedZarrOperation("open an array")
+
+    def as_async(self) -> "AsyncPathGroup":
+        """The coroutine twin of this group: a real async path group.
+
+        Unlike the generic default, this twin does its own listing and
+        navigation through an [AsyncStore][abczarr.abc.store.AsyncStore] over
+        the group's location, and opens its array children in the async
+        color -- so its `"async"` capability is `Support.NATIVE`.
+        """
+        from .async_group import AsyncPathGroup
+
+        return AsyncPathGroup(self)

@@ -1,6 +1,8 @@
 __all__ = [
     "array",
-    "asyncnode",
+    "async_array",
+    "async_group",
+    "async_node",
     "capabilities",
     "errors",
     "group",
@@ -11,7 +13,9 @@ __all__ = [
 
 from . import (
     array,  # noqa: F401
-    asyncnode,  # noqa: F401
+    async_array,  # noqa: F401
+    async_group,  # noqa: F401
+    async_node,  # noqa: F401
     capabilities,  # noqa: F401
     errors,  # noqa: F401
     group,  # noqa: F401
@@ -22,8 +26,12 @@ from . import (
 )
 from .array import *  # noqa: F403
 from .array import __all__ as __all_array
-from .asyncnode import *  # noqa: F403
-from .asyncnode import __all__ as __all_asyncnode
+from .async_array import *  # noqa: F403
+from .async_array import __all__ as __all_async_array
+from .async_group import *  # noqa: F403
+from .async_group import __all__ as __all_async_group
+from .async_node import *  # noqa: F403
+from .async_node import __all__ as __all_async_node
 from .capabilities import *  # noqa: F403
 from .capabilities import __all__ as __all_capabilities
 from .errors import *  # noqa: F403
@@ -40,7 +48,9 @@ from .transactions import *  # noqa: F403
 from .transactions import __all__ as __all_transactions
 
 __all__ += __all_array
-__all__ += __all_asyncnode
+__all__ += __all_async_array
+__all__ += __all_async_group
+__all__ += __all_async_node
 __all__ += __all_capabilities
 __all__ += __all_errors
 __all__ += __all_group
