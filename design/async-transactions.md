@@ -163,11 +163,24 @@ with group.transaction(atomic=True) as txn:
 
 ### 2.5 Transactions — commit message, and identical code across backends
 
+The message rides on the spawn, so the implicit commit at block exit carries
+it — no explicit `commit()` needed. The snapshot id a versioned backend
+produces is read back off the transaction afterwards.
+
 ```python
-txn = group.transaction()
-group["raw"].with_transaction(txn)[...] = data
-txn.commit(message="ingest run 2026-09-03")   # Icechunk records it; tensorstore ignores it
+with group.transaction(message="ingest run 2026-09-03") as txn:
+    group["raw"].with_transaction(txn)[...] = data
+# committed here, implicitly, with the message
+
+txn.snapshot_id      # Icechunk: the new snapshot; tensorstore: None (not versioned)
 ```
+
+`message` is a harmless annotation the base carries — accepted at spawn and
+overridable at an explicit `txn.commit(message=…)`; a non-versioned backend
+ignores it. `snapshot_id` (and the rest of version control) lives on the
+**versioning extension**, not the base — it would be a lie on tensorstore. On
+Icechunk the returned object *is* a `VersionedTransaction`, so `txn.snapshot_id`
+is there; a portable program gates on `supports("versioning")`.
 
 The **same** user code works whether the backend rebinds an open handle
 (tensorstore) or re-opens the node on a session (Icechunk) — that is exactly
@@ -315,6 +328,56 @@ Its store-level capture also makes `attrs`/group writes *naturally*
 transactional once they route through the store — which abczarr's current
 attrs-bypass (§1) blocks, independent of this design.
 
+### 4.1 The versioning extension (the Icechunk model)
+
+tensorstore's transaction is an **ephemeral atomic batch**; Icechunk's is a
+**versioned session** — Git-for-arrays. It's not "tensorstore's transaction with
+a message field", it's a strict **superset**: tensorstore's whole transaction is
+roughly the *commit* half of an Icechunk session, minus versioning.
+
+| | tensorstore-modeled | icechunk-modeled |
+| --- | --- | --- |
+| Commit produces | nothing (keys land) | a **named snapshot** (message required), returns a **snapshot id**, advances a **branch** — permanent history |
+| Isolation | last-writer-wins, no conflict by default | **snapshot isolation**, real `ConflictError`, **rebase** onto the new tip |
+| How you enlist | bind an already-open handle | **open nodes on the session's store** (the re-open contract) |
+| Reads | only "now" | **time travel** — open any snapshot / tag / branch read-only |
+| Distribution | in-process | **fork the session → workers → `merge` → commit once** |
+| Plus | — | branches, tags, `ancestry` (history) |
+
+**Icechunk is a zarr-python-driver feature, not a separate backend.** It ships as
+a zarr-python `Store` (`IcechunkStore`); you open nodes on `session.store`. So of
+abczarr's drivers, **only zarr-python** can carry it — tensorstore (own kvstores)
+and zarrista (own store layer) have no adapter. tensorstore's `ts.Transaction`
+and Icechunk's sessions are *unrelated* native systems, which is exactly why the
+base models only the intersection.
+
+Sketched surface (deferred — see §6):
+
+```python
+repo = abczarr.repository("s3://bucket/dataset")            # versioned root
+
+with repo.session("main", message="ingest") as txn:        # forks a writable session
+    txn["raw"][...]    = data                              # opened through the session
+    txn["labels"][...] = mask
+# implicit commit -> new snapshot; txn.snapshot_id afterwards
+
+old = abczarr.open("s3://bucket/dataset", version="v1.0")   # time travel, read-only
+
+for snap in repo.history("main"):                           # ancestry: id, message, written_at
+    ...
+repo.tag("v1.0", txn.snapshot_id); repo.branch("experiment", txn.snapshot_id)
+```
+
+The rule: **model the intersection as the common `Transaction`** (enlist /
+`commit(message=None)` / `abort` / `atomic` — the base), and expose Icechunk's
+superset (snapshot ids, time-travel `open(version=…)`, `rebase`, branches, tags,
+history, distributed `merge`) as a **capability-gated extension** the zarr-python
+driver advertises via `supports("versioning")`. Forcing branches/snapshots into
+the base would make tensorstore fake version control; flattening Icechunk to a
+bare batch throws away the reason to use it. For a user who only ever wants
+Icechunk the wrapper is thin — near-parity with raw `zarr` + `icechunk`; it pays
+off when *the same code* must also run on tensorstore or a plain store.
+
 ---
 
 ## 5. What lives where
@@ -380,6 +443,13 @@ surface and on `commit()`.
 
 ## 7. Open questions
 
+- **`open(mode="w")` ≡ create** *(separate follow-up, not this design)*. Today
+  `open()` forwards `mode` to the driver and never acts on create-modes, so
+  `open(mode="w")` does not create. The convention should hold: `w` →
+  `create(…, overwrite=True)`, `w-`/`x` → create-exclusive, `a` →
+  open-or-create, `r`/`r+` → open existing. Since creating an *array* needs a
+  config, the clean resolution is to keep typed `create(config)` as the primary
+  path and make `open`'s create-modes sugar that funnels into it. Its own PR.
 - **Timeouts.** tensorstore has `.result(timeout=)` and zarr's `sync()` takes a
   timeout; the abczarr surface has neither. Add optional `timeout=` to the sync
   I/O and to `commit()`?
