@@ -26,6 +26,9 @@ import typing_extensions as tx
 from .._core import typing as tz
 from .._core.attrs import evolve
 from ..abc.array import ZarrArray
+from ..abc.async_array import AsyncZarrArray
+from ..abc.async_group import AsyncZarrGroup
+from ..abc.async_node import AsyncZarrNode
 from ..abc.errors import UnsupportedZarrOperation
 from ..abc.group import ZarrGroup
 from ..abc.node import ZarrNode
@@ -39,8 +42,9 @@ _DriverArg = tx.Optional[tx.Union[str, Driver]]
 
 
 def open(
-    path: tz.PathLike, mode: str = "a", *, driver: _DriverArg = None
-) -> ZarrNode:
+    path: tz.PathLike, mode: str = "a", *,
+    asynchronous: bool = False, driver: _DriverArg = None,
+) -> tx.Union[ZarrNode, AsyncZarrNode]:
     """Open the Zarr array or group at *path*.
 
     Parameters
@@ -50,41 +54,81 @@ def open(
     mode : str
         The access mode, as zarr-python understands it (`"r"`, `"r+"`,
         `"a"`, `"w"`).
+    asynchronous : bool, optional
+        Return the coroutine twin -- an
+        [AsyncZarrArray][abczarr.abc.async_array.AsyncZarrArray] or
+        [AsyncZarrGroup][abczarr.abc.async_group.AsyncZarrGroup] -- whose I/O
+        is awaited. The open itself stays synchronous and does no async I/O;
+        it hands back the async handle to read and write through. Whether
+        that surface is native to the backend or synthesized in a thread
+        pool is reported by `node.supports("async", native=True)`.
     driver : str or Driver, optional
         A driver, or its name, to open with. When omitted, a driver is
         chosen for what the array needs.
 
     Returns
     -------
-    ZarrNode
-        The wrapped array or group.
+    ZarrNode or AsyncZarrNode
+        The wrapped array or group, sync by default or async when
+        *asynchronous* is true.
     """
     chosen = _choose(path, _resolve_drivers(driver))
-    return chosen.open(path, mode)
+    node = chosen.open(path, mode)
+    return node.as_async() if asynchronous else node
+
+
+@tx.overload
+def open_array(
+    path: tz.PathLike, mode: str = ..., *,
+    asynchronous: "tx.Literal[False]" = ..., driver: _DriverArg = ...,
+) -> ZarrArray: ...
+@tx.overload
+def open_array(
+    path: tz.PathLike, mode: str = ..., *,
+    asynchronous: "tx.Literal[True]", driver: _DriverArg = ...,
+) -> AsyncZarrArray: ...
 
 
 def open_array(
-    path: tz.PathLike, mode: str = "a", *, driver: _DriverArg = None
-) -> ZarrArray:
+    path: tz.PathLike, mode: str = "a", *,
+    asynchronous: bool = False, driver: _DriverArg = None,
+) -> tx.Union[ZarrArray, AsyncZarrArray]:
     """Open *path*, requiring it to be an array.
 
-    Like [open][abczarr.api.open], but raises if *path* is a group.
+    Like [open][abczarr.api.open], but raises if *path* is a group. Returns
+    the async array twin when *asynchronous* is true.
     """
-    node = open(path, mode, driver=driver)
-    if not isinstance(node, ZarrArray):
+    node = open(path, mode, asynchronous=asynchronous, driver=driver)
+    expected = AsyncZarrArray if asynchronous else ZarrArray
+    if not isinstance(node, expected):
         raise UnsupportedZarrOperation("open_array on a group")
     return node
 
 
+@tx.overload
 def open_group(
-    path: tz.PathLike, mode: str = "a", *, driver: _DriverArg = None
-) -> ZarrGroup:
+    path: tz.PathLike, mode: str = ..., *,
+    asynchronous: "tx.Literal[False]" = ..., driver: _DriverArg = ...,
+) -> ZarrGroup: ...
+@tx.overload
+def open_group(
+    path: tz.PathLike, mode: str = ..., *,
+    asynchronous: "tx.Literal[True]", driver: _DriverArg = ...,
+) -> AsyncZarrGroup: ...
+
+
+def open_group(
+    path: tz.PathLike, mode: str = "a", *,
+    asynchronous: bool = False, driver: _DriverArg = None,
+) -> tx.Union[ZarrGroup, AsyncZarrGroup]:
     """Open *path*, requiring it to be a group.
 
-    Like [open][abczarr.api.open], but raises if *path* is an array.
+    Like [open][abczarr.api.open], but raises if *path* is an array. Returns
+    the async group twin when *asynchronous* is true.
     """
-    node = open(path, mode, driver=driver)
-    if not isinstance(node, ZarrGroup):
+    node = open(path, mode, asynchronous=asynchronous, driver=driver)
+    expected = AsyncZarrGroup if asynchronous else ZarrGroup
+    if not isinstance(node, expected):
         raise UnsupportedZarrOperation("open_group on an array")
     return node
 

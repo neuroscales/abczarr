@@ -21,6 +21,8 @@ from .node import ZarrNode
 if tx.TYPE_CHECKING:
     import dask.array as da
 
+    from .async_array import AsyncZarrArray
+
 
 class ZarrArray(ZarrNode):
     """An n-dimensional Zarr array.
@@ -88,6 +90,23 @@ class ZarrArray(ZarrNode):
     ) -> npt.ArrayLike:
         """Convert this array to a NumPy array."""
         return np.asarray(self[()], dtype=dtype)
+
+    def as_async(self) -> "AsyncZarrArray":
+        """The coroutine twin of this array, over the same backend handle.
+
+        The default runs this array's reads and writes in a bounded thread
+        pool and reports `"async"` as `Support.SYNTHESIZED`. A driver whose
+        backend has a native coroutine surface overrides this to return a
+        `Support.NATIVE` twin that awaits the backend's own futures.
+
+        !!! example
+            ```python
+            block = await array.as_async().getitem((slice(0, 8),))
+            ```
+        """
+        from .async_array import ThreadedAsyncArray
+
+        return ThreadedAsyncArray(self)
 
     def to_dask(
         self, chunks: tx.Union[str, tz.ShapeLike, None] = None

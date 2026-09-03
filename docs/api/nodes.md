@@ -17,6 +17,23 @@ array[...] = data
 holds other nodes by name, arrays and groups alike, and behaves like a
 mapping: `group["images"]`, `group.keys()`, `"images" in group`.
 
+Every node has a coroutine twin. Open one with `asynchronous=True`, or
+convert a node you already hold with
+[as_async][abczarr.abc.array.ZarrArray.as_async]; go back with
+[as_sync][abczarr.abc.async_node.AsyncZarrNode.as_sync]. The async array
+reads and writes through **methods**, not `[]` -- an assignment expression
+cannot be awaited:
+
+```python
+array = abczarr.open("data.zarr", mode="a", asynchronous=True)
+block = await array.getitem((slice(0, 64), slice(0, 64)))
+await array.setitem((slice(0, 64), slice(0, 64)), block * 2)
+```
+
+A backend that is natively async (tensorstore, zarr-python) awaits its own
+futures; one that is not runs its blocking ops in a bounded thread pool.
+`array.supports("async", native=True)` says which you got.
+
 ## `abczarr.abc.node`
 
 ::: abczarr.abc.node
@@ -28,3 +45,15 @@ mapping: `group["images"]`, `group.keys()`, `"images" in group`.
 ## `abczarr.abc.group`
 
 ::: abczarr.abc.group
+
+## `abczarr.abc.async_node`
+
+::: abczarr.abc.async_node
+
+## `abczarr.abc.async_array`
+
+::: abczarr.abc.async_array
+
+## `abczarr.abc.async_group`
+
+::: abczarr.abc.async_group
