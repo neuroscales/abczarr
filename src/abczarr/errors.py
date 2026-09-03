@@ -7,8 +7,6 @@ package, ``abczarr.UnsupportedZarrOperation``) without importing from
 the ``abc`` layer.
 """
 
-from __future__ import annotations
-
 from .abc.errors import (
     TransactionConflict,
     UnsupportedConversion,

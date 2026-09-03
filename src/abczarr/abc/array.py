@@ -154,7 +154,7 @@ class ZarrArray(ZarrNode):
 
 
 def _blocks_align_to(
-    dask_chunks: "tx.Sequence[tx.Sequence[int]]", unit: tz.ShapeLike
+    dask_chunks: tx.Sequence[tx.Sequence[int]], unit: tz.ShapeLike
 ) -> bool:
     """Whether Dask blocks fall on whole *unit*-sized chunks.
 
