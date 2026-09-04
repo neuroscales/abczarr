@@ -10,6 +10,11 @@ __all__ = [
     "v0_6dev4",
     "v0_6rc0",
     "OMESchemaItem",
+    # JSON-schema validation (offline, official NGFF schemas)
+    "VERSIONS",
+    "documents",
+    "get_validator",
+    "validate",
 ]
 
 
@@ -27,6 +32,7 @@ from . import (
     v0_6dev4,
     v0_6rc0,
 )
+from ._validation import VERSIONS, documents, get_validator, validate
 from .base import OMESchemaItem
 
 OMEAttributes = tx.Union[
