@@ -367,7 +367,14 @@ def _to_v2(
     from abczarr.metadata import v2
 
     if self.chunk_grid.name != "regular":
-        raise ValueError("Only regular chunk grids are supported in Zarr v2")
+        # A non-regular grid (e.g. rectilinear) has no v2/v1 form, and --
+        # unlike a dropped field -- leaves no chunk shape to build a valid
+        # array from, so the conversion cannot proceed under any policy. This
+        # is a documented limitation, not a policy-governed loss: it raises a
+        # named error rather than the bare ValueError it used to.
+        from abczarr.abc.errors import UnsupportedConversion
+
+        raise UnsupportedConversion("chunk_grid", 2)
     chunk_grid = tx.cast(RegularChunkGrid, self.chunk_grid)
     chunk_shape = chunk_grid.configuration.chunk_shape
 

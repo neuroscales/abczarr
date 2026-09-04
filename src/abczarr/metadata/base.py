@@ -251,6 +251,58 @@ class GroupMetadata(NodeMetadata):
 
     node_type: tx.Literal["group"] = "group"
 
+    def to_version(
+        self,
+        version: tz.ZarrVersion,
+        policy: ConversionPolicy = "lossy",
+    ) -> "GroupMetadata":
+        """Convert this group's metadata to another Zarr version.
+
+        A group carries only user attributes and a format version, so a
+        conversion between v2 and v3 re-stamps the format and carries the
+        attributes across unchanged -- nothing is lost, and *policy* is
+        never invoked. Zarr v1 has no group concept, so converting a group
+        to v1 has no representation and raises regardless of *policy*.
+
+        Parameters
+        ----------
+        version : ZarrVersion
+            The target Zarr format version: 1, 2 or 3.
+        policy : ConversionPolicy
+            How to treat a field the target version can't hold. Accepted
+            for a signature that matches
+            [ArrayMetadata.to_version][abczarr.metadata.base.ArrayMetadata],
+            but a group has no such field between v2 and v3.
+
+        Returns
+        -------
+        GroupMetadata
+            Equivalent metadata for *version*. Converting to the group's
+            own version returns this object unchanged.
+
+        Raises
+        ------
+        ValueError
+            If *version* is not 1, 2 or 3.
+        UnsupportedConversion
+            If *version* is 1, which has no group concept.
+        """
+        if version == self.zarr_format:
+            return self
+        if version == 1:
+            # Zarr v1 predates groups entirely -- a group has no v1 form to
+            # carry attributes into, so the conversion cannot proceed under
+            # any policy. This is a documented limitation, not a
+            # policy-governed loss, so it raises a named error regardless of
+            # *policy*.
+            from abczarr.abc.errors import UnsupportedConversion
+
+            raise UnsupportedConversion("group", 1)
+        if version in (2, 3):
+            target = {2: GroupMetadataV2, 3: GroupMetadataV3}[version]
+            return target(attributes=self.attributes)
+        raise ValueError(f"Unsupported version: {version}")
+
 
 @register_subclass(node_type="array")
 @autofrozen
