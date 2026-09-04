@@ -26,6 +26,7 @@ from abczarr._core import typing as tz
 from abczarr._core.features import FEATURE_KINDS, FEATURE_VERSIONS
 from abczarr.abc.array import ZarrArray
 from abczarr.abc.async_array import AsyncZarrArray
+from abczarr.abc.async_node import AsyncZarrNode
 from abczarr.abc.capabilities import Support
 from abczarr.abc.group import PathGroup
 from abczarr.abc.node import ZarrNode
@@ -206,6 +207,21 @@ def _open_ts_array(location: tx.Any, mode: str) -> TensorStoreArray:
     return TensorStoreArray(array)
 
 
+async def _aopen_ts_array(
+    location: tx.Any, mode: str
+) -> "AsyncTensorStoreArray":
+    """Open the v3 array at *location* through TensorStore asynchronously.
+
+    Awaits TensorStore's own open future rather than blocking on
+    ``.result()``, then wraps the array as its native async twin.
+    """
+    spec = {"driver": "zarr3", "kvstore": _kvstore_spec(location)}
+    array = await ts.open(
+        spec, open=True, read=True, write=mode not in ("r", "read")
+    )
+    return TensorStoreArray(array).as_async()
+
+
 def _create_ts_array(
     location: tx.Any, metadata: ArrayMetadata, *, overwrite: bool
 ) -> TensorStoreArray:
@@ -270,6 +286,16 @@ class TensorStoreDriver(Driver):
             return TensorStoreGroup(location, mode)
         return _open_ts_array(location, mode)
 
+    async def open_async(
+        self, location: tx.Any, mode: str = "r"
+    ) -> AsyncZarrNode:
+        # TensorStore has no group object, so a group opens as the async path
+        # group (which lists and navigates through an async store); an array
+        # awaits TensorStore's own open future.
+        if await _apeek_node_type(location) == "group":
+            return TensorStoreGroup(location, mode).as_async()
+        return await _aopen_ts_array(location, mode)
+
     def create_from_metadata(
         self, location: tx.Any, metadata: NodeMetadata,
         *, overwrite: bool = False,
@@ -328,3 +354,23 @@ def _peek_node_type(location: tx.Any) -> tx.Optional[str]:
         return None
 
 
+async def _apeek_node_type(location: tx.Any) -> tx.Optional[str]:
+    """The node type at *location*'s ``zarr.json``, read through an async
+    store, or None -- the async twin of
+    [_peek_node_type][abczarr.drivers.tensorstore]."""
+    import json
+
+    from abczarr.abc.store import AsyncPathBasedStore
+
+    if not isinstance(location, str) or "://" in location:
+        return None
+    try:
+        raw = await AsyncPathBasedStore(location).get("zarr.json")
+    except Exception:
+        return None
+    if raw is None:
+        return None
+    try:
+        return json.loads(raw).get("node_type")
+    except (ValueError, TypeError):
+        return None

@@ -89,6 +89,22 @@ def test_shared_property_names_are_identical() -> None:
     assert sync == asyncd == _SHARED_PROPERTIES
 
 
+def test_driver_open_has_a_coroutine_twin() -> None:
+    # every driver's sync open has an async twin: open is a plain method,
+    # open_async is a coroutine, and the concrete drivers keep both
+    from abczarr.drivers.base import Driver
+    from abczarr.drivers.tensorstore import TensorStoreDriver
+    from abczarr.drivers.zarr_python import ZarrPythonDriver
+    from abczarr.drivers.zarrista import ZarristaDriver
+
+    assert not inspect.iscoroutinefunction(Driver.open)
+    assert inspect.iscoroutinefunction(Driver.open_async)
+    # the native drivers override open_async; zarrista inherits the
+    # thread-bridged default -- either way it stays a coroutine
+    for driver in (TensorStoreDriver, ZarrPythonDriver, ZarristaDriver):
+        assert inspect.iscoroutinefunction(driver.open_async)
+
+
 def test_update_attributes_parity() -> None:
     # both colors expose update_attributes; the write differs only in that the
     # async one is a coroutine (an assignment expression cannot be awaited, so
@@ -101,6 +117,80 @@ def test_update_attributes_parity() -> None:
     # attrs stays a read surface on both colors
     assert _is_property(abczarr.ZarrNode, "attrs")
     assert _is_property(abczarr.AsyncZarrNode, "attrs")
+
+
+# --------------------------------------------------------------------------
+# the async open is an awaitable: open(asynchronous=True) returns a coroutine,
+# not a node -- the node arrives only once it is awaited
+# --------------------------------------------------------------------------
+
+
+def test_async_open_returns_an_awaitable(tmp_path: pathlib.Path) -> None:
+    # open(asynchronous=True) hands back a coroutine you await, not a node
+    pytest.importorskip("zarr")
+    root = _zp_array(tmp_path)
+    pending = abczarr.open(root + "/img", mode="r", asynchronous=True)
+    assert inspect.isawaitable(pending)
+    assert not isinstance(pending, (ZarrArray, AsyncZarrArray))
+
+    arr = asyncio.run(_await(pending))  # the node arrives only once awaited
+    assert isinstance(arr, AsyncZarrArray)
+
+
+def test_async_open_array_and_group_are_awaitables(
+    tmp_path: pathlib.Path,
+) -> None:
+    # the array/group variants are awaitables too, and each checks its kind
+    pytest.importorskip("zarr")
+    root = _zp_array(tmp_path)
+    for pending in (
+        abczarr.open_array(root + "/img", mode="r", asynchronous=True),
+        abczarr.open_group(root, mode="r", asynchronous=True),
+    ):
+        assert inspect.isawaitable(pending)
+        pending.close()  # a probe we do not await; close it cleanly
+
+    arr = asyncio.run(
+        _await(abczarr.open_array(root + "/img", mode="r", asynchronous=True))
+    )
+    assert isinstance(arr, AsyncZarrArray)
+    grp = asyncio.run(
+        _await(abczarr.open_group(root, mode="r", asynchronous=True))
+    )
+    assert isinstance(grp, AsyncZarrGroup)
+
+
+async def _await(pending: object) -> object:
+    return await pending  # type: ignore[misc]
+
+
+def test_async_open_is_genuinely_async_over_memory(
+    tmp_path: pathlib.Path,
+) -> None:
+    # a genuinely async open works against an fsspec memory:// store, whose
+    # I/O never touches a local file -- the open awaits the metadata read and
+    # round-trips through the async surface
+    import uuid
+
+    zarr = pytest.importorskip("zarr")
+    pytest.importorskip("fsspec")
+    url = "memory://" + uuid.uuid4().hex + "/zp.zarr"
+    group = zarr.open_group(url, mode="w")
+    array = group.create_array(
+        "img", shape=(8, 8), chunks=(4, 4), dtype="float32"
+    )
+    array[:] = np.arange(64).reshape(8, 8)
+
+    async def go() -> float:
+        arr = await abczarr.open(url + "/img", mode="a", asynchronous=True)
+        assert isinstance(arr, AsyncZarrArray)
+        await arr.setitem(
+            (slice(0, 4), slice(0, 4)), np.ones((4, 4), "float32")
+        )
+        block = await arr.getitem((slice(0, 4), slice(0, 4)))
+        return float(np.asarray(block).sum())
+
+    assert asyncio.run(go()) == 16.0
 
 
 # --------------------------------------------------------------------------
@@ -124,12 +214,12 @@ def test_zarr_python_async_roundtrip(tmp_path: pathlib.Path) -> None:
     from abczarr.drivers.zarr_python import AsyncZarrPythonArray
 
     root = _zp_array(tmp_path)
-    arr = abczarr.open(root + "/img", mode="a", asynchronous=True)
-    assert isinstance(arr, AsyncZarrPythonArray)
-    assert arr.supports("async", native=True)
-    assert arr.shape == (8, 8)
 
     async def go() -> float:
+        arr = await abczarr.open(root + "/img", mode="a", asynchronous=True)
+        assert isinstance(arr, AsyncZarrPythonArray)
+        assert arr.supports("async", native=True)
+        assert arr.shape == (8, 8)
         await arr.setitem(
             (slice(0, 4), slice(0, 4)), np.ones((4, 4), "float32")
         )
@@ -142,7 +232,6 @@ def test_zarr_python_async_roundtrip(tmp_path: pathlib.Path) -> None:
 def test_zarr_python_concurrent_fanout(tmp_path: pathlib.Path) -> None:
     pytest.importorskip("zarr")
     root = _zp_array(tmp_path)
-    arr = abczarr.open(root + "/img", mode="r", asynchronous=True)
     regions = [
         (slice(0, 4), slice(0, 4)),
         (slice(0, 4), slice(4, 8)),
@@ -151,6 +240,7 @@ def test_zarr_python_concurrent_fanout(tmp_path: pathlib.Path) -> None:
     ]
 
     async def go() -> list:
+        arr = await abczarr.open(root + "/img", mode="r", asynchronous=True)
         return await asyncio.gather(*(arr.getitem(r) for r in regions))
 
     blocks = asyncio.run(go())
@@ -167,11 +257,11 @@ def test_zarr_python_async_group(tmp_path: pathlib.Path) -> None:
     )
 
     root = _zp_array(tmp_path)
-    grp = abczarr.open(root, mode="a", asynchronous=True)
-    assert isinstance(grp, AsyncZarrPythonGroup)
-    assert grp.supports("async", native=True)
 
     async def go() -> None:
+        grp = await abczarr.open(root, mode="a", asynchronous=True)
+        assert isinstance(grp, AsyncZarrPythonGroup)
+        assert grp.supports("async", native=True)
         names = [name async for name in grp]
         assert "img" in names
 
@@ -226,16 +316,15 @@ def test_tensorstore_async_roundtrip(tmp_path: pathlib.Path) -> None:
     from abczarr.drivers.tensorstore import AsyncTensorStoreArray
 
     root = _ts_array(tmp_path)
-    arr = abczarr.open(
-        root + "/img", mode="a", asynchronous=True, driver="tensorstore"
-    )
-    assert isinstance(arr, AsyncTensorStoreArray)
-    assert arr.supports("async", native=True)
-    assert arr.shape == (8, 8)
-
     corner = np.arange(64).reshape(8, 8)[0:4, 0:4].sum()
 
     async def go() -> None:
+        arr = await abczarr.open(
+            root + "/img", mode="a", asynchronous=True, driver="tensorstore"
+        )
+        assert isinstance(arr, AsyncTensorStoreArray)
+        assert arr.supports("async", native=True)
+        assert arr.shape == (8, 8)
         block = await arr.getitem((slice(0, 4), slice(0, 4)))
         assert np.asarray(block).sum() == corner
         await arr.setitem(
@@ -250,9 +339,6 @@ def test_tensorstore_async_roundtrip(tmp_path: pathlib.Path) -> None:
 def test_tensorstore_concurrent_fanout(tmp_path: pathlib.Path) -> None:
     pytest.importorskip("tensorstore")
     root = _ts_array(tmp_path)
-    arr = abczarr.open(
-        root + "/img", mode="r", asynchronous=True, driver="tensorstore"
-    )
     regions = [
         (slice(0, 4), slice(0, 4)),
         (slice(0, 4), slice(4, 8)),
@@ -261,6 +347,9 @@ def test_tensorstore_concurrent_fanout(tmp_path: pathlib.Path) -> None:
     ]
 
     async def go() -> list:
+        arr = await abczarr.open(
+            root + "/img", mode="r", asynchronous=True, driver="tensorstore"
+        )
         return await asyncio.gather(*(arr.getitem(r) for r in regions))
 
     blocks = asyncio.run(go())
@@ -275,18 +364,19 @@ def test_tensorstore_async_group_is_a_real_path_group(
     from abczarr.drivers.tensorstore import AsyncTensorStoreArray
 
     root = _ts_array(tmp_path)
-    grp = abczarr.open(
-        root, mode="r", asynchronous=True, driver="tensorstore"
-    )
-    # tensorstore has no group object, so its async group IS the async path
-    # group -- listing/navigation run on an AsyncStore, not by threading the
-    # sync group. A path group synthesizes group semantics over a store, so
-    # its own "async" is SYNTHESIZED even though its array children are NATIVE.
-    assert isinstance(grp, AsyncPathGroup)
-    assert grp.capability("async") is Support.SYNTHESIZED
-    assert grp.supports("async")  # synthesized still counts as supported
 
     async def go() -> object:
+        grp = await abczarr.open(
+            root, mode="r", asynchronous=True, driver="tensorstore"
+        )
+        # tensorstore has no group object, so its async group IS the async
+        # path group -- listing/navigation run on an AsyncStore, not by
+        # threading the sync group. A path group synthesizes group semantics
+        # over a store, so its own "async" is SYNTHESIZED even though its
+        # array children are NATIVE.
+        assert isinstance(grp, AsyncPathGroup)
+        assert grp.capability("async") is Support.SYNTHESIZED
+        assert grp.supports("async")  # synthesized still counts as supported
         # listing goes through the async store
         names = [name async for name in grp]
         assert "img" in names
@@ -312,12 +402,11 @@ def test_async_path_group_lists_and_navigates_nested(
     sub = group.create_group("sub")
     sub.create_array("inner", shape=(4, 4), chunks=(2, 2), dtype="uint8")
 
-    grp = abczarr.open(
-        root, mode="r", asynchronous=True, driver="tensorstore"
-    )
-    assert isinstance(grp, AsyncPathGroup)
-
     async def go() -> None:
+        grp = await abczarr.open(
+            root, mode="r", asynchronous=True, driver="tensorstore"
+        )
+        assert isinstance(grp, AsyncPathGroup)
         names = sorted([name async for name in grp])
         assert names == ["img", "sub"]
         subgrp = await grp.getitem("sub")
@@ -338,12 +427,12 @@ def test_async_path_group_creates_children(tmp_path: pathlib.Path) -> None:
 
     root = str(tmp_path / "make.zarr")
     zarr.open_group(root, mode="w")
-    grp = abczarr.open(
-        root, mode="a", asynchronous=True, driver="tensorstore"
-    )
-    assert isinstance(grp, AsyncPathGroup)
 
     async def go() -> None:
+        grp = await abczarr.open(
+            root, mode="a", asynchronous=True, driver="tensorstore"
+        )
+        assert isinstance(grp, AsyncPathGroup)
         arr = await grp.create_array("img", (8, 8), "float32")
         assert isinstance(arr, AsyncTensorStoreArray)
         await arr.setitem(
@@ -419,16 +508,16 @@ def test_thread_synth_default_reports_synthesized(
     )
     array[:] = np.arange(64).reshape(8, 8)
 
-    arr = abczarr.open(
-        root + "/img", mode="r", asynchronous=True, driver="zarrista"
-    )
-    assert isinstance(arr, ThreadedAsyncArray)
-    assert arr.capability("async") is Support.SYNTHESIZED
-    assert not arr.supports("async", native=True)
-    assert arr.supports("async")  # synthesized still counts as supported
     corner = np.arange(64).reshape(8, 8)[0:4, 0:4].sum()
 
     async def go() -> object:
+        arr = await abczarr.open(
+            root + "/img", mode="r", asynchronous=True, driver="zarrista"
+        )
+        assert isinstance(arr, ThreadedAsyncArray)
+        assert arr.capability("async") is Support.SYNTHESIZED
+        assert not arr.supports("async", native=True)
+        assert arr.supports("async")  # synthesized still counts as supported
         return await arr.getitem((slice(0, 4), slice(0, 4)))
 
     block = asyncio.run(go())

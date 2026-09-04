@@ -17,15 +17,15 @@ array[...] = data
 holds other nodes by name, arrays and groups alike, and behaves like a
 mapping: `group["images"]`, `group.keys()`, `"images" in group`.
 
-Every node has a coroutine twin. Open one with `asynchronous=True`, or
-convert a node you already hold with
-[as_async][abczarr.abc.array.ZarrArray.as_async]; go back with
-[as_sync][abczarr.abc.async_node.AsyncZarrNode.as_sync]. The async array
+Every node has a coroutine twin. Open one with `asynchronous=True` -- which
+returns a coroutine you **await**, opening asynchronously -- or convert a node
+you already hold with [as_async][abczarr.abc.array.ZarrArray.as_async]; go back
+with [as_sync][abczarr.abc.async_node.AsyncZarrNode.as_sync]. The async array
 reads and writes through **methods**, not `[]` -- an assignment expression
 cannot be awaited:
 
 ```python
-array = abczarr.open("data.zarr", mode="a", asynchronous=True)
+array = await abczarr.open("data.zarr", mode="a", asynchronous=True)
 block = await array.getitem((slice(0, 64), slice(0, 64)))
 await array.setitem((slice(0, 64), slice(0, 64)), block * 2)
 ```
