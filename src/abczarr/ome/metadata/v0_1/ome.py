@@ -31,14 +31,14 @@ class OME(OMEBase):
 @register_subclass(series=tx.Any)
 @autodefine
 class OMESeries(OME):
-    series: Optional[tx.List[str]] = None
+    series: tx.Optional[tx.List[str]] = None
 
 
 @register_subclass(multiscales=tx.Any)
 @autodefine
 class OMEImage(OME):
     multiscales: Required[tx.List[Multiscale]]
-    omero: Optional[Omero]
+    omero: tx.Optional[Omero]
 
 
 @register_subclass(image_label=tx.Any)

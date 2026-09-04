@@ -1,19 +1,16 @@
+# Generated from v0_1 by tools/gen_ome_metadata.py -- do not edit
+
 """A segmentation label image: display colors and per-label properties."""
 
 __all__ = ["ImageLabel"]
-
-# dependencies
 import typing_extensions as tx
 
-# core
 from abczarr._core.auto.attrs import autodefine
 from abczarr._core.auto.converters import ToInRange
 from abczarr._core.rfc2119 import Optional, Recommended, Required
 
-# locals
 from ..base import OMEMetadata
 
-# typing
 UInt8 = tx.Annotated[int, ToInRange(0, 255)]
 
 
@@ -28,7 +25,6 @@ class ImageLabel(OMEMetadata):
     where the label image was derived from.
     """
 
-
     @autodefine
     class Color(OMEMetadata):
         """The display color for one label value.
@@ -38,7 +34,6 @@ class ImageLabel(OMEMetadata):
 
         label_value: Required[int]
         rgba: Optional[tx.Tuple[UInt8, UInt8, UInt8, UInt8]]
-
 
     @autodefine
     class Property(OMEMetadata):
@@ -51,7 +46,6 @@ class ImageLabel(OMEMetadata):
 
         label_value: Required[int]
 
-
     @autodefine
     class Source(OMEMetadata):
         """Where a label value came from.
@@ -62,7 +56,6 @@ class ImageLabel(OMEMetadata):
 
         image: Optional[str] = None
         label_value: Required[int]
-
 
     colors: Recommended[tx.List[Color]]
     properties: Optional[Property]

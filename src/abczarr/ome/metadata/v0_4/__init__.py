@@ -1,6 +1,15 @@
+# Generated from v0_1 by tools/gen_ome_metadata.py -- do not edit
+
 __all__ = [
-    "axes", "images", "labels", "ome", "omero", "plates", "transformations",
-    "version", "wells"
+    "axes",
+    "images",
+    "labels",
+    "ome",
+    "omero",
+    "plates",
+    "transformations",
+    "version",
+    "wells",
 ]
 
 
