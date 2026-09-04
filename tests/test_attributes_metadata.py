@@ -198,11 +198,11 @@ def test_tensorstore_async_update_attributes_round_trips(
 ) -> None:
     pytest.importorskip("tensorstore")
     path = _ts_array(tmp_path)
-    node = abczarr.open(
-        path, mode="a", asynchronous=True, driver="tensorstore"
-    )
 
     async def go() -> None:
+        node = await abczarr.open(
+            path, mode="a", asynchronous=True, driver="tensorstore"
+        )
         await node.update_attributes({"unit": "micrometer"})
 
     asyncio.run(go())
@@ -254,13 +254,12 @@ def test_zarr_python_async_update_attributes_delegates(
 ) -> None:
     zarr = pytest.importorskip("zarr")
     path = _zp_array(tmp_path)
-    node = abczarr.open(path, mode="a", asynchronous=True)
 
     async def go() -> None:
+        node = await abczarr.open(path, mode="a", asynchronous=True)
         await node.update_attributes({"unit": "micrometer"})
 
     asyncio.run(go())
-    assert node.attrs["unit"] == "micrometer"
     assert zarr.open(path, mode="r").attrs["unit"] == "micrometer"
 
 

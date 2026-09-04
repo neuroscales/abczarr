@@ -41,11 +41,34 @@ from .registry import available_drivers, select_driver
 _DriverArg = tx.Optional[tx.Union[str, Driver]]
 
 
+@tx.overload
+def open(
+    path: tz.PathLike, mode: str = ..., *,
+    asynchronous: "tx.Literal[False]" = ..., driver: _DriverArg = ...,
+) -> ZarrNode: ...
+@tx.overload
+def open(
+    path: tz.PathLike, mode: str = ..., *,
+    asynchronous: "tx.Literal[True]", driver: _DriverArg = ...,
+) -> tx.Awaitable[AsyncZarrNode]: ...
+
+
 def open(
     path: tz.PathLike, mode: str = "a", *,
     asynchronous: bool = False, driver: _DriverArg = None,
-) -> tx.Union[ZarrNode, AsyncZarrNode]:
+) -> tx.Union[ZarrNode, tx.Awaitable[AsyncZarrNode]]:
     """Open the Zarr array or group at *path*.
+
+    With `asynchronous=True` the return value is a **coroutine you await**: it
+    opens through the backend's own async I/O -- the metadata read is awaited
+    -- and resolves to the coroutine twin of the node. Without it, the array
+    or group is opened synchronously and returned directly.
+
+    !!! example
+        ```python
+        node = abczarr.open("data.zarr")                       # sync node
+        node = await abczarr.open("data.zarr", asynchronous=True)  # async twin
+        ```
 
     Parameters
     ----------
@@ -55,26 +78,38 @@ def open(
         The access mode, as zarr-python understands it (`"r"`, `"r+"`,
         `"a"`, `"w"`).
     asynchronous : bool, optional
-        Return the coroutine twin -- an
+        When true, return a coroutine that opens *path* asynchronously and
+        resolves to the coroutine twin -- an
         [AsyncZarrArray][abczarr.abc.async_array.AsyncZarrArray] or
         [AsyncZarrGroup][abczarr.abc.async_group.AsyncZarrGroup] -- whose I/O
-        is awaited. The open itself stays synchronous and does no async I/O;
-        it hands back the async handle to read and write through. Whether
-        that surface is native to the backend or synthesized in a thread
-        pool is reported by `node.supports("async", native=True)`.
+        is awaited. Whether that surface is native to the backend or
+        synthesized in a thread pool is reported by
+        `node.supports("async", native=True)`. When false (the default), open
+        synchronously and return the node directly.
     driver : str or Driver, optional
         A driver, or its name, to open with. When omitted, a driver is
         chosen for what the array needs.
 
     Returns
     -------
-    ZarrNode or AsyncZarrNode
-        The wrapped array or group, sync by default or async when
-        *asynchronous* is true.
+    ZarrNode or Awaitable[AsyncZarrNode]
+        The wrapped array or group directly, or -- when *asynchronous* is
+        true -- a coroutine resolving to its async twin.
     """
+    if asynchronous:
+        return _aopen(path, mode, driver)
     chosen = _choose(path, _resolve_drivers(driver))
-    node = chosen.open(path, mode)
-    return node.as_async() if asynchronous else node
+    return chosen.open(path, mode)
+
+
+async def _aopen(
+    path: tz.PathLike, mode: str, driver: _DriverArg
+) -> AsyncZarrNode:
+    """Open *path* asynchronously: pick a driver through an async metadata
+    peek, then await its native async open."""
+    drivers = _resolve_drivers(driver)
+    chosen = await _achoose(path, drivers)
+    return await chosen.open_async(path, mode)
 
 
 @tx.overload
@@ -86,21 +121,32 @@ def open_array(
 def open_array(
     path: tz.PathLike, mode: str = ..., *,
     asynchronous: "tx.Literal[True]", driver: _DriverArg = ...,
-) -> AsyncZarrArray: ...
+) -> tx.Awaitable[AsyncZarrArray]: ...
 
 
 def open_array(
     path: tz.PathLike, mode: str = "a", *,
     asynchronous: bool = False, driver: _DriverArg = None,
-) -> tx.Union[ZarrArray, AsyncZarrArray]:
+) -> tx.Union[ZarrArray, tx.Awaitable[AsyncZarrArray]]:
     """Open *path*, requiring it to be an array.
 
-    Like [open][abczarr.api.open], but raises if *path* is a group. Returns
-    the async array twin when *asynchronous* is true.
+    Like [open][abczarr.api.open], but raises if *path* is a group. When
+    *asynchronous* is true, returns a coroutine resolving to the async array
+    twin.
     """
-    node = open(path, mode, asynchronous=asynchronous, driver=driver)
-    expected = AsyncZarrArray if asynchronous else ZarrArray
-    if not isinstance(node, expected):
+    if asynchronous:
+        return _aopen_array(path, mode, driver)
+    node = open(path, mode, driver=driver)
+    if not isinstance(node, ZarrArray):
+        raise UnsupportedZarrOperation("open_array on a group")
+    return node
+
+
+async def _aopen_array(
+    path: tz.PathLike, mode: str, driver: _DriverArg
+) -> AsyncZarrArray:
+    node = await _aopen(path, mode, driver)
+    if not isinstance(node, AsyncZarrArray):
         raise UnsupportedZarrOperation("open_array on a group")
     return node
 
@@ -114,21 +160,32 @@ def open_group(
 def open_group(
     path: tz.PathLike, mode: str = ..., *,
     asynchronous: "tx.Literal[True]", driver: _DriverArg = ...,
-) -> AsyncZarrGroup: ...
+) -> tx.Awaitable[AsyncZarrGroup]: ...
 
 
 def open_group(
     path: tz.PathLike, mode: str = "a", *,
     asynchronous: bool = False, driver: _DriverArg = None,
-) -> tx.Union[ZarrGroup, AsyncZarrGroup]:
+) -> tx.Union[ZarrGroup, tx.Awaitable[AsyncZarrGroup]]:
     """Open *path*, requiring it to be a group.
 
-    Like [open][abczarr.api.open], but raises if *path* is an array. Returns
-    the async group twin when *asynchronous* is true.
+    Like [open][abczarr.api.open], but raises if *path* is an array. When
+    *asynchronous* is true, returns a coroutine resolving to the async group
+    twin.
     """
-    node = open(path, mode, asynchronous=asynchronous, driver=driver)
-    expected = AsyncZarrGroup if asynchronous else ZarrGroup
-    if not isinstance(node, expected):
+    if asynchronous:
+        return _aopen_group(path, mode, driver)
+    node = open(path, mode, driver=driver)
+    if not isinstance(node, ZarrGroup):
+        raise UnsupportedZarrOperation("open_group on an array")
+    return node
+
+
+async def _aopen_group(
+    path: tz.PathLike, mode: str, driver: _DriverArg
+) -> AsyncZarrGroup:
+    node = await _aopen(path, mode, driver)
+    if not isinstance(node, AsyncZarrGroup):
         raise UnsupportedZarrOperation("open_group on an array")
     return node
 
@@ -259,6 +316,47 @@ def _peek_array_metadata(path: tz.PathLike) -> tx.Any:
 
     try:
         raw = PathBasedStore(str(path)).get("zarr.json")
+    except Exception:
+        return None
+    if raw is None:
+        return None
+    try:
+        data = json.loads(raw)
+    except (ValueError, TypeError):
+        return None
+    is_v3_array = (
+        isinstance(data, dict)
+        and data.get("node_type") == "array"
+        and data.get("zarr_format") == 3
+    )
+    if not is_v3_array:
+        return None
+    try:
+        return v3.ArrayMetadata.from_dict(data)
+    except Exception:
+        return None
+
+
+async def _achoose(path: tz.PathLike, drivers: "tx.List[Driver]") -> Driver:
+    """The driver to open *path* with, selected through an async metadata
+    peek -- the async twin of [_choose][abczarr.api._entry]."""
+    if len(drivers) == 1:
+        return drivers[0]
+    metadata = await _apeek_array_metadata(path)
+    if metadata is not None:
+        return select_driver(metadata, drivers)
+    return drivers[0]
+
+
+async def _apeek_array_metadata(path: tz.PathLike) -> tx.Any:
+    """Read an array's metadata through an async store, for selection, or
+    ``None`` when *path* is a group or its metadata cannot be read -- the
+    async twin of [_peek_array_metadata][abczarr.api._entry]."""
+    from ..abc.store import AsyncPathBasedStore
+    from ..metadata import v3
+
+    try:
+        raw = await AsyncPathBasedStore(str(path)).get("zarr.json")
     except Exception:
         return None
     if raw is None:

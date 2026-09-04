@@ -25,6 +25,7 @@ from abczarr.abc.capabilities import SupportsCapabilities
 from abczarr.abc.errors import UnsupportedZarrOperation
 
 if tx.TYPE_CHECKING:
+    from abczarr.abc.async_node import AsyncZarrNode
     from abczarr.abc.node import ZarrNode
     from abczarr.api.config import ZarrConfig
     from abczarr.metadata.base import ArrayMetadata, NodeMetadata
@@ -90,6 +91,32 @@ class Driver(SupportsCapabilities):
             When this driver cannot open a location.
         """
         raise UnsupportedZarrOperation("open", self.name or None)
+
+    async def open_async(
+        self, location: tx.Any, mode: str = "r"
+    ) -> "AsyncZarrNode":
+        """Open *location* asynchronously and wrap it as an async node.
+
+        The metadata read is awaited, so the open does its I/O
+        asynchronously and returns the coroutine twin of the node --
+        an [AsyncZarrArray][abczarr.abc.async_array.AsyncZarrArray] or
+        [AsyncZarrGroup][abczarr.abc.async_group.AsyncZarrGroup].
+
+        A backend with a native coroutine open overrides this to await its
+        own I/O. The default runs the synchronous
+        [open][abczarr.drivers.base.Driver.open] in a worker thread and
+        returns its async twin, so a driver with no native async open still
+        presents the coroutine surface.
+
+        Raises
+        ------
+        [UnsupportedZarrOperation][abczarr.abc.errors.UnsupportedZarrOperation]
+            When this driver cannot open a location.
+        """
+        from abczarr._core.asyncutils import run_sync
+
+        node = await run_sync(self.open, location, mode)
+        return node.as_async()
 
     def create(self, location: tx.Any, config: "ZarrConfig") -> "ZarrNode":
         """Create the node *config* describes at *location* and open it.

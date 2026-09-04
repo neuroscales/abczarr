@@ -181,6 +181,17 @@ class ZarrPythonDriver(Driver):
             return ZarrPythonGroup(node)
         return ZarrPythonArray(node)
 
+    async def open_async(
+        self, location: tx.Any, mode: str = "r"
+    ) -> AsyncZarrNode:
+        # delegate to zarr-python's own async open (a coroutine); its metadata
+        # read is awaited, and the AsyncArray/AsyncGroup it returns is wrapped
+        # as the native async twin
+        import zarr.api.asynchronous as async_api
+
+        node = await async_api.open(store=location, mode=mode)
+        return _wrap_async(node).as_async()
+
     def create(
         self, location: tx.Any, config: tx.Any
     ) -> "ZarrPythonNode":
