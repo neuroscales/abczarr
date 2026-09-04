@@ -29,12 +29,7 @@ class Dataset(OMEMetadata):
     """One resolution level of a multiscale pyramid.
 
     `path` is the name of the Zarr array holding this level, relative
-    to the image group. `coordinateTransformations` places it in the
-    pyramid's physical space: a
-    [Scale][abczarr.ome.metadata.v0_2.transformations.Scale], optionally
-    followed by a
-    [Translation][abczarr.ome.metadata.v0_2.transformations.Translation],
-    one value per axis.
+    to the image group.
     """
 
     path: Required[str] = field(factory=False)
@@ -42,14 +37,11 @@ class Dataset(OMEMetadata):
 
 @autodefine
 class Multiscale(OMEMetadata):
-    """A multiscale image pyramid: its axes and resolution levels.
+    """A multiscale image pyramid: its resolution levels.
 
-    `axes` names and orders the pyramid's dimensions: `t`, `c`, `z`,
-    `y`, `x`, in whatever subset and order the image uses. `datasets`
-    lists its resolution levels from full resolution down, each a
+    `datasets` lists the pyramid's resolution levels from full
+    resolution down, each a
     [Dataset][abczarr.ome.metadata.v0_2.images.Dataset].
-    `coordinateTransformations` here, if given, applies to every
-    level before its own.
     """
 
     @autodefine

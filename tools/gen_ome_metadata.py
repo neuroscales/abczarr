@@ -180,6 +180,44 @@ class DelField:
         node.body.remove(_field_node(node, self.field))
 
 
+class SetDoc:
+    """Replace a class's docstring.
+
+    A field's prose travels with the field: a description that mentions a
+    field (or a cross-reference to a module) only holds once that field or
+    module exists, so the docstring is set at the version that introduces
+    it, not carried in the template. ``doc`` is written plain -- the first
+    line flush, every later line without leading indentation -- and this op
+    re-indents the continuation lines to sit under the opening quote of a
+    top-level class, matching a hand-written docstring literal.
+    """
+
+    def __init__(
+        self,
+        module: str,
+        cls: Tuple[str, ...],
+        doc: str,
+        indent: int = 4,
+    ) -> None:
+        self.module, self.cls, self.doc = module, cls, doc
+        self.indent = indent
+
+    def apply(self, modules: Modules) -> None:
+        node = _class_node(modules[self.module], self.cls)
+        pad = " " * self.indent
+        lines = self.doc.strip("\n").split("\n")
+        rendered = [lines[0]] + [
+            (pad + line if line else "") for line in lines[1:]
+        ]
+        value = "\n".join(rendered) + "\n" + pad
+        expr = ast.Expr(value=ast.Constant(value=value))
+        body = node.body
+        if body and _is_docstring(body[0]):
+            body[0] = expr
+        else:
+            body.insert(0, expr)
+
+
 class DelAssign:
     """Remove a module-level ``name = ...`` statement (a type alias)."""
 
@@ -369,6 +407,44 @@ class Scale(CoordinateTransformation):
 '''
 
 
+# -- Docstrings that grow as fields are added ------------------------------
+# Authored plain (continuation lines flush left); SetDoc re-indents them.
+# Written with the ``v0_1`` cross-reference token, substituted per version,
+# so the transformations links only appear from v0.4 where that module lives.
+
+_MULTISCALE_DOC_V0_3 = """\
+A multiscale image pyramid: its axes and resolution levels.
+
+`axes` names and orders the pyramid's dimensions: `t`, `c`, `z`,
+`y`, `x`, in whatever subset and order the image uses. `datasets`
+lists its resolution levels from full resolution down, each a
+[Dataset][abczarr.ome.metadata.v0_1.images.Dataset].
+"""
+
+_DATASET_DOC_V0_4 = """\
+One resolution level of a multiscale pyramid.
+
+`path` is the name of the Zarr array holding this level, relative
+to the image group. `coordinateTransformations` places it in the
+pyramid's physical space: a
+[Scale][abczarr.ome.metadata.v0_1.transformations.Scale], optionally
+followed by a
+[Translation][abczarr.ome.metadata.v0_1.transformations.Translation],
+one value per axis.
+"""
+
+_MULTISCALE_DOC_V0_4 = """\
+A multiscale image pyramid: its axes and resolution levels.
+
+`axes` names and orders the pyramid's dimensions: `t`, `c`, `z`,
+`y`, `x`, in whatever subset and order the image uses. `datasets`
+lists its resolution levels from full resolution down, each a
+[Dataset][abczarr.ome.metadata.v0_1.images.Dataset].
+`coordinateTransformations` here, if given, applies to every
+level before its own.
+"""
+
+
 #: The forward delta table.  ``DELTAS[v]`` moves the running module set from
 #: the previous version to ``v``.
 DELTAS = {
@@ -386,6 +462,7 @@ DELTAS = {
     "v0_3": [
         AddField("images", ("Multiscale",), "axes",
                  "Required[tx.List[Axis]]", before="datasets"),
+        SetDoc("images", ("Multiscale",), _MULTISCALE_DOC_V0_3),
         SetAnn("images", ("Multiscale",), "version", "Required[Version]"),
         SetAnn("labels", ("ImageLabel",), "version", "Required[Version]"),
         SetAnn("omero", ("Omero",), "version", "Required[Version]"),
@@ -416,11 +493,13 @@ DELTAS = {
             " tx.Tuple[Scale, Translation]]]",
             after="path",
         ),
+        SetDoc("images", ("Dataset",), _DATASET_DOC_V0_4),
         AddField(
             "images", ("Multiscale",), "coordinateTransformations",
             "Optional[tx.List[CoordinateTransformation]]",
             after="datasets",
         ),
+        SetDoc("images", ("Multiscale",), _MULTISCALE_DOC_V0_4),
     ],
     # 0.4 -> 0.5
     #   * the per-object `version` field is dropped everywhere it was a
@@ -487,6 +566,14 @@ def _assign_node(module: ast.Module, name: str) -> ast.Assign:
 
 def _target_name(node: ast.AnnAssign) -> Optional[str]:
     return node.target.id if isinstance(node.target, ast.Name) else None
+
+
+def _is_docstring(node: ast.stmt) -> bool:
+    return (
+        isinstance(node, ast.Expr)
+        and isinstance(node.value, ast.Constant)
+        and isinstance(node.value.value, str)
+    )
 
 
 # ==========================================================================
