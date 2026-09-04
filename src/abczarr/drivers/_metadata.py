@@ -1,6 +1,6 @@
 """Build abczarr metadata from a backend node's metadata dict.
 
-A driver reads a node's metadata as the plain Json dict a Zarr store holds
+A driver reads a node's metadata as the plain JSON dict a Zarr store holds
 (``zarr.json`` / ``.zarray``) and turns it into the typed, version-specific
 abczarr metadata. Shared by the backend drivers so they agree on the mapping.
 """

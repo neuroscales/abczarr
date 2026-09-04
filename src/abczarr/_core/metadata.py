@@ -49,7 +49,7 @@ def register_subclass(
 
 @autofrozen
 class Metadata:
-    """Frozen, recursive, Json-serializable metadata class."""
+    """Frozen, recursive, JSON-serializable metadata class."""
 
     # --- Subclass registry --------------------------------------------
 
@@ -122,10 +122,10 @@ class Metadata:
     def keys(self) -> tx.Tuple[str, ...]:
         return tuple(self)
 
-    # --- Json conversion ----------------------------------------------
+    # --- JSON conversion ----------------------------------------------
 
     def to_dict(self) -> tz.JsonDict:
-        """Convert this metadata to a Json-serializable dict.
+        """Convert this metadata to a JSON-serializable dict.
 
         Serializes this object's own fields. A nested metadata value is
         serialized through its own `to_dict`, so a subclass that overrides it
@@ -136,7 +136,7 @@ class Metadata:
 
     @classmethod
     def from_dict(cls, data: tz.JsonDict) -> tx.Self:
-        """Create an instance from a Json-serializable dict."""
+        """Create an instance from a JSON-serializable dict."""
 
         # If not a dict, try to interpret it as a positional argument
         if not isinstance(data, abc.Mapping):
@@ -203,7 +203,7 @@ class Metadata:
 
 
 _JSONMetadata = tx.Union[
-    tz._JsonScalar, Metadata, tx.Tuple["_JSONMetadata", ...]
+    tz.JsonScalar, Metadata, tx.Tuple["_JSONMetadata", ...]
 ]
 JSONMetadata = tx.TypeVar(
     "JSONMetadata", bound=_JSONMetadata, default=_JSONMetadata
@@ -249,7 +249,7 @@ def _to_json(obj: tx.Any) -> tz.Json:
         # itself specially (an Extension written as a bare name) is honored
         return obj.to_dict()
     elif isinstance(obj, np.dtype):
-        # a numpy dtype is not Json: emit its zarr string form ("<f8")
+        # a numpy dtype is not JSON: emit its zarr string form ("<f8")
         return obj.str
     elif isinstance(obj, np.generic):
         return obj.item()

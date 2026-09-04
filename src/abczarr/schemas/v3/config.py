@@ -14,7 +14,7 @@ class NamedConfig(tx.TypedDict, tx.Generic[TName, TConfig]):
     """
     A typed dictionary representing an object with a name and configuration,
     where the configuration is an optional mapping of string keys to values,
-    e.g. another typed dictionary or a Json object.
+    e.g. another typed dictionary or a JSON object.
 
     This class is generic with two type parameters: the type of the name
     (``TName``) and the type of the configuration (``TConfig``).
@@ -31,7 +31,7 @@ class NamedRequiredConfig(tx.TypedDict, tx.Generic[TName, TConfig]):
     """
     A typed dictionary representing an object with a name and configuration,
     where the configuration is a mapping of string keys to values,
-    e.g. another typed dictionary or a Json object.
+    e.g. another typed dictionary or a JSON object.
 
     This class is generic with two type parameters: the type of the name
     (``TName``) and the type of the configuration (``TConfig``).

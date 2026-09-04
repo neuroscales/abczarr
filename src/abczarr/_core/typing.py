@@ -91,7 +91,6 @@ import typing_extensions as tx
 # internals
 from .attrs import (
     Converter,
-    ToAnnotated,
     ToNegative,
     ToNonNegative,
     ToNonPositive,
@@ -163,42 +162,53 @@ NonPositiveIntegral = tx.Annotated[
 NonNegativeIntegral = tx.Annotated[
     Integral, ToNonNegative(compose=True)]
 
-# Json
-_JsonNumber = tx.Union[int, float]
-_JsonNumberLike = tx.Union[int, float, bool]
-_JsonScalar = tx.Union[int, float, bool, str, None]
-_Json = tx.Union[_JsonScalar, tx.Mapping[str, "Json"], BuiltinSequence["Json"]]
-JsonNumber = _JsonNumber
-JsonNumberLike = _JsonNumberLike
-JsonScalar = _JsonScalar
-Json = _Json
+# JSON
+JsonNumber = tx.Union[int, float]
+JsonNumberLike = tx.Union[int, float, bool]
+JsonScalar = tx.Union[int, float, bool, str, None]
+Json = tx.Union[JsonScalar, tx.Mapping[str, "Json"], BuiltinSequence["Json"]]
 JsonDict = tx.Mapping[str, Json]
 
-class _Freeze:
-    """Marker: deep-freeze this Json value into `FrozenDict`/`tuple`.
-
-    Carried as `Annotated` metadata on `FrozenJson` so the freezing is tied
-    to *that* type -- `ToFrozenJson` is registered for this marker -- rather
-    than to `FrozenDict`, which is more general than a frozen-Json value.
-    """
-
-
-# The frozen Json model. Its mapping and sequence are the *immutable*
+# The frozen JSON model. Its mapping and sequence are the *immutable*
 # `FrozenDict` and `tuple`, matching the immutable nature of the frozen
 # attrs classes that hold it -- an extra item, or an `attributes` value, is
 # deep-frozen so the whole object stays genuinely immutable (and, as a
-# bonus, hashable). The `_Freeze` marker makes `ToFrozenJson` (below) rebuild
-# a plain `dict`/`list` into a `FrozenDict`/`tuple` recursively.
+# bonus, hashable). `ToFrozenJson`, carried in `FrozenJson`'s `Annotated`
+# metadata, rebuilds a plain `dict`/`list` into a `FrozenDict`/`tuple`
+# recursively.
 _FrozenJson = tx.Union[
-    _JsonScalar, FrozenDict[str, "FrozenJson"], tx.Tuple["FrozenJson", ...]
+    JsonScalar, FrozenDict[str, "FrozenJson"], tx.Tuple["FrozenJson", ...]
 ]
-FrozenJson = tx.Annotated[_FrozenJson, _Freeze()]
+
+
+class ToFrozenJson(Converter[_FrozenJson, _FrozenJson]):
+    """Deep-freeze a JSON value into `FrozenDict`/`tuple`.
+
+    Carried in `FrozenJson`'s `Annotated` metadata, so it applies to a
+    frozen-JSON value specifically. It converts the whole value in one
+    recursive pass -- a mapping becomes a `FrozenDict`, a list or tuple a
+    `tuple`, a scalar is returned unchanged -- rather than relying on the
+    frozen-JSON union's branches, which cannot tell a `dict` from a `list`
+    without corrupting one of them. The value is rebuilt directly (nothing
+    is serialized), so it stays deeply immutable, and hashable as a result.
+    """
+
+    def __call__(self, value: _FrozenJson) -> _FrozenJson:
+        if isinstance(value, collections.abc.Mapping):
+            return FrozenDict(
+                (str(key), self(item)) for key, item in value.items()
+            )
+        if isinstance(value, (list, tuple)):
+            return tuple(self(item) for item in value)
+        return value
+
+
+FrozenJson = tx.Annotated[_FrozenJson, ToFrozenJson()]
 FrozenJsonDict = FrozenDict[str, FrozenJson]
 
-_MutableJson = tx.Union[
-    _JsonScalar, tx.MutableMapping[str, "Json"], tx.List["Json"]
+MutableJson = tx.Union[
+    JsonScalar, tx.MutableMapping[str, "Json"], tx.List["Json"]
 ]
-MutableJson = _MutableJson
 MutableJsonDict = tx.MutableMapping[str, MutableJson]
 
 # Shapes
@@ -249,42 +259,8 @@ PyramidMode = tx.Union[KnownPyramidMode, PyramidFunction]
 
 @register_converter(Json)
 class ToJson(Converter[Json, Json]):
-    """
-    A converter for Json-compatible types.
-    """
+    """A converter for JSON-compatible types."""
 
     def __call__(self, value: Json) -> Json:
         return json.loads(json.dumps(value))
-
-
-def _freeze_json(value: tx.Any) -> tx.Any:
-    """Recursively freeze a Json value into its immutable form.
-
-    A mapping becomes a `FrozenDict` and a list or tuple a `tuple`, each of
-    frozen values; a scalar is returned unchanged. The structure is rebuilt
-    directly -- nothing is serialized -- so a frozen-Json field holds a
-    deeply immutable value, mirroring the immutable frozen class that carries
-    it (and hashable as a consequence).
-    """
-    if isinstance(value, collections.abc.Mapping):
-        return FrozenDict(
-            (str(key), _freeze_json(item)) for key, item in value.items()
-        )
-    if isinstance(value, (list, tuple)):
-        return tuple(_freeze_json(item) for item in value)
-    return value
-
-
-@ToAnnotated.register_metadata(_Freeze)
-class ToFrozenJson(Converter[_FrozenJson, _FrozenJson]):
-    """Deep-freeze a Json value into `FrozenDict`/`tuple` (see `_freeze_json`).
-
-    Registered for the `_Freeze` marker carried by `FrozenJson`, so it applies
-    to a frozen-Json value specifically. It converts the whole value in one
-    recursive pass rather than relying on the frozen-Json union's branches,
-    which cannot tell a `dict` from a `list` without corrupting one of them.
-    """
-
-    def __call__(self, value: _FrozenJson) -> _FrozenJson:
-        return _freeze_json(value)
 

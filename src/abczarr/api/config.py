@@ -270,7 +270,7 @@ class ArrayConfig(ZarrConfig):
     # -- resolved pieces, for a driver that creates natively rather than from
     #    a written metadata document.
 
-    def compressor_codecs(self) -> "tx.List[tz.JsonDict]":
+    def compressor_codecs(self) -> tx.List[tz.JsonDict]:
         """The compressor as a list of zero or one v3 codec specs.
 
         `"auto"` becomes the version default (zstd); `None` (or `"none"`) is
@@ -404,7 +404,7 @@ def _bytes_codec(dtype: npt.DTypeLike) -> tz.JsonDict:
 
 
 def _fill_blosc_typesize(
-    codecs: "tx.List[tz.JsonDict]", dtype: npt.DTypeLike
+    codecs: tx.List[tz.JsonDict], dtype: npt.DTypeLike
 ) -> None:
     """Fill a blosc codec's required `typesize` from the dtype's item size.
 

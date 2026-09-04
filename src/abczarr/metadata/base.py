@@ -2,7 +2,7 @@
 The version-independent metadata model.
 
 Every node in a Zarr hierarchy -- a group or an array -- is described
-by a small Json document: `zarr.json` in Zarr v3, `.zarray`/`.zgroup`
+by a small JSON document: `zarr.json` in Zarr v3, `.zarray`/`.zgroup`
 plus `.zattrs` in v2, `.zarray`/`.zattrs` in v1. This module defines
 the typed classes that document holds, one hierarchy per format
 version, and the shared vocabulary
@@ -383,7 +383,7 @@ class NodeMetadataV1(NodeMetadata):
 
     @classmethod
     def from_dict(cls, data: tz.JsonDict) -> tx.Self:
-        """Build v1 metadata from a plain Json-compatible dict.
+        """Build v1 metadata from a plain JSON-compatible dict.
 
         *data* is the merged content of `.zarray` and `.zattrs`
         (under the key `"attributes"`), the same shape
@@ -613,7 +613,7 @@ class ArrayMetadataV3(NodeMetadataV3, ArrayMetadata):
 
 
 def _atomic_write(path: os.PathLike, data: tz.JsonDict) -> None:
-    """Write Json data to path atomically."""
+    """Write JSON data to path atomically."""
     PathType = type(path)
     parent = path.parent
     parent.mkdir(parents=True, exist_ok=True)

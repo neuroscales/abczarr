@@ -115,7 +115,7 @@ class ZarrNode(SupportsCapabilities, ABC):
         Parameters
         ----------
         attributes : dict
-            The attributes to add or replace. Values must be Json-compatible.
+            The attributes to add or replace. Values must be JSON-compatible.
 
         Returns
         -------
