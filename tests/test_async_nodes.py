@@ -697,6 +697,25 @@ def test_zarr_python_async_create_group(tmp_path: pathlib.Path) -> None:
     assert isinstance(grp, AsyncZarrGroup)
 
 
+def test_zarr_python_async_create_array(tmp_path: pathlib.Path) -> None:
+    pytest.importorskip("zarr")
+
+    async def go() -> float:
+        arr = await abczarr.create_array(
+            str(tmp_path / "a.zarr"),
+            shape=(4, 4), dtype="float32", asynchronous=True,
+        )
+        assert isinstance(arr, AsyncZarrArray)
+        assert arr.shape == (4, 4)
+        await arr.setitem(
+            (slice(0, 4), slice(0, 4)), np.ones((4, 4), "float32")
+        )
+        block = await arr.getitem((slice(0, 4), slice(0, 4)))
+        return float(np.asarray(block).sum())
+
+    assert asyncio.run(go()) == 16.0
+
+
 def test_tensorstore_async_create_roundtrip(tmp_path: pathlib.Path) -> None:
     pytest.importorskip("zarr")
     pytest.importorskip("tensorstore")

@@ -28,6 +28,7 @@ __all__ = [
     "TransactionConflict",
     "open",
     "create",
+    "create_array",
     "create_group",
     "open_array",
     "open_group",
@@ -52,6 +53,7 @@ from .abc import (
 )
 from .api import (
     create,
+    create_array,
     create_group,
     open,
     open_array,
