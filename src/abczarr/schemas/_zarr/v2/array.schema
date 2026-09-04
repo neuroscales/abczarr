@@ -1,0 +1,611 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Zarr v2 array metadata (.zarray)",
+  "type": "object",
+  "properties": {
+    "zarr_format": {
+      "const": 2
+    },
+    "shape": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "chunks": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "dtype": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^(?:\\|b1|[<>|][iu][1248]|[<>][f][248]|[<>][c][816]|[<>|][mM][1248](?:\\[(?:h|m|s|ms|us|\u03bcs|ns|ps|fs|as|Y|M|W|D|nat|naT|nAt|nAT|Nat|NaT|NAt|NAT)\\])?|[<>|][SUV]\\d+)$"
+        },
+        {
+          "type": "array"
+        }
+      ]
+    },
+    "compressor": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/codec_blosc"
+        },
+        {
+          "$ref": "#/$defs/codec_bz2"
+        },
+        {
+          "$ref": "#/$defs/codec_gzip"
+        },
+        {
+          "$ref": "#/$defs/codec_lzma"
+        },
+        {
+          "$ref": "#/$defs/codec_lz4"
+        },
+        {
+          "$ref": "#/$defs/codec_pcodec"
+        },
+        {
+          "$ref": "#/$defs/codec_zfpy"
+        },
+        {
+          "$ref": "#/$defs/codec_zlib"
+        },
+        {
+          "$ref": "#/$defs/codec_zstd"
+        }
+      ]
+    },
+    "fill_value": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array"
+        }
+      ]
+    },
+    "order": {
+      "enum": [
+        "C",
+        "F"
+      ]
+    },
+    "filters": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/filter_delta"
+          },
+          {
+            "$ref": "#/$defs/filter_fixedscaleoffset"
+          },
+          {
+            "$ref": "#/$defs/filter_quantize"
+          },
+          {
+            "$ref": "#/$defs/filter_bitround"
+          },
+          {
+            "$ref": "#/$defs/filter_packbits"
+          },
+          {
+            "$ref": "#/$defs/filter_categorize"
+          },
+          {
+            "$ref": "#/$defs/filter_astype"
+          },
+          {
+            "$ref": "#/$defs/filter_shuffle"
+          }
+        ]
+      }
+    },
+    "dimension_separator": {
+      "enum": [
+        ".",
+        "/"
+      ]
+    }
+  },
+  "required": [
+    "zarr_format",
+    "shape",
+    "chunks",
+    "dtype",
+    "compressor",
+    "fill_value",
+    "order",
+    "filters"
+  ],
+  "$defs": {
+    "codec_blosc": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "const": "blosc"
+        },
+        "cname": {
+          "enum": [
+            "blosclz",
+            "lz4",
+            "lz4hc",
+            "snappy",
+            "zlib",
+            "zstd"
+          ]
+        },
+        "clevel": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9
+        },
+        "shuffle": {
+          "enum": [
+            -1,
+            0,
+            1,
+            2
+          ]
+        },
+        "blocksize": {
+          "type": "integer"
+        },
+        "typesize": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "codec_bz2": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "const": "bz2"
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "codec_gzip": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "const": "gzip"
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "codec_lzma": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "const": "lzma"
+        },
+        "format": {
+          "enum": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        "check": {
+          "enum": [
+            0,
+            1,
+            4,
+            10,
+            15,
+            16
+          ]
+        },
+        "preset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9
+        },
+        "filters": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "codec_lz4": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "const": "lz4"
+        },
+        "acceleration": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "codec_pcodec": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "const": "pcodec"
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 12
+        },
+        "mode_spec": {
+          "enum": [
+            "auto",
+            "classic"
+          ]
+        },
+        "delta_spec": {
+          "enum": [
+            "auto",
+            "none",
+            "try_consecutive",
+            "try_lookback"
+          ]
+        },
+        "paging_spec": {
+          "const": "equal_pages_up_to"
+        },
+        "delta_encoding_order": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 7
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "equal_pages_up_to": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "codec_zfpy": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "const": "zfpy"
+        },
+        "mode": {
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "tolerance": {
+          "type": "number"
+        },
+        "rate": {
+          "type": "integer"
+        },
+        "precision": {
+          "type": "integer"
+        },
+        "compression_kwargs": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "codec_zlib": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "const": "zlib"
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "codec_zstd": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "const": "zstd"
+        },
+        "level": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "filter_delta": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "const": "delta"
+        },
+        "dtype": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(?:\\|b1|[<>|][iu][1248]|[<>][f][248]|[<>][c][816]|[<>|][mM][1248](?:\\[(?:h|m|s|ms|us|\u03bcs|ns|ps|fs|as|Y|M|W|D|nat|naT|nAt|nAT|Nat|NaT|NAt|NAT)\\])?|[<>|][SUV]\\d+)$"
+            },
+            {
+              "type": "array"
+            }
+          ]
+        },
+        "astype": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(?:\\|b1|[<>|][iu][1248]|[<>][f][248]|[<>][c][816]|[<>|][mM][1248](?:\\[(?:h|m|s|ms|us|\u03bcs|ns|ps|fs|as|Y|M|W|D|nat|naT|nAt|nAT|Nat|NaT|NAt|NAT)\\])?|[<>|][SUV]\\d+)$"
+            },
+            {
+              "type": "array"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "dtype"
+      ]
+    },
+    "filter_fixedscaleoffset": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "const": "fixedscaleoffset"
+        },
+        "offset": {
+          "type": "number"
+        },
+        "scale": {
+          "type": "number"
+        },
+        "dtype": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(?:\\|b1|[<>|][iu][1248]|[<>][f][248]|[<>][c][816]|[<>|][mM][1248](?:\\[(?:h|m|s|ms|us|\u03bcs|ns|ps|fs|as|Y|M|W|D|nat|naT|nAt|nAT|Nat|NaT|NAt|NAT)\\])?|[<>|][SUV]\\d+)$"
+            },
+            {
+              "type": "array"
+            }
+          ]
+        },
+        "astype": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(?:\\|b1|[<>|][iu][1248]|[<>][f][248]|[<>][c][816]|[<>|][mM][1248](?:\\[(?:h|m|s|ms|us|\u03bcs|ns|ps|fs|as|Y|M|W|D|nat|naT|nAt|nAT|Nat|NaT|NAt|NAT)\\])?|[<>|][SUV]\\d+)$"
+            },
+            {
+              "type": "array"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "offset",
+        "scale",
+        "dtype"
+      ]
+    },
+    "filter_quantize": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "const": "quantize"
+        },
+        "digits": {
+          "type": "integer"
+        },
+        "dtype": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(?:\\|b1|[<>|][iu][1248]|[<>][f][248]|[<>][c][816]|[<>|][mM][1248](?:\\[(?:h|m|s|ms|us|\u03bcs|ns|ps|fs|as|Y|M|W|D|nat|naT|nAt|nAT|Nat|NaT|NAt|NAT)\\])?|[<>|][SUV]\\d+)$"
+            },
+            {
+              "type": "array"
+            }
+          ]
+        },
+        "astype": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(?:\\|b1|[<>|][iu][1248]|[<>][f][248]|[<>][c][816]|[<>|][mM][1248](?:\\[(?:h|m|s|ms|us|\u03bcs|ns|ps|fs|as|Y|M|W|D|nat|naT|nAt|nAT|Nat|NaT|NAt|NAT)\\])?|[<>|][SUV]\\d+)$"
+            },
+            {
+              "type": "array"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "digits",
+        "dtype"
+      ]
+    },
+    "filter_bitround": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "const": "bitround"
+        },
+        "keepbits": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "keepbits"
+      ]
+    },
+    "filter_packbits": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "const": "packbits"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "filter_categorize": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "const": "categorize"
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "dtype": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(?:\\|b1|[<>|][iu][1248]|[<>][f][248]|[<>][c][816]|[<>|][mM][1248](?:\\[(?:h|m|s|ms|us|\u03bcs|ns|ps|fs|as|Y|M|W|D|nat|naT|nAt|nAT|Nat|NaT|NAt|NAT)\\])?|[<>|][SUV]\\d+)$"
+            },
+            {
+              "type": "array"
+            }
+          ]
+        },
+        "astype": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(?:\\|b1|[<>|][iu][1248]|[<>][f][248]|[<>][c][816]|[<>|][mM][1248](?:\\[(?:h|m|s|ms|us|\u03bcs|ns|ps|fs|as|Y|M|W|D|nat|naT|nAt|nAT|Nat|NaT|NAt|NAT)\\])?|[<>|][SUV]\\d+)$"
+            },
+            {
+              "type": "array"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "labels",
+        "dtype"
+      ]
+    },
+    "filter_astype": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "const": "astype"
+        },
+        "encode_dtype": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(?:\\|b1|[<>|][iu][1248]|[<>][f][248]|[<>][c][816]|[<>|][mM][1248](?:\\[(?:h|m|s|ms|us|\u03bcs|ns|ps|fs|as|Y|M|W|D|nat|naT|nAt|nAT|Nat|NaT|NAt|NAT)\\])?|[<>|][SUV]\\d+)$"
+            },
+            {
+              "type": "array"
+            }
+          ]
+        },
+        "decode_dtype": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(?:\\|b1|[<>|][iu][1248]|[<>][f][248]|[<>][c][816]|[<>|][mM][1248](?:\\[(?:h|m|s|ms|us|\u03bcs|ns|ps|fs|as|Y|M|W|D|nat|naT|nAt|nAT|Nat|NaT|NAt|NAT)\\])?|[<>|][SUV]\\d+)$"
+            },
+            {
+              "type": "array"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "encode_dtype"
+      ]
+    },
+    "filter_shuffle": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "const": "shuffle"
+        },
+        "elementsize": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  }
+}

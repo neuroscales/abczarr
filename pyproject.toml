@@ -56,9 +56,15 @@ Homepage = "https://github.com/neuroscales/abczarr"
 Issues = "https://github.com/neuroscales/abczarr/issues"
 
 [tool.setuptools.package-data]
-# Ship the vendored NGFF JSON schemas (they live in a non-package data
-# directory under the schemas package, so they are not picked up as modules).
+# Ship the JSON schemas (they live in non-package data directories under the
+# schemas packages, so they are not picked up as modules).
 "abczarr.ome.schemas" = ["_ngff/*/*.schema", "_ngff/*.md"]
+"abczarr.schemas" = [
+    "_zarr/*.md",
+    "_zarr/*/*.schema",
+    "_zarr/*/*/*.schema",
+    "_zarr/v3/extensions/*/*/schema.json",
+]
 
 [build-system]
 requires = [
