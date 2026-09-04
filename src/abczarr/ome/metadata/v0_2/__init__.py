@@ -1,7 +1,17 @@
+# Generated from v0_1 by tools/gen_ome_metadata.py -- do not edit
+
 __all__ = ["images", "labels", "ome", "omero", "plates", "version", "wells"]
 
 
-from . import images, labels, ome, omero, plates, version, wells
+from . import (
+    images,
+    labels,
+    ome,
+    omero,
+    plates,
+    version,
+    wells,
+)
 from .images import *  # noqa: F403
 from .images import __all__ as __all_images
 from .labels import *  # noqa: F403

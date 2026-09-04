@@ -1,40 +1,79 @@
+# Generated from v0_1 by tools/gen_ome_metadata.py -- do not edit
+
 """An axis of a multiscale pyramid: its name, type, and unit."""
 
 __all__ = [
-    "Axis", "SpaceAxis", "TimeAxis", "ChannelAxis",
-    "AxisType", "SpaceUnit", "TimeUnit", "Unit",
+    "Axis",
+    "SpaceAxis",
+    "TimeAxis",
+    "ChannelAxis",
+    "AxisType",
+    "SpaceUnit",
+    "TimeUnit",
+    "Unit",
 ]
-
-# dependencies
 import typing_extensions as tx
 
-# core
 from abczarr._core.auto.attrs import autodefine, field
 from abczarr._core.metadata import register_subclass
 from abczarr._core.rfc2119 import NotRecommended, Recommended, Required
 
-# locals
 from ..base import OMEMetadata
 
-# typing
 AxisType = tx.Literal["space", "time", "channel"]
-
 SpaceUnit = tx.Literal[
-    'angstrom', 'attometer', 'centimeter', 'decimeter', 'exameter',
-    'femtometer', 'foot', 'gigameter', 'hectometer', 'inch', 'kilometer',
-    'megameter', 'meter', 'micrometer', 'mile', 'millimeter', 'nanometer',
-    'parsec', 'petameter', 'picometer', 'terameter', 'yard', 'yoctometer',
-    'yottameter', 'zeptometer', 'zettameter'
+    "angstrom",
+    "attometer",
+    "centimeter",
+    "decimeter",
+    "exameter",
+    "femtometer",
+    "foot",
+    "gigameter",
+    "hectometer",
+    "inch",
+    "kilometer",
+    "megameter",
+    "meter",
+    "micrometer",
+    "mile",
+    "millimeter",
+    "nanometer",
+    "parsec",
+    "petameter",
+    "picometer",
+    "terameter",
+    "yard",
+    "yoctometer",
+    "yottameter",
+    "zeptometer",
+    "zettameter",
 ]
-
 TimeUnit = tx.Literal[
-    'attosecond', 'centisecond', 'day', 'decisecond', 'exasecond',
-    'femtosecond', 'gigasecond', 'hectosecond', 'hour', 'kilosecond',
-    'megasecond', 'microsecond', 'millisecond', 'minute', 'nanosecond',
-    'petasecond', 'picosecond', 'second', 'terasecond', 'yoctosecond',
-    'yottasecond', 'zeptosecond', 'zettasecond'
+    "attosecond",
+    "centisecond",
+    "day",
+    "decisecond",
+    "exasecond",
+    "femtosecond",
+    "gigasecond",
+    "hectosecond",
+    "hour",
+    "kilosecond",
+    "megasecond",
+    "microsecond",
+    "millisecond",
+    "minute",
+    "nanosecond",
+    "petasecond",
+    "picosecond",
+    "second",
+    "terasecond",
+    "yoctosecond",
+    "yottasecond",
+    "zeptosecond",
+    "zettasecond",
 ]
-
 Unit = tx.Union[SpaceUnit, TimeUnit]
 
 

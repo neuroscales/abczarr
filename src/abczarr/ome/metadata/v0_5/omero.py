@@ -1,15 +1,13 @@
+# Generated from v0_1 by tools/gen_ome_metadata.py -- do not edit
+
 """Rendering settings: how to display an image's channels."""
 
 __all__ = ["Omero", "Channel"]
-
-# dependencies
 import typing_extensions as tx
 
-# core
 from abczarr._core.auto.attrs import autodefine
 from abczarr._core.rfc2119 import Required
 
-# locals
 from ..base import OMEMetadata
 
 
@@ -20,7 +18,6 @@ class Channel(OMEMetadata):
     `color` is a hex RGB string (`"FF0000"` for red); `window` gives
     the intensity range to map onto it.
     """
-
 
     @autodefine
     class Window(OMEMetadata):
@@ -35,7 +32,6 @@ class Channel(OMEMetadata):
         max: Required[float]
         start: Required[float]
         end: Required[float]
-
 
     color: Required[str]
     window: Required[Window]

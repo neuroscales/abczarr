@@ -1,22 +1,16 @@
+# Generated from v0_1 by tools/gen_ome_metadata.py -- do not edit
+
 """Coordinate transformations: how a resolution level maps to
 physical space.
 """
 
-__all__ = [
-    "CoordinateTransformation",
-    "Translation",
-    "Scale",
-]
-
-# dependencies
+__all__ = ["CoordinateTransformation", "Translation", "Scale"]
 import typing_extensions as tx
 
-# core
 from abczarr._core.auto.attrs import autodefine, field
 from abczarr._core.metadata import register_subclass
 from abczarr._core.rfc2119 import Required
 
-# locals
 from ..base import OMEMetadata
 
 

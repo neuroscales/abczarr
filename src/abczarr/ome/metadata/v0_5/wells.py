@@ -1,15 +1,13 @@
+# Generated from v0_1 by tools/gen_ome_metadata.py -- do not edit
+
 """A well: the images acquired at one position of a screening plate."""
 
 __all__ = ["Well"]
-
-# dependencies
 import typing_extensions as tx
 
-# core
 from abczarr._core.auto.attrs import autodefine, field
 from abczarr._core.rfc2119 import Recommended, Required
 
-# locals
 from ..base import OMEMetadata
 
 
@@ -21,7 +19,6 @@ class Well(OMEMetadata):
     them, each naming its subgroup and, when the plate carries more
     than one, which acquisition it belongs to.
     """
-
 
     @autodefine
     class Image(OMEMetadata):
@@ -35,6 +32,5 @@ class Well(OMEMetadata):
 
         path: Required[str] = field(factory=False)
         acquisition: Recommended[int]
-
 
     images: Required[tx.List[Image]]
