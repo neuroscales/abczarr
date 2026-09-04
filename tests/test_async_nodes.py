@@ -89,37 +89,93 @@ def test_shared_property_names_are_identical() -> None:
     assert sync == asyncd == _SHARED_PROPERTIES
 
 
-def test_driver_open_has_a_coroutine_twin() -> None:
-    # every driver's sync open has an async twin: open is a plain method,
-    # open_async is a coroutine, and the concrete drivers keep both
-    from abczarr.drivers.base import Driver
+class _AsAsyncNode:
+    """A stand-in node whose only job is to answer as_async()."""
+
+    def as_async(self) -> str:
+        return "async-twin"
+
+
+def _concrete_driver_classes() -> tuple:
     from abczarr.drivers.tensorstore import TensorStoreDriver
     from abczarr.drivers.zarr_python import ZarrPythonDriver
     from abczarr.drivers.zarrista import ZarristaDriver
 
+    return (TensorStoreDriver, ZarrPythonDriver, ZarristaDriver)
+
+
+def test_driver_surface_has_no_async_named_methods() -> None:
+    # the driver factory is coloured by an asynchronous= flag, not by _async
+    # twins -- the retired names (open_async came in with #71) are gone
+    from abczarr.drivers.base import Driver
+
+    for name in ("open_async", "create_async", "create_from_metadata_async"):
+        assert not hasattr(Driver, name), name
+    # the flag methods are plain (return a node OR an awaitable), never
+    # coroutine functions
     assert not inspect.iscoroutinefunction(Driver.open)
-    assert inspect.iscoroutinefunction(Driver.open_async)
-    # the native drivers override open_async; zarrista inherits the
-    # thread-bridged default -- either way it stays a coroutine
-    for driver in (TensorStoreDriver, ZarrPythonDriver, ZarristaDriver):
-        assert inspect.iscoroutinefunction(driver.open_async)
-
-
-def test_driver_create_has_a_coroutine_twin() -> None:
-    # create/create_from_metadata are plain methods; their async twins are
-    # coroutines, and every concrete driver keeps both colors
-    from abczarr.drivers.base import Driver
-    from abczarr.drivers.tensorstore import TensorStoreDriver
-    from abczarr.drivers.zarr_python import ZarrPythonDriver
-    from abczarr.drivers.zarrista import ZarristaDriver
-
     assert not inspect.iscoroutinefunction(Driver.create)
     assert not inspect.iscoroutinefunction(Driver.create_from_metadata)
-    assert inspect.iscoroutinefunction(Driver.create_async)
-    assert inspect.iscoroutinefunction(Driver.create_from_metadata_async)
-    for driver in (TensorStoreDriver, ZarrPythonDriver, ZarristaDriver):
-        assert inspect.iscoroutinefunction(driver.create_async)
-        assert inspect.iscoroutinefunction(driver.create_from_metadata_async)
+
+
+def test_driver_open_is_flag_coloured() -> None:
+    # open(asynchronous=False) returns a node; asynchronous=True returns an
+    # awaitable resolving to the async twin. A fake driver drives it with no
+    # backend installed.
+    from abczarr.drivers.base import Driver
+
+    class _Fake(Driver):
+        name = "fake"
+
+        def _open_sync(self, location: object, mode: str) -> _AsAsyncNode:
+            return _AsAsyncNode()
+
+    d = _Fake()
+    assert isinstance(d.open("loc", "r"), _AsAsyncNode)  # sync -> node
+    pending = d.open("loc", "r", asynchronous=True)
+    assert inspect.isawaitable(pending)
+    assert asyncio.run(_await(pending)) == "async-twin"
+
+    # the concrete drivers keep the flag surface: asynchronous=True yields an
+    # awaitable (the coroutine is not run until awaited, so no backend needed)
+    for driver_cls in _concrete_driver_classes():
+        probe = driver_cls().open("loc", "r", asynchronous=True)
+        assert inspect.isawaitable(probe)
+        probe.close()  # a probe we do not await
+
+
+def test_driver_create_is_flag_coloured() -> None:
+    # create / create_from_metadata carry the same asynchronous= flag
+    from abczarr.drivers.base import Driver
+
+    class _Fake(Driver):
+        name = "fake"
+
+        def _create_sync(
+            self, location: object, config: object
+        ) -> _AsAsyncNode:
+            return _AsAsyncNode()
+
+        def _create_from_metadata_sync(
+            self, location: object, metadata: object,
+            *, overwrite: bool = False,
+        ) -> _AsAsyncNode:
+            return _AsAsyncNode()
+
+    d = _Fake()
+    assert isinstance(d.create("loc", None), _AsAsyncNode)
+    assert isinstance(d.create_from_metadata("loc", None), _AsAsyncNode)
+    for pending in (
+        d.create("loc", None, asynchronous=True),
+        d.create_from_metadata("loc", None, asynchronous=True),
+    ):
+        assert inspect.isawaitable(pending)
+        assert asyncio.run(_await(pending)) == "async-twin"
+
+    for driver_cls in _concrete_driver_classes():
+        probe = driver_cls().create("loc", None, asynchronous=True)
+        assert inspect.isawaitable(probe)
+        probe.close()
 
 
 def test_update_attributes_parity() -> None:

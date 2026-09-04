@@ -16,6 +16,9 @@ __all__ = [
     "ZarristaGroup",
 ]
 
+# stdlib
+import json
+
 # dependencies
 import numpy.typing as npt
 import typing_extensions as tx
@@ -28,6 +31,7 @@ from abczarr.abc.array import ZarrArray
 from abczarr.abc.capabilities import Support
 from abczarr.abc.group import PathGroup
 from abczarr.abc.node import ZarrNode
+from abczarr.abc.store import PathBasedStore
 from abczarr.drivers._metadata import metadata_from_dict
 from abczarr.drivers.base import Driver
 
@@ -197,7 +201,7 @@ class ZarristaDriver(Driver):
     def available(self) -> bool:
         return zarrista is not None
 
-    def open(self, location: tx.Any, mode: str = "r") -> ZarristaNode:
+    def _open_sync(self, location: tx.Any, mode: str) -> ZarristaNode:
         if _peek_node_type(location) == "group":
             return ZarristaGroup(location, mode)
         return _open_zarrista_array(location)
@@ -236,10 +240,6 @@ def _supports_v3_feature(kind: str, name: str) -> bool:
 
 def _peek_node_type(location: tx.Any) -> tx.Optional[str]:
     """The node type recorded at *location*'s ``zarr.json``, or None."""
-    import json
-
-    from abczarr.abc.store import PathBasedStore
-
     if not isinstance(location, str) or "://" in location:
         return None
     try:

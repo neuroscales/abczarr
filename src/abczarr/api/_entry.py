@@ -32,8 +32,9 @@ from ..abc.async_node import AsyncZarrNode
 from ..abc.errors import UnsupportedZarrOperation
 from ..abc.group import ZarrGroup
 from ..abc.node import ZarrNode
-from ..abc.store import PathBasedStore
+from ..abc.store import AsyncPathBasedStore, PathBasedStore
 from ..drivers.base import Driver
+from ..metadata import v3
 from ..metadata.base import ArrayMetadata, NodeMetadata
 from .config import ArrayConfig, GroupConfig, ZarrConfig
 from .registry import available_drivers, select_driver
@@ -134,8 +135,6 @@ def _exists(path: tz.PathLike) -> bool:
 async def _aexists(path: tz.PathLike) -> bool:
     """The async twin of [_exists][abczarr.api._entry], through an async
     store."""
-    from ..abc.store import AsyncPathBasedStore
-
     try:
         store = AsyncPathBasedStore(str(path))
     except Exception:
@@ -280,7 +279,8 @@ async def _aopen(
         if create_fields and mode not in ("a",):
             _reject_open_fields(mode, create_fields)
         chosen = await _achoose(path, _resolve_drivers(driver))
-        return _require_kind(await chosen.open_async(path, mode), want)
+        node = await chosen.open(path, mode, asynchronous=True)
+        return _require_kind(node, want)
     config = _build_create_config(create_fields, want)
     extra = {"overwrite": overwrite}  # type: tx.Dict[str, tx.Any]
     if driver is not None:
@@ -463,12 +463,12 @@ async def _acreate(
         else:
             metadata = None
         driver = _choose_create_driver(config.driver, metadata)
-        return await driver.create_async(location, config)
+        return await driver.create(location, config, asynchronous=True)
     if isinstance(config, NodeMetadata):
         overwrite, driver_arg = _metadata_create_keywords(fields)
         driver = _choose_create_driver(driver_arg, config)
-        return await driver.create_from_metadata_async(
-            location, config, overwrite=overwrite
+        return await driver.create_from_metadata(
+            location, config, overwrite=overwrite, asynchronous=True
         )
     raise TypeError(_CREATE_TYPE_ERROR)
 
@@ -583,8 +583,6 @@ def _choose(path: tz.PathLike, drivers: "tx.List[Driver]") -> Driver:
 def _peek_array_metadata(path: tz.PathLike) -> tx.Any:
     """Read an array's metadata straight from the store, for selection, or
     ``None`` when *path* is a group or its metadata cannot be read."""
-    from ..metadata import v3
-
     try:
         raw = PathBasedStore(str(path)).get("zarr.json")
     except Exception:
@@ -623,9 +621,6 @@ async def _apeek_array_metadata(path: tz.PathLike) -> tx.Any:
     """Read an array's metadata through an async store, for selection, or
     ``None`` when *path* is a group or its metadata cannot be read -- the
     async twin of [_peek_array_metadata][abczarr.api._entry]."""
-    from ..abc.store import AsyncPathBasedStore
-    from ..metadata import v3
-
     try:
         raw = await AsyncPathBasedStore(str(path)).get("zarr.json")
     except Exception:

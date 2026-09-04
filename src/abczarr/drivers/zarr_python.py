@@ -37,6 +37,7 @@ from abczarr.abc.async_node import AsyncZarrNode
 from abczarr.abc.capabilities import Support
 from abczarr.abc.group import ZarrGroup
 from abczarr.abc.node import ZarrNode
+from abczarr.api.config import ArrayConfig
 from abczarr.drivers._metadata import metadata_from_dict
 from abczarr.drivers.base import Driver
 
@@ -173,16 +174,16 @@ class ZarrPythonDriver(Driver):
     def available(self) -> bool:
         return self._major >= 3
 
-    def open(
-        self, location: tx.Any, mode: str = "r"
+    def _open_sync(
+        self, location: tx.Any, mode: str
     ) -> "ZarrPythonNode":
         node = zarr.open(location, mode=mode)
         if isinstance(node, zarr.Group):
             return ZarrPythonGroup(node)
         return ZarrPythonArray(node)
 
-    async def open_async(
-        self, location: tx.Any, mode: str = "r"
+    async def _open_async(
+        self, location: tx.Any, mode: str
     ) -> AsyncZarrNode:
         # delegate to zarr-python's own async open (a coroutine); its metadata
         # read is awaited, and the AsyncArray/AsyncGroup it returns is wrapped
@@ -192,11 +193,9 @@ class ZarrPythonDriver(Driver):
         node = await async_api.open(store=location, mode=mode)
         return _wrap_async(node).as_async()
 
-    def create(
+    def _create_sync(
         self, location: tx.Any, config: tx.Any
     ) -> "ZarrPythonNode":
-        from abczarr.api.config import ArrayConfig
-
         if isinstance(config, ArrayConfig):
             array = zarr.create_array(
                 store=str(location),
@@ -214,15 +213,13 @@ class ZarrPythonDriver(Driver):
         )
         return ZarrPythonGroup(group)
 
-    async def create_async(
+    async def _create_async(
         self, location: tx.Any, config: tx.Any
     ) -> AsyncZarrNode:
         # delegate to zarr-python's own async create (a coroutine), so it
         # writes its own metadata and its caches stay consistent; the
         # AsyncArray/AsyncGroup it returns is wrapped as the native async twin
         import zarr.api.asynchronous as async_api
-
-        from abczarr.api.config import ArrayConfig
 
         if isinstance(config, ArrayConfig):
             array = await async_api.create_array(
