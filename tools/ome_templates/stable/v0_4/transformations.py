@@ -24,8 +24,8 @@ from ..base import OMEMetadata
 class CoordinateTransformation(OMEMetadata):
     """A transformation from array indices to physical coordinates.
 
-    Build [Scale][abczarr.ome.metadata.v0_1.transformations.Scale] or
-    [Translation][abczarr.ome.metadata.v0_1.transformations.Translation]
+    Build [Scale][abczarr.ome.v0_1.transformations.Scale] or
+    [Translation][abczarr.ome.v0_1.transformations.Translation]
     directly rather than this base class. Constructing with
     `type="scale"` or `type="translation"` returns the matching one.
     """

@@ -43,9 +43,9 @@ class Omero(OMEMetadata):
     """Rendering settings for an image: one entry per channel.
 
     Attach one of these to an image group, alongside its
-    [Multiscale][abczarr.ome.metadata.v0_3.images.Multiscale], to
+    [Multiscale][abczarr.ome.v0_3.images.Multiscale], to
     suggest how a viewer should display it. `channels` lists a
-    [Channel][abczarr.ome.metadata.v0_3.omero.Channel] for each
+    [Channel][abczarr.ome.v0_3.omero.Channel] for each
     channel of the image, in order.
     """
 

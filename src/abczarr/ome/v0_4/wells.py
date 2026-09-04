@@ -9,6 +9,7 @@ from abczarr._core.auto.attrs import autodefine, field
 from abczarr._core.rfc2119 import Recommended, Required
 
 from ..base import OMEMetadata
+from .version import Version
 
 
 @autodefine
@@ -26,7 +27,7 @@ class Well(OMEMetadata):
 
         `path` is the image's group, relative to the well group.
         `acquisition` is the id of the
-        [Plate.Acquisition][abczarr.ome.metadata.v0_5.plates.Plate.Acquisition]
+        [Plate.Acquisition][abczarr.ome.v0_4.plates.Plate.Acquisition]
         it was captured in, when the plate ran more than one.
         """
 
@@ -34,3 +35,4 @@ class Well(OMEMetadata):
         acquisition: Recommended[int]
 
     images: Required[tx.List[Image]]
+    version: Required[Version]

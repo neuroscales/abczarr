@@ -5,15 +5,15 @@ stored in Zarr: multiscale image pyramids, high-content screening
 plates, segmentation labels, and rendering settings, all described by
 JSON attached to a Zarr group. This module defines the two classes
 every version shares:
-[OMEMetadata][abczarr.ome.metadata.base.OMEMetadata], the base of
-every OME metadata class, and [OME][abczarr.ome.metadata.base.OME],
+[OMEMetadata][abczarr.ome.base.OMEMetadata], the base of
+every OME metadata class, and [OME][abczarr.ome.base.OME],
 the version-tagged top-level container a group's metadata builds on.
 
 Each supported NGFF version has its own package under
-`abczarr.ome.metadata`: `v0_1` through `v0_5`, plus the 0.6
+`abczarr.ome`: `v0_1` through `v0_5`, plus the 0.6
 pre-release previews `v0_6dev1` through `v0_6dev4` and `v0_6rc0`.
 Each package has its own typed classes for that version's shape.
-[OMEMetadata.to_version][abczarr.ome.metadata.base.OMEMetadata.to_version]
+[OMEMetadata.to_version][abczarr.ome.base.OMEMetadata.to_version]
 converts an object built against one version to another.
 """
 
@@ -63,14 +63,14 @@ class OMEMetadata(FlexibleMetadata):
     Every piece of OME-Zarr metadata is a subclass of this: a
     multiscale pyramid, an axis, a plate, a rendering setting, and so
     on. Each lives in the version package it belongs to
-    (`abczarr.ome.metadata.v0_5.images`, for example). Build one with
+    (`abczarr.ome.v0_5.images`, for example). Build one with
     [from_json][abczarr._core.metadata.Metadata.from_json] from the
     JSON an OME-Zarr group carries, or with keyword arguments matching
     its fields. [to_json][abczarr._core.metadata.Metadata.to_json]
     serializes it back to that same shape, and any key it does not
     recognize survives the round trip unchanged.
 
-    Use [to_version][abczarr.ome.metadata.base.OMEMetadata.to_version]
+    Use [to_version][abczarr.ome.base.OMEMetadata.to_version]
     to convert an object built against one NGFF version to another.
     """
 
@@ -78,17 +78,17 @@ class OMEMetadata(FlexibleMetadata):
         """Convert this OME metadata to another OME-NGFF version.
 
         Works on any piece of OME metadata, not only the top-level
-        container. A [Multiscale][abczarr.ome.metadata.v0_5.images.Multiscale]
-        or an [Omero][abczarr.ome.metadata.v0_5.omero.Omero] converts
+        container. A [Multiscale][abczarr.ome.v0_5.images.Multiscale]
+        or an [Omero][abczarr.ome.v0_5.omero.Omero] converts
         just as well as an
-        [OMEImage][abczarr.ome.metadata.v0_5.ome.OMEImage]. A field
+        [OMEImage][abczarr.ome.v0_5.ome.OMEImage]. A field
         both versions carry is passed through unchanged. A field only
         the newer version has gets a reasonable default going forward,
         and is dropped going back.
 
         !!! example
             ```pycon
-            >>> from abczarr.ome.metadata import v0_4
+            >>> from abczarr.ome import v0_4
             >>> m = v0_4.Multiscale.from_json({
             ...     "version": "0.4",
             ...     "axes": [
@@ -104,7 +104,7 @@ class OMEMetadata(FlexibleMetadata):
             ... })
             >>> m5 = m.to_version("0.5")
             >>> type(m5).__module__
-            'abczarr.ome.metadata.v0_5.images'
+            'abczarr.ome.v0_5.images'
             >>> m5.to_version("0.4") == m
             True
 
@@ -130,7 +130,7 @@ class OMEMetadata(FlexibleMetadata):
 
 def _version_of(cls: type) -> str:
     parts = cls.__module__.split(".")
-    suffix = parts[parts.index("metadata") + 1]
+    suffix = parts[parts.index("ome") + 1]
     for version, module in _MODULES.items():
         if module == suffix:
             return version
@@ -138,7 +138,7 @@ def _version_of(cls: type) -> str:
 
 
 def _package(version: str) -> str:
-    return "abczarr.ome.metadata." + _MODULES[version]
+    return "abczarr.ome." + _MODULES[version]
 
 
 def _version_package(data: abc.Mapping) -> tx.Any:
@@ -149,7 +149,7 @@ def _version_package(data: abc.Mapping) -> tx.Any:
         raise ValueError(
             "cannot tell which OME-NGFF version this metadata is: it has no "
             "'version' field. Build the version's own class instead (for "
-            "example abczarr.ome.metadata.v0_5.OME), which knows its version."
+            "example abczarr.ome.v0_5.OME), which knows its version."
         )
     if version not in _MODULES:
         raise ValueError(f"Unknown OME version: {version!r}")
@@ -158,7 +158,7 @@ def _version_package(data: abc.Mapping) -> tx.Any:
 
 def _target_class(cls: type, version: str) -> type:
     parts = cls.__module__.split(".")
-    parts[parts.index("metadata") + 1] = _MODULES[version]
+    parts[parts.index("ome") + 1] = _MODULES[version]
     try:
         obj: tx.Any = importlib.import_module(".".join(parts))
         for name in cls.__qualname__.split("."):
@@ -273,9 +273,9 @@ class OME(OMEMetadata):
     with it what the rest of its fields mean.
 
     Build the concrete class for your version instead of this one.
-    See [v0_5.OME][abczarr.ome.metadata.v0_5.ome.OME] and its
-    siblings, including [OMEImage][abczarr.ome.metadata.v0_5.ome.OMEImage]
-    and [OMEPlate][abczarr.ome.metadata.v0_5.ome.OMEPlate].
+    See [v0_5.OME][abczarr.ome.v0_5.ome.OME] and its
+    siblings, including [OMEImage][abczarr.ome.v0_5.ome.OMEImage]
+    and [OMEPlate][abczarr.ome.v0_5.ome.OMEPlate].
     """
 
     version: str = field(factory=False)

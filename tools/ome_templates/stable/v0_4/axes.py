@@ -41,15 +41,15 @@ Unit = tx.Union[SpaceUnit, TimeUnit]
 @autodefine
 class Axis(OMEMetadata):
     """One dimension of a
-    [Multiscale][abczarr.ome.metadata.v0_1.images.Multiscale] pyramid.
+    [Multiscale][abczarr.ome.v0_1.images.Multiscale] pyramid.
 
     `name` is the axis's label, such as `"x"` or `"channel"`. Its
-    position in a [Multiscale][abczarr.ome.metadata.v0_1.images.Multiscale]'s
+    position in a [Multiscale][abczarr.ome.v0_1.images.Multiscale]'s
     `axes` list is its position in every array shape and every
     coordinate transformation the pyramid carries. `type` says what
     kind of axis it is: `"space"`, `"time"`, or `"channel"`. `unit`
     is its physical unit. Constructing with `type="space"` gives back
-    a [SpaceAxis][abczarr.ome.metadata.v0_1.axes.SpaceAxis], and
+    a [SpaceAxis][abczarr.ome.v0_1.axes.SpaceAxis], and
     likewise for `"time"` and `"channel"`, each restricting `unit` to
     the units that type allows.
     """

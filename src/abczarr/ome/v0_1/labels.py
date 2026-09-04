@@ -23,7 +23,7 @@ class ImageLabel(OMEMetadata):
     """Metadata for a label image: an array whose integer values name segments.
 
     Attach one of these to a label image group alongside its own
-    [Multiscale][abczarr.ome.metadata.v0_1.images.Multiscale]. `colors`
+    [Multiscale][abczarr.ome.v0_1.images.Multiscale]. `colors`
     maps each integer label value to a display color. `properties`
     and `source` carry any further attributes for a label value, and
     where the label image was derived from.
@@ -46,7 +46,7 @@ class ImageLabel(OMEMetadata):
 
         Beyond `label_value`, any other key is carried through as
         extra data. See
-        [OMEMetadata][abczarr.ome.metadata.base.OMEMetadata].
+        [OMEMetadata][abczarr.ome.base.OMEMetadata].
         """
 
         label_value: Required[int] = field(json="label-value")

@@ -2,9 +2,9 @@
 
 """The multiscale image pyramid.
 
-[Multiscale][abczarr.ome.metadata.v0_2.images.Multiscale] describes a
+[Multiscale][abczarr.ome.v0_2.images.Multiscale] describes a
 pyramid of progressively downsampled resolution levels. Each level is
-a [Dataset][abczarr.ome.metadata.v0_2.images.Dataset], naming a Zarr
+a [Dataset][abczarr.ome.v0_2.images.Dataset], naming a Zarr
 array and how it is positioned relative to the others.
 """
 
@@ -41,7 +41,7 @@ class Multiscale(OMEMetadata):
 
     `datasets` lists the pyramid's resolution levels from full
     resolution down, each a
-    [Dataset][abczarr.ome.metadata.v0_2.images.Dataset].
+    [Dataset][abczarr.ome.v0_2.images.Dataset].
     """
 
     @autodefine

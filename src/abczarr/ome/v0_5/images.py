@@ -2,9 +2,9 @@
 
 """The multiscale image pyramid.
 
-[Multiscale][abczarr.ome.metadata.v0_5.images.Multiscale] describes a
+[Multiscale][abczarr.ome.v0_5.images.Multiscale] describes a
 pyramid of progressively downsampled resolution levels. Each level is
-a [Dataset][abczarr.ome.metadata.v0_5.images.Dataset], naming a Zarr
+a [Dataset][abczarr.ome.v0_5.images.Dataset], naming a Zarr
 array and how it is positioned relative to the others.
 """
 
@@ -27,9 +27,9 @@ class Dataset(OMEMetadata):
     `path` is the name of the Zarr array holding this level, relative
     to the image group. `coordinateTransformations` places it in the
     pyramid's physical space: a
-    [Scale][abczarr.ome.metadata.v0_5.transformations.Scale], optionally
+    [Scale][abczarr.ome.v0_5.transformations.Scale], optionally
     followed by a
-    [Translation][abczarr.ome.metadata.v0_5.transformations.Translation],
+    [Translation][abczarr.ome.v0_5.transformations.Translation],
     one value per axis.
     """
 
@@ -46,7 +46,7 @@ class Multiscale(OMEMetadata):
     `axes` names and orders the pyramid's dimensions: `t`, `c`, `z`,
     `y`, `x`, in whatever subset and order the image uses. `datasets`
     lists its resolution levels from full resolution down, each a
-    [Dataset][abczarr.ome.metadata.v0_5.images.Dataset].
+    [Dataset][abczarr.ome.v0_5.images.Dataset].
     `coordinateTransformations` here, if given, applies to every
     level before its own.
     """

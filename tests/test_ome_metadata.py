@@ -10,7 +10,7 @@ import importlib
 
 import pytest
 
-from abczarr.ome.metadata import v0_4, v0_5
+from abczarr.ome import v0_4, v0_5
 
 _MULTISCALE_V04 = {
     "version": "0.4",
@@ -111,7 +111,7 @@ _MULTISCALE_V03 = {
 
 
 def test_multiscale_v03_to_v04_types_the_axes() -> None:
-    from abczarr.ome.metadata import v0_3
+    from abczarr.ome import v0_3
 
     m3 = v0_3.Multiscale.from_json(_MULTISCALE_V03)
     m4 = m3.to_version("0.4")
@@ -129,7 +129,7 @@ def test_multiscale_v03_to_v04_types_the_axes() -> None:
 
 @pytest.mark.parametrize("target", ["0.4", "0.5"])
 def test_multiscale_v03_roundtrips_up_and_back(target: str) -> None:
-    from abczarr.ome.metadata import v0_3
+    from abczarr.ome import v0_3
 
     m3 = v0_3.Multiscale.from_json(_MULTISCALE_V03)
     # chains v0.3 -> v0.4 (-> v0.5) and back
@@ -137,7 +137,7 @@ def test_multiscale_v03_roundtrips_up_and_back(target: str) -> None:
 
 
 def test_down_conversion_drops_axes() -> None:
-    from abczarr.ome.metadata import v0_3
+    from abczarr.ome import v0_3
 
     m3 = v0_3.Multiscale.from_json(_MULTISCALE_V03)
     m2 = m3.to_version("0.2")
@@ -145,7 +145,7 @@ def test_down_conversion_drops_axes() -> None:
 
 
 def test_underdetermined_up_conversion_raises_clearly() -> None:
-    from abczarr.ome.metadata import v0_2
+    from abczarr.ome import v0_2
 
     m2 = v0_2.Multiscale.from_json(
         {
@@ -190,24 +190,24 @@ def test_base_ome_from_dict_routes_by_version(
     # cannot tell them apart on its own. It used to dispatch to whichever
     # package imported last (v0_6dev4), silently and independent of the data's
     # version. It must now route by the declared version instead.
-    from abczarr.ome.metadata import base
+    from abczarr.ome import base
 
     data = {"version": version, "bioformats2raw.layout": 3, "plate": _PLATE}
     obj = base.OME.from_json(data)
-    assert type(obj).__module__ == f"abczarr.ome.metadata.{package}.ome"
+    assert type(obj).__module__ == f"abczarr.ome.{package}.ome"
 
 
 def test_base_ome_from_dict_rejects_versionless_metadata() -> None:
     # Under the old last-import-wins behavior this silently built an object
     # from whichever package imported last; ambiguous data must now raise.
-    from abczarr.ome.metadata import base
+    from abczarr.ome import base
 
     with pytest.raises(ValueError, match="version"):
         base.OME.from_json({"bioformats2raw.layout": 3, "plate": _PLATE})
 
 
 def test_base_ome_from_dict_rejects_unknown_version() -> None:
-    from abczarr.ome.metadata import base
+    from abczarr.ome import base
 
     with pytest.raises(ValueError, match="Unknown OME version"):
         base.OME.from_json({"version": "9.9"})
@@ -216,7 +216,7 @@ def test_base_ome_from_dict_rejects_unknown_version() -> None:
 def test_per_version_ome_from_dict_still_dispatches() -> None:
     # The per-version OME classes keep their own dispatch: routing through the
     # base must reach the same class a direct call would.
-    from abczarr.ome.metadata import base, v0_5
+    from abczarr.ome import base, v0_5
 
     data = {"version": "0.5", "bioformats2raw.layout": 3, "plate": _PLATE}
     assert type(base.OME.from_json(data)) is type(v0_5.OME.from_json(data))
@@ -234,10 +234,10 @@ _WELL = {"images": [{"acquisition": 0, "path": "0"}]}
 
 @pytest.mark.parametrize("version", ["0.1", "0.2", "0.3", "0.4", "0.5"])
 def test_base_ome_dispatches_by_present_discriminator(version: str) -> None:
-    from abczarr.ome.metadata import base
+    from abczarr.ome import base
 
     ome = importlib.import_module(
-        f"abczarr.ome.metadata.v0_{version.split('.')[1]}.ome"
+        f"abczarr.ome.v0_{version.split('.')[1]}.ome"
     )
 
     def carrier(fields: dict) -> type:
@@ -261,10 +261,10 @@ def test_a_plain_plate_is_not_a_bioformats2raw_layout(version: str) -> None:
     # Regression: OMEBioformats2Raw defaults its layout field to 3, so it used
     # to match any document under the registry's iteration order and hijack it.
     # It must only be chosen when the layout key is actually present.
-    from abczarr.ome.metadata import base
+    from abczarr.ome import base
 
     ome = importlib.import_module(
-        f"abczarr.ome.metadata.v0_{version.split('.')[1]}.ome"
+        f"abczarr.ome.v0_{version.split('.')[1]}.ome"
     )
 
     for fields in ({"plate": _PLATE}, {"well": _WELL}, {"labels": ["a"]}):

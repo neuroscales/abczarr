@@ -10,6 +10,7 @@ from abczarr._core.auto.converters import ToInRange
 from abczarr._core.rfc2119 import Optional, Recommended, Required
 
 from ..base import OMEMetadata
+from .version import Version
 
 UInt8 = tx.Annotated[int, ToInRange(0, 255)]
 
@@ -19,7 +20,7 @@ class ImageLabel(OMEMetadata):
     """Metadata for a label image: an array whose integer values name segments.
 
     Attach one of these to a label image group alongside its own
-    [Multiscale][abczarr.ome.metadata.v0_5.images.Multiscale]. `colors`
+    [Multiscale][abczarr.ome.v0_4.images.Multiscale]. `colors`
     maps each integer label value to a display color. `properties`
     and `source` carry any further attributes for a label value, and
     where the label image was derived from.
@@ -41,7 +42,7 @@ class ImageLabel(OMEMetadata):
 
         Beyond `label_value`, any other key is carried through as
         extra data. See
-        [OMEMetadata][abczarr.ome.metadata.base.OMEMetadata].
+        [OMEMetadata][abczarr.ome.base.OMEMetadata].
         """
 
         label_value: Required[int] = field(json="label-value")
@@ -60,3 +61,4 @@ class ImageLabel(OMEMetadata):
     colors: Recommended[tx.List[Color]]
     properties: Optional[Property]
     source: Optional[Source]
+    version: Required[Version]
