@@ -245,3 +245,48 @@ def test_attrs_write_through(tmp_path: pathlib.Path) -> None:
     node.attrs["unit"] = "micrometer"
     reopened = abczarr.open(root + "/a", mode="r", driver="tensorstore")
     assert reopened.attrs["unit"] == "micrometer"
+
+
+# --------------------------------------------------------------------------
+# a group at a URL is detected as a group -- the metadata peek reads
+# zarr.json through a (sync/async) PathBasedStore, so every scheme works,
+# not only local paths
+# --------------------------------------------------------------------------
+
+
+def test_group_at_a_memory_url_opens_as_a_group() -> None:
+    # a tensorstore group at an fsspec memory:// URL is detected as a group,
+    # not mistaken for an array -- the sync peek reads through PathBasedStore
+    import uuid
+
+    pytest.importorskip("fsspec")
+    url = "memory://" + uuid.uuid4().hex + "/g.zarr"
+    group = zarr.open_group(url, mode="w")
+    array = group.create_array("a", shape=(4,), chunks=(4,), dtype="int32")
+    array[:] = np.arange(4)
+
+    node = abczarr.open(url, mode="r", driver="tensorstore")
+    assert isinstance(node, TensorStoreGroup)
+    assert list(node.keys()) == ["a"]
+
+
+def test_group_at_a_memory_url_opens_as_a_group_async() -> None:
+    # the async peek reads through AsyncPathBasedStore, so an async open of a
+    # group at a memory:// URL lands on the async path group, not an array
+    import asyncio
+    import uuid
+
+    pytest.importorskip("fsspec")
+    from abczarr.abc.async_group import AsyncPathGroup
+
+    url = "memory://" + uuid.uuid4().hex + "/g.zarr"
+    group = zarr.open_group(url, mode="w")
+    group.create_array("a", shape=(4,), chunks=(4,), dtype="int32")
+
+    async def go() -> object:
+        return await abczarr.open(
+            url, mode="r", asynchronous=True, driver="tensorstore"
+        )
+
+    node = asyncio.run(go())
+    assert isinstance(node, AsyncPathGroup)
