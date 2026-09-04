@@ -5,8 +5,8 @@ stored in Zarr: multiscale image pyramids, high-content screening
 plates, segmentation labels, and rendering settings, all described by
 JSON attached to a Zarr group. abczarr models that metadata as typed
 classes under `abczarr.ome.metadata`. There is one package per NGFF
-version, `v0_1` through `v0_5`, plus a `v0_6dev4` preview of the next
-release. The examples below target 0.5, the latest stable version; the
+version, `v0_1` through `v0_5`, plus the 0.6 pre-release previews
+`v0_6dev1` through `v0_6dev4` and `v0_6rc0`. The examples below target 0.5, the latest stable version; the
 [Reference](#reference) documents every version.
 
 ## Describing a multiscale image
