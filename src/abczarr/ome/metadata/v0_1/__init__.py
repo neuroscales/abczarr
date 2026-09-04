@@ -1,3 +1,6 @@
+# Hand-written source of truth. tools/gen_ome_metadata.py generates
+# v0_2..v0_5 from this package; edit here, then regenerate.
+
 __all__ = ["images", "labels", "ome", "omero", "plates", "version", "wells"]
 
 

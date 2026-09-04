@@ -156,3 +156,65 @@ def test_underdetermined_up_conversion_raises_clearly() -> None:
     # v0.3 requires axes, which v0.2 does not carry
     with pytest.raises(ValueError, match="does not carry"):
         m2.to_version("0.3")
+
+
+# --------------------------------------------------------------------------
+# base.OME.from_dict dispatches by the data's declared version, not by which
+# version package happened to import last
+# --------------------------------------------------------------------------
+
+_PLATE = {
+    "columns": [{"name": "1"}],
+    "rows": [{"name": "A"}],
+    "wells": [{"path": "A/1", "rowIndex": 0, "columnIndex": 0}],
+}
+
+
+@pytest.mark.parametrize(
+    ("version", "package"),
+    [
+        ("0.1", "v0_1"),
+        ("0.2", "v0_2"),
+        ("0.3", "v0_3"),
+        ("0.4", "v0_4"),
+        ("0.5", "v0_5"),
+    ],
+)
+def test_base_ome_from_dict_routes_by_version(
+    version: str, package: str
+) -> None:
+    # Every version package registers its OME subclasses into the shared
+    # base.OME registry under the same non-version-specific keys, so the base
+    # cannot tell them apart on its own. It used to dispatch to whichever
+    # package imported last (v0_6dev4), silently and independent of the data's
+    # version. It must now route by the declared version instead.
+    from abczarr.ome.metadata import base
+
+    data = {"version": version, "bioformats2raw_layout": 3, "plate": _PLATE}
+    obj = base.OME.from_dict(data)
+    assert type(obj).__module__ == f"abczarr.ome.metadata.{package}.ome"
+
+
+def test_base_ome_from_dict_rejects_versionless_metadata() -> None:
+    # Under the old last-import-wins behavior this silently built an object
+    # from whichever package imported last; ambiguous data must now raise.
+    from abczarr.ome.metadata import base
+
+    with pytest.raises(ValueError, match="version"):
+        base.OME.from_dict({"bioformats2raw_layout": 3, "plate": _PLATE})
+
+
+def test_base_ome_from_dict_rejects_unknown_version() -> None:
+    from abczarr.ome.metadata import base
+
+    with pytest.raises(ValueError, match="Unknown OME version"):
+        base.OME.from_dict({"version": "9.9"})
+
+
+def test_per_version_ome_from_dict_still_dispatches() -> None:
+    # The per-version OME classes keep their own dispatch: routing through the
+    # base must reach the same class a direct call would.
+    from abczarr.ome.metadata import base, v0_5
+
+    data = {"version": "0.5", "bioformats2raw_layout": 3, "plate": _PLATE}
+    assert type(base.OME.from_dict(data)) is type(v0_5.OME.from_dict(data))

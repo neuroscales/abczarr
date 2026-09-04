@@ -1,3 +1,5 @@
+# Generated from v0_1 by tools/gen_ome_metadata.py -- do not edit
+
 """The multiscale image pyramid.
 
 [Multiscale][abczarr.ome.metadata.v0_5.images.Multiscale] describes a
@@ -7,16 +9,12 @@ array and how it is positioned relative to the others.
 """
 
 __all__ = ["Dataset", "Multiscale"]
-
-# dependencies
 import typing_extensions as tx
 
-# core
 from abczarr._core import typing as tz
 from abczarr._core.auto.attrs import autodefine, field
 from abczarr._core.rfc2119 import Optional, Recommended, Required
 
-# locals
 from ..base import OMEMetadata
 from .axes import Axis
 from .transformations import CoordinateTransformation, Scale, Translation
@@ -36,10 +34,9 @@ class Dataset(OMEMetadata):
     """
 
     path: Required[str] = field(factory=False)
-    coordinateTransformations: Required[tx.Union[
-        tx.Tuple[Scale],
-        tx.Tuple[Scale, Translation],
-    ]]
+    coordinateTransformations: Required[
+        tx.Union[tx.Tuple[Scale], tx.Tuple[Scale, Translation]]
+    ]
 
 
 @autodefine
