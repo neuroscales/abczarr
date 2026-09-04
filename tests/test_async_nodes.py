@@ -89,6 +89,20 @@ def test_shared_property_names_are_identical() -> None:
     assert sync == asyncd == _SHARED_PROPERTIES
 
 
+def test_update_attributes_parity() -> None:
+    # both colors expose update_attributes; the write differs only in that the
+    # async one is a coroutine (an assignment expression cannot be awaited, so
+    # the async attrs mapping has no per-key setter -- same reason as setitem)
+    assert callable(abczarr.ZarrNode.update_attributes)
+    assert not inspect.iscoroutinefunction(abczarr.ZarrNode.update_attributes)
+    assert inspect.iscoroutinefunction(
+        abczarr.AsyncZarrNode.update_attributes
+    )
+    # attrs stays a read surface on both colors
+    assert _is_property(abczarr.ZarrNode, "attrs")
+    assert _is_property(abczarr.AsyncZarrNode, "attrs")
+
+
 # --------------------------------------------------------------------------
 # zarr-python: a native coroutine surface
 # --------------------------------------------------------------------------
