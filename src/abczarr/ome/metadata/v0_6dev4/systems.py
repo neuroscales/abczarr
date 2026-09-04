@@ -1,6 +1,6 @@
 __all__ = [
     "Axis", "SpaceAxis", "TimeAxis", "ChannelAxis", "ArrayAxis",
-    "DisplacementAxis", "CoordinateAxis",
+    "DisplacementAxis", "CoordinateAxis", "CoordinateSystem",
     "AxisType", "SpaceUnit", "TimeUnit", "Unit",
 ]
 

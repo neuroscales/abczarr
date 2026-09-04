@@ -9,7 +9,7 @@ import numpy as np
 import numpy.typing as npt
 import typing_extensions as tx
 
-from abczarr.abc.array import ZarrArray
+from abczarr.abc.sync import ZarrArray
 
 
 class _FakeArray(ZarrArray):
@@ -80,7 +80,7 @@ def test_array_module_does_not_import_dask_itself() -> None:
     import pathlib
 
     path = pathlib.Path(__file__).resolve().parent.parent / (
-        "src/abczarr/abc/array.py"
+        "src/abczarr/abc/sync.py"
     )
     tree = ast.parse(path.read_text(encoding="utf-8"))
     module_level = []

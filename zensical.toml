@@ -11,13 +11,8 @@ nav = [
     ]},
     {"ABC" = [
       "api/nodes.md",
-      {"Stores" = [
-        "api/store.md",
-        "api/transactions.md",
-        "api/path.md",
-      ]},
-    ]},
-    {"Capabilities" = [
+      "api/store.md",
+      "api/transactions.md",
       "api/capabilities.md",
       "api/errors.md",
     ]},
@@ -44,7 +39,15 @@ nav = [
         "api/metadata-v3-extensions.md",
       ]},
     ]},
-    {"OME" = "api/ome.md"},
+    {"OME" = [
+      "api/ome.md",
+      {"0.1" = "api/ome-v0_1.md"},
+      {"0.2" = "api/ome-v0_2.md"},
+      {"0.3" = "api/ome-v0_3.md"},
+      {"0.4" = "api/ome-v0_4.md"},
+      {"0.5" = "api/ome-v0_5.md"},
+      {"0.6.dev4" = "api/ome-v0_6dev4.md"},
+    ]},
   ]},
 ]
 
@@ -61,6 +64,8 @@ site_description = "One interface for reading and writing Zarr, over any backend
 site_author = "Yael Balbastre"
 
 site_url = "https://neuroscales.github.io/abczarr/"
+repo_url = "https://github.com/neuroscales/abczarr"
+repo_name = "neuroscales/abczarr"
 
 copyright = """
 Copyright &copy; 2026 The authors

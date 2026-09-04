@@ -9,7 +9,7 @@ import pathlib
 import numpy as np
 import pytest
 
-from abczarr.abc.array import _blocks_align_to
+from abczarr.abc.sync import _blocks_align_to
 
 # --------------------------------------------------------------------------
 # the alignment helper (no backend needed)

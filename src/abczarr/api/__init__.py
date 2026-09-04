@@ -2,8 +2,9 @@
 rest on.
 
 - [open][abczarr.api.open] and its array/group variants read a node.
-- [create][abczarr.api.create] and [create_group][abczarr.api.create_group]
-  make one, from a [config][abczarr.api.config] or a metadata object.
+- [create][abczarr.api.create], [create_array][abczarr.api.create_array] and
+  [create_group][abczarr.api.create_group] make one, from a
+  [config][abczarr.api.config] or a metadata object.
 - [config][abczarr.api.config] describes what to create.
 - [registry][abczarr.api.registry] chooses a driver.
 
@@ -22,6 +23,7 @@ __all__ = [
     "open_array",
     "open_group",
     "create",
+    "create_array",
     "create_group",
 ]
 
@@ -32,6 +34,7 @@ if tx.TYPE_CHECKING:
     from . import config, registry  # noqa: F401
     from ._entry import (  # noqa: F401
         create,
+        create_array,
         create_group,
         open,
         open_array,
@@ -39,7 +42,10 @@ if tx.TYPE_CHECKING:
     )
 
 #: The names that live in the private entry module.
-_ENTRY = {"open", "open_array", "open_group", "create", "create_group"}
+_ENTRY = {
+    "open", "open_array", "open_group",
+    "create", "create_array", "create_group",
+}
 
 
 def __getattr__(name: str) -> tx.Any:

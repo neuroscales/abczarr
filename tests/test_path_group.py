@@ -11,7 +11,7 @@ import pathlib
 
 import pytest
 
-from abczarr.abc.group import PathGroup
+from abczarr.abc.sync import PathGroup
 from abczarr.errors import UnsupportedZarrOperation
 from abczarr.metadata.base import GroupMetadataV3, _node_type_at
 

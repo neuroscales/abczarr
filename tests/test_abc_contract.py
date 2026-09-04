@@ -7,8 +7,8 @@ node -- so they run with no zarr / tensorstore backend installed.
 import pytest
 
 from abczarr import UnsupportedZarrOperation, errors
-from abczarr.abc import node
-from abczarr.abc.node import KNOWN_CAPABILITIES, Support, ZarrNode
+from abczarr.abc import sync
+from abczarr.abc.sync import KNOWN_CAPABILITIES, Support, ZarrNode
 
 
 class _FakeNode(ZarrNode):
@@ -126,4 +126,4 @@ def test_dead_modules_removed(dead: str) -> None:
 
 
 def test_node_module_exports_capabilities() -> None:
-    assert "KNOWN_CAPABILITIES" in node.__all__
+    assert "KNOWN_CAPABILITIES" in sync.__all__

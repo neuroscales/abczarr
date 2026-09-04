@@ -277,7 +277,7 @@ def test_group_at_a_memory_url_opens_as_a_group_async() -> None:
     import uuid
 
     pytest.importorskip("fsspec")
-    from abczarr.abc.async_group import AsyncPathGroup
+    from abczarr.abc.asynchronous import AsyncPathGroup
 
     url = "memory://" + uuid.uuid4().hex + "/g.zarr"
     group = zarr.open_group(url, mode="w")

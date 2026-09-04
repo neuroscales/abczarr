@@ -13,6 +13,7 @@ __all__ = [
     "open_array",
     "open_group",
     "create",
+    "create_array",
     "create_group",
 ]
 
@@ -27,13 +28,13 @@ from abczarr.errors import UnsupportedZarrOperation
 # locals
 from .._core import typing as tz
 from .._core.attrs import evolve, fields
-from ..abc.array import ZarrArray
-from ..abc.async_array import AsyncZarrArray
-from ..abc.async_group import AsyncZarrGroup
-from ..abc.async_node import AsyncZarrNode
-from ..abc.group import ZarrGroup
-from ..abc.node import ZarrNode
+from ..abc.asynchronous import (
+    AsyncZarrArray,
+    AsyncZarrGroup,
+    AsyncZarrNode,
+)
 from ..abc.store import AsyncPathBasedStore, PathBasedStore
+from ..abc.sync import ZarrArray, ZarrGroup, ZarrNode
 from ..drivers.base import Driver
 from ..metadata import v3
 from ..metadata.base import ArrayMetadata, NodeMetadata
@@ -224,8 +225,8 @@ def open(
     asynchronous : bool, optional
         When true, return a coroutine that opens or creates *path*
         asynchronously and resolves to the coroutine twin -- an
-        [AsyncZarrArray][abczarr.abc.async_array.AsyncZarrArray] or
-        [AsyncZarrGroup][abczarr.abc.async_group.AsyncZarrGroup] -- whose I/O
+        [AsyncZarrArray][abczarr.abc.asynchronous.AsyncZarrArray] or
+        [AsyncZarrGroup][abczarr.abc.asynchronous.AsyncZarrGroup] -- whose I/O
         is awaited. Whether that surface is native to the backend or
         synthesized in a thread pool is reported by
         `node.supports("async", native=True)`. When false (the default), open
@@ -540,6 +541,61 @@ async def _acreate_group(
     node = await create(location, base, asynchronous=True, **fields)
     if not isinstance(node, AsyncZarrGroup):
         raise UnsupportedZarrOperation("create_group produced a non-group")
+    return node
+
+
+@tx.overload
+def create_array(
+    location: tz.PathLike, *,
+    config: tx.Optional[ArrayConfig] = ...,
+    asynchronous: "tx.Literal[False]" = ..., **fields: tx.Any,
+) -> ZarrArray: ...
+@tx.overload
+def create_array(
+    location: tz.PathLike, *,
+    config: tx.Optional[ArrayConfig] = ...,
+    asynchronous: "tx.Literal[True]", **fields: tx.Any,
+) -> tx.Awaitable[AsyncZarrArray]: ...
+
+
+def create_array(
+    location: tz.PathLike, *,
+    config: tx.Optional[ArrayConfig] = None,
+    asynchronous: bool = False, **fields: tx.Any,
+) -> tx.Union[ZarrArray, tx.Awaitable[AsyncZarrArray]]:
+    """Create an array at *location*, the metadata-free way.
+
+    Pass an [ArrayConfig][abczarr.api.config.ArrayConfig] as *config*, or its
+    fields (`shape`, `dtype`, `chunks`, ...) as keyword arguments. At least a
+    `shape` (and a `dtype`) is needed to describe the array; a request with no
+    array fields is a group, so use [create_group][abczarr.api.create_group]
+    for that. With `asynchronous=True` the return value is a coroutine
+    resolving to the async array twin, mirroring async
+    [create][abczarr.api.create].
+    """
+    base = config if isinstance(config, ArrayConfig) else ArrayConfig(
+        **dict(config or {})
+    )
+    if fields.get("shape", base.shape) is None:
+        got = ", ".join(sorted(fields)) or "no creation fields"
+        raise TypeError(
+            "create_array() needs at least a shape (and a dtype) to create "
+            f"the array; got {got}. Use create_group() to create a group."
+        )
+    if asynchronous:
+        return _acreate_array(location, base, fields)
+    node = create(location, base, **fields)
+    if not isinstance(node, ZarrArray):
+        raise UnsupportedZarrOperation("create_array produced a non-array")
+    return node
+
+
+async def _acreate_array(
+    location: tz.PathLike, base: ArrayConfig, fields: "tx.Dict[str, tx.Any]",
+) -> AsyncZarrArray:
+    node = await create(location, base, asynchronous=True, **fields)
+    if not isinstance(node, AsyncZarrArray):
+        raise UnsupportedZarrOperation("create_array produced a non-array")
     return node
 
 

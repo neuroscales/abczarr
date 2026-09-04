@@ -211,3 +211,47 @@ def test_open_group_create_mode_rejects_array_fields(
 ) -> None:
     with pytest.raises(TypeError, match="no array fields"):
         abczarr.open_group(str(tmp_path / "g.zarr"), mode="w", shape=(4,))
+
+
+# --------------------------------------------------------------------------
+# create_array / create_group -- the metadata-free create surface
+# --------------------------------------------------------------------------
+
+
+def test_create_array_makes_an_array(tmp_path: pathlib.Path) -> None:
+    arr = abczarr.create_array(
+        str(tmp_path / "a.zarr"), shape=(5, 5), dtype="int32", chunks=(5, 5)
+    )
+    assert isinstance(arr, abczarr.ZarrArray)
+    assert arr.shape == (5, 5)
+    assert arr.dtype == np.dtype("int32")
+    arr[:] = np.arange(25).reshape(5, 5)
+    assert np.asarray(arr[0, :3]).tolist() == [0, 1, 2]
+
+
+def test_create_array_from_a_config(tmp_path: pathlib.Path) -> None:
+    from abczarr.api.config import ArrayConfig
+
+    arr = abczarr.create_array(
+        str(tmp_path / "a.zarr"),
+        config=ArrayConfig(shape=(4, 4), dtype="float32"),
+    )
+    assert isinstance(arr, abczarr.ZarrArray)
+    assert arr.shape == (4, 4)
+    assert arr.dtype == np.dtype("float32")
+
+
+def test_create_array_needs_a_shape(tmp_path: pathlib.Path) -> None:
+    with pytest.raises(TypeError, match="needs at least a shape"):
+        abczarr.create_array(str(tmp_path / "a.zarr"))
+
+
+def test_create_array_rejects_a_group_shaped_request(
+    tmp_path: pathlib.Path,
+) -> None:
+    from abczarr.api.config import GroupConfig
+
+    with pytest.raises(TypeError, match="needs at least a shape"):
+        abczarr.create_array(
+            str(tmp_path / "a.zarr"), config=GroupConfig()
+        )
