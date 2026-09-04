@@ -6,6 +6,8 @@ factories (which mark fields required / recommended / optional) and the
 MISSING sentinel a required-but-unset field carries.
 """
 
+import importlib
+
 import pytest
 
 from abczarr.ome.metadata import v0_4, v0_5
@@ -218,3 +220,53 @@ def test_per_version_ome_from_dict_still_dispatches() -> None:
 
     data = {"version": "0.5", "bioformats2raw_layout": 3, "plate": _PLATE}
     assert type(base.OME.from_json(data)) is type(v0_5.OME.from_json(data))
+
+
+# --------------------------------------------------------------------------
+# base.OME.from_json picks the carrier whose discriminator key is present in
+# the document -- a plate document is an OMEPlate, a multiscales one an
+# OMEImage, a bioformats2raw.layout one an OMEBioformats2Raw -- and a plain
+# plate (no bioformats2raw.layout) is never mistaken for the bf2raw carrier.
+# --------------------------------------------------------------------------
+
+_WELL = {"images": [{"acquisition": 0, "path": "0"}]}
+
+
+@pytest.mark.parametrize("version", ["0.1", "0.2", "0.3", "0.4", "0.5"])
+def test_base_ome_dispatches_by_present_discriminator(version: str) -> None:
+    from abczarr.ome.metadata import base
+
+    ome = importlib.import_module(
+        f"abczarr.ome.metadata.v0_{version.split('.')[1]}.ome"
+    )
+
+    def carrier(fields: dict) -> type:
+        obj = base.OME.from_json({"version": version, **fields})
+        # the carrier round-trips back to an equal object
+        assert base.OME.from_json(obj.to_json()) == obj
+        return type(obj)
+
+    assert carrier({"plate": _PLATE}) is ome.OMEPlate
+    assert carrier({"well": _WELL}) is ome.OMEWell
+    assert carrier({"labels": ["cells", "nuclei"]}) is ome.OMELabels
+    assert carrier({"series": ["0", "1"]}) is ome.OMESeries
+    assert (
+        carrier({"bioformats2raw_layout": 3, "plate": _PLATE})
+        is ome.OMEBioformats2Raw
+    )
+
+
+@pytest.mark.parametrize("version", ["0.1", "0.2", "0.3", "0.4", "0.5"])
+def test_a_plain_plate_is_not_a_bioformats2raw_layout(version: str) -> None:
+    # Regression: OMEBioformats2Raw defaults its layout field to 3, so it used
+    # to match any document under the registry's iteration order and hijack it.
+    # It must only be chosen when the layout key is actually present.
+    from abczarr.ome.metadata import base
+
+    ome = importlib.import_module(
+        f"abczarr.ome.metadata.v0_{version.split('.')[1]}.ome"
+    )
+
+    for fields in ({"plate": _PLATE}, {"well": _WELL}, {"labels": ["a"]}):
+        obj = base.OME.from_json({"version": version, **fields})
+        assert not isinstance(obj, ome.OMEBioformats2Raw)

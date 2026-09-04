@@ -86,13 +86,6 @@ class OMEMetadata(FlexibleMetadata):
         the newer version has gets a reasonable default going forward,
         and is dropped going back.
 
-        Raises
-        ------
-        ValueError
-            If *version* names no known OME-NGFF version, or if
-            converting to it would require information this object
-            does not carry.
-
         !!! example
             ```pycon
             >>> from abczarr.ome.metadata import v0_4
@@ -116,6 +109,13 @@ class OMEMetadata(FlexibleMetadata):
             True
 
             ```
+
+        Raises
+        ------
+        ValueError
+            If *version* names no known OME-NGFF version, or if
+            converting to it would require information this object
+            does not carry.
         """
         if version not in _MODULES:
             raise ValueError(f"Unknown OME version: {version!r}")
