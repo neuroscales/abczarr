@@ -8,7 +8,10 @@ __all__ = [
 
 import typing_extensions as tx
 
-from abczarr._core import typing as tz
+# `UnsupportedConversion` is defined in `_core` so the metadata layer can
+# import it at module top (see abczarr._core.errors); re-exported here to
+# keep its public `abczarr.abc.errors` path.
+from abczarr._core.errors import UnsupportedConversion
 
 
 class TransactionConflict(RuntimeError):
@@ -53,20 +56,3 @@ class UnsupportedZarrOperation(NotImplementedError):
         super().__init__(message)
         self.operation = operation
         self.driver = driver
-
-
-class UnsupportedConversion(ValueError):
-    """A field has no representation in the target Zarr version.
-
-    Raised by `to_version` when it is asked to convert under the
-    ``"strict"`` policy and a field cannot be carried over. The
-    message names the field and the version it could not be
-    represented in.
-    """
-
-    def __init__(self, field: str, version: tz.ZarrVersion) -> None:
-        super().__init__(
-            f"cannot represent {field!r} in Zarr v{version}"
-        )
-        self.field = field
-        self.version = version

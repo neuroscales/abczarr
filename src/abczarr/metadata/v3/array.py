@@ -26,6 +26,7 @@ import typing_extensions as tx
 from abczarr._core import typing as tz
 from abczarr._core.auto.attrs import autofrozen, eq_safenan, field, update
 from abczarr._core.dtypes import asdtype
+from abczarr._core.errors import UnsupportedConversion
 from abczarr._core.features import feature_key
 from abczarr._core.metadata import register_subclass
 
@@ -372,8 +373,6 @@ def _to_v2(
         # array from, so the conversion cannot proceed under any policy. This
         # is a documented limitation, not a policy-governed loss: it raises a
         # named error rather than the bare ValueError it used to.
-        from abczarr.abc.errors import UnsupportedConversion
-
         raise UnsupportedConversion("chunk_grid", 2)
     chunk_grid = tx.cast(RegularChunkGrid, self.chunk_grid)
     chunk_shape = chunk_grid.configuration.chunk_shape

@@ -36,6 +36,9 @@ class CodecOptions(Metadata):
 
         # v1 and v2 share the numcodecs model: rebuild the codec as a v2
         # numcodecs codec ({id, **options}), then let v2 map it onward to v3.
+        # Local import: the version packages reference each other for
+        # cross-version conversion (v1 -> v2 -> v3 and back), so a
+        # module-level import between them would be a cycle.
         from abczarr.metadata.v2 import Codec as CodecV2
 
         codec_v2 = CodecV2.from_dict({"id": id, **options})

@@ -50,6 +50,7 @@ from abczarr._core import constants
 # locals
 from abczarr._core import typing as tz
 from abczarr._core.auto import autofrozen, evolve
+from abczarr._core.errors import UnsupportedConversion
 from abczarr._core.metadata import (
     FlexibleMetadata,
     Metadata,
@@ -106,10 +107,6 @@ def _report_loss(
         )
         return
     if policy == "strict":
-        # imported at call time: abc/errors sits above metadata in the
-        # import graph, so a module-level import here would be a cycle
-        from abczarr.abc.errors import UnsupportedConversion
-
         raise UnsupportedConversion(field, version)
     raise ValueError(f"unknown conversion policy: {policy!r}")
 
@@ -295,8 +292,6 @@ class GroupMetadata(NodeMetadata):
             # any policy. This is a documented limitation, not a
             # policy-governed loss, so it raises a named error regardless of
             # *policy*.
-            from abczarr.abc.errors import UnsupportedConversion
-
             raise UnsupportedConversion("group", 1)
         if version in (2, 3):
             target = {2: GroupMetadataV2, 3: GroupMetadataV3}[version]

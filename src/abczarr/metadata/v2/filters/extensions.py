@@ -39,7 +39,7 @@ class BitroundFilter(FilterImpl):
         if version == 3:
             from abczarr.metadata.v3 import BitroundCodec
             return BitroundCodec.from_dict({
-                "name": "bitround",
+                "name": self.id,
                 "configuration": {
                     "keepbits": self.keepbits
                 }
@@ -58,7 +58,7 @@ class PackBitsFilter(FilterImpl):
         if version == 3:
             from abczarr.metadata.v3 import PackBitsCodec
             return PackBitsCodec.from_dict({
-                "name": "packbits",
+                "name": self.id,
                 "configuration": {
                     "padding_encoding": "first_byte",
                     "first_bit": None,
