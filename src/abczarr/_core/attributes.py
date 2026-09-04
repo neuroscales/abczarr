@@ -29,7 +29,7 @@ from . import typing as tz
 
 if tx.TYPE_CHECKING:
     # imported for the type only; a runtime import would cycle, since the node
-    # contract (abc.node) reaches back here for its `attrs` property
+    # contract (abc.sync) reaches back here for its `attrs` property
     from ..abc import ZarrNode
 
 AttributesBase = tx.MutableMapping[str, tx.Any]

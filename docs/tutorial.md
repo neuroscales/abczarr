@@ -9,7 +9,7 @@ setup beyond `pip install abczarr[zarr-py]`.
 ## Create a group and an array
 
 [create_group][abczarr.api.create_group] makes a Zarr group at a
-path. Call [create_array][abczarr.abc.group.ZarrGroup.create_array] on
+path. Call [create_array][abczarr.abc.sync.ZarrGroup.create_array] on
 it to add an array inside:
 
 ```pycon

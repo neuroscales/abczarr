@@ -2,10 +2,10 @@
 
 Opens a Zarr v3 array or group through `zarrista`, a small pure-Python Zarr
 v3 implementation, and wraps it as a
-[ZarrArray][abczarr.abc.array.ZarrArray] /
-[ZarrGroup][abczarr.abc.group.ZarrGroup] so it reads and writes through the
+[ZarrArray][abczarr.abc.sync.ZarrArray] /
+[ZarrGroup][abczarr.abc.sync.ZarrGroup] so it reads and writes through the
 uniform surface. A group is read straight from the store by
-[PathGroup][abczarr.abc.group.PathGroup] while its arrays are
+[PathGroup][abczarr.abc.sync.PathGroup] while its arrays are
 opened through zarrista.
 """
 
@@ -28,11 +28,9 @@ import typing_extensions as tx
 from abczarr._core import typing as tz
 from abczarr._core.dtypes import asdtype
 from abczarr._core.features import FEATURE_KINDS, FEATURE_VERSIONS
-from abczarr.abc.array import ZarrArray
 from abczarr.abc.capabilities import Support
-from abczarr.abc.group import PathGroup
-from abczarr.abc.node import ZarrNode
 from abczarr.abc.store import PathBasedStore
+from abczarr.abc.sync import PathGroup, ZarrArray, ZarrNode
 from abczarr.drivers._metadata import metadata_from_dict
 from abczarr.drivers.base import Driver
 
@@ -86,16 +84,16 @@ class ZarristaNode(ZarrNode):
     covering both. zarrista keeps no user attributes of its own, so both
     nodes read attributes from the cached metadata and persist a write by
     rewriting the metadata document through the store -- the behaviour
-    inherited from [ZarrNode][abczarr.abc.node.ZarrNode].
+    inherited from [ZarrNode][abczarr.abc.sync.ZarrNode].
     """
 
 
 class ZarristaArray(ZarristaNode, ZarrArray):
-    """A [ZarrArray][abczarr.abc.array.ZarrArray] backed by a zarrista array.
+    """A [ZarrArray][abczarr.abc.sync.ZarrArray] backed by a zarrista array.
 
     Its shape, dtype and chunking come from the Zarr metadata; reads and
     writes go through zarrista. The underlying ``zarrista.Array`` is reachable
-    as [native][abczarr.abc.node.ZarrNode.native].
+    as [native][abczarr.abc.sync.ZarrNode.native].
     """
 
     _CAPABILITIES = {
@@ -177,7 +175,7 @@ def _open_zarrista_array(location: tx.Any) -> ZarristaArray:
 class ZarristaGroup(ZarristaNode, PathGroup):
     """The group returned when the zarrista driver opens a group.
 
-    [PathGroup][abczarr.abc.group.PathGroup] reads the group and
+    [PathGroup][abczarr.abc.sync.PathGroup] reads the group and
     lists its members straight from the store, while each child array is
     opened through zarrista. Subgroups are more `ZarristaGroup`s, so a whole
     hierarchy is reachable from one opened group.

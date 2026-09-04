@@ -11,13 +11,8 @@ nav = [
     ]},
     {"ABC" = [
       "api/nodes.md",
-      {"Stores" = [
-        "api/store.md",
-        "api/transactions.md",
-        "api/path.md",
-      ]},
-    ]},
-    {"Capabilities" = [
+      "api/store.md",
+      "api/transactions.md",
       "api/capabilities.md",
       "api/errors.md",
     ]},
