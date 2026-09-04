@@ -6,8 +6,8 @@ plates, segmentation labels, and rendering settings, all described by
 JSON attached to a Zarr group. abczarr models that metadata as typed
 classes under `abczarr.ome.metadata`. There is one package per NGFF
 version, `v0_1` through `v0_5`, plus a `v0_6dev4` preview of the next
-release. The latest stable version is 0.5, and every example below
-targets it.
+release. The examples below target 0.5, the latest stable version; the
+[Reference](#reference) documents every version.
 
 ## Describing a multiscale image
 
@@ -164,38 +164,8 @@ not carry raises `ValueError` rather than guessing.
 
 ## Reference
 
-### `abczarr.ome.metadata.base`
+The shared, version-independent vocabulary is below. Each NGFF
+version's own classes are documented on its own page, listed under
+**OME** in the navigation.
 
 ::: abczarr.ome.metadata.base
-
-### `abczarr.ome.metadata.v0_5.ome`
-
-::: abczarr.ome.metadata.v0_5.ome
-
-### `abczarr.ome.metadata.v0_5.images`
-
-::: abczarr.ome.metadata.v0_5.images
-
-### `abczarr.ome.metadata.v0_5.axes`
-
-::: abczarr.ome.metadata.v0_5.axes
-
-### `abczarr.ome.metadata.v0_5.transformations`
-
-::: abczarr.ome.metadata.v0_5.transformations
-
-### `abczarr.ome.metadata.v0_5.plates`
-
-::: abczarr.ome.metadata.v0_5.plates
-
-### `abczarr.ome.metadata.v0_5.wells`
-
-::: abczarr.ome.metadata.v0_5.wells
-
-### `abczarr.ome.metadata.v0_5.labels`
-
-::: abczarr.ome.metadata.v0_5.labels
-
-### `abczarr.ome.metadata.v0_5.omero`
-
-::: abczarr.ome.metadata.v0_5.omero
