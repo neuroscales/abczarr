@@ -12,12 +12,13 @@ import pytest
 import typing_extensions as tx
 
 from abczarr.abc.capabilities import Support
-from abczarr.abc.path import AsyncStorePath, StorePath
 from abczarr.abc.store import (
     AsyncPathBasedStore,
     AsyncStore,
+    AsyncStorePath,
     PathBasedStore,
     Store,
+    StorePath,
 )
 
 # --------------------------------------------------------------------------

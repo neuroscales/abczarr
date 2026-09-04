@@ -12,7 +12,7 @@ import pathlib
 
 import pytest
 
-from abczarr.abc.path import AsyncStorePath, StorePath
+from abczarr.abc.store import AsyncStorePath, StorePath
 
 # --------------------------------------------------------------------------
 # read_only flag + derivation (local, no backend needed)

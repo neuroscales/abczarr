@@ -2,7 +2,7 @@
 
 These guard against a broken core submodule taking down the whole package
 at import time -- the failure mode that motivated this file, where a
-renamed class in ``_core.path`` left ``abc.path`` (and therefore every
+renamed class in ``_core.path`` left ``abc.store`` (and therefore every
 ``import abczarr...``) raising, so even unrelated metadata/OME tests could
 not be collected.
 
@@ -35,7 +35,6 @@ def test_public_names_resolve() -> None:
         "abczarr.abc.sync",
         "abczarr.abc.asynchronous",
         "abczarr.abc.store",
-        "abczarr.abc.path",
         "abczarr.abc.capabilities",
         "abczarr.abc.transactions",
         "abczarr.abc.errors",
@@ -54,10 +53,12 @@ def test_submodule_imports(module: str) -> None:
 
 def test_store_path_classes_exist() -> None:
     """The store/path lattice that broke stays wired to ``_core.path``."""
-    from abczarr.abc import path as spath
+    from abczarr.abc import store as spath
 
     for name in spath.__all__:
         assert hasattr(spath, name), name
+    assert hasattr(spath, "StorePath")
+    assert hasattr(spath, "AsyncStorePath")
 
 
 # ---------------------------------------------------------------------------
