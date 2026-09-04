@@ -178,8 +178,17 @@ JSONScalar = tx.TypeVar("JSONScalar", bound=_JSONScalar, default=_JSONScalar)
 JSON = tx.TypeVar("JSON", bound=_JSON, default=_JSON)
 JSONDict = tx.Mapping[str, JSON]
 
+# The mapping and sequence branches are spelled with the abstract `Mapping`
+# and `BuiltinSequence` (tuple | list) rather than the concrete `FrozenDict`
+# and `Tuple`. A converter for this union tries its branches in order, and a
+# value that already matches a branch by type is returned unchanged; a plain
+# `dict` or `list` is an instance of `Mapping` / `BuiltinSequence` but of
+# neither `FrozenDict` nor `Tuple`, so with the concrete spellings it matched
+# no branch and fell through to the greedy `bool` branch -- `bool([1, 0])` is
+# `True` -- and was silently corrupted. `FrozenJSONDict` still freezes the
+# top-level mapping through its own `FrozenDict` converter.
 _FrozenJSON = tx.Union[
-    _JSONScalar, FrozenDict[str, "JSON"], tx.Tuple["JSON", ...]
+    _JSONScalar, tx.Mapping[str, "JSON"], BuiltinSequence["JSON"]
 ]
 FrozenJSON = tx.TypeVar("FrozenJSON", bound=_FrozenJSON, default=_FrozenJSON)
 FrozenJSONDict = FrozenDict[str, FrozenJSON]
