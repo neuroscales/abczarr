@@ -4,8 +4,8 @@ Declares what a given install of zarr-python can read and write -- coarse
 capabilities and the individual codecs, chunk grids and chunk-key encodings
 it has -- by asking the installed library, so selection reflects the real
 build rather than a guess. The node adapters wrap a ``zarr.Array`` or
-``zarr.Group`` as a [ZarrArray][abczarr.abc.array.ZarrArray] /
-[ZarrGroup][abczarr.abc.group.ZarrGroup] so data is read and written through
+``zarr.Group`` as a [ZarrArray][abczarr.abc.sync.ZarrArray] /
+[ZarrGroup][abczarr.abc.sync.ZarrGroup] so data is read and written through
 the uniform surface; [abczarr.open][abczarr.api.open] opens a location and
 returns whatever is there.
 """
@@ -30,13 +30,13 @@ import typing_extensions as tx
 # core
 from abczarr._core import typing as tz
 from abczarr._core.features import FEATURE_KINDS, FEATURE_VERSIONS
-from abczarr.abc.array import ZarrArray
-from abczarr.abc.async_array import AsyncZarrArray
-from abczarr.abc.async_group import AsyncZarrGroup
-from abczarr.abc.async_node import AsyncZarrNode
+from abczarr.abc.asynchronous import (
+    AsyncZarrArray,
+    AsyncZarrGroup,
+    AsyncZarrNode,
+)
 from abczarr.abc.capabilities import Support
-from abczarr.abc.group import ZarrGroup
-from abczarr.abc.node import ZarrNode
+from abczarr.abc.sync import ZarrArray, ZarrGroup, ZarrNode
 from abczarr.api.config import ArrayConfig
 from abczarr.drivers._metadata import metadata_from_dict
 from abczarr.drivers.base import Driver
@@ -287,7 +287,7 @@ class ZarrPythonNode(ZarrNode):
     Both wrap a live zarr-python object (a ``zarr.Array`` or a ``zarr.Group``)
     and share the same metadata, attributes and version accessors -- the only
     difference between the two is the data surface each adds. The wrapped
-    object is reachable as [native][abczarr.abc.node.ZarrNode.native].
+    object is reachable as [native][abczarr.abc.sync.ZarrNode.native].
     """
 
     _CAPABILITIES = _NODE_CAPABILITIES
@@ -327,11 +327,11 @@ class ZarrPythonNode(ZarrNode):
 
 
 class ZarrPythonArray(ZarrPythonNode, ZarrArray):
-    """A [ZarrArray][abczarr.abc.array.ZarrArray] backed by a ``zarr.Array``.
+    """A [ZarrArray][abczarr.abc.sync.ZarrArray] backed by a ``zarr.Array``.
 
     Wraps an open array so it reads and writes through the uniform surface.
     The underlying ``zarr.Array`` is reachable as
-    [native][abczarr.abc.node.ZarrNode.native].
+    [native][abczarr.abc.sync.ZarrNode.native].
     """
 
     @property
@@ -368,11 +368,11 @@ class ZarrPythonArray(ZarrPythonNode, ZarrArray):
 
 
 class ZarrPythonGroup(ZarrPythonNode, ZarrGroup):
-    """A [ZarrGroup][abczarr.abc.group.ZarrGroup] backed by a ``zarr.Group``.
+    """A [ZarrGroup][abczarr.abc.sync.ZarrGroup] backed by a ``zarr.Group``.
 
     Indexing returns a wrapped child array or group; the underlying
     ``zarr.Group`` is reachable as
-    [native][abczarr.abc.node.ZarrNode.native].
+    [native][abczarr.abc.sync.ZarrNode.native].
     """
 
     def keys(self) -> tx.Iterator[str]:
