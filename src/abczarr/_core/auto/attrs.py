@@ -11,6 +11,7 @@ __all__ = [
     "autofactory",
     "autoconvert",
     "eq_safenan",
+    "json_key",
 ]
 
 # stdlib
@@ -32,6 +33,11 @@ from .converters import get_converter as _get_converter
 from .converters import wrap_converter
 from .factories import get_factory
 from .validators import get_validator as _get_validator
+
+#: attrs field-metadata key under which a field's JSON key alias is stored.
+#: A field declared ``field(json="bioformats2raw.layout")`` carries its spec
+#: key here; a field with none serializes under its own Python name.
+_JSON_KEY = "abczarr.json_key"
 
 
 def get_converter(hint: tx.Any) -> tx.Optional[tx.Callable]:
@@ -188,8 +194,33 @@ def autofrozen(*args, **kwargs):
     return frozen(*args, **kwargs)
 
 
+def json_key(f: tx.Any) -> str:
+    """The JSON key a field serializes under: its ``json=`` alias, or its name.
+
+    A field declared with ``field(json="image-label")`` reads and writes that
+    spec key; a field with no alias uses its own Python name unchanged.
+    """
+    metadata = getattr(f, "metadata", None)
+    if metadata:
+        alias = metadata.get(_JSON_KEY)
+        if alias is not None:
+            return alias
+    return f.name
+
+
 @wraps(_field)
 def field(**kwargs) -> tx.Any:
+
+    # A ``json=`` alias records the field's JSON/spec key (which may not be a
+    # Python identifier, e.g. ``bioformats2raw.layout``) in the attrs field
+    # metadata, where ``json_key`` reads it back for serialization and
+    # dispatch. Absent, the field keeps its own name -- a no-op.
+    json = kwargs.pop("json", None)
+    if json is not None:
+        metadata = dict(kwargs.get("metadata") or {})
+        metadata[_JSON_KEY] = json
+        kwargs["metadata"] = metadata
+
     if "type" in kwargs:
 
         # Validator
