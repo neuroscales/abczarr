@@ -21,6 +21,7 @@ __all__ = ["OMEMetadata", "OME"]
 
 # stdlib
 import importlib
+from collections import abc
 
 # dependencies
 import typing_extensions as tx
@@ -134,6 +135,21 @@ def _version_of(cls: type) -> str:
 
 def _package(version: str) -> str:
     return "abczarr.ome.metadata." + _MODULES[version]
+
+
+def _version_package(data: abc.Mapping) -> tx.Any:
+    """The version package a piece of top-level OME metadata belongs to, read
+    from its ``version`` field."""
+    version = data.get("version")
+    if version is None:
+        raise ValueError(
+            "cannot tell which OME-NGFF version this metadata is: it has no "
+            "'version' field. Build the version's own class instead (for "
+            "example abczarr.ome.metadata.v0_5.OME), which knows its version."
+        )
+    if version not in _MODULES:
+        raise ValueError(f"Unknown OME version: {version!r}")
+    return importlib.import_module(_package(version))
 
 
 def _target_class(cls: type, version: str) -> type:
@@ -259,3 +275,29 @@ class OME(OMEMetadata):
     """
 
     version: str = field(factory=False)
+
+    @classmethod
+    def from_dict(cls, data: tx.Any) -> tx.Self:
+        """Create an OME container from a JSON-serializable dict.
+
+        Called on a version's own class -- ``v0_5.OME.from_dict`` -- this
+        picks the right image / plate / well / label subclass for the data,
+        as any OME class does.
+
+        Called on this version-independent base, it first reads the ``version``
+        field to decide which NGFF version the data belongs to, then hands off
+        to that version's ``OME``. The base cannot make that choice on its own:
+        every version's classes share this one, so it has no way to tell a
+        v0.4 image from a v0.5 one. Metadata that carries no ``version`` is
+        therefore ambiguous, and raises ``ValueError`` rather than guessing.
+
+        Raises
+        ------
+        ValueError
+            If called on the version-independent base with data that has no
+            ``version`` field, or a ``version`` that names no known OME-NGFF
+            version.
+        """
+        if cls is OME and isinstance(data, abc.Mapping):
+            return _version_package(data).OME.from_dict(data)
+        return super().from_dict(data)
