@@ -64,6 +64,8 @@ site_description = "One interface for reading and writing Zarr, over any backend
 site_author = "Yael Balbastre"
 
 site_url = "https://neuroscales.github.io/abczarr/"
+repo_url = "https://github.com/neuroscales/abczarr"
+repo_name = "neuroscales/abczarr"
 
 copyright = """
 Copyright &copy; 2026 The authors
