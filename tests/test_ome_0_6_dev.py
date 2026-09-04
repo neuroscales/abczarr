@@ -22,8 +22,7 @@ from pathlib import Path
 import pytest
 import typing_extensions as tx
 
-from abczarr._core.auto.validators import get_validator
-from abczarr.ome import base, schemas
+from abczarr.ome import base
 
 TESTDIR = Path(__file__).parent
 
@@ -238,48 +237,43 @@ def test_bioformats2raw_layout_document_roundtrips(version: str) -> None:
 
 # --------------------------------------------------------------------------
 # schema layer: the vendored transformation examples validate against the
-# per-version JSON-schema TypedDict models.
+# official NGFF JSON schemas (via abczarr.ome.schemas).
+#
+# The official schemas are stricter than the round-trip metadata model above:
+# a few upstream dev-tag example instances use transitional forms their own
+# published schema rejects (e.g. dev1 `rotation`, dev2 `mapAxis`, and every
+# dev3 instance -- whose coordinate-system axes are written `{"name": ...}`
+# with no `type`, which the 0.6.dev3 axes schema does not accept). Those are
+# covered by the round-trip tests above; only instances that conform to their
+# own version's schema are asserted here.
 # --------------------------------------------------------------------------
 
-
-class _SysXfDev1(schemas.OMESchemaItem):
-    v = schemas.v0_6dev1
-    coordinateSystems: tx.List[v.CoordinateSystem]
-    coordinateTransformations: tx.List[v.CoordinateTransformation]
-
-
-class _SysXfDev2(schemas.OMESchemaItem):
-    v = schemas.v0_6dev2
-    coordinateSystems: tx.List[v.CoordinateSystem]
-    coordinateTransformations: tx.List[v.CoordinateTransformation]
-
-
-class _SysXfDev3(schemas.OMESchemaItem):
-    v = schemas.v0_6dev3
-    coordinateSystems: tx.List[v.CoordinateSystem]
-    coordinateTransformations: tx.List[v.CoordinateTransformation]
-
-
-_SYSXF = {
-    "v0_6dev1": _SysXfDev1,
-    "v0_6dev2": _SysXfDev2,
-    "v0_6dev3": _SysXfDev3,
+_SCHEMA_XFORMS = {
+    "v0_6dev1": [
+        "affine2d2d", "affine2d3d", "identity", "scale", "translation",
+        "sequence", "bijection", "mapAxis1", "mapAxis2", "coordinates1d",
+        "displacement1d", "byDimension1", "inverseOf",
+    ],
+    "v0_6dev2": [
+        "affine2d2d", "affine2d3d", "identity", "scale", "translation",
+        "rotation", "sequence", "bijection", "coordinates1d",
+        "displacement1d", "byDimension1", "inverseOf",
+    ],
 }
 
 
 def _schema_xform_params() -> object:
-    # ``byDimension`` mixes a wrapped and an inline inner form; validating it
-    # against the strict per-member TypedDict union is out of scope here (the
-    # metadata layer covers it). Every other transform type is exercised.
-    for version in _SYSXF:
-        for name in XFORMS[version]:
-            if name.startswith("byDimension"):
-                continue
+    for version, names in _SCHEMA_XFORMS.items():
+        for name in names:
             yield pytest.param(version, name, id=f"{version}-{name}")
 
 
 @pytest.mark.parametrize(("version", "name"), list(_schema_xform_params()))
-def test_schema_transformation_validates(version: str, name: str) -> None:
+def test_schema_transformation_validates(
+    version: str,
+    name: str,
+    validate_systems_and_transforms: "tx.Callable[[dict, str], None]",
+) -> None:
     doc = _ome_attrs(_load(version, name))
-    validator = get_validator(_SYSXF[version])
-    validator(doc)  # should not raise
+    # version's official string (e.g. "0.6.dev1") drives schema selection.
+    validate_systems_and_transforms(doc, VERSIONS[version])

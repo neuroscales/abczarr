@@ -22,6 +22,11 @@ dependencies = [
     "bagof-converters",
     "bagof-validators",
     "bagof-factories",
+    # Offline JSON-schema validation of OME-Zarr / Zarr metadata against the
+    # vendored NGFF and Zarr schemas. Pure-Python, zero runtime dependencies,
+    # no python_requires floor (installs on the 3.8 floor), and fast (compiles
+    # each schema to a validation function).
+    "fastjsonschema >= 2.16",
 ]
 
 [project.optional-dependencies]
@@ -49,6 +54,17 @@ doc = [
 [project.urls]
 Homepage = "https://github.com/neuroscales/abczarr"
 Issues = "https://github.com/neuroscales/abczarr/issues"
+
+[tool.setuptools.package-data]
+# Ship the JSON schemas (they live in non-package data directories under the
+# schemas packages, so they are not picked up as modules).
+"abczarr.ome.schemas" = ["_ngff/*/*.schema", "_ngff/*.md"]
+"abczarr.schemas" = [
+    "_zarr/*.md",
+    "_zarr/*/*.schema",
+    "_zarr/*/*/*.schema",
+    "_zarr/v3/extensions/*/*/schema.json",
+]
 
 [build-system]
 requires = [

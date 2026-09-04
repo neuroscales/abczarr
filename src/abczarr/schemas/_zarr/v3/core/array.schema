@@ -1,0 +1,470 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Zarr v3 array metadata",
+  "description": "abczarr-authored schema for a Zarr v3 array zarr.json. Codecs and data types compose the official vendored extension schemas.",
+  "type": "object",
+  "properties": {
+    "zarr_format": {
+      "const": 3
+    },
+    "node_type": {
+      "const": "array"
+    },
+    "shape": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "data_type": {
+      "anyOf": [
+        {
+          "enum": [
+            "bool",
+            "int8",
+            "int16",
+            "int32",
+            "int64",
+            "uint8",
+            "uint16",
+            "uint32",
+            "uint64",
+            "float16",
+            "float32",
+            "float64",
+            "complex64",
+            "complex128"
+          ]
+        },
+        {
+          "type": "string",
+          "pattern": "^r\\d+$"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/bfloat16/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/bytes/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/complex_bfloat16/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/complex_float16/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/complex_float32/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/complex_float4_e2m1fn/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/complex_float64/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/complex_float6_e2m3fn/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/complex_float6_e3m2fn/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/complex_float8_e3m4/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/complex_float8_e4m3/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/complex_float8_e4m3b11fnuz/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/complex_float8_e4m3fnuz/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/complex_float8_e5m2/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/complex_float8_e5m2fnuz/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/complex_float8_e8m0fnu/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/fixed_length_utf32/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/float4_e2m1fn/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/float6_e2m3fn/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/float6_e3m2fn/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/float8_e3m4/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/float8_e4m3/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/float8_e4m3b11fnuz/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/float8_e4m3fnuz/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/float8_e5m2/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/float8_e5m2fnuz/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/float8_e8m0fnu/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/int2/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/int4/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/numpy.datetime64/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/numpy.timedelta64/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/string/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/struct/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/uint2/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/data-types/uint4/schema.json"
+        }
+      ]
+    },
+    "chunk_grid": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/regular_chunk_grid"
+        },
+        {
+          "$ref": "#/$defs/rectilinear_chunk_grid"
+        }
+      ]
+    },
+    "chunk_key_encoding": {
+      "$ref": "#/$defs/chunk_key_encoding"
+    },
+    "fill_value": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array"
+        }
+      ]
+    },
+    "codecs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/codec"
+      }
+    },
+    "attributes": {
+      "type": "object"
+    },
+    "storage_transformers": {
+      "type": "array"
+    },
+    "dimension_names": {
+      "type": "array",
+      "items": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    }
+  },
+  "required": [
+    "zarr_format",
+    "node_type",
+    "shape",
+    "data_type",
+    "chunk_grid",
+    "chunk_key_encoding",
+    "fill_value",
+    "codecs"
+  ],
+  "$defs": {
+    "blosc": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "const": "blosc"
+        },
+        "configuration": {
+          "type": "object",
+          "properties": {
+            "cname": {
+              "enum": [
+                "blosclz",
+                "lz4",
+                "lz4hc",
+                "snappy",
+                "zlib",
+                "zstd"
+              ]
+            },
+            "clevel": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9
+            },
+            "shuffle": {
+              "enum": [
+                "noshuffle",
+                "shuffle",
+                "bitshuffle"
+              ]
+            },
+            "typesize": {
+              "type": "integer"
+            },
+            "blocksize": {
+              "type": "integer"
+            }
+          }
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "gzip": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "const": "gzip"
+        },
+        "configuration": {
+          "type": "object",
+          "properties": {
+            "level": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9
+            }
+          }
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "crc32c": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "const": "crc32c"
+        },
+        "configuration": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "sharding_indexed": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "const": "sharding_indexed"
+        },
+        "configuration": {
+          "type": "object",
+          "properties": {
+            "chunk_shape": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "codecs": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/codec"
+              }
+            },
+            "index_codecs": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/codec"
+              }
+            },
+            "index_location": {
+              "enum": [
+                "start",
+                "end"
+              ]
+            }
+          },
+          "required": [
+            "chunk_shape",
+            "codecs",
+            "index_codecs"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "configuration"
+      ]
+    },
+    "codec": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/blosc"
+        },
+        {
+          "$ref": "#/$defs/gzip"
+        },
+        {
+          "$ref": "#/$defs/crc32c"
+        },
+        {
+          "$ref": "#/$defs/sharding_indexed"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/codecs/bitround/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/codecs/bytes/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/codecs/cast_value/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/codecs/n5_default/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/codecs/packbits/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/codecs/reshape/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/codecs/scale_offset/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/codecs/transpose/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/codecs/vlen-bytes/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/codecs/vlen-utf8/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/codecs/zfp/schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/codecs/zstd/schema.json"
+        }
+      ]
+    },
+    "regular_chunk_grid": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "const": "regular"
+        },
+        "configuration": {
+          "type": "object",
+          "properties": {
+            "chunk_shape": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "required": [
+            "chunk_shape"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "configuration"
+      ]
+    },
+    "rectilinear_chunk_grid": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "const": "rectilinear"
+        },
+        "configuration": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "inline"
+            },
+            "chunk_shapes": {
+              "type": "array"
+            }
+          }
+        }
+      },
+      "required": [
+        "name",
+        "configuration"
+      ]
+    },
+    "chunk_key_encoding": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "enum": [
+            "default",
+            "v2"
+          ]
+        },
+        "configuration": {
+          "type": "object",
+          "properties": {
+            "separator": {
+              "enum": [
+                ".",
+                "/"
+              ]
+            }
+          }
+        }
+      },
+      "required": [
+        "name"
+      ]
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Zarr v3 group metadata",
+  "type": "object",
+  "properties": {
+    "zarr_format": {
+      "const": 3
+    },
+    "node_type": {
+      "const": "group"
+    },
+    "attributes": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "zarr_format",
+    "node_type"
+  ]
+}

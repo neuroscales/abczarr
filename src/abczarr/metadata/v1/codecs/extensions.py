@@ -15,7 +15,8 @@ import typing_extensions as tx
 from abczarr._core import typing as tz
 from abczarr._core.auto.attrs import autofrozen
 from abczarr.metadata.base import register_subclass
-from abczarr.schemas.v2 import codecs
+
+from ...v2.codecs import aliases as codecs
 
 # locals
 from .base import CodecOptionsImpl

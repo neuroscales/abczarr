@@ -1,0 +1,23 @@
+{
+  "$id": "https://ngff.openmicroscopy.org/0.2/schemas/strict_image.schema",
+  "$comment": "abczarr reconstruction, NOT an official NGFF artifact. NGFF 0.2 published no distinct JSON schema (its version pointer resolves to a 0.6.dev release). Derived from the official 0.1 schema by bumping the version identifier to 0.2. The only normative 0.1->0.2 change was the requirement that arrays be 5D in tczyx order; the multiscales JSON structure was unchanged (the `axes` list was introduced in 0.3).",
+  "allOf": [
+    {
+      "$ref": "https://ngff.openmicroscopy.org/0.2/schemas/image.schema"
+    },
+    {
+      "properties": {
+        "multiscales": {
+          "items": {
+            "required": [
+              "version",
+              "metadata",
+              "type",
+              "name"
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Zarr v1 array metadata",
+  "type": "object",
+  "properties": {
+    "zarr_format": {
+      "const": 1
+    },
+    "shape": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "chunks": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "dtype": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^(?:\\|b1|[<>|][iu][1248]|[<>][f][248]|[<>][c][816]|[<>|][mM][1248](?:\\[(?:h|m|s|ms|us|\u03bcs|ns|ps|fs|as|Y|M|W|D|nat|naT|nAt|nAT|Nat|NaT|NAt|NAT)\\])?|[<>|][SUV]\\d+)$"
+        },
+        {
+          "type": "array"
+        }
+      ]
+    },
+    "compression": {
+      "enum": [
+        "blosc",
+        "bz2",
+        "gzip",
+        "lz4",
+        "lzma",
+        "pcodec",
+        "zfpy",
+        "zlib",
+        "zstd"
+      ]
+    },
+    "compression_opts": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "fill_value": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array"
+        }
+      ]
+    },
+    "order": {
+      "enum": [
+        "C",
+        "F"
+      ]
+    }
+  },
+  "required": [
+    "zarr_format",
+    "shape",
+    "chunks",
+    "dtype",
+    "compression",
+    "compression_opts",
+    "fill_value",
+    "order"
+  ]
+}

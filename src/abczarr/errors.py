@@ -12,6 +12,7 @@ __all__ = [
     "UnsupportedZarrOperation",
     "UnsupportedConversion",
     "TransactionConflict",
+    "SchemaValidationError",
 ]
 
 import typing_extensions as tx
@@ -78,3 +79,25 @@ class UnsupportedConversion(ValueError):
         )
         self.field = field
         self.version = version
+
+
+class SchemaValidationError(ValueError):
+    """A metadata document did not conform to its JSON schema.
+
+    Raised when a document is validated against an OME-NGFF or Zarr
+    JSON schema and fails. The message names the schema (version and
+    document kind) and the first violation; `path` locates the
+    offending value within the document.
+
+    Subclasses `ValueError`.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        schema: tx.Optional[str] = None,
+        path: tx.Optional[str] = None,
+    ) -> None:
+        super().__init__(message)
+        self.schema = schema
+        self.path = path
