@@ -1,8 +1,11 @@
 # abczarr
 
-**ABC...Z(arr)** -- one interface for reading and writing Zarr arrays and
+<img src="docs/images/logo_title_color.svg" style="display: block; margin: 0 auto; width: 75%; height: auto;" alt="abczarr logo" />
+
+One interface for reading and writing Zarr arrays and
 groups, no matter which backend or storage location holds them.
 
+> [!WARNING]
 > **Status:** pre-release -- under active development, not ready for use yet.
 
 ## What it does
