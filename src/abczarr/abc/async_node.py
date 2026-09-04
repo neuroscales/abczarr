@@ -98,6 +98,11 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
         the change is written through the node's async persistence path.
         Mirrors zarr-python's async `update_attributes`.
 
+        !!! example
+            ```python
+            await node.update_attributes({"unit": "micrometer"})
+            ```
+
         Parameters
         ----------
         attributes : dict
@@ -108,11 +113,6 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
         AsyncZarrNode
             This node, with the updated attributes visible on `attrs` and
             `metadata`.
-
-        !!! example
-            ```python
-            await node.update_attributes({"unit": "micrometer"})
-            ```
         """
         sync = self.as_sync()
         merged = dict(sync.metadata.attributes)

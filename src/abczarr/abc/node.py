@@ -106,6 +106,11 @@ class ZarrNode(SupportsCapabilities, ABC):
         written through the node's persistence path. Mirrors zarr-python's
         `update_attributes`.
 
+        !!! example
+            ```python
+            node.update_attributes({"unit": "micrometer", "scale": 0.5})
+            ```
+
         Parameters
         ----------
         attributes : dict
@@ -117,11 +122,6 @@ class ZarrNode(SupportsCapabilities, ABC):
             This node, with the updated attributes visible on
             [attrs][abczarr.abc.node.ZarrNode.attrs] and
             [metadata][abczarr.abc.node.ZarrNode.metadata].
-
-        !!! example
-            ```python
-            node.update_attributes({"unit": "micrometer", "scale": 0.5})
-            ```
         """
         merged = dict(self.metadata.attributes)
         merged.update(attributes)
