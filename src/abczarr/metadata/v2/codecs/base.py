@@ -9,13 +9,21 @@ from abczarr._core.auto.attrs import autofrozen
 from abczarr._core.metadata import Metadata
 
 
-@autofrozen(extra_items=tz.FrozenJSON)
+@autofrozen(extra_items=tz.FrozenJson)
 class Codec(Metadata):
     id: str
 
     def to_version(self, version: tz.ZarrVersion) -> "Codec":
         if version == 2:
             return self
+        if version == 1:
+            # v1 and v2 share the numcodecs model: a v2 codec is a valid v1
+            # codec, carried as v1 codec options ({id, **options}).
+            from abczarr.metadata.v1 import CodecOptions
+            as_dict = self.to_dict()
+            if isinstance(as_dict, str):
+                as_dict = {"id": as_dict}
+            return CodecOptions.from_dict(as_dict)
         if version == 3:
             from abczarr.metadata.v3 import Codec as CodecV3
             as_dict = self.to_dict()

@@ -35,7 +35,7 @@ from .dtypes import DType
 
 
 @register_subclass(zarr_format=1, node_type="array")
-@autofrozen(kw_only=True, extra_items=tz.FrozenJSON)
+@autofrozen(kw_only=True, extra_items=tz.FrozenJson)
 class ArrayMetadata(ArrayMetadataV1):
     """A Zarr v1 array's metadata: shape, dtype, chunking and codec.
 

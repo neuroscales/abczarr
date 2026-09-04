@@ -1,1 +1,1 @@
-# ::: abczarr.abc.errors
+# ::: abczarr.errors

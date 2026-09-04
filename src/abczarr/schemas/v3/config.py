@@ -7,7 +7,7 @@ from abczarr._core import typing as tz
 # typing
 StrMapping = tx.Mapping[str, object]
 TName = tx.TypeVar("TName", bound=str, default=str)
-TConfig = tx.TypeVar("TConfig", bound=StrMapping, default=tz.JSONDict)
+TConfig = tx.TypeVar("TConfig", bound=StrMapping, default=tz.JsonDict)
 
 
 class NamedConfig(tx.TypedDict, tx.Generic[TName, TConfig]):

@@ -16,7 +16,7 @@ import typing_extensions as tx
 from abczarr._core import typing as tz
 
 
-def metadata_from_dict(data: tz.JSONDict) -> tx.Any:
+def metadata_from_dict(data: tz.JsonDict) -> tx.Any:
     """Build the abczarr metadata for a node from its metadata dict.
 
     The Zarr format version and node type in *data* choose the class.

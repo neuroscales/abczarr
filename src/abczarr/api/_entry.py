@@ -23,6 +23,8 @@ import json
 # dependencies
 import typing_extensions as tx
 
+from abczarr.errors import UnsupportedZarrOperation
+
 # locals
 from .._core import typing as tz
 from .._core.attrs import evolve, fields
@@ -31,7 +33,6 @@ from ..abc.asynchronous import (
     AsyncZarrGroup,
     AsyncZarrNode,
 )
-from ..abc.errors import UnsupportedZarrOperation
 from ..abc.store import AsyncPathBasedStore, PathBasedStore
 from ..abc.sync import ZarrArray, ZarrGroup, ZarrNode
 from ..drivers.base import Driver

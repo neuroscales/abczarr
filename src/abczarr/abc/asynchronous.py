@@ -114,7 +114,7 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
         return self.as_sync().attrs
 
     async def update_attributes(
-        self, attributes: tz.JSONDict
+        self, attributes: tz.JsonDict
     ) -> "AsyncZarrNode":
         """Add or replace several attributes at once, and persist them.
 

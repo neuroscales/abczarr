@@ -13,8 +13,8 @@ from abczarr._core import typing as tz
 
 from .config import NamedConfig, NamedRequiredConfig
 
-NamedJSONConfig = NamedConfig[str, tz.JSONDict]
-NamedRequiredJSONConfig = NamedRequiredConfig[str, tz.JSONDict]
+NamedJSONConfig = NamedConfig[str, tz.JsonDict]
+NamedRequiredJSONConfig = NamedRequiredConfig[str, tz.JsonDict]
 
 
 class Config(tx.TypedDict):
@@ -37,7 +37,7 @@ class ExtensionWithConfig(NamedRequiredJSONConfig, Extension):
     ...
 
 
-class ExtraField(ExtensionBase, extra_items=tz.JSON):
+class ExtraField(ExtensionBase, extra_items=tz.Json):
     must_understand: tx.Literal[False]
 
 

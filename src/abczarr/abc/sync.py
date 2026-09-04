@@ -39,6 +39,7 @@ from abczarr._core.attributes import NodeAttributes, attribute_writes
 from abczarr._core.attrs import evolve
 from abczarr.abc.store import PathBasedStore
 from abczarr.api.config import ArrayConfig, ArrayOptions
+from abczarr.errors import UnsupportedZarrOperation
 from abczarr.metadata.base import (
     GroupMetadataV2,
     GroupMetadataV3,
@@ -54,7 +55,6 @@ from .capabilities import (  # noqa: F401
     Support,
     SupportsCapabilities,
 )
-from .errors import UnsupportedZarrOperation
 
 if tx.TYPE_CHECKING:
     import dask.array as da
@@ -128,7 +128,7 @@ class ZarrNode(SupportsCapabilities, ABC):
         """
         return NodeAttributes(self)
 
-    def update_attributes(self, attributes: tz.JSONDict) -> "ZarrNode":
+    def update_attributes(self, attributes: tz.JsonDict) -> "ZarrNode":
         """Add or replace several attributes at once, and persist them.
 
         The *attributes* are merged into this node's existing attributes --
@@ -157,7 +157,7 @@ class ZarrNode(SupportsCapabilities, ABC):
         merged.update(attributes)
         return self._replace_attributes(merged)
 
-    def _replace_attributes(self, attributes: tz.JSONDict) -> "ZarrNode":
+    def _replace_attributes(self, attributes: tz.JsonDict) -> "ZarrNode":
         """Replace this node's attributes wholesale, and persist them."""
         new_metadata = self.metadata.update_attributes(attributes)
         self._write_metadata(new_metadata)

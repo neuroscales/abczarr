@@ -96,7 +96,7 @@ class ArrayMetadata(ArrayMetadataV2):
 
     # --- Serialization ---
 
-    def to_dict(self) -> tz.JSONDict:
+    def to_dict(self) -> tz.JsonDict:
         """Serialize to `.zarray`, writing `filters` as null when there are
         none.
 

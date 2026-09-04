@@ -50,9 +50,10 @@ from types import TracebackType
 import typing_extensions as tx
 from bagof.paths import AsyncPath, Path
 
+from abczarr.errors import UnsupportedZarrOperation
+
 # locals
 from .capabilities import Support, SupportsCapabilities
-from .errors import UnsupportedZarrOperation
 
 if tx.TYPE_CHECKING:
     from .transactions import AsyncTransaction, Transaction

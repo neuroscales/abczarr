@@ -11,7 +11,7 @@ from .codecs import ValidCodec
 from .filters import ValidFilter
 
 
-class Array(tx.TypedDict, extra_items=tz.JSON):
+class Array(tx.TypedDict, extra_items=tz.Json):
 
     # --- Required ----
     zarr_format: tx.Literal[2]

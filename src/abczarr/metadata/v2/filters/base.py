@@ -11,7 +11,7 @@ from abczarr._core.auto.attrs import autofrozen
 from abczarr._core.metadata import Metadata
 
 
-@autofrozen(extra_items=tz.FrozenJSON)
+@autofrozen(extra_items=tz.FrozenJson)
 class Filter(Metadata):
     id: str
 
@@ -22,11 +22,25 @@ class Filter(Metadata):
             from abczarr.metadata.v3 import Codec as CodecV3
             as_dict = self.to_dict()
             if isinstance(as_dict, str):
-                as_dict = {"id": as_dict}
+                config = {}
+                id = as_dict
             else:
-                config = as_dict
-                as_dict = {"name": config.pop("id"), "configuration": config}
-            return CodecV3.from_dict(as_dict)
+                config = dict(as_dict)
+                id = config.pop("id")
+            codec = CodecV3.from_dict(
+                {"name": id, "configuration": config}
+            )
+            # A numcodecs filter with no dedicated v3 codec resolves to the
+            # generic base codec rather than a modeled subclass. Zarr v3 has
+            # no codec plainly named "delta"/"quantize"/"shuffle"; the valid
+            # spelling is the numcodecs extension namespace, e.g.
+            # "numcodecs.delta", which zarr-python also emits. Re-key it there
+            # instead of leaving a bare id that names no v3 codec.
+            if type(codec) is CodecV3 and not id.startswith("numcodecs."):
+                codec = CodecV3.from_dict(
+                    {"name": "numcodecs." + id, "configuration": config}
+                )
+            return codec
         else:
             raise ValueError(f"Unsupported version: {version}")
 
