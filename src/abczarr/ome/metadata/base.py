@@ -39,6 +39,7 @@ _MODULES = {
     "0.5": "v0_5",
     "0.6.dev1": "v0_6dev1",
     "0.6.dev2": "v0_6dev2",
+    "0.6.dev3": "v0_6dev3",
     "0.6.dev4": "v0_6dev4",
 }
 _VERSIONS = list(_MODULES)

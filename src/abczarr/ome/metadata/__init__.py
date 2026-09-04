@@ -7,6 +7,7 @@ __all__ = [
     "v0_5",
     "v0_6dev1",
     "v0_6dev2",
+    "v0_6dev3",
     "v0_6dev4",
 ]
 
@@ -19,6 +20,7 @@ from . import (
     v0_5,
     v0_6dev1,
     v0_6dev2,
+    v0_6dev3,
     v0_6dev4,
 )
 from .base import *  # noqa: F403

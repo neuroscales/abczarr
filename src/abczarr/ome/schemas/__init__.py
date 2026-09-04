@@ -6,6 +6,7 @@ __all__ = [
     "v0_5",
     "v0_6dev1",
     "v0_6dev2",
+    "v0_6dev3",
     "v0_6dev4",
     "v0_6rc0",
     "OMESchemaItem",
@@ -22,6 +23,7 @@ from . import (
     v0_5,
     v0_6dev1,
     v0_6dev2,
+    v0_6dev3,
     v0_6dev4,
     v0_6rc0,
 )
@@ -35,6 +37,7 @@ OMEAttributes = tx.Union[
     v0_5.OMEAttributes,
     v0_6dev1.OMEAttributes,
     v0_6dev2.OMEAttributes,
+    v0_6dev3.OMEAttributes,
     v0_6dev4.OMEAttributes,
     v0_6rc0.OMEAttributes,
 ]
