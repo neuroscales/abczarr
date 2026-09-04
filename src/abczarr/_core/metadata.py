@@ -151,32 +151,29 @@ class Metadata:
                 f"Cannot create {cls.__name__} from non-mapping data: {data}"
             )
 
-        # Try to find a matching subclass
+        # Find the most specific subclass whose discriminator keys are all
+        # satisfied. ``typing.Any`` means "this key is present in the document
+        # with any value"; a regex means "present and matching"; a plain value
+        # means "equal" -- taken from the document, or, when absent there, from
+        # what this class's own defaults already imply (``defaults``). Passing
+        # the data keyed by canonical name folds a JSON key like
+        # ``bioformats2raw.layout`` onto its ``bioformats2raw_layout`` match.
+        present = {_discriminator_key(k): v for k, v in data.items()}
+        defaults = {
+            _discriminator_key(f.name): f.default
+            for f in fields(cls)
+            if f.init
+        }
+        best = None
+        best_score = ()
         for match, subcls in reversed(cls._registry().items()):
             if not issubclass(subcls, cls):
                 continue
-
-            match_copy = dict(match)
-            data_copy = dict(data)
-
-            for f in fields(subcls):
-                if not f.init:
-                    continue
-                if f.name not in data_copy:
-                    data_copy[f.name] = f.default
-                if f.name in match_copy:
-                    data_value = data_copy.get(f.name)
-                    match_value = match_copy.get(f.name)
-                    if isinstance(match_value, re.Pattern):
-                        if not match_value.match(data_value):
-                            break
-                    elif data_value != match_value:
-                        break
-                    match_copy.pop(f.name)
-
-            if not match_copy:
-                cls = subcls
-                break
+            score = _match_score(match, present, defaults, subcls)
+            if score is not None and score > best_score:
+                best, best_score = subcls, score
+        if best is not None:
+            cls = best
 
         # Split known fields from extra fields (on a copy -- from_json must
         # not mutate the caller's dict)
@@ -221,6 +218,74 @@ class FlexibleMetadata(Metadata):
 #                                 UTILS
 #
 # ======================================================================
+
+
+def _discriminator_key(name: str) -> str:
+    """Canonicalize a key for discriminated dispatch.
+
+    A registered match key is a keyword argument, so it is always a Python
+    identifier (``bioformats2raw_layout``), while the JSON key it stands for
+    may not be (``bioformats2raw.layout``, ``image-label``). Folding ``.`` and
+    ``-`` to ``_`` lets the two line up. A key that is already an identifier --
+    every Zarr discriminator (``zarr_format``, ``node_type``, ``id``,
+    ``name``) -- is returned unchanged.
+    """
+    if isinstance(name, str):
+        return name.replace(".", "_").replace("-", "_")
+    return name
+
+
+def _match_score(
+    match: tx.Tuple[tx.Tuple[str, tx.Any], ...],
+    data: tx.Mapping[str, tx.Any],
+    defaults: tx.Mapping[str, tx.Any],
+    subcls: type,
+) -> tx.Optional[tx.Tuple[int, int, int]]:
+    """Score how well *match* fits the data, or ``None`` if it does not.
+
+    *data* is the document keyed by canonical name; *defaults* is what the
+    class ``from_json`` was called on already implies -- its own fields'
+    defaults, keyed the same way. A ``typing.Any`` key must appear in *data*
+    itself (a discriminator that is only ever implied is not a discriminator).
+    A value constraint (a literal, or a regex) is satisfied by the value in
+    *data*, or, when the key is absent there, by the class's own default -- so
+    ``ArrayMetadata.from_json`` still resolves an array document that omits the
+    ``node_type`` the class already fixes.
+
+    A discriminator only counts when it names one of *subcls*'s own init
+    fields: a value it does not carry as a settable field is not a shape it can
+    be told apart by (a codec whose ``id`` is a class attribute is recovered
+    another way, not selected here).
+
+    A higher score is a more specific match. The score ranks by number of keys,
+    then subclass depth (a derived carrier beats its base), then number of
+    value constraints (an exact literal beats ``Any``).
+    """
+    init_keys = {
+        _discriminator_key(f.name) for f in fields(subcls) if f.init
+    }
+    concrete = 0
+    for name, want in match:
+        key = _discriminator_key(name)
+        if key not in init_keys:
+            return None
+        if want is tx.Any:
+            if key not in data:
+                return None
+            continue
+        concrete += 1
+        if key in data:
+            value = data[key]
+        elif key in defaults:
+            value = defaults[key]
+        else:
+            return None
+        if isinstance(want, re.Pattern):
+            if not (isinstance(value, str) and want.match(value)):
+                return None
+        elif value != want:
+            return None
+    return (len(match), len(subcls.__mro__), concrete)
 
 
 def _serialize_dict(x: tx.Mapping) -> tx.Dict[str, tz.Json]:

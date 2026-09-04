@@ -169,6 +169,48 @@ def test_image_label_roundtrips(version: str) -> None:
     _roundtrips(pkg.labels.ImageLabel, image_label)
 
 
+# A whole OME document, its carrier discriminator -> the carrier class name it
+# must dispatch to when handed to the version-independent top-level entry
+# point. ``scene`` arrives in 0.6.dev3.
+_TOP_LEVEL_DOCS = [
+    ("multiscales_example", "OMEImage"),
+    ("plate_2wells", "OMEPlate"),
+    ("well_2fields", "OMEWell"),
+    ("series-2", "OMESeries"),
+]
+_SCENE_VERSIONS = {"v0_6dev3", "v0_6dev4", "v0_6rc0"}
+
+
+def _top_level_params() -> object:
+    for version in VERSIONS:
+        for name, carrier in _TOP_LEVEL_DOCS:
+            yield pytest.param(
+                version, name, carrier, id=f"{version}-{carrier}"
+            )
+        if version in _SCENE_VERSIONS:
+            yield pytest.param(
+                version, "scene_registration", "OMEScene",
+                id=f"{version}-OMEScene",
+            )
+
+
+@pytest.mark.parametrize(
+    ("version", "name", "carrier"), list(_top_level_params())
+)
+def test_top_level_ome_dispatches_to_carrier(
+    version: str, name: str, carrier: str
+) -> None:
+    """A whole OME document handed to the version-independent
+    ``base.OME.from_json`` routes to the carrier its discriminator key names,
+    and the result round-trips through ``to_json``."""
+    pkg = _pkg(version)
+    doc = dict(_ome_attrs(_load(version, name)))
+    doc["version"] = VERSIONS[version]
+    obj = base.OME.from_json(doc)
+    assert type(obj) is getattr(pkg.ome, carrier)
+    assert base.OME.from_json(obj.to_json()) == obj
+
+
 # --------------------------------------------------------------------------
 # schema layer: the vendored transformation examples validate against the
 # per-version JSON-schema TypedDict models.
