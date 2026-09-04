@@ -40,6 +40,7 @@ __all__ = [
 
 # stdlib
 import asyncio
+import os
 from abc import ABC, abstractmethod
 from types import TracebackType
 
@@ -81,6 +82,18 @@ def _child(prefix: str, key: str) -> str:
     return rest.split(_SEP, 1)[0]
 
 
+def _as_store_path_str(store_path: tx.Any) -> tx.Any:
+    """A path object becomes its path string, so a store wraps it in a
+    [StorePath][abczarr.abc.path.StorePath] (bagof.paths, URL-aware) rather
+    than using it raw. A str, a StorePath, or ``None`` passes through.
+    """
+    if isinstance(store_path, os.PathLike) and not isinstance(
+        store_path, (StorePath, AsyncStorePath)
+    ):
+        return os.fspath(store_path)
+    return store_path
+
+
 class Store(SupportsCapabilities, ABC):
     """A key to bytes map, addressed under a
     [StorePath][abczarr.abc.path.StorePath] root.
@@ -112,10 +125,12 @@ class Store(SupportsCapabilities, ABC):
     """
 
     def __init__(
-        self, store_path: tx.Optional[tx.Union[str, StorePath]] = None
+        self,
+        store_path: tx.Optional[tx.Union[str, os.PathLike, StorePath]] = None,
     ) -> None:
         if isinstance(store_path, Store):
             store_path = store_path._store_path
+        store_path = _as_store_path_str(store_path)
         if isinstance(store_path, (str, bytes)):
             store_path = StorePath(store_path)
         #: The store's root, or ``None`` for a store that has no path -- a
@@ -452,10 +467,14 @@ class AsyncStore(SupportsCapabilities, ABC):
     """
 
     def __init__(
-        self, store_path: tx.Optional[tx.Union[str, AsyncStorePath]] = None
+        self,
+        store_path: tx.Optional[
+            tx.Union[str, os.PathLike, AsyncStorePath]
+        ] = None,
     ) -> None:
         if isinstance(store_path, AsyncStore):
             store_path = store_path._store_path
+        store_path = _as_store_path_str(store_path)
         if isinstance(store_path, (str, bytes)):
             store_path = AsyncStorePath(store_path)
         self._store_path = store_path
