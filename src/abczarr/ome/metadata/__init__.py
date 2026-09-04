@@ -5,7 +5,11 @@ __all__ = [
     "v0_3",
     "v0_4",
     "v0_5",
+    "v0_6dev1",
+    "v0_6dev2",
+    "v0_6dev3",
     "v0_6dev4",
+    "v0_6rc0",
 ]
 
 from . import (
@@ -15,7 +19,11 @@ from . import (
     v0_3,
     v0_4,
     v0_5,
+    v0_6dev1,
+    v0_6dev2,
+    v0_6dev3,
     v0_6dev4,
+    v0_6rc0,
 )
 from .base import *  # noqa: F403
 from .base import __all__ as __all_base

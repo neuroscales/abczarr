@@ -46,7 +46,11 @@ nav = [
       {"0.3" = "api/ome-v0_3.md"},
       {"0.4" = "api/ome-v0_4.md"},
       {"0.5" = "api/ome-v0_5.md"},
+      {"0.6.dev1" = "api/ome-v0_6dev1.md"},
+      {"0.6.dev2" = "api/ome-v0_6dev2.md"},
+      {"0.6.dev3" = "api/ome-v0_6dev3.md"},
       {"0.6.dev4" = "api/ome-v0_6dev4.md"},
+      {"0.6rc0" = "api/ome-v0_6rc0.md"},
     ]},
   ]},
 ]

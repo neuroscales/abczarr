@@ -10,9 +10,9 @@ every OME metadata class, and [OME][abczarr.ome.metadata.base.OME],
 the version-tagged top-level container a group's metadata builds on.
 
 Each supported NGFF version has its own package under
-`abczarr.ome.metadata`: `v0_1` through `v0_5`, plus a `v0_6dev4`
-preview. Each package has its own typed classes for that version's
-shape.
+`abczarr.ome.metadata`: `v0_1` through `v0_5`, plus the 0.6
+pre-release previews `v0_6dev1` through `v0_6dev4` and `v0_6rc0`.
+Each package has its own typed classes for that version's shape.
 [OMEMetadata.to_version][abczarr.ome.metadata.base.OMEMetadata.to_version]
 converts an object built against one version to another.
 """
@@ -38,7 +38,11 @@ _MODULES = {
     "0.3": "v0_3",
     "0.4": "v0_4",
     "0.5": "v0_5",
+    "0.6.dev1": "v0_6dev1",
+    "0.6.dev2": "v0_6dev2",
+    "0.6.dev3": "v0_6dev3",
     "0.6.dev4": "v0_6dev4",
+    "0.6rc0": "v0_6rc0",
 }
 _VERSIONS = list(_MODULES)
 
