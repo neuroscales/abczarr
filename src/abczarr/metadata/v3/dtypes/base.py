@@ -14,7 +14,7 @@ from ...base import register_subclass
 from ..extensions import MustUnderstandExtension, TypedConfig
 
 
-@autofrozen(extra_items=tz.FrozenJSON)
+@autofrozen(extra_items=tz.FrozenJson)
 class DTypeConfig(TypedConfig):
     ...
 
@@ -23,7 +23,7 @@ class DTypeConfig(TypedConfig):
 class DType(MustUnderstandExtension):
     configuration: DTypeConfig
 
-    def to_dict(self) -> tx.Union[str, tz.JSONDict]:
+    def to_dict(self) -> tx.Union[str, tz.JsonDict]:
         # A core data type with no configuration is written as a bare name
         # ("float32"), as the Zarr v3 spec requires; an extension data type
         # keeps the full object form.

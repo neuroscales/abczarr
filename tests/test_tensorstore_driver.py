@@ -14,7 +14,6 @@ pytest.importorskip("tensorstore")
 
 import abczarr  # noqa: E402
 from abczarr.abc.capabilities import Support  # noqa: E402
-from abczarr.abc.errors import UnsupportedZarrOperation  # noqa: E402
 from abczarr.api.config import ArrayConfig  # noqa: E402
 from abczarr.api.registry import available_drivers  # noqa: E402
 from abczarr.drivers.tensorstore import (  # noqa: E402
@@ -23,6 +22,7 @@ from abczarr.drivers.tensorstore import (  # noqa: E402
     TensorStoreGroup,
     TensorStoreNode,
 )
+from abczarr.errors import UnsupportedZarrOperation  # noqa: E402
 from abczarr.metadata.base import ArrayMetadata  # noqa: E402
 
 
@@ -277,7 +277,7 @@ def test_group_at_a_memory_url_opens_as_a_group_async() -> None:
     import uuid
 
     pytest.importorskip("fsspec")
-    from abczarr.abc.async_group import AsyncPathGroup
+    from abczarr.abc.asynchronous import AsyncPathGroup
 
     url = "memory://" + uuid.uuid4().hex + "/g.zarr"
     group = zarr.open_group(url, mode="w")

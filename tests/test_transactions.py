@@ -10,9 +10,9 @@ import pytest
 import typing_extensions as tx
 
 from abczarr.abc.capabilities import Support
-from abczarr.abc.errors import UnsupportedZarrOperation
 from abczarr.abc.store import PathBasedStore, Store
 from abczarr.abc.transactions import BufferedTransaction, Transaction
+from abczarr.errors import UnsupportedZarrOperation
 
 # --------------------------------------------------------------------------
 # capability

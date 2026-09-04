@@ -11,8 +11,7 @@ import pytest
 
 zarr = pytest.importorskip("zarr")
 
-from abczarr.abc.array import ZarrArray  # noqa: E402
-from abczarr.abc.group import ZarrGroup  # noqa: E402
+from abczarr.abc.sync import ZarrArray, ZarrGroup  # noqa: E402
 from abczarr.drivers.zarr_python import (  # noqa: E402
     ZarrPythonArray,
     ZarrPythonDriver,

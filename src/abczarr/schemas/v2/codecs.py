@@ -91,7 +91,7 @@ class LZMA(Codec, total=True):
     format: tx.NotRequired[LZMAFormat]
     check: tx.NotRequired[LZMACheck]
     preset: tx.NotRequired[LZMACompressionLevel]
-    filters: tx.NotRequired[tz.BuiltinSequence[tz.JSONDict]]
+    filters: tx.NotRequired[tz.BuiltinSequence[tz.JsonDict]]
 
 
 class LZ4(Codec, total=True):
@@ -132,7 +132,7 @@ class ZFPY(Codec, total=True):
     tolerance: tx.NotRequired[float]
     rate: tx.NotRequired[int]
     precision: tx.NotRequired[int]
-    compression_kwargs: tx.NotRequired[tz.JSONDict]
+    compression_kwargs: tx.NotRequired[tz.JsonDict]
 
 
 ZlibCompressionLevel = Compression9Levels

@@ -1,11 +1,11 @@
 """The TensorStore backend driver.
 
 Opens a Zarr v3 array through Google's TensorStore -- a fast, C++ backed
-reader and writer -- and wraps it as a [ZarrArray][abczarr.abc.array.ZarrArray]
+reader and writer -- and wraps it as a [ZarrArray][abczarr.abc.sync.ZarrArray]
 so it reads and writes through the uniform surface.
 [abczarr.open][abczarr.api.open] opens an array through it. TensorStore has
 no group object, so a group is read straight from the store by
-[PathGroup][abczarr.abc.group.PathGroup] while its arrays are opened through
+[PathGroup][abczarr.abc.sync.PathGroup] while its arrays are opened through
 TensorStore.
 """
 
@@ -28,13 +28,10 @@ from bagof.paths import Path
 # core
 from abczarr._core import typing as tz
 from abczarr._core.features import FEATURE_KINDS, FEATURE_VERSIONS
-from abczarr.abc.array import ZarrArray
-from abczarr.abc.async_array import AsyncZarrArray
-from abczarr.abc.async_node import AsyncZarrNode
+from abczarr.abc.asynchronous import AsyncZarrArray, AsyncZarrNode
 from abczarr.abc.capabilities import Support
-from abczarr.abc.group import PathGroup
-from abczarr.abc.node import ZarrNode
 from abczarr.abc.store import AsyncPathBasedStore, PathBasedStore
+from abczarr.abc.sync import PathGroup, ZarrArray, ZarrNode
 from abczarr.api.config import ArrayConfig
 from abczarr.drivers._metadata import metadata_from_dict
 from abczarr.drivers.base import Driver
@@ -105,18 +102,18 @@ class TensorStoreNode(ZarrNode):
     type covering both. TensorStore keeps no user attributes of its own, so
     both nodes read attributes from the cached metadata and persist a write by
     rewriting the metadata document through the store -- the behaviour
-    inherited from [ZarrNode][abczarr.abc.node.ZarrNode] -- and there is
+    inherited from [ZarrNode][abczarr.abc.sync.ZarrNode] -- and there is
     nothing driver-wide to override here.
     """
 
 
 class TensorStoreArray(TensorStoreNode, ZarrArray):
-    """A [ZarrArray][abczarr.abc.array.ZarrArray] backed by a TensorStore.
+    """A [ZarrArray][abczarr.abc.sync.ZarrArray] backed by a TensorStore.
 
     Wraps an open ``tensorstore.TensorStore`` so it reads and writes through
     the uniform surface. TensorStore's richer indexing (its ``oindex`` /
     ``vindex`` and index transforms) stays reachable through
-    [native][abczarr.abc.node.ZarrNode.native].
+    [native][abczarr.abc.sync.ZarrNode.native].
     """
 
     _CAPABILITIES = {
@@ -269,7 +266,7 @@ class TensorStoreGroup(TensorStoreNode, PathGroup):
     """The group returned when the TensorStore driver opens a group.
 
     TensorStore has no group object of its own, so
-    [PathGroup][abczarr.abc.group.PathGroup] reads the group itself -- its
+    [PathGroup][abczarr.abc.sync.PathGroup] reads the group itself -- its
     metadata and the names of its members -- straight from the store, while
     each child array is opened through TensorStore. Subgroups are more
     `TensorStoreGroup`s, so a whole hierarchy is reachable from one opened

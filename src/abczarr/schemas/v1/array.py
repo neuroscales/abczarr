@@ -10,7 +10,7 @@ from abczarr._core import typing as tz
 from .codecs import Codec, ValidCodecOptions
 
 
-class Array(tx.TypedDict, extra_items=tz.JSON):
+class Array(tx.TypedDict, extra_items=tz.Json):
 
     # --- Required ----
     zarr_format: tx.Literal[1]

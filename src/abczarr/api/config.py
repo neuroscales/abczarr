@@ -63,7 +63,7 @@ class ZarrConfig:
     zarr_version: tz.ZarrVersion = 3
     overwrite: bool = False
     driver: tx.Optional[str] = None
-    attributes: tz.JSONDict = field(factory=dict)
+    attributes: tz.JsonDict = field(factory=dict)
 
     # -- mapping protocol, so a config can be spread as ``**config`` and
     #    passed through ``dict(config)`` wherever a plain options mapping is
@@ -143,9 +143,9 @@ class ArrayConfig(ZarrConfig):
     max_chunk_bytes: int = 8 * 1024**2
     max_shard_bytes: int = 2 * 1024**3
     compression_ratio: float = 1.8
-    compressor: tx.Union[str, tz.JSONDict, None] = "auto"
-    compressor_options: tz.JSONDict = field(factory=dict)
-    filters: tx.Tuple[tz.JSONDict, ...] = ()
+    compressor: tx.Union[str, tz.JsonDict, None] = "auto"
+    compressor_options: tz.JsonDict = field(factory=dict)
+    filters: tx.Tuple[tz.JsonDict, ...] = ()
     fill_value: tx.Union[tz.BuiltinNumber, str, None] = "auto"
     order: tz.MemoryOrder = "C"
     dimension_separator: tx.Union[tz.DimensionSeparator, str] = "auto"
@@ -270,7 +270,7 @@ class ArrayConfig(ZarrConfig):
     # -- resolved pieces, for a driver that creates natively rather than from
     #    a written metadata document.
 
-    def compressor_codecs(self) -> "tx.List[tz.JSONDict]":
+    def compressor_codecs(self) -> tx.List[tz.JsonDict]:
         """The compressor as a list of zero or one v3 codec specs.
 
         `"auto"` becomes the version default (zstd); `None` (or `"none"`) is
@@ -332,7 +332,7 @@ class ZarrOptions(tx.TypedDict, total=False):
     zarr_version: tz.ZarrVersion
     overwrite: bool
     driver: tx.Optional[str]
-    attributes: tz.JSONDict
+    attributes: tz.JsonDict
 
 
 class GroupOptions(ZarrOptions, total=False):
@@ -352,9 +352,9 @@ class ArrayOptions(ZarrOptions, total=False):
     max_chunk_bytes: int
     max_shard_bytes: int
     compression_ratio: float
-    compressor: tx.Union[str, tz.JSONDict, None]
-    compressor_options: tz.JSONDict
-    filters: tx.Tuple[tz.JSONDict, ...]
+    compressor: tx.Union[str, tz.JsonDict, None]
+    compressor_options: tz.JsonDict
+    filters: tx.Tuple[tz.JsonDict, ...]
     fill_value: tx.Union[tz.BuiltinNumber, str, None]
     order: tz.MemoryOrder
     dimension_separator: tx.Union[tz.DimensionSeparator, str]
@@ -372,8 +372,8 @@ def _normalize_axis(spec: tx.Any) -> tx.Any:
 
 
 def _compressor_codecs(
-    compressor: tx.Any, options: tx.Optional[tz.JSONDict]
-) -> tx.List[tz.JSONDict]:
+    compressor: tx.Any, options: tx.Optional[tz.JsonDict]
+) -> tx.List[tz.JsonDict]:
     """The compressor as a list of zero or one codec specs."""
     if compressor in (None, "none", "raw"):
         return []
@@ -387,7 +387,7 @@ def _compressor_codecs(
     }]
 
 
-def _bytes_codec(dtype: npt.DTypeLike) -> tz.JSONDict:
+def _bytes_codec(dtype: npt.DTypeLike) -> tz.JsonDict:
     """The array-to-bytes codec for *dtype*.
 
     A multi-byte dtype carries its endianness; a single-byte dtype, for which
@@ -404,7 +404,7 @@ def _bytes_codec(dtype: npt.DTypeLike) -> tz.JSONDict:
 
 
 def _fill_blosc_typesize(
-    codecs: "tx.List[tz.JSONDict]", dtype: npt.DTypeLike
+    codecs: tx.List[tz.JsonDict], dtype: npt.DTypeLike
 ) -> None:
     """Fill a blosc codec's required `typesize` from the dtype's item size.
 

@@ -32,6 +32,8 @@ twins, built over `bagof.paths.AsyncPath`.
 """
 
 __all__ = [
+    "StorePath",
+    "AsyncStorePath",
     "Store",
     "PathBasedStore",
     "AsyncStore",
@@ -46,11 +48,12 @@ from types import TracebackType
 
 # dependencies
 import typing_extensions as tx
+from bagof.paths import AsyncPath, Path
+
+from abczarr.errors import UnsupportedZarrOperation
 
 # locals
 from .capabilities import Support, SupportsCapabilities
-from .errors import UnsupportedZarrOperation
-from .path import AsyncStorePath, StorePath
 
 if tx.TYPE_CHECKING:
     from .transactions import AsyncTransaction, Transaction
@@ -72,6 +75,46 @@ _SYNTHESIZED_FLOOR = {
 }
 
 
+# -- store paths -----------------------------------------------------------
+# A store is addressed under a StorePath: a normal bagof.paths.Path -- one
+# API over local and cloud paths -- with one extra bit of state, read_only.
+# bagof.paths already dispatches on the URL scheme (s3://, gs://, memory://,
+# a local path, ...), so StorePath("s3://bucket/key") picks the right backend
+# on its own, no per-protocol subclass needed, and the underlying backend
+# object is always reachable through .wrapped. read_only rides along onto
+# every path derived from it (.parent, /, iterdir(), ...), so a child of a
+# read-only store is read-only too.
+
+
+class StorePath(Path):
+    """A Zarr store location: a path, plus a `read_only` flag.
+
+    Accepts everything `bagof.paths.Path` accepts -- a local path or
+    a URL for any scheme it supports -- plus a `read_only` keyword.
+    """
+
+    def __init__(
+        self, *args: tx.Any, read_only: bool = False, **kwargs: tx.Any
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.read_only = read_only
+
+
+class AsyncStorePath(AsyncPath):
+    """The async counterpart of
+    [StorePath][abczarr.abc.store.StorePath]."""
+
+    # Run StorePath's synchronous surface in the worker thread, so any
+    # sync override here is honoured on the async side too.
+    _sync_type: tx.ClassVar[tx.Type[Path]] = StorePath
+
+    def __init__(
+        self, *args: tx.Any, read_only: bool = False, **kwargs: tx.Any
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.read_only = read_only
+
+
 def _child(prefix: str, key: str) -> str:
     """The first key segment below *prefix*, e.g. ``"c/0/1"`` under
     ``"c/"`` is ``"0"``. An empty *prefix* returns the leading
@@ -84,7 +127,7 @@ def _child(prefix: str, key: str) -> str:
 
 def _as_store_path_str(store_path: tx.Any) -> tx.Any:
     """A path object becomes its path string, so a store wraps it in a
-    [StorePath][abczarr.abc.path.StorePath] (bagof.paths, URL-aware) rather
+    [StorePath][abczarr.abc.store.StorePath] (bagof.paths, URL-aware) rather
     than using it raw. A str, a StorePath, or ``None`` passes through.
     """
     if isinstance(store_path, os.PathLike) and not isinstance(
@@ -96,7 +139,7 @@ def _as_store_path_str(store_path: tx.Any) -> tx.Any:
 
 class Store(SupportsCapabilities, ABC):
     """A key to bytes map, addressed under a
-    [StorePath][abczarr.abc.path.StorePath] root.
+    [StorePath][abczarr.abc.store.StorePath] root.
 
     A subclass implements the five primitives -- `get`, `set`,
     `delete`, `exists`, `list_keys` -- and gets everything else for
@@ -368,7 +411,7 @@ class Store(SupportsCapabilities, ABC):
 
         Returns
         -------
-        [StorePath][abczarr.abc.path.StorePath] or None
+        [StorePath][abczarr.abc.store.StorePath] or None
         """
         return self._store_path
 
@@ -404,7 +447,7 @@ class PathBasedStore(Store):
 
     Parameters
     ----------
-    store_path : str or [StorePath][abczarr.abc.path.StorePath]
+    store_path : str or [StorePath][abczarr.abc.store.StorePath]
         The root all keys are resolved under -- a local path or a
         URL such as `"s3://bucket/prefix"`.
     """
@@ -638,7 +681,7 @@ class AsyncStore(SupportsCapabilities, ABC):
 
         Returns
         -------
-        [AsyncStorePath][abczarr.abc.path.AsyncStorePath] or None
+        [AsyncStorePath][abczarr.abc.store.AsyncStorePath] or None
         """
         return self._store_path
 

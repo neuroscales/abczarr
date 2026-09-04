@@ -57,8 +57,8 @@ class Multiscale(OMEMetadata):
 
         method: Optional[str]
         version: Optional[str]
-        args: Optional[tx.List[tz.JSON]]
-        kwargs: Optional[tx.Dict[str, tz.JSON]]
+        args: Optional[tx.List[tz.Json]]
+        kwargs: Optional[tx.Dict[str, tz.Json]]
 
     datasets: Required[tx.List[Dataset]]
     name: Recommended[str]

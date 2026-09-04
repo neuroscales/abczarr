@@ -76,7 +76,7 @@ def test_06rc0_ome(example: str) -> None:
     with path.open("r") as f:
         data = json.load(f)
     if "attributes" in data:
-        # Some JSON files are `zarr.json` (which contain a top-level
+        # Some Json files are `zarr.json` (which contain a top-level
         # `attributes` key) and some are just the attributes themselves.
         data = data["attributes"]
     validator = get_validator(schemas.v0_6rc0.OMEAttributes)

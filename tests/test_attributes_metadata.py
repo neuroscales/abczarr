@@ -19,9 +19,9 @@ import pathlib
 import pytest
 
 import abczarr
-from abczarr.abc.async_group import AsyncPathGroup
-from abczarr.abc.group import PathGroup
+from abczarr.abc.asynchronous import AsyncPathGroup
 from abczarr.abc.store import PathBasedStore
+from abczarr.abc.sync import PathGroup
 from abczarr.metadata.base import NodeMetadata
 
 # --------------------------------------------------------------------------

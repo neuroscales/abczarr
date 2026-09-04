@@ -46,7 +46,7 @@ class LZMACodecOptions(CodecOptionsImpl):
     format: Format
     check: Check
     preset: CompressionLevel
-    filters: tx.Tuple[tz.FrozenJSONDict, ...]
+    filters: tx.Tuple[tz.FrozenJsonDict, ...]
 
     # classvar
     id: tx.ClassVar[tx.Literal["lzma"]] = "lzma"
@@ -91,7 +91,7 @@ class ZFPYCodecOptions(CodecOptionsImpl):
     tolerance: float
     rate: int
     precision: int
-    compression_kwargs: tz.FrozenJSONDict
+    compression_kwargs: tz.FrozenJsonDict
 
     # classvar
     id: tx.ClassVar[tx.Literal["zfpy"]] = "zfpy"

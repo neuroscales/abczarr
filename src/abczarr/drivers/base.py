@@ -25,13 +25,13 @@ from bagof.paths import Path
 from abczarr._core.asyncutils import run_sync
 from abczarr._core.attrs import evolve
 from abczarr.abc.capabilities import SupportsCapabilities
-from abczarr.abc.errors import UnsupportedZarrOperation
 from abczarr.api.config import ArrayConfig, GroupConfig
+from abczarr.errors import UnsupportedZarrOperation
 from abczarr.metadata.base import GroupMetadataV2, GroupMetadataV3, _node_at
 
 if tx.TYPE_CHECKING:
-    from abczarr.abc.async_node import AsyncZarrNode
-    from abczarr.abc.node import ZarrNode
+    from abczarr.abc.asynchronous import AsyncZarrNode
+    from abczarr.abc.sync import ZarrNode
     from abczarr.api.config import ZarrConfig
     from abczarr.metadata.base import ArrayMetadata, NodeMetadata
 
@@ -96,8 +96,8 @@ class Driver(SupportsCapabilities):
             With `asynchronous=True` the return value is a **coroutine you
             await**: the metadata read is awaited, so the open does its I/O
             asynchronously and resolves to the coroutine twin of the node --
-            an [AsyncZarrArray][abczarr.abc.async_array.AsyncZarrArray] or
-            [AsyncZarrGroup][abczarr.abc.async_group.AsyncZarrGroup]. Whether
+            an [AsyncZarrArray][abczarr.abc.asynchronous.AsyncZarrArray] or
+            [AsyncZarrGroup][abczarr.abc.asynchronous.AsyncZarrGroup]. Whether
             that surface is native to the backend or synthesized in a thread
             pool depends on the driver. Without the flag, the node is opened
             synchronously and returned directly.
@@ -119,7 +119,7 @@ class Driver(SupportsCapabilities):
 
         Raises
         ------
-        [UnsupportedZarrOperation][abczarr.abc.errors.UnsupportedZarrOperation]
+        [UnsupportedZarrOperation][abczarr.errors.UnsupportedZarrOperation]
             When this driver cannot open a location.
         """
         if asynchronous:

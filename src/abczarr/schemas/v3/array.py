@@ -98,6 +98,6 @@ class Array(tx.TypedDict, extra_items=ExtraField):
     codecs: tz.BuiltinSequence[ValidCodec]
 
     # --- Optional ----
-    attributes: Optional[tz.JSONDict]
+    attributes: Optional[tz.JsonDict]
     storage_transformers: Optional[tz.BuiltinSequence[StorageTransformer]]
     dimension_names: Optional[tz.BuiltinSequence[tx.Optional[str]]]

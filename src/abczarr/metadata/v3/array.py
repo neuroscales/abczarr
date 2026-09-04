@@ -28,6 +28,7 @@ from abczarr._core.auto.attrs import autofrozen, eq_safenan, field, update
 from abczarr._core.dtypes import asdtype
 from abczarr._core.features import feature_key
 from abczarr._core.metadata import register_subclass
+from abczarr.errors import UnsupportedConversion
 
 # metadata
 from abczarr.metadata import base
@@ -101,7 +102,7 @@ class RectilinearChunkGrid(ChunkGrid):
 # ----------------------------------------------------------------------
 
 
-@autofrozen(extra_items=tz.FrozenJSON)
+@autofrozen(extra_items=tz.FrozenJson)
 class ChunkKeyEncodingConfig(TypedConfig):
     ...
 
@@ -224,13 +225,13 @@ class ArrayMetadata(ArrayMetadataV3):
     codecs: tx.Tuple[Codec, ...]
 
     # --- Optional ----
-    attributes: tz.FrozenJSONDict
+    attributes: tz.FrozenJsonDict
     dimension_names: tx.Optional[_AxisNames]
-    storage_transformers: tx.Tuple[tz.FrozenJSONDict, ...]
+    storage_transformers: tx.Tuple[tz.FrozenJsonDict, ...]
 
     # --- Serialization ---
 
-    def to_dict(self) -> tz.JSONDict:
+    def to_dict(self) -> tz.JsonDict:
         """Serialize to ``zarr.json``, omitting the optional fields that carry
         nothing.
 
@@ -367,7 +368,12 @@ def _to_v2(
     from abczarr.metadata import v2
 
     if self.chunk_grid.name != "regular":
-        raise ValueError("Only regular chunk grids are supported in Zarr v2")
+        # A non-regular grid (e.g. rectilinear) has no v2/v1 form, and --
+        # unlike a dropped field -- leaves no chunk shape to build a valid
+        # array from, so the conversion cannot proceed under any policy. This
+        # is a documented limitation, not a policy-governed loss: it raises a
+        # named error rather than the bare ValueError it used to.
+        raise UnsupportedConversion("chunk_grid", 2)
     chunk_grid = tx.cast(RegularChunkGrid, self.chunk_grid)
     chunk_shape = chunk_grid.configuration.chunk_shape
 
