@@ -33,7 +33,7 @@ from abczarr.abc.capabilities import Support
 from abczarr.abc.store import AsyncPathBasedStore, PathBasedStore
 from abczarr.abc.sync import PathGroup, ZarrArray, ZarrNode
 from abczarr.api.config import ArrayConfig
-from abczarr.drivers._metadata import metadata_from_dict
+from abczarr.drivers._metadata import metadata_from_json
 from abczarr.drivers.base import Driver
 from abczarr.metadata.base import ArrayMetadata, NodeMetadata, _node_at
 
@@ -134,7 +134,7 @@ class TensorStoreArray(TensorStoreNode, ZarrArray):
         # updates this cache; TensorStore's own spec would not see a
         # store-routed rewrite)
         if self._cached_metadata is None:
-            self._cached_metadata = metadata_from_dict(
+            self._cached_metadata = metadata_from_json(
                 self._array.spec().to_json()["metadata"]
             )
         return self._cached_metadata
@@ -237,7 +237,7 @@ def _create_ts_array(
     spec = {
         "driver": "zarr3",
         "kvstore": _kvstore_spec(location),
-        "metadata": metadata.to_dict(),
+        "metadata": metadata.to_json(),
     }
     array = ts.open(spec, create=True, delete_existing=overwrite).result()
     return TensorStoreArray(array)
@@ -256,7 +256,7 @@ async def _acreate_ts_array(
     spec = {
         "driver": "zarr3",
         "kvstore": _kvstore_spec(location),
-        "metadata": metadata.to_dict(),
+        "metadata": metadata.to_json(),
     }
     array = await ts.open(spec, create=True, delete_existing=overwrite)
     return TensorStoreArray(array).as_async()

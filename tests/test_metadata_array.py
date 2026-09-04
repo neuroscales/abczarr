@@ -55,7 +55,7 @@ def test_zarray_v3() -> None:
         attributes={"foo": 42, "bar": "apples", "baz": [1, 2, 3, 4]},
     )
 
-    metadata = v3.ArrayMetadata.from_dict(EXAMPLE_JSON)
+    metadata = v3.ArrayMetadata.from_json(EXAMPLE_JSON)
 
     assert metadata == EXAMPLE_META
 
@@ -112,7 +112,7 @@ def test_zarray_v3_extension() -> None:
         fill_value=None,
     )
 
-    metadata = v3.ArrayMetadata.from_dict(EXAMPLE_JSON)
+    metadata = v3.ArrayMetadata.from_json(EXAMPLE_JSON)
 
     assert metadata == EXAMPLE_META
 
@@ -158,13 +158,13 @@ def test_zarray_v2() -> None:
         zarr_format=2,
     )
 
-    metadata = v2.ArrayMetadata.from_dict(EXAMPLE_JSON)
+    metadata = v2.ArrayMetadata.from_json(EXAMPLE_JSON)
 
     assert metadata == EXAMPLE_META
 
 
 def test_a_core_data_type_serializes_as_a_bare_string() -> None:
-    meta = v3.ArrayMetadata.from_dict(
+    meta = v3.ArrayMetadata.from_json(
         {
             "zarr_format": 3,
             "node_type": "array",
@@ -185,7 +185,7 @@ def test_a_core_data_type_serializes_as_a_bare_string() -> None:
             "attributes": {},
         }
     )
-    out = meta.to_dict()
+    out = meta.to_json()
     # a core data type is a bare string, per the Zarr v3 spec
     assert out["data_type"] == "float32"
     # a codec keeps its object form

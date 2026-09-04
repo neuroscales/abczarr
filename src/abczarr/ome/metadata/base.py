@@ -64,9 +64,9 @@ class OMEMetadata(FlexibleMetadata):
     multiscale pyramid, an axis, a plate, a rendering setting, and so
     on. Each lives in the version package it belongs to
     (`abczarr.ome.metadata.v0_5.images`, for example). Build one with
-    [from_dict][abczarr._core.metadata.Metadata.from_dict] from the
+    [from_json][abczarr._core.metadata.Metadata.from_json] from the
     JSON an OME-Zarr group carries, or with keyword arguments matching
-    its fields. [to_dict][abczarr._core.metadata.Metadata.to_dict]
+    its fields. [to_json][abczarr._core.metadata.Metadata.to_json]
     serializes it back to that same shape, and any key it does not
     recognize survives the round trip unchanged.
 
@@ -96,7 +96,7 @@ class OMEMetadata(FlexibleMetadata):
         !!! example
             ```pycon
             >>> from abczarr.ome.metadata import v0_4
-            >>> m = v0_4.Multiscale.from_dict({
+            >>> m = v0_4.Multiscale.from_json({
             ...     "version": "0.4",
             ...     "axes": [
             ...         {"name": "y", "type": "space"},
@@ -215,12 +215,12 @@ def _rebuild(source: tx.Any, newcls: type, to_v: str, from_v: str) -> tx.Any:
 def _multiscale_3_to_4(ms: tx.Any, to_v: str) -> tx.Any:
     v4 = importlib.import_module(_package(to_v))
     axes = [
-        v4.Axis.from_dict({"name": a, "type": _AXIS_TYPE.get(a, "space")})
+        v4.Axis.from_json({"name": a, "type": _AXIS_TYPE.get(a, "space")})
         for a in ms.axes
     ]
     scale = [1.0] * len(axes)
     datasets = [
-        v4.Dataset.from_dict(
+        v4.Dataset.from_json(
             {
                 "path": d.path,
                 "coordinateTransformations": [
@@ -236,7 +236,7 @@ def _multiscale_3_to_4(ms: tx.Any, to_v: str) -> tx.Any:
 def _multiscale_4_to_3(ms: tx.Any, to_v: str) -> tx.Any:
     v3 = importlib.import_module(_package(to_v))
     axes = [a.name for a in ms.axes]
-    datasets = [v3.Dataset.from_dict({"path": d.path}) for d in ms.datasets]
+    datasets = [v3.Dataset.from_json({"path": d.path}) for d in ms.datasets]
     return _carry(ms, v3.Multiscale, to_v, axes=axes, datasets=datasets)
 
 
@@ -281,10 +281,10 @@ class OME(OMEMetadata):
     version: str = field(factory=False)
 
     @classmethod
-    def from_dict(cls, data: tx.Any) -> tx.Self:
+    def from_json(cls, data: tx.Any) -> tx.Self:
         """Create an OME container from a JSON-serializable dict.
 
-        Called on a version's own class -- ``v0_5.OME.from_dict`` -- this
+        Called on a version's own class -- ``v0_5.OME.from_json`` -- this
         picks the right image / plate / well / label subclass for the data,
         as any OME class does.
 
@@ -303,5 +303,5 @@ class OME(OMEMetadata):
             version.
         """
         if cls is OME and isinstance(data, abc.Mapping):
-            return _version_package(data).OME.from_dict(data)
-        return super().from_dict(data)
+            return _version_package(data).OME.from_json(data)
+        return super().from_json(data)

@@ -15,12 +15,12 @@ class CodecOptions(Metadata):
             return self
 
         # A v1 codec is named by its numcodecs id. Depending on how the
-        # instance was built, that id is either a field carried in `to_dict`,
+        # instance was built, that id is either a field carried in `to_json`,
         # a class attribute (subclasses declare it as a ClassVar), or only
         # recoverable from the registry match that selected the subclass --
         # whose keys are tuples of ``(field, value)`` pairs, so each is
         # wrapped in ``dict`` before reading ``"id"``.
-        options = dict(self.to_dict())
+        options = dict(self.to_json())
         id = options.pop("id", None) or getattr(self, "id", None)
         if id is None:
             for match, cls in self._registry().items():
@@ -41,7 +41,7 @@ class CodecOptions(Metadata):
         # module-level import between them would be a cycle.
         from abczarr.metadata.v2 import Codec as CodecV2
 
-        codec_v2 = CodecV2.from_dict({"id": id, **options})
+        codec_v2 = CodecV2.from_json({"id": id, **options})
         if version == 2:
             return codec_v2
         if version == 3:

@@ -34,7 +34,7 @@ def _array(codecs: list, **over: object) -> "v3.ArrayMetadata":
         "attributes": {},
     }
     data.update(over)
-    return v3.ArrayMetadata.from_dict(data)
+    return v3.ArrayMetadata.from_json(data)
 
 
 _BYTES = {"name": "bytes", "configuration": {"endian": "little"}}

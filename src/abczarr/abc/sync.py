@@ -177,7 +177,7 @@ class ZarrNode(SupportsCapabilities, ABC):
         existing = None  # type: tx.Optional[tx.Dict[str, tx.Any]]
         if version >= 3:
             raw = store.get(constants.Z3_JSON)
-            existing = json.loads(raw) if raw else new_metadata.to_dict()
+            existing = json.loads(raw) if raw else new_metadata.to_json()
         for key, value in attribute_writes(
             version, new_metadata.attributes, existing
         ):

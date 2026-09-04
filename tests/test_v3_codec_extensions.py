@@ -15,11 +15,11 @@ from abczarr.metadata.v3.codecs.base import Codec
 )
 def test_reshape_round_trips(shape: list) -> None:
     spec = {"name": "reshape", "configuration": {"shape": shape}}
-    assert ReshapeCodec.from_dict(spec).to_dict() == spec
+    assert ReshapeCodec.from_json(spec).to_json() == spec
 
 
 def test_reshape_dispatches_by_name() -> None:
-    codec = Codec.from_dict(
+    codec = Codec.from_json(
         {"name": "reshape", "configuration": {"shape": [1]}}
     )
     assert isinstance(codec, ReshapeCodec)
@@ -41,11 +41,11 @@ def test_zfp_each_mode_round_trips_with_only_its_own_parameters(
 ) -> None:
     spec = {"name": "zfp", "configuration": configuration}
     # a mode writes only its own parameters; the others are omitted
-    assert ZfpCodec.from_dict(spec).to_dict() == spec
+    assert ZfpCodec.from_json(spec).to_json() == spec
 
 
 def test_zfp_dispatches_by_name() -> None:
-    codec = Codec.from_dict(
+    codec = Codec.from_json(
         {"name": "zfp", "configuration": {"mode": "reversible"}}
     )
     assert isinstance(codec, ZfpCodec)

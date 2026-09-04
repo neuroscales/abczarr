@@ -18,7 +18,7 @@ from abczarr.metadata import v2
 
 
 def _v2_array() -> v2.ArrayMetadata:
-    return v2.ArrayMetadata.from_dict(
+    return v2.ArrayMetadata.from_json(
         {
             "zarr_format": 2,
             "shape": [4],
@@ -48,11 +48,11 @@ def test_fields_accepts_an_instance() -> None:
 
 
 def test_to_dict_on_an_instance_works() -> None:
-    # to_dict() walks fields(self); this is the operation that was dead on 3.8
+    # to_json() walks fields(self); this is the operation that was dead on 3.8
     meta = _v2_array()
-    data = meta.to_dict()
+    data = meta.to_json()
     assert isinstance(data, dict)
-    assert v2.ArrayMetadata.from_dict(data) == meta
+    assert v2.ArrayMetadata.from_json(data) == meta
 
 
 # --------------------------------------------------------------------------

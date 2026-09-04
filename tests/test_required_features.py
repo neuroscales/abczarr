@@ -29,7 +29,7 @@ def _v3(**over: object) -> dict:
 
 
 def test_v3_names_grid_encoding_dtype_and_codecs() -> None:
-    meta = v3.ArrayMetadata.from_dict(
+    meta = v3.ArrayMetadata.from_json(
         _v3(
             codecs=[
                 {"name": "bytes", "configuration": {"endian": "little"}},
@@ -49,7 +49,7 @@ def test_v3_names_grid_encoding_dtype_and_codecs() -> None:
 
 
 def test_v3_recurses_into_sharding_inner_and_index_codecs() -> None:
-    meta = v3.ArrayMetadata.from_dict(
+    meta = v3.ArrayMetadata.from_json(
         _v3(
             codecs=[
                 {
@@ -89,7 +89,7 @@ def test_v3_recurses_into_sharding_inner_and_index_codecs() -> None:
 def test_v3_unknown_codec_is_named_not_crashed() -> None:
     # a codec the metadata layer carries opaquely still contributes a key,
     # so driver selection can report it as unsupported rather than crash
-    meta = v3.ArrayMetadata.from_dict(
+    meta = v3.ArrayMetadata.from_json(
         _v3(
             codecs=[
                 {"name": "bytes", "configuration": {"endian": "little"}},
@@ -103,7 +103,7 @@ def test_v3_unknown_codec_is_named_not_crashed() -> None:
 
 
 def test_v2_names_compressor_and_filters() -> None:
-    meta = v2.ArrayMetadata.from_dict(
+    meta = v2.ArrayMetadata.from_json(
         {
             "zarr_format": 2,
             "shape": [10, 10],
@@ -123,7 +123,7 @@ def test_v2_names_compressor_and_filters() -> None:
 
 
 def test_v2_without_a_compressor_is_empty() -> None:
-    meta = v2.ArrayMetadata.from_dict(
+    meta = v2.ArrayMetadata.from_json(
         {
             "zarr_format": 2,
             "shape": [10],
@@ -141,7 +141,7 @@ def test_v2_without_a_compressor_is_empty() -> None:
 
 
 def test_v1_names_the_compressor() -> None:
-    meta = v1.ArrayMetadata.from_dict(
+    meta = v1.ArrayMetadata.from_json(
         {
             "zarr_format": 1,
             "shape": [10],
@@ -158,7 +158,7 @@ def test_v1_names_the_compressor() -> None:
 
 
 def test_v1_without_compression_is_empty() -> None:
-    meta = v1.ArrayMetadata.from_dict(
+    meta = v1.ArrayMetadata.from_json(
         {
             "zarr_format": 1,
             "shape": [10],

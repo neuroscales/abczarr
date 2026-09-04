@@ -99,8 +99,8 @@ def _ome_attrs(doc: dict) -> dict:
 
 
 def _roundtrips(cls: type, data: dict) -> object:
-    obj = cls.from_dict(data)
-    assert cls.from_dict(obj.to_dict()) == obj
+    obj = cls.from_json(data)
+    assert cls.from_json(obj.to_json()) == obj
     return obj
 
 

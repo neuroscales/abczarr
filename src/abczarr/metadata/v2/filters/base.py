@@ -20,14 +20,14 @@ class Filter(Metadata):
             return self
         if version == 3:
             from abczarr.metadata.v3 import Codec as CodecV3
-            as_dict = self.to_dict()
+            as_dict = self.to_json()
             if isinstance(as_dict, str):
                 config = {}
                 id = as_dict
             else:
                 config = dict(as_dict)
                 id = config.pop("id")
-            codec = CodecV3.from_dict(
+            codec = CodecV3.from_json(
                 {"name": id, "configuration": config}
             )
             # A numcodecs filter with no dedicated v3 codec resolves to the
@@ -37,7 +37,7 @@ class Filter(Metadata):
             # "numcodecs.delta", which zarr-python also emits. Re-key it there
             # instead of leaving a bare id that names no v3 codec.
             if type(codec) is CodecV3 and not id.startswith("numcodecs."):
-                codec = CodecV3.from_dict(
+                codec = CodecV3.from_json(
                     {"name": "numcodecs." + id, "configuration": config}
                 )
             return codec

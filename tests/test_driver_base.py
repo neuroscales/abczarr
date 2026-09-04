@@ -14,7 +14,7 @@ from abczarr.metadata import v3
 
 
 def _array(codecs: list) -> "v3.ArrayMetadata":
-    return v3.ArrayMetadata.from_dict(
+    return v3.ArrayMetadata.from_json(
         {
             "zarr_format": 3,
             "node_type": "array",

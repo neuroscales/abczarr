@@ -39,9 +39,9 @@ class Extension(Metadata):
 
         self.__attrs_init__(*args, **kwargs)
 
-    def to_dict(self) -> tz.JsonDict:
+    def to_json(self) -> tz.JsonDict:
         # A default ``must_understand`` (True) is left implicit in the output.
-        obj = super().to_dict()
+        obj = super().to_json()
         if obj.get("must_understand", True) is True:
             obj.pop("must_understand")
         return obj

@@ -349,7 +349,7 @@ class NodeMetadataV1(NodeMetadata):
     [ArrayMetadataV1][abczarr.metadata.base.ArrayMetadataV1], or
     build one through this class -- see
     [from_file][abczarr.metadata.base.NodeMetadataV1.from_file] and
-    [from_dict][abczarr._core.metadata.Metadata.from_dict].
+    [from_json][abczarr._core.metadata.Metadata.from_json].
     """
 
     zarr_format: tx.Literal[1] = 1
@@ -379,15 +379,15 @@ class NodeMetadataV1(NodeMetadata):
             # There are no groups in Zarr v1
             cls = getattr(ArrayMetadataV1, "_IMPL", ArrayMetadataV1)
 
-        return cls.from_dict({**meta, "attributes": attrs})
+        return cls.from_json({**meta, "attributes": attrs})
 
     @classmethod
-    def from_dict(cls, data: tz.JsonDict) -> tx.Self:
+    def from_json(cls, data: tz.JsonDict) -> tx.Self:
         """Build v1 metadata from a plain JSON-compatible dict.
 
         *data* is the merged content of `.zarray` and `.zattrs`
         (under the key `"attributes"`), the same shape
-        [to_dict][abczarr._core.metadata.Metadata.to_dict] produces.
+        [to_json][abczarr._core.metadata.Metadata.to_json] produces.
         Called on this class directly, it returns
         [ArrayMetadataV1][abczarr.metadata.base.ArrayMetadataV1]
         metadata, since Zarr v1 has no groups.
@@ -396,9 +396,9 @@ class NodeMetadataV1(NodeMetadata):
             # There are no groups in Zarr v1
             cls = getattr(ArrayMetadataV1, "_IMPL", ArrayMetadataV1)
         # Dispatch through the base implementation bound to the resolved
-        # class (calling super().from_dict(cls, data) would pass cls as the
+        # class (calling super().from_json(cls, data) would pass cls as the
         # data argument).
-        return Metadata.from_dict.__func__(cls, data)
+        return Metadata.from_json.__func__(cls, data)
 
 
 @register_subclass(zarr_format=1, node_type="array")
@@ -488,7 +488,7 @@ class NodeMetadataV2(NodeMetadata):
             with zattrs.open("r", encoding="utf-8") as f:
                 attrs = json.load(f)
 
-        return cls.from_dict({**meta, "attributes": attrs})
+        return cls.from_json({**meta, "attributes": attrs})
 
     def to_file(self, root: os.PathLike) -> None:
         """Write this metadata to its directory.
@@ -497,7 +497,7 @@ class NodeMetadataV2(NodeMetadata):
         user attributes to `.zattrs`, merging into whatever is
         already there rather than overwriting the whole file.
         """
-        new_meta = self.to_dict()
+        new_meta = self.to_json()
         new_attrs = new_meta.pop("attributes", {})
 
         META_JSON = {
@@ -570,7 +570,7 @@ class NodeMetadataV3(NodeMetadata):
         if zarr_json.exists():
             with zarr_json.open("r", encoding="utf-8") as f:
                 d = json.load(f)
-        return cls.from_dict(d)
+        return cls.from_json(d)
 
     def to_file(self, root: os.PathLike) -> None:
         """Write this metadata to its `zarr.json`.
@@ -583,7 +583,7 @@ class NodeMetadataV3(NodeMetadata):
         if path.exists():
             with path.open("r", encoding="utf-8") as f:
                 data = json.load(f)
-        data.update(self.to_dict())
+        data.update(self.to_json())
         _atomic_write(path, data)
 
 

@@ -34,12 +34,12 @@ def test_attribute_values_are_preserved_exactly() -> None:
         "l": [1, 2, "three"],
         "d": {"a": 1, "nested": {"b": [True, "y"]}},
     }
-    parsed = dict(v2.ArrayMetadata.from_dict(_v2(attrs)).attributes)
+    parsed = dict(v2.ArrayMetadata.from_json(_v2(attrs)).attributes)
     assert parsed == attrs
 
 
 def test_string_attribute_is_not_coerced_to_bool() -> None:
-    parsed = v2.ArrayMetadata.from_dict(_v2({"note": "true-ish"})).attributes
+    parsed = v2.ArrayMetadata.from_json(_v2({"note": "true-ish"})).attributes
     assert parsed["note"] == "true-ish"
 
 
@@ -62,4 +62,4 @@ def test_fill_value_string_still_coerces_to_number() -> None:
         "fill_value": "NaN",
         "attributes": {},
     }
-    assert math.isnan(v3.ArrayMetadata.from_dict(meta).fill_value)
+    assert math.isnan(v3.ArrayMetadata.from_json(meta).fill_value)
