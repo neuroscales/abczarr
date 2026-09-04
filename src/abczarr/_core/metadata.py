@@ -14,6 +14,7 @@ from abczarr._core.auto import (
     fields,
     register_converter,
 )
+from abczarr._core.auto.attrs import json_key
 
 
 def register_subclass(
@@ -155,34 +156,35 @@ class Metadata:
         # satisfied. ``typing.Any`` means "this key is present in the document
         # with any value"; a regex means "present and matching"; a plain value
         # means "equal" -- taken from the document, or, when absent there, from
-        # what this class's own defaults already imply (``defaults``). Passing
-        # the data keyed by canonical name folds a JSON key like
-        # ``bioformats2raw.layout`` onto its ``bioformats2raw_layout`` match.
-        present = {_discriminator_key(k): v for k, v in data.items()}
-        defaults = {
-            _discriminator_key(f.name): f.default
-            for f in fields(cls)
-            if f.init
-        }
+        # what this class's own defaults already imply (``defaults``). A
+        # discriminator names a field by its Python name; its value is read out
+        # of the document under that field's JSON key (its ``json=`` alias, so
+        # ``image_label`` reads ``image-label`` and ``bioformats2raw_layout``
+        # reads ``bioformats2raw.layout``).
+        defaults = {f.name: f.default for f in fields(cls) if f.init}
         best = None
         best_score = ()
         for match, subcls in reversed(cls._registry().items()):
             if not issubclass(subcls, cls):
                 continue
-            score = _match_score(match, present, defaults, subcls)
+            score = _match_score(match, data, defaults, subcls)
             if score is not None and score > best_score:
                 best, best_score = subcls, score
         if best is not None:
             cls = best
 
         # Split known fields from extra fields (on a copy -- from_json must
-        # not mutate the caller's dict)
+        # not mutate the caller's dict). Each field is read under its JSON key
+        # (its ``json=`` alias, or its name) and that key is consumed, so an
+        # aliased key like ``bioformats2raw.layout`` populates its typed field
+        # and does not also land in ``extra_items``.
         data = dict(data)
         filtered_data = {}
         for f in fields(cls):
-            if f.name not in data:
+            key = json_key(f)
+            if key not in data:
                 continue
-            value = data.pop(f.name)
+            value = data.pop(key)
             if not f.init:
                 if value != f.default:
                     raise ValueError(
@@ -220,21 +222,6 @@ class FlexibleMetadata(Metadata):
 # ======================================================================
 
 
-def _discriminator_key(name: str) -> str:
-    """Canonicalize a key for discriminated dispatch.
-
-    A registered match key is a keyword argument, so it is always a Python
-    identifier (``bioformats2raw_layout``), while the JSON key it stands for
-    may not be (``bioformats2raw.layout``, ``image-label``). Folding ``.`` and
-    ``-`` to ``_`` lets the two line up. A key that is already an identifier --
-    every Zarr discriminator (``zarr_format``, ``node_type``, ``id``,
-    ``name``) -- is returned unchanged.
-    """
-    if isinstance(name, str):
-        return name.replace(".", "_").replace("-", "_")
-    return name
-
-
 def _match_score(
     match: tx.Tuple[tx.Tuple[str, tx.Any], ...],
     data: tx.Mapping[str, tx.Any],
@@ -243,14 +230,16 @@ def _match_score(
 ) -> tx.Optional[tx.Tuple[int, int, int]]:
     """Score how well *match* fits the data, or ``None`` if it does not.
 
-    *data* is the document keyed by canonical name; *defaults* is what the
-    class ``from_json`` was called on already implies -- its own fields'
-    defaults, keyed the same way. A ``typing.Any`` key must appear in *data*
-    itself (a discriminator that is only ever implied is not a discriminator).
-    A value constraint (a literal, or a regex) is satisfied by the value in
-    *data*, or, when the key is absent there, by the class's own default -- so
-    ``ArrayMetadata.from_json`` still resolves an array document that omits the
-    ``node_type`` the class already fixes.
+    *data* is the document as written (keyed by its JSON keys); *defaults* is
+    what the class ``from_json`` was called on already implies -- its own
+    fields' defaults, keyed by field name. A discriminator names a field by its
+    Python name and its value is read from *data* under that field's JSON key
+    (its ``json=`` alias, or its name). A ``typing.Any`` key must appear in
+    *data* itself (a discriminator that is only ever implied is not a
+    discriminator). A value constraint (a literal, or a regex) is satisfied by
+    the value in *data*, or, when the key is absent there, by the class's own
+    default -- so ``ArrayMetadata.from_json`` still resolves an array document
+    that omits the ``node_type`` the class already fixes.
 
     A discriminator only counts when it names one of *subcls*'s own init
     fields: a value it does not carry as a settable field is not a shape it can
@@ -261,14 +250,13 @@ def _match_score(
     then subclass depth (a derived carrier beats its base), then number of
     value constraints (an exact literal beats ``Any``).
     """
-    init_keys = {
-        _discriminator_key(f.name) for f in fields(subcls) if f.init
-    }
+    init_fields = {f.name: f for f in fields(subcls) if f.init}
     concrete = 0
     for name, want in match:
-        key = _discriminator_key(name)
-        if key not in init_keys:
+        f = init_fields.get(name)
+        if f is None:
             return None
+        key = json_key(f)
         if want is tx.Any:
             if key not in data:
                 return None
@@ -276,8 +264,8 @@ def _match_score(
         concrete += 1
         if key in data:
             value = data[key]
-        elif key in defaults:
-            value = defaults[key]
+        elif name in defaults:
+            value = defaults[name]
         else:
             return None
         if isinstance(want, re.Pattern):
@@ -299,7 +287,7 @@ def _serialize_meta(x: "Metadata") -> tx.Dict[str, tz.Json]:
     override on *x* itself -- that is the caller's job)."""
     extra = getattr(x, "extra_items", False)
     out = {
-        f.name: _to_json(getattr(x, f.name))
+        json_key(f): _to_json(getattr(x, f.name))
         for f in fields(x)
         if f.name != "extra_items"
     }

@@ -304,10 +304,10 @@ level before its own.
 #: from the previous version to ``v``.
 DELTAS_STABLE = {
     # 0.1 -> 0.2
-    #   * OMEImageLabel.image_labels: List[ImageLabel] -> a single ImageLabel
+    #   * OMEImageLabel.image_label: List[ImageLabel] -> a single ImageLabel
     #   * OMEBioformats2Raw.plate: Optional -> Required
     "v0_2": [
-        SetAnn("ome", ("OMEImageLabel",), "image_labels",
+        SetAnn("ome", ("OMEImageLabel",), "image_label",
                "Required[ImageLabel]"),
         SetAnn("ome", ("OMEBioformats2Raw",), "plate", "Required[Plate]"),
     ],

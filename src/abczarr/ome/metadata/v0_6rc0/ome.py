@@ -13,7 +13,7 @@ __all__ = [
 ]
 import typing_extensions as tx
 
-from abczarr._core.auto.attrs import autodefine
+from abczarr._core.auto.attrs import autodefine, field
 from abczarr._core.metadata import register_subclass
 from abczarr._core.rfc2119 import Required
 
@@ -49,7 +49,7 @@ class OMEImage(OME):
 @register_subclass(image_label=tx.Any)
 @autodefine
 class OMEImageLabel(OMEImage):
-    image_labels: Required[ImageLabel]
+    image_label: Required[ImageLabel] = field(json="image-label")
 
 
 @register_subclass(labels=tx.Any)
@@ -79,5 +79,7 @@ class OMEScene(OME):
 @register_subclass(bioformats2raw_layout=3)
 @autodefine
 class OMEBioformats2Raw(OME):
-    bioformats2raw_layout: Required[tx.Literal[3]]
+    bioformats2raw_layout: Required[tx.Literal[3]] = field(
+        json="bioformats2raw.layout"
+    )
     plate: Required[Plate]

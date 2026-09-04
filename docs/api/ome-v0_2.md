@@ -5,7 +5,7 @@
 - [OMEImageLabel][abczarr.ome.metadata.v0_2.ome.OMEImageLabel] now
   carries a single required
   [ImageLabel][abczarr.ome.metadata.v0_2.labels.ImageLabel] in
-  `image_labels`, rather than a list of them.
+  `image_label`, rather than a list of them.
 - [OMEBioformats2Raw][abczarr.ome.metadata.v0_2.ome.OMEBioformats2Raw]'s
   `plate` becomes required instead of optional.
 

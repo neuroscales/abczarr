@@ -7,10 +7,11 @@ and assert that the object serializes back to an equal object -- the proof
 that data written against any 0.6 pre-release is read correctly.
 
 The example instances are vendored under ``tests/data/ome/<version>/`` with
-their JSONC comments stripped. A handful of transitional / experimental
-instances in the upstream tags (a v0.5-style ``axes`` multiscale, an
-``axes``-as-mapping coordinate system, ``bioformats2raw.layout`` whose key
-cannot be an attribute name) are intentionally not exercised here.
+their JSONC comments stripped. A ``bioformats2raw.layout`` document -- whose
+key is not a Python identifier -- is now read through the field's JSON-key
+alias and is exercised alongside the rest. A couple of transitional /
+experimental instances in the upstream tags (a v0.5-style ``axes`` multiscale,
+an ``axes``-as-mapping coordinate system) are intentionally not exercised here.
 """
 
 import importlib
@@ -166,7 +167,13 @@ def test_image_label_roundtrips(version: str) -> None:
     doc = _ome_attrs(_load(version, "colors_properties"))
     image_label = doc.get("image-label") or doc.get("labels")
     assert isinstance(image_label, dict)
-    _roundtrips(pkg.labels.ImageLabel, image_label)
+    obj = _roundtrips(pkg.labels.ImageLabel, image_label)
+    # the ``label-value`` spec key reaches the typed field and serializes back
+    # under the same key -- no ``label_value`` underscore twin.
+    out = obj.to_json()
+    for color in out.get("colors") or []:
+        assert "label_value" not in color
+        assert "label-value" in color
 
 
 # A whole OME document, its carrier discriminator -> the carrier class name it
@@ -209,6 +216,25 @@ def test_top_level_ome_dispatches_to_carrier(
     obj = base.OME.from_json(doc)
     assert type(obj) is getattr(pkg.ome, carrier)
     assert base.OME.from_json(obj.to_json()) == obj
+
+
+@pytest.mark.parametrize("version", list(VERSIONS))
+def test_bioformats2raw_layout_document_roundtrips(version: str) -> None:
+    """A ``bioformats2raw.layout`` document (spec key with a dot) dispatches to
+    the bf2raw carrier, populates the typed field, and serializes back under
+    the spec key alone -- no ``bioformats2raw_layout`` twin in ``extra_items``
+    or in the output."""
+    pkg = _pkg(version)
+    doc = dict(_ome_attrs(_load(version, "plate")))
+    doc["version"] = VERSIONS[version]
+    obj = base.OME.from_json(doc)
+    assert type(obj) is pkg.ome.OMEBioformats2Raw
+    assert obj.bioformats2raw_layout == 3
+    assert not obj.extra_items
+    out = obj.to_json()
+    assert out["bioformats2raw.layout"] == 3
+    assert "bioformats2raw_layout" not in out
+    assert base.OME.from_json(out) == obj
 
 
 # --------------------------------------------------------------------------

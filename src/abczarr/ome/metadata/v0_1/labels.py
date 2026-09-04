@@ -6,7 +6,7 @@ __all__ = ["ImageLabel"]
 import typing_extensions as tx
 
 # core
-from abczarr._core.auto.attrs import autodefine
+from abczarr._core.auto.attrs import autodefine, field
 from abczarr._core.auto.converters import ToInRange
 from abczarr._core.rfc2119 import Optional, Recommended, Required
 
@@ -36,7 +36,7 @@ class ImageLabel(OMEMetadata):
         `rgba` is red, green, blue, and alpha, each `0`-`255`.
         """
 
-        label_value: Required[int]
+        label_value: Required[int] = field(json="label-value")
         rgba: Optional[tx.Tuple[UInt8, UInt8, UInt8, UInt8]]
 
 
@@ -49,7 +49,7 @@ class ImageLabel(OMEMetadata):
         [OMEMetadata][abczarr.ome.metadata.base.OMEMetadata].
         """
 
-        label_value: Required[int]
+        label_value: Required[int] = field(json="label-value")
 
 
     @autodefine
@@ -61,7 +61,7 @@ class ImageLabel(OMEMetadata):
         """
 
         image: Optional[str] = None
-        label_value: Required[int]
+        label_value: Required[int] = field(json="label-value")
 
 
     colors: Recommended[tx.List[Color]]

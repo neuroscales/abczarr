@@ -192,7 +192,7 @@ def test_base_ome_from_dict_routes_by_version(
     # version. It must now route by the declared version instead.
     from abczarr.ome.metadata import base
 
-    data = {"version": version, "bioformats2raw_layout": 3, "plate": _PLATE}
+    data = {"version": version, "bioformats2raw.layout": 3, "plate": _PLATE}
     obj = base.OME.from_json(data)
     assert type(obj).__module__ == f"abczarr.ome.metadata.{package}.ome"
 
@@ -203,7 +203,7 @@ def test_base_ome_from_dict_rejects_versionless_metadata() -> None:
     from abczarr.ome.metadata import base
 
     with pytest.raises(ValueError, match="version"):
-        base.OME.from_json({"bioformats2raw_layout": 3, "plate": _PLATE})
+        base.OME.from_json({"bioformats2raw.layout": 3, "plate": _PLATE})
 
 
 def test_base_ome_from_dict_rejects_unknown_version() -> None:
@@ -218,7 +218,7 @@ def test_per_version_ome_from_dict_still_dispatches() -> None:
     # base must reach the same class a direct call would.
     from abczarr.ome.metadata import base, v0_5
 
-    data = {"version": "0.5", "bioformats2raw_layout": 3, "plate": _PLATE}
+    data = {"version": "0.5", "bioformats2raw.layout": 3, "plate": _PLATE}
     assert type(base.OME.from_json(data)) is type(v0_5.OME.from_json(data))
 
 
@@ -251,7 +251,7 @@ def test_base_ome_dispatches_by_present_discriminator(version: str) -> None:
     assert carrier({"labels": ["cells", "nuclei"]}) is ome.OMELabels
     assert carrier({"series": ["0", "1"]}) is ome.OMESeries
     assert (
-        carrier({"bioformats2raw_layout": 3, "plate": _PLATE})
+        carrier({"bioformats2raw.layout": 3, "plate": _PLATE})
         is ome.OMEBioformats2Raw
     )
 
@@ -270,3 +270,63 @@ def test_a_plain_plate_is_not_a_bioformats2raw_layout(version: str) -> None:
     for fields in ({"plate": _PLATE}, {"well": _WELL}, {"labels": ["a"]}):
         obj = base.OME.from_json({"version": version, **fields})
         assert not isinstance(obj, ome.OMEBioformats2Raw)
+
+
+# --------------------------------------------------------------------------
+# JSON-key aliases: an NGFF key that is not a Python identifier
+# (``bioformats2raw.layout``, ``image-label``, ``label-value``) reaches its
+# typed field and serializes back under that same key -- never an underscore
+# twin in ``extra_items`` and never a doubled key on the way out.
+# --------------------------------------------------------------------------
+
+
+def test_bioformats2raw_layout_alias_roundtrips_cleanly() -> None:
+    o = v0_5.OME.from_json(
+        {"version": "0.5", "bioformats2raw.layout": 3, "plate": _PLATE}
+    )
+    # dispatched to the bf2raw carrier and populated the typed field
+    assert type(o).__name__ == "OMEBioformats2Raw"
+    assert o.bioformats2raw_layout == 3
+    # the aliased key was consumed -- it did not ride in extra_items
+    assert not o.extra_items
+    j = o.to_json()
+    # emitted only under the spec key, with no spurious underscore twin
+    assert set(j) == {"version", "bioformats2raw.layout", "plate"}
+    assert j["bioformats2raw.layout"] == 3
+    assert "bioformats2raw_layout" not in j
+    assert v0_5.OME.from_json(j) == o
+
+
+def test_label_value_alias_roundtrips_cleanly() -> None:
+    label = {
+        "colors": [{"label-value": 1, "rgba": [0, 128, 0, 255]}],
+    }
+    il = v0_5.labels.ImageLabel.from_json(label)
+    color = il.colors[0]
+    assert color.label_value == 1
+    assert not color.extra_items
+    # exact serialized shape of a fully-determined color: only the spec keys
+    assert color.to_json() == {"label-value": 1, "rgba": [0, 128, 0, 255]}
+    assert "label_value" not in color.to_json()
+    assert v0_5.labels.ImageLabel.from_json(il.to_json()) == il
+
+
+def test_image_label_document_dispatches_to_image_label_carrier() -> None:
+    # An OME document carrying ``image-label`` (the spec key, a hyphen) now
+    # dispatches to OMEImageLabel and populates its ``image_label`` field --
+    # before the alias, the singular discriminator key named no field and the
+    # document fell through to OMEImage.
+    doc = {
+        "version": "0.5",
+        "multiscales": [_MULTISCALE_V05],
+        "image-label": {"colors": [{"label-value": 1, "rgba": [0, 0, 0, 0]}]},
+    }
+    o = v0_5.OME.from_json(doc)
+    assert type(o).__name__ == "OMEImageLabel"
+    assert o.image_label.colors[0].label_value == 1
+    assert not o.extra_items
+    j = o.to_json()
+    assert "image-label" in j
+    assert "image_label" not in j
+    assert "image_labels" not in j
+    assert v0_5.OME.from_json(j) == o
