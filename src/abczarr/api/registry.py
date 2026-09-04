@@ -19,7 +19,7 @@ import importlib
 import typing_extensions as tx
 
 # locals
-from abczarr._core.errors import UnsupportedZarrOperation
+from abczarr.errors import UnsupportedZarrOperation
 
 from ..drivers.base import Driver
 

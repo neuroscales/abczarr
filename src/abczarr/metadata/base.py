@@ -50,12 +50,12 @@ from abczarr._core import constants
 # locals
 from abczarr._core import typing as tz
 from abczarr._core.auto import autofrozen, evolve
-from abczarr._core.errors import UnsupportedConversion
 from abczarr._core.metadata import (
     FlexibleMetadata,
     Metadata,
     register_subclass,
 )
+from abczarr.errors import UnsupportedConversion
 
 # ======================================================================
 #

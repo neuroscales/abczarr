@@ -26,9 +26,9 @@ import typing_extensions as tx
 from abczarr._core import typing as tz
 from abczarr._core.auto.attrs import autofrozen, eq_safenan, field, update
 from abczarr._core.dtypes import asdtype
-from abczarr._core.errors import UnsupportedConversion
 from abczarr._core.features import feature_key
 from abczarr._core.metadata import register_subclass
+from abczarr.errors import UnsupportedConversion
 
 # metadata
 from abczarr.metadata import base

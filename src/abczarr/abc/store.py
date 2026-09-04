@@ -47,7 +47,7 @@ from types import TracebackType
 # dependencies
 import typing_extensions as tx
 
-from abczarr._core.errors import UnsupportedZarrOperation
+from abczarr.errors import UnsupportedZarrOperation
 
 # locals
 from .capabilities import Support, SupportsCapabilities

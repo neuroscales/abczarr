@@ -15,8 +15,8 @@ import typing_extensions as tx
 # core
 from abczarr._core import typing as tz
 from abczarr._core.attrs import evolve
-from abczarr._core.errors import UnsupportedZarrOperation
 from abczarr.api.config import ArrayConfig, ArrayOptions
+from abczarr.errors import UnsupportedZarrOperation
 from abczarr.metadata.base import (
     GroupMetadataV2,
     GroupMetadataV3,
