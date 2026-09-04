@@ -20,8 +20,8 @@ from abczarr._core.auto import autofrozen
 
 # metadata
 from abczarr.metadata.base import Metadata, register_subclass
-from abczarr.schemas.v3 import codecs
 
+from . import aliases as codecs
 from .base import (
     ArrayToArrayCodec,
     ArrayToBytesCodec,

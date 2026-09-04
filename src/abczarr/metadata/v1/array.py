@@ -21,10 +21,10 @@ from abczarr._core.auto.attrs import autofrozen, eq_safenan, field
 from abczarr._core.features import feature_key
 from abczarr.metadata import base
 from abczarr.metadata.base import ConversionPolicy, register_subclass
-from abczarr.schemas.v1 import Codec
 
 from .base import ArrayMetadataV1
 from .codecs import CodecOptions
+from .codecs.aliases import Codec
 
 # locals
 from .dtypes import DType
