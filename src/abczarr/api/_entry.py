@@ -22,6 +22,8 @@ import json
 # dependencies
 import typing_extensions as tx
 
+from abczarr._core.errors import UnsupportedZarrOperation
+
 # locals
 from .._core import typing as tz
 from .._core.attrs import evolve, fields
@@ -29,7 +31,6 @@ from ..abc.array import ZarrArray
 from ..abc.async_array import AsyncZarrArray
 from ..abc.async_group import AsyncZarrGroup
 from ..abc.async_node import AsyncZarrNode
-from ..abc.errors import UnsupportedZarrOperation
 from ..abc.group import ZarrGroup
 from ..abc.node import ZarrNode
 from ..abc.store import AsyncPathBasedStore, PathBasedStore

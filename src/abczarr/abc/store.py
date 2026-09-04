@@ -47,9 +47,10 @@ from types import TracebackType
 # dependencies
 import typing_extensions as tx
 
+from abczarr._core.errors import UnsupportedZarrOperation
+
 # locals
 from .capabilities import Support, SupportsCapabilities
-from .errors import UnsupportedZarrOperation
 from .path import AsyncStorePath, StorePath
 
 if tx.TYPE_CHECKING:

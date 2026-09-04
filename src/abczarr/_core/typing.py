@@ -91,6 +91,7 @@ import typing_extensions as tx
 # internals
 from .attrs import (
     Converter,
+    ToAnnotated,
     ToNegative,
     ToNonNegative,
     ToNonPositive,
@@ -179,18 +180,25 @@ JSONScalar = tx.TypeVar("JSONScalar", bound=_JSONScalar, default=_JSONScalar)
 JSON = tx.TypeVar("JSON", bound=_JSON, default=_JSON)
 JSONDict = tx.Mapping[str, JSON]
 
+class _Freeze:
+    """Marker: deep-freeze this JSON value into `FrozenDict`/`tuple`.
+
+    Carried as `Annotated` metadata on `FrozenJSON` so the freezing is tied
+    to *that* type -- `ToFrozenJson` is registered for this marker -- rather
+    than to `FrozenDict`, which is more general than a frozen-JSON value.
+    """
+
+
 # The frozen JSON model. Its mapping and sequence are the *immutable*
 # `FrozenDict` and `tuple`, matching the immutable nature of the frozen
 # attrs classes that hold it -- an extra item, or an `attributes` value, is
 # deep-frozen so the whole object stays genuinely immutable (and, as a
-# bonus, hashable). The freezing is done by `ToFrozenJson` (below), keyed
-# on `FrozenDict`; every frozen-JSON field is a `FrozenDict[str, FrozenJSON]`
-# (or a tuple of them), so that converter rebuilds a plain `dict`/`list`
-# into a `FrozenDict`/`tuple` recursively.
+# bonus, hashable). The `_Freeze` marker makes `ToFrozenJson` (below) rebuild
+# a plain `dict`/`list` into a `FrozenDict`/`tuple` recursively.
 _FrozenJSON = tx.Union[
     _JSONScalar, FrozenDict[str, "FrozenJSON"], tx.Tuple["FrozenJSON", ...]
 ]
-FrozenJSON = tx.TypeVar("FrozenJSON", bound=_FrozenJSON, default=_FrozenJSON)
+FrozenJSON = tx.Annotated[_FrozenJSON, _Freeze()]
 FrozenJSONDict = FrozenDict[str, FrozenJSON]
 
 _MutableJSON = tx.Union[
@@ -275,16 +283,16 @@ def _freeze_json(value: tx.Any) -> tx.Any:
     return value
 
 
-@register_converter(FrozenDict)
-class ToFrozenJson(Converter[FrozenJSON, FrozenJSON]):
+@ToAnnotated.register_metadata(_Freeze)
+class ToFrozenJson(Converter[_FrozenJSON, _FrozenJSON]):
     """Deep-freeze a JSON value into `FrozenDict`/`tuple` (see `_freeze_json`).
 
-    Registered on `FrozenDict` -- the origin of every frozen-JSON field
-    (`FrozenDict[str, FrozenJSON]`) -- so it converts the whole value in one
+    Registered for the `_Freeze` marker carried by `FrozenJSON`, so it applies
+    to a frozen-JSON value specifically. It converts the whole value in one
     recursive pass rather than relying on the frozen-JSON union's branches,
     which cannot tell a `dict` from a `list` without corrupting one of them.
     """
 
-    def __call__(self, value: FrozenJSON) -> FrozenJSON:
+    def __call__(self, value: _FrozenJSON) -> _FrozenJSON:
         return _freeze_json(value)
 

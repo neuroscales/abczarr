@@ -81,9 +81,10 @@ class ScaleOffsetFilter(FilterImpl):
         if version == 2:
             return self
         if version == 3:
+            # self.id ("fixedscaleoffset") is the numcodecs id, not the v3
+            # codec name; ScaleOffsetCodec supplies its own single name.
             from abczarr.metadata.v3 import ScaleOffsetCodec
             return ScaleOffsetCodec.from_dict({
-                "name": "scale_offset",
                 "configuration": {
                     "offset": self.offset,
                     "scale": self.scale,
@@ -103,9 +104,10 @@ class AsTypeFilter(FilterImpl):
         if version == 2:
             return self
         if version == 3:
+            # self.id ("astype") is the numcodecs id, not the v3 codec name;
+            # CastValueCodec supplies its own single name.
             from abczarr.metadata.v3 import CastValueCodec
             return CastValueCodec.from_dict({
-                "name": "cast_value",
                 "configuration": {
                     "data_type": dtype_to_zarr3(self.encode_dtype),
                     "rounding": "towards-zero",
@@ -126,9 +128,10 @@ class CategorizeFilter(FilterImpl):
         if version == 2:
             return self
         if version == 3:
+            # self.id ("categorize") is the numcodecs id, not the v3 codec
+            # name; CastValueCodec supplies its own single name.
             from abczarr.metadata.v3 import CastValueCodec
             return CastValueCodec.from_dict({
-                "name": "cast_value",
                 "configuration": {
                     "data_type": dtype_to_zarr3(self.dtype),
                     "rounding": "towards-zero",

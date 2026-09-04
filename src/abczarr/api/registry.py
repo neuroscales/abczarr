@@ -19,7 +19,8 @@ import importlib
 import typing_extensions as tx
 
 # locals
-from ..abc.errors import UnsupportedZarrOperation
+from abczarr._core.errors import UnsupportedZarrOperation
+
 from ..drivers.base import Driver
 
 if tx.TYPE_CHECKING:
@@ -71,7 +72,7 @@ def select_driver(
 
     Raises
     ------
-    [UnsupportedZarrOperation][abczarr.abc.errors.UnsupportedZarrOperation]
+    [UnsupportedZarrOperation][abczarr.errors.UnsupportedZarrOperation]
         When none can. The message names each candidate driver and the
         features it is missing, so the failure points at the exact gap
         rather than a backend's opaque error.

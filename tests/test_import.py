@@ -37,7 +37,7 @@ def test_public_names_resolve() -> None:
         "abczarr.abc.group",
         "abczarr.abc.store",
         "abczarr.abc.path",
-        "abczarr.abc.errors",
+        "abczarr.errors",
         "abczarr.api",
         "abczarr.api.config",
         "abczarr.api.registry",

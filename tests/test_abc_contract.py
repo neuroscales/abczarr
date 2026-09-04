@@ -6,8 +6,8 @@ node -- so they run with no zarr / tensorstore backend installed.
 
 import pytest
 
-from abczarr import UnsupportedZarrOperation
-from abczarr.abc import errors, node
+from abczarr import UnsupportedZarrOperation, errors
+from abczarr.abc import node
 from abczarr.abc.node import KNOWN_CAPABILITIES, Support, ZarrNode
 
 

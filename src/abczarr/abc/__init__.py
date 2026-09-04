@@ -4,7 +4,6 @@ __all__ = [
     "async_group",
     "async_node",
     "capabilities",
-    "errors",
     "group",
     "node",
     "store",
@@ -17,7 +16,6 @@ from . import (
     async_group,  # noqa: F401
     async_node,  # noqa: F401
     capabilities,  # noqa: F401
-    errors,  # noqa: F401
     group,  # noqa: F401
     node,  # noqa: F401
     path,  # noqa: F401
@@ -34,8 +32,6 @@ from .async_node import *  # noqa: F403
 from .async_node import __all__ as __all_async_node
 from .capabilities import *  # noqa: F403
 from .capabilities import __all__ as __all_capabilities
-from .errors import *  # noqa: F403
-from .errors import __all__ as __all_errors
 from .group import *  # noqa: F403
 from .group import __all__ as __all_group
 from .node import *  # noqa: F403
@@ -52,7 +48,6 @@ __all__ += __all_async_array
 __all__ += __all_async_group
 __all__ += __all_async_node
 __all__ += __all_capabilities
-__all__ += __all_errors
 __all__ += __all_group
 __all__ += __all_node
 __all__ += __all_path

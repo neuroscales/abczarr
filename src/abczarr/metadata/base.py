@@ -68,7 +68,7 @@ from abczarr._core.metadata import (
 #: * ``"lossy"`` (the default) -- drop the field silently.
 #: * ``"warn"`` -- drop the field, but emit one warning naming it.
 #: * ``"strict"`` -- raise
-#:   [UnsupportedConversion][abczarr.abc.errors.UnsupportedConversion]
+#:   [UnsupportedConversion][abczarr.errors.UnsupportedConversion]
 #:   instead of dropping anything.
 ConversionPolicy = tx.Literal["lossy", "warn", "strict"]
 
@@ -81,7 +81,7 @@ def _report_loss(
     Called by a version's `to_version` implementation for each field
     it cannot carry over to *version*. Does nothing under
     ``"lossy"``, emits a warning under ``"warn"``, and raises
-    [UnsupportedConversion][abczarr.abc.errors.UnsupportedConversion]
+    [UnsupportedConversion][abczarr.errors.UnsupportedConversion]
     under ``"strict"``.
 
     Parameters

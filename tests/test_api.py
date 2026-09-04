@@ -11,10 +11,10 @@ import pytest
 
 import abczarr
 from abczarr.abc.capabilities import Support
-from abczarr.abc.errors import UnsupportedZarrOperation
 from abczarr.api import registry
 from abczarr.api.registry import available_drivers
 from abczarr.drivers.base import Driver
+from abczarr.errors import UnsupportedZarrOperation
 
 # --------------------------------------------------------------------------
 # registry -- no backend needed
