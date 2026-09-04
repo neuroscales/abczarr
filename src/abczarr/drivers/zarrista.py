@@ -20,6 +20,7 @@ __all__ = [
 import json
 
 # dependencies
+import numpy as np
 import numpy.typing as npt
 import typing_extensions as tx
 
@@ -159,8 +160,6 @@ class ZarristaArray(ZarristaNode, ZarrArray):
         return self._array.retrieve_array_subset(index)
 
     def __setitem__(self, index: tx.Any, value: npt.ArrayLike) -> None:
-        import numpy as np
-
         self._array.store_array_subset(index, np.asarray(value, self.dtype))
 
 

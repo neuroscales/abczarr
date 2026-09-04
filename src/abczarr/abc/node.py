@@ -25,6 +25,7 @@ from bagof.paths import Path
 from abczarr._core import constants
 from abczarr._core import typing as tz
 from abczarr._core.attributes import NodeAttributes, attribute_writes
+from abczarr.abc.store import PathBasedStore
 from abczarr.metadata.base import NodeMetadata
 
 # locals -- KNOWN_CAPABILITIES and Support are re-exported for callers that
@@ -142,8 +143,6 @@ class ZarrNode(SupportsCapabilities, ABC):
         that wraps a live Zarr object overrides this to delegate to that
         object, keeping the backend's own caches consistent.
         """
-        from abczarr.abc.store import PathBasedStore
-
         store = PathBasedStore(str(self._store_path))
         version = new_metadata.zarr_format
         existing = None  # type: tx.Optional[tx.Dict[str, tx.Any]]

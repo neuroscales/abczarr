@@ -34,6 +34,7 @@ from abczarr.metadata.base import NodeMetadata
 # locals
 from .capabilities import Support, SupportsCapabilities
 from .node import ZarrNode
+from .store import AsyncPathBasedStore
 
 
 class AsyncZarrNode(SupportsCapabilities, ABC):
@@ -130,8 +131,6 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
         driver that wraps a live Zarr object overrides this to delegate to
         that object's own async `update_attributes`.
         """
-        from abczarr.abc.store import AsyncPathBasedStore
-
         sync = self.as_sync()
         store = AsyncPathBasedStore(str(sync.store_path))
         version = new_metadata.zarr_format

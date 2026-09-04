@@ -10,7 +10,7 @@ import typing_extensions as tx
 # core
 from abczarr._core.auto._typing import DTYPE_LIKE
 from abczarr._core.auto.converters import Converter, register_converter
-from abczarr._core.dtypes import asdtype
+from abczarr._core.dtypes import asdtype, to_zarr3
 from abczarr._core.dtypes import to_zarr2 as dtype_to_zarr2
 
 
@@ -30,7 +30,8 @@ class DType:
         if version in (1, 2):
             return self
         elif version == 3:
-            from abczarr._core.dtypes import to_zarr3
+            # local import: v2 and v3 dtypes reference each other for
+            # cross-version conversion, so a module-level import is a cycle
             from abczarr.metadata.v3.dtypes import DType as DTypeV3
             # A v3 data type is keyed by its zarr name ("float64"), not by a
             # numpy object, so build it from the canonical v3 name/spec.
