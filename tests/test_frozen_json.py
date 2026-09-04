@@ -1,4 +1,4 @@
-"""The frozen-JSON model deep-freezes JSON so a frozen metadata object is
+"""The frozen-Json model deep-freezes Json so a frozen metadata object is
 genuinely immutable (and, as a consequence, hashable)."""
 
 # dependencies
@@ -14,7 +14,7 @@ from abczarr.metadata.v2.filters.base import Filter
 
 
 def _freeze(value: dict) -> FrozenDict:
-    return get_converter(tz.FrozenJSONDict)(value)
+    return get_converter(tz.FrozenJsonDict)(value)
 
 
 def test_deep_freezes_nested_containers() -> None:
@@ -35,7 +35,7 @@ def test_frozen_json_is_immutable_and_hashable() -> None:
 
 
 def test_a_list_value_is_not_coerced_to_a_bool() -> None:
-    # Regression: a list- or dict-valued frozen-JSON item used to fall
+    # Regression: a list- or dict-valued frozen-Json item used to fall
     # through the union to a greedy `bool` branch (`bool([1, 0])` is `True`).
     frozen = Filter.from_dict({"id": "transpose", "order": [1, 0]})
     assert frozen.extra_items["order"] == (1, 0)
@@ -49,6 +49,6 @@ def test_serializes_back_to_plain_json() -> None:
 
 def test_metadata_with_container_extra_items_stays_hashable() -> None:
     # The whole frozen attrs object is hashable even when it carries a
-    # nested container -- the point of freezing the JSON it holds.
+    # nested container -- the point of freezing the Json it holds.
     frozen = Filter.from_dict({"id": "x", "order": [1, 0], "cfg": {"k": [1]}})
     hash(frozen)

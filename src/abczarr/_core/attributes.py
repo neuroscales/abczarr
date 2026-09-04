@@ -134,7 +134,7 @@ def attribute_writes(
 
 
 def _dumps(data: tx.Mapping[str, tx.Any]) -> bytes:
-    """Serialize *data* to compact UTF-8 JSON bytes."""
+    """Serialize *data* to compact UTF-8 Json bytes."""
     return json.dumps(
         data, ensure_ascii=False, separators=(",", ":")
     ).encode("utf-8")

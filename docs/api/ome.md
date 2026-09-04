@@ -3,7 +3,7 @@
 OME-Zarr (the NGFF spec) is a metadata convention for bioimaging data
 stored in Zarr: multiscale image pyramids, high-content screening
 plates, segmentation labels, and rendering settings, all described by
-JSON attached to a Zarr group. abczarr models that metadata as typed
+Json attached to a Zarr group. abczarr models that metadata as typed
 classes under `abczarr.ome.metadata`. There is one package per NGFF
 version, `v0_1` through `v0_5`, plus a `v0_6dev4` preview of the next
 release. The latest stable version is 0.5, and every example below
@@ -14,7 +14,7 @@ targets it.
 A multiscale image is a pyramid of resolution levels, each a Zarr
 array, described by
 [Multiscale][abczarr.ome.metadata.v0_5.images.Multiscale]. Build it
-from a plain dict shaped like the JSON the spec defines:
+from a plain dict shaped like the Json the spec defines:
 
 ```pycon
 >>> from abczarr.ome.metadata import v0_5

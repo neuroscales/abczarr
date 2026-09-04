@@ -89,7 +89,7 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
         return self.as_sync().attrs
 
     async def update_attributes(
-        self, attributes: tz.JSONDict
+        self, attributes: tz.JsonDict
     ) -> "AsyncZarrNode":
         """Add or replace several attributes at once, and persist them.
 
@@ -107,7 +107,7 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
         Parameters
         ----------
         attributes : dict
-            The attributes to add or replace. Values must be JSON-compatible.
+            The attributes to add or replace. Values must be Json-compatible.
 
         Returns
         -------

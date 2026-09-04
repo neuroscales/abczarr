@@ -45,7 +45,7 @@ class LZMACodec(CodecImpl):
     format: Format
     check: Check
     preset: CompressionLevel
-    filters: tx.Tuple[tz.FrozenJSONDict, ...]
+    filters: tx.Tuple[tz.FrozenJsonDict, ...]
 
 
 @register_subclass(id="lz4")
@@ -87,7 +87,7 @@ class ZFPYCodec(CodecImpl):
     tolerance: float
     rate: int
     precision: int
-    compression_kwargs: tz.FrozenJSONDict
+    compression_kwargs: tz.FrozenJsonDict
 
 
 @register_subclass(id="zlib")

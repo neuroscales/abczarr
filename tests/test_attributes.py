@@ -1,6 +1,6 @@
 """Attribute values survive parsing unchanged.
 
-A zarr node's attributes are arbitrary JSON. Reading metadata must preserve
+A zarr node's attributes are arbitrary Json. Reading metadata must preserve
 those values exactly -- strings, numbers, booleans, lists and nested dicts --
 and must not coerce a value to some other type it happens to look like.
 """

@@ -29,15 +29,15 @@ __all__ = [
     "NegativeIntegral",
     "NonPositiveIntegral",
     "NonNegativeIntegral",
-    "JSONNumber",
-    "JSONNumberLike",
-    "JSONScalar",
-    "JSON",
-    "JSONDict",
-    "FrozenJSON",
-    "FrozenJSONDict",
-    "MutableJSON",
-    "MutableJSONDict",
+    "JsonNumber",
+    "JsonNumberLike",
+    "JsonScalar",
+    "Json",
+    "JsonDict",
+    "FrozenJson",
+    "FrozenJsonDict",
+    "MutableJson",
+    "MutableJsonDict",
     "Shape",
     "ShapeIsh",
     "ShapeLike",
@@ -100,9 +100,9 @@ from .attrs import (
 )
 from .dtypes import DataTypeV2, DataTypeV3  # noqa: F401
 from .frozendict import FrozenDict
+from .typevars.inv import T  # noqa: F401  (re-exported for back-compat)
 
 # General types
-T = tx.TypeVar("T")
 OneOrIter = tx.Union[T, tx.Iterable[T]]
 OneOrSeq = tx.Union[T, tx.Sequence[T]]
 BuiltinSequence = tx.Union[tx.Tuple[T, ...], tx.List[T]]
@@ -112,14 +112,10 @@ _BuiltinIntegralNumber = int
 _BuiltinRealNumber = tx.Union[int, float]
 _BuiltinNumber = tx.Union[_BuiltinRealNumber, complex]
 _BuiltinScalar = tx.Union[_BuiltinNumber, str]
-BuiltinNumber = tx.TypeVar(
-    "BuiltinNumber", bound=_BuiltinNumber, default=_BuiltinNumber)
-BuiltinReal = tx.TypeVar(
-    "BuiltinReal", bound=_BuiltinRealNumber, default=_BuiltinRealNumber)
-BuiltinIntegral = tx.TypeVar(
-    "BuiltinIntegral", bound=int, default=int)
-BuiltinScalar = tx.TypeVar(
-    "BuiltinScalar", bound=_BuiltinScalar, default=_BuiltinScalar)
+BuiltinNumber = _BuiltinNumber
+BuiltinReal = _BuiltinRealNumber
+BuiltinIntegral = int
+BuiltinScalar = _BuiltinScalar
 
 BuiltinPositiveNumber = tx.Annotated[
     BuiltinReal, ToPositive(compose=True)]
@@ -142,16 +138,16 @@ BuiltinNonNegativeIntegral = tx.Annotated[
 _BytesLike = tx.Union[bytes, bytearray, memoryview]
 _StringLike = tx.Union[str, _BytesLike]
 _PathLike = tx.Union[str, os.PathLike]
-BytesLike = tx.TypeVar("BytesLike", bound=_BytesLike, default=_BytesLike)
-StringLike = tx.TypeVar("StringLike", bound=_StringLike, default=_StringLike)
-PathLike = tx.TypeVar("PathLike", bound=_PathLike, default=_PathLike)
+BytesLike = _BytesLike
+StringLike = _StringLike
+PathLike = _PathLike
 
 _Integral = tx.Union[numbers.Integral, np.integer, np.bool_]
 _Real = tx.Union[numbers.Real, np.floating, np.integer, np.bool_]
 _Number = tx.Union[numbers.Number, np.number, np.bool_]
-Number = tx.TypeVar("Number", bound=_Number, default=_Number)
-Integral = tx.TypeVar("Integral", bound=_Integral, default=_Integral)
-Real = tx.TypeVar("Real", bound=_Real, default=_Real)
+Number = _Number
+Integral = _Integral
+Real = _Real
 
 PositiveNumber = tx.Annotated[Real, ToPositive(compose=True)]
 NegativeNumber = tx.Annotated[Real, ToNegative(compose=True)]
@@ -167,47 +163,43 @@ NonPositiveIntegral = tx.Annotated[
 NonNegativeIntegral = tx.Annotated[
     Integral, ToNonNegative(compose=True)]
 
-# JSON
-_JSONNumber = tx.Union[int, float]
-_JSONNumberLike = tx.Union[int, float, bool]
-_JSONScalar = tx.Union[int, float, bool, str, None]
-_JSON = tx.Union[_JSONScalar, tx.Mapping[str, "JSON"], BuiltinSequence["JSON"]]
-JSONNumber = tx.TypeVar("JSONNumber", bound=_JSONNumber, default=_JSONNumber)
-JSONNumberLike = tx.TypeVar(
-    "JSONNumberLike", bound=_JSONNumberLike, default=_JSONNumberLike
-)
-JSONScalar = tx.TypeVar("JSONScalar", bound=_JSONScalar, default=_JSONScalar)
-JSON = tx.TypeVar("JSON", bound=_JSON, default=_JSON)
-JSONDict = tx.Mapping[str, JSON]
+# Json
+_JsonNumber = tx.Union[int, float]
+_JsonNumberLike = tx.Union[int, float, bool]
+_JsonScalar = tx.Union[int, float, bool, str, None]
+_Json = tx.Union[_JsonScalar, tx.Mapping[str, "Json"], BuiltinSequence["Json"]]
+JsonNumber = _JsonNumber
+JsonNumberLike = _JsonNumberLike
+JsonScalar = _JsonScalar
+Json = _Json
+JsonDict = tx.Mapping[str, Json]
 
 class _Freeze:
-    """Marker: deep-freeze this JSON value into `FrozenDict`/`tuple`.
+    """Marker: deep-freeze this Json value into `FrozenDict`/`tuple`.
 
-    Carried as `Annotated` metadata on `FrozenJSON` so the freezing is tied
+    Carried as `Annotated` metadata on `FrozenJson` so the freezing is tied
     to *that* type -- `ToFrozenJson` is registered for this marker -- rather
-    than to `FrozenDict`, which is more general than a frozen-JSON value.
+    than to `FrozenDict`, which is more general than a frozen-Json value.
     """
 
 
-# The frozen JSON model. Its mapping and sequence are the *immutable*
+# The frozen Json model. Its mapping and sequence are the *immutable*
 # `FrozenDict` and `tuple`, matching the immutable nature of the frozen
 # attrs classes that hold it -- an extra item, or an `attributes` value, is
 # deep-frozen so the whole object stays genuinely immutable (and, as a
 # bonus, hashable). The `_Freeze` marker makes `ToFrozenJson` (below) rebuild
 # a plain `dict`/`list` into a `FrozenDict`/`tuple` recursively.
-_FrozenJSON = tx.Union[
-    _JSONScalar, FrozenDict[str, "FrozenJSON"], tx.Tuple["FrozenJSON", ...]
+_FrozenJson = tx.Union[
+    _JsonScalar, FrozenDict[str, "FrozenJson"], tx.Tuple["FrozenJson", ...]
 ]
-FrozenJSON = tx.Annotated[_FrozenJSON, _Freeze()]
-FrozenJSONDict = FrozenDict[str, FrozenJSON]
+FrozenJson = tx.Annotated[_FrozenJson, _Freeze()]
+FrozenJsonDict = FrozenDict[str, FrozenJson]
 
-_MutableJSON = tx.Union[
-    _JSONScalar, tx.MutableMapping[str, "JSON"], tx.List["JSON"]
+_MutableJson = tx.Union[
+    _JsonScalar, tx.MutableMapping[str, "Json"], tx.List["Json"]
 ]
-MutableJSON = tx.TypeVar(
-    "MutableJSON", bound=_MutableJSON, default=_MutableJSON
-)
-MutableJSONDict = tx.MutableMapping[str, MutableJSON]
+MutableJson = _MutableJson
+MutableJsonDict = tx.MutableMapping[str, MutableJson]
 
 # Shapes
 Shape = tx.Tuple[BuiltinNonNegativeIntegral, ...]
@@ -244,8 +236,8 @@ AnyAxisName = tx.Union[str, None]
 AnyAxisNames = tx.Optional[tx.Sequence[AnyAxisName]]
 
 # Internal types
-Attributes = tx.MutableMapping[str, JSON]
-FrozenAttributes = tx.Mapping[str, JSON]
+Attributes = tx.MutableMapping[str, Json]
+FrozenAttributes = tx.Mapping[str, Json]
 AnyDriver = tx.Union[KnownDriver, str]
 AnyZarrVersion = tx.Union[ZarrVersion, int]
 AnyOMEVersion = tx.Union[OMEVersion, str]
@@ -255,22 +247,22 @@ PyramidFunction = tx.Callable[[npt.ArrayLike], npt.ArrayLike]
 PyramidMode = tx.Union[KnownPyramidMode, PyramidFunction]
 
 
-@register_converter(JSON)
-class ToJson(Converter[JSON, JSON]):
+@register_converter(Json)
+class ToJson(Converter[Json, Json]):
     """
-    A converter for JSON-compatible types.
+    A converter for Json-compatible types.
     """
 
-    def __call__(self, value: JSON) -> JSON:
+    def __call__(self, value: Json) -> Json:
         return json.loads(json.dumps(value))
 
 
 def _freeze_json(value: tx.Any) -> tx.Any:
-    """Recursively freeze a JSON value into its immutable form.
+    """Recursively freeze a Json value into its immutable form.
 
     A mapping becomes a `FrozenDict` and a list or tuple a `tuple`, each of
     frozen values; a scalar is returned unchanged. The structure is rebuilt
-    directly -- nothing is serialized -- so a frozen-JSON field holds a
+    directly -- nothing is serialized -- so a frozen-Json field holds a
     deeply immutable value, mirroring the immutable frozen class that carries
     it (and hashable as a consequence).
     """
@@ -284,15 +276,15 @@ def _freeze_json(value: tx.Any) -> tx.Any:
 
 
 @ToAnnotated.register_metadata(_Freeze)
-class ToFrozenJson(Converter[_FrozenJSON, _FrozenJSON]):
-    """Deep-freeze a JSON value into `FrozenDict`/`tuple` (see `_freeze_json`).
+class ToFrozenJson(Converter[_FrozenJson, _FrozenJson]):
+    """Deep-freeze a Json value into `FrozenDict`/`tuple` (see `_freeze_json`).
 
-    Registered for the `_Freeze` marker carried by `FrozenJSON`, so it applies
-    to a frozen-JSON value specifically. It converts the whole value in one
-    recursive pass rather than relying on the frozen-JSON union's branches,
+    Registered for the `_Freeze` marker carried by `FrozenJson`, so it applies
+    to a frozen-Json value specifically. It converts the whole value in one
+    recursive pass rather than relying on the frozen-Json union's branches,
     which cannot tell a `dict` from a `list` without corrupting one of them.
     """
 
-    def __call__(self, value: _FrozenJSON) -> _FrozenJSON:
+    def __call__(self, value: _FrozenJson) -> _FrozenJson:
         return _freeze_json(value)
 

@@ -17,7 +17,7 @@ Required = RequirementForTypedDict.Required
 Recommended = RequirementForTypedDict.Recommended
 Optional = RequirementForTypedDict.Optional
 List = tz.BuiltinSequence  # list | tuple
-JSON = tz.JSON
+Json = tz.Json
 
 
 class Dataset(OMESchemaItem):
@@ -33,8 +33,8 @@ class Multiscale(OMESchemaItem):
     class Metadata(OMESchemaItem):
         method: Optional[str]
         version: Optional[str]
-        args: Optional[JSON]
-        kwargs: Optional[tx.Dict[str, JSON]]
+        args: Optional[Json]
+        kwargs: Optional[tx.Dict[str, Json]]
 
     axes: Required[List[Axis]]
     datasets: Required[List[Dataset]]

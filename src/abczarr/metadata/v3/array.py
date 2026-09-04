@@ -102,7 +102,7 @@ class RectilinearChunkGrid(ChunkGrid):
 # ----------------------------------------------------------------------
 
 
-@autofrozen(extra_items=tz.FrozenJSON)
+@autofrozen(extra_items=tz.FrozenJson)
 class ChunkKeyEncodingConfig(TypedConfig):
     ...
 
@@ -225,13 +225,13 @@ class ArrayMetadata(ArrayMetadataV3):
     codecs: tx.Tuple[Codec, ...]
 
     # --- Optional ----
-    attributes: tz.FrozenJSONDict
+    attributes: tz.FrozenJsonDict
     dimension_names: tx.Optional[_AxisNames]
-    storage_transformers: tx.Tuple[tz.FrozenJSONDict, ...]
+    storage_transformers: tx.Tuple[tz.FrozenJsonDict, ...]
 
     # --- Serialization ---
 
-    def to_dict(self) -> tz.JSONDict:
+    def to_dict(self) -> tz.JsonDict:
         """Serialize to ``zarr.json``, omitting the optional fields that carry
         nothing.
 

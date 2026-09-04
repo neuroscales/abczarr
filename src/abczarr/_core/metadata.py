@@ -49,7 +49,7 @@ def register_subclass(
 
 @autofrozen
 class Metadata:
-    """Frozen, recursive, JSON-serializable metadata class."""
+    """Frozen, recursive, Json-serializable metadata class."""
 
     # --- Subclass registry --------------------------------------------
 
@@ -122,10 +122,10 @@ class Metadata:
     def keys(self) -> tx.Tuple[str, ...]:
         return tuple(self)
 
-    # --- JSON conversion ----------------------------------------------
+    # --- Json conversion ----------------------------------------------
 
-    def to_dict(self) -> tz.JSONDict:
-        """Convert this metadata to a JSON-serializable dict.
+    def to_dict(self) -> tz.JsonDict:
+        """Convert this metadata to a Json-serializable dict.
 
         Serializes this object's own fields. A nested metadata value is
         serialized through its own `to_dict`, so a subclass that overrides it
@@ -135,8 +135,8 @@ class Metadata:
         return _serialize_meta(self)
 
     @classmethod
-    def from_dict(cls, data: tz.JSONDict) -> tx.Self:
-        """Create an instance from a JSON-serializable dict."""
+    def from_dict(cls, data: tz.JsonDict) -> tx.Self:
+        """Create an instance from a Json-serializable dict."""
 
         # If not a dict, try to interpret it as a positional argument
         if not isinstance(data, abc.Mapping):
@@ -203,7 +203,7 @@ class Metadata:
 
 
 _JSONMetadata = tx.Union[
-    tz._JSONScalar, Metadata, tx.Tuple["_JSONMetadata", ...]
+    tz._JsonScalar, Metadata, tx.Tuple["_JSONMetadata", ...]
 ]
 JSONMetadata = tx.TypeVar(
     "JSONMetadata", bound=_JSONMetadata, default=_JSONMetadata
@@ -223,13 +223,13 @@ class FlexibleMetadata(Metadata):
 # ======================================================================
 
 
-def _serialize_dict(x: tx.Mapping) -> tx.Dict[str, tz.JSON]:
+def _serialize_dict(x: tx.Mapping) -> tx.Dict[str, tz.Json]:
     if not callable(getattr(x, "items", None)):
         x = dict(**x)
     return {k: _to_json(v) for k, v in x.items()}
 
 
-def _serialize_meta(x: "Metadata") -> tx.Dict[str, tz.JSON]:
+def _serialize_meta(x: "Metadata") -> tx.Dict[str, tz.Json]:
     """Serialize a metadata object's own fields (not respecting a to_dict
     override on *x* itself -- that is the caller's job)."""
     extra = getattr(x, "extra_items", False)
@@ -243,13 +243,13 @@ def _serialize_meta(x: "Metadata") -> tx.Dict[str, tz.JSON]:
     return out
 
 
-def _to_json(obj: tx.Any) -> tz.JSON:
+def _to_json(obj: tx.Any) -> tz.Json:
     if _is_metadata(obj):
         # delegate to the value's own to_dict, so a subclass that serializes
         # itself specially (an Extension written as a bare name) is honored
         return obj.to_dict()
     elif isinstance(obj, np.dtype):
-        # a numpy dtype is not JSON: emit its zarr string form ("<f8")
+        # a numpy dtype is not Json: emit its zarr string form ("<f8")
         return obj.str
     elif isinstance(obj, np.generic):
         return obj.item()
@@ -280,7 +280,7 @@ def _is_metadata(obj: tx.Any) -> bool:
     return isinstance(obj, Metadata)
 
 
-_METADATALIKE = tx.Union[Metadata, tz.JSON]
+_METADATALIKE = tx.Union[Metadata, tz.Json]
 METADATA = tx.TypeVar("METADATA", bound=Metadata, default=Metadata)
 METADATALIKE = tx.TypeVar(
     "METADATALIKE", bound=_METADATALIKE, default=_METADATALIKE
@@ -297,7 +297,7 @@ class MetadataConverter(Converter[METADATA, METADATALIKE]):
         if self.hint in __reentrant:
             return self.hint
         __reentrant += (self.hint,)
-        hints = (self.hint, tz.JSONDict)
+        hints = (self.hint, tz.JsonDict)
         if (
             isinstance(self.hint, type) and
             issubclass(self.hint, Metadata)

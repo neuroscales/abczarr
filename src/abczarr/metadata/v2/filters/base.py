@@ -11,7 +11,7 @@ from abczarr._core.auto.attrs import autofrozen
 from abczarr._core.metadata import Metadata
 
 
-@autofrozen(extra_items=tz.FrozenJSON)
+@autofrozen(extra_items=tz.FrozenJson)
 class Filter(Metadata):
     id: str
 

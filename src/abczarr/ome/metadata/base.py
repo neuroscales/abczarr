@@ -3,7 +3,7 @@
 OME-Zarr (the NGFF spec) is a metadata convention for bioimaging data
 stored in Zarr: multiscale image pyramids, high-content screening
 plates, segmentation labels, and rendering settings, all described by
-JSON attached to a Zarr group. This module defines the two classes
+Json attached to a Zarr group. This module defines the two classes
 every version shares:
 [OMEMetadata][abczarr.ome.metadata.base.OMEMetadata], the base of
 every OME metadata class, and [OME][abczarr.ome.metadata.base.OME],
@@ -60,7 +60,7 @@ class OMEMetadata(FlexibleMetadata):
     on. Each lives in the version package it belongs to
     (`abczarr.ome.metadata.v0_5.images`, for example). Build one with
     [from_dict][abczarr._core.metadata.Metadata.from_dict] from the
-    JSON an OME-Zarr group carries, or with keyword arguments matching
+    Json an OME-Zarr group carries, or with keyword arguments matching
     its fields. [to_dict][abczarr._core.metadata.Metadata.to_dict]
     serializes it back to that same shape, and any key it does not
     recognize survives the round trip unchanged.

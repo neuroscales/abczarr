@@ -2,7 +2,7 @@
 The version-independent metadata model.
 
 Every node in a Zarr hierarchy -- a group or an array -- is described
-by a small JSON document: `zarr.json` in Zarr v3, `.zarray`/`.zgroup`
+by a small Json document: `zarr.json` in Zarr v3, `.zarray`/`.zgroup`
 plus `.zattrs` in v2, `.zarray`/`.zattrs` in v1. This module defines
 the typed classes that document holds, one hierarchy per format
 version, and the shared vocabulary
@@ -128,12 +128,12 @@ class NodeMetadata(Metadata):
     their per-version subclasses -- rather than this class directly.
     """
 
-    attributes: tz.JSONDict
+    attributes: tz.JsonDict
     zarr_format: tz.ZarrVersion = 3
     node_type: tz.NodeType = "group"
 
     # Convenience updaters (immutably return new metadata)
-    def update_attributes(self, attributes: tz.JSONDict) -> tx.Self:
+    def update_attributes(self, attributes: tz.JsonDict) -> tx.Self:
         """Return a copy of this metadata with new attributes.
 
         The rest of the metadata -- shape, dtype, chunking and so on
@@ -382,8 +382,8 @@ class NodeMetadataV1(NodeMetadata):
         return cls.from_dict({**meta, "attributes": attrs})
 
     @classmethod
-    def from_dict(cls, data: tz.JSONDict) -> tx.Self:
-        """Build v1 metadata from a plain JSON-compatible dict.
+    def from_dict(cls, data: tz.JsonDict) -> tx.Self:
+        """Build v1 metadata from a plain Json-compatible dict.
 
         *data* is the merged content of `.zarray` and `.zattrs`
         (under the key `"attributes"`), the same shape
@@ -612,8 +612,8 @@ class ArrayMetadataV3(NodeMetadataV3, ArrayMetadata):
 # ======================================================================
 
 
-def _atomic_write(path: os.PathLike, data: tz.JSONDict) -> None:
-    """Write JSON data to path atomically."""
+def _atomic_write(path: os.PathLike, data: tz.JsonDict) -> None:
+    """Write Json data to path atomically."""
     PathType = type(path)
     parent = path.parent
     parent.mkdir(parents=True, exist_ok=True)

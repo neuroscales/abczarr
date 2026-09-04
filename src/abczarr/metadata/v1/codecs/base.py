@@ -7,7 +7,7 @@ from abczarr._core.auto.attrs import autofrozen
 from abczarr.metadata.base import Metadata
 
 
-@autofrozen(extra_items=tz.FrozenJSON)
+@autofrozen(extra_items=tz.FrozenJson)
 class CodecOptions(Metadata):
 
     def to_version(self, version: tz.ZarrVersion) -> Metadata:

@@ -479,7 +479,7 @@ def test_native_filter_maps_to_its_v3_codec(
     f = v2.Filter.from_dict(dict(spec))
     codec = f.to_version(3)  # used to raise AttributeError
     assert codec.name == v3_name
-    # to_dict must be valid (no numpy objects, real JSON)
+    # to_dict must be valid (no numpy objects, real Json)
     codec.to_dict()
     # converting to the same version is identity
     assert f.to_version(2) is f

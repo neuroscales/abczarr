@@ -99,7 +99,7 @@ class ZarrNode(SupportsCapabilities, ABC):
         """
         return NodeAttributes(self)
 
-    def update_attributes(self, attributes: tz.JSONDict) -> "ZarrNode":
+    def update_attributes(self, attributes: tz.JsonDict) -> "ZarrNode":
         """Add or replace several attributes at once, and persist them.
 
         The *attributes* are merged into this node's existing attributes --
@@ -115,7 +115,7 @@ class ZarrNode(SupportsCapabilities, ABC):
         Parameters
         ----------
         attributes : dict
-            The attributes to add or replace. Values must be JSON-compatible.
+            The attributes to add or replace. Values must be Json-compatible.
 
         Returns
         -------
@@ -128,7 +128,7 @@ class ZarrNode(SupportsCapabilities, ABC):
         merged.update(attributes)
         return self._replace_attributes(merged)
 
-    def _replace_attributes(self, attributes: tz.JSONDict) -> "ZarrNode":
+    def _replace_attributes(self, attributes: tz.JsonDict) -> "ZarrNode":
         """Replace this node's attributes wholesale, and persist them."""
         new_metadata = self.metadata.update_attributes(attributes)
         self._write_metadata(new_metadata)

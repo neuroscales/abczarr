@@ -48,7 +48,7 @@ class BitroundCodec(ArrayToArrayCodec):
     configuration: BitroundConfig
 
 
-_ScalarMapItem = tx.Union[tz.JSONScalar, str]
+_ScalarMapItem = tx.Union[tz.JsonScalar, str]
 _ScalarMap = tx.Tuple[tx.Tuple[_ScalarMapItem, _ScalarMapItem], ...]
 
 
@@ -150,8 +150,8 @@ class PackBitsCodec(ArrayToBytesCodec):
 
 @autofrozen
 class ScaleOffsetConfig(CodecConfigImpl):
-    offset: tz.JSONNumber
-    scale: tz.JSONNumber
+    offset: tz.JsonNumber
+    scale: tz.JsonNumber
 
 
 @register_subclass(name="scale_offset")
