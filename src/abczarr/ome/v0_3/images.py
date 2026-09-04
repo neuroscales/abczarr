@@ -2,9 +2,9 @@
 
 """The multiscale image pyramid.
 
-[Multiscale][abczarr.ome.metadata.v0_4.images.Multiscale] describes a
+[Multiscale][abczarr.ome.v0_3.images.Multiscale] describes a
 pyramid of progressively downsampled resolution levels. Each level is
-a [Dataset][abczarr.ome.metadata.v0_4.images.Dataset], naming a Zarr
+a [Dataset][abczarr.ome.v0_3.images.Dataset], naming a Zarr
 array and how it is positioned relative to the others.
 """
 
@@ -16,9 +16,12 @@ from abczarr._core.auto.attrs import autodefine, field
 from abczarr._core.rfc2119 import Optional, Recommended, Required
 
 from ..base import OMEMetadata
-from .axes import Axis
-from .transformations import CoordinateTransformation, Scale, Translation
 from .version import Version
+
+SpaceAxis = tx.Literal["x", "y", "z"]
+TimeAxis = tx.Literal["t"]
+ChannelAxis = tx.Literal["c"]
+Axis = tx.Union[SpaceAxis, TimeAxis, ChannelAxis]
 
 
 @autodefine
@@ -26,18 +29,10 @@ class Dataset(OMEMetadata):
     """One resolution level of a multiscale pyramid.
 
     `path` is the name of the Zarr array holding this level, relative
-    to the image group. `coordinateTransformations` places it in the
-    pyramid's physical space: a
-    [Scale][abczarr.ome.metadata.v0_4.transformations.Scale], optionally
-    followed by a
-    [Translation][abczarr.ome.metadata.v0_4.transformations.Translation],
-    one value per axis.
+    to the image group.
     """
 
     path: Required[str] = field(factory=False)
-    coordinateTransformations: Required[
-        tx.Union[tx.Tuple[Scale], tx.Tuple[Scale, Translation]]
-    ]
 
 
 @autodefine
@@ -47,9 +42,7 @@ class Multiscale(OMEMetadata):
     `axes` names and orders the pyramid's dimensions: `t`, `c`, `z`,
     `y`, `x`, in whatever subset and order the image uses. `datasets`
     lists its resolution levels from full resolution down, each a
-    [Dataset][abczarr.ome.metadata.v0_4.images.Dataset].
-    `coordinateTransformations` here, if given, applies to every
-    level before its own.
+    [Dataset][abczarr.ome.v0_3.images.Dataset].
     """
 
     @autodefine
@@ -67,7 +60,6 @@ class Multiscale(OMEMetadata):
 
     axes: Required[tx.List[Axis]]
     datasets: Required[tx.List[Dataset]]
-    coordinateTransformations: Optional[tx.List[CoordinateTransformation]]
     name: Recommended[str]
     type: Recommended[str]
     metadata: Recommended[Metadata]

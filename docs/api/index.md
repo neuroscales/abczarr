@@ -21,5 +21,5 @@ The public API, grouped by what it does. New to abczarr? Start with the
 - **Metadata**: the typed, versioned
   [metadata model][abczarr.metadata.base.ArrayMetadata] and conversion
   between Zarr formats.
-- **OME**: the typed [OME-Zarr metadata][abczarr.ome.metadata.base] model,
+- **OME**: the typed [OME-Zarr metadata][abczarr.ome.base] model,
   for bioimaging data stored in Zarr.

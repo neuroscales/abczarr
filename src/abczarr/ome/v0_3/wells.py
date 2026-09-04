@@ -27,7 +27,7 @@ class Well(OMEMetadata):
 
         `path` is the image's group, relative to the well group.
         `acquisition` is the id of the
-        [Plate.Acquisition][abczarr.ome.metadata.v0_2.plates.Plate.Acquisition]
+        [Plate.Acquisition][abczarr.ome.v0_3.plates.Plate.Acquisition]
         it was captured in, when the plate ran more than one.
         """
 
@@ -35,4 +35,4 @@ class Well(OMEMetadata):
         acquisition: Recommended[int]
 
     images: Required[tx.List[Image]]
-    version: Recommended[Version]
+    version: Required[Version]

@@ -4,7 +4,7 @@ OME-Zarr (the NGFF spec) is a metadata convention for bioimaging data
 stored in Zarr: multiscale image pyramids, high-content screening
 plates, segmentation labels, and rendering settings, all described by
 JSON attached to a Zarr group. abczarr models that metadata as typed
-classes under `abczarr.ome.metadata`. There is one package per NGFF
+classes under `abczarr.ome`. There is one package per NGFF
 version, `v0_1` through `v0_5`, plus the 0.6 pre-release previews
 `v0_6dev1` through `v0_6dev4` and `v0_6rc0`. The examples below target 0.5, the latest stable version; the
 [Reference](#reference) documents every version.
@@ -13,11 +13,11 @@ version, `v0_1` through `v0_5`, plus the 0.6 pre-release previews
 
 A multiscale image is a pyramid of resolution levels, each a Zarr
 array, described by
-[Multiscale][abczarr.ome.metadata.v0_5.images.Multiscale]. Build it
+[Multiscale][abczarr.ome.v0_5.images.Multiscale]. Build it
 from a plain dict shaped like the JSON the spec defines:
 
 ```pycon
->>> from abczarr.ome.metadata import v0_5
+>>> from abczarr.ome import v0_5
 >>> multiscale = v0_5.Multiscale.from_json({
 ...     "name": "nucleus-stain",
 ...     "type": "gaussian",
@@ -49,21 +49,21 @@ from a plain dict shaped like the JSON the spec defines:
 ```
 
 Each axis in `axes` becomes an
-[Axis][abczarr.ome.metadata.v0_5.axes.Axis]. Here that's a
-[SpaceAxis][abczarr.ome.metadata.v0_5.axes.SpaceAxis], since each one
+[Axis][abczarr.ome.v0_5.axes.Axis]. Here that's a
+[SpaceAxis][abczarr.ome.v0_5.axes.SpaceAxis], since each one
 carries `type="space"`. Each entry in `datasets` becomes a
-[Dataset][abczarr.ome.metadata.v0_5.images.Dataset]. It names an array
-and carries the [Scale][abczarr.ome.metadata.v0_5.transformations.Scale]
+[Dataset][abczarr.ome.v0_5.images.Dataset]. It names an array
+and carries the [Scale][abczarr.ome.v0_5.transformations.Scale]
 that places it in physical space, one value per axis, in that axis's
 unit.
 
 A `Multiscale` describes the pyramid, not the whole group. Wrap it in
-[OMEImage][abczarr.ome.metadata.v0_5.ome.OMEImage] to get the metadata
+[OMEImage][abczarr.ome.v0_5.ome.OMEImage] to get the metadata
 an image group actually carries, optionally alongside
-[Omero][abczarr.ome.metadata.v0_5.omero.Omero] rendering settings:
+[Omero][abczarr.ome.v0_5.omero.Omero] rendering settings:
 
 ```python
-from abczarr.ome.metadata import v0_5
+from abczarr.ome import v0_5
 
 image = v0_5.OMEImage(
     version="0.5",
@@ -80,14 +80,14 @@ image = v0_5.OMEImage(
 ```
 
 The same shape covers the other kinds of OME-Zarr group:
-[ImageLabel][abczarr.ome.metadata.v0_5.labels.ImageLabel] for a
+[ImageLabel][abczarr.ome.v0_5.labels.ImageLabel] for a
 segmentation, and
-[Plate][abczarr.ome.metadata.v0_5.plates.Plate] /
-[Well][abczarr.ome.metadata.v0_5.wells.Well] for a high-content
+[Plate][abczarr.ome.v0_5.plates.Plate] /
+[Well][abczarr.ome.v0_5.wells.Well] for a high-content
 screen, wrapped in
-[OMEImageLabel][abczarr.ome.metadata.v0_5.ome.OMEImageLabel],
-[OMEPlate][abczarr.ome.metadata.v0_5.ome.OMEPlate] and
-[OMEWell][abczarr.ome.metadata.v0_5.ome.OMEWell].
+[OMEImageLabel][abczarr.ome.v0_5.ome.OMEImageLabel],
+[OMEPlate][abczarr.ome.v0_5.ome.OMEPlate] and
+[OMEWell][abczarr.ome.v0_5.ome.OMEWell].
 
 ## Reading and writing OME metadata on a group
 
@@ -110,13 +110,13 @@ at the top level of `attrs` instead of nesting them under `"ome"`:
 
 ## Converting between NGFF versions
 
-[OMEMetadata.to_version][abczarr.ome.metadata.base.OMEMetadata.to_version]
+[OMEMetadata.to_version][abczarr.ome.base.OMEMetadata.to_version]
 converts a piece of OME metadata, built against one NGFF version, to
 another. It works on the top-level container and on any nested piece
 of metadata alike:
 
 ```pycon
->>> from abczarr.ome.metadata import v0_4
+>>> from abczarr.ome import v0_4
 >>> old = v0_4.Multiscale.from_json({
 ...     "version": "0.4",
 ...     "axes": [
@@ -134,7 +134,7 @@ of metadata alike:
 ... })
 >>> new = old.to_version("0.5")
 >>> type(new).__module__
-'abczarr.ome.metadata.v0_5.images'
+'abczarr.ome.v0_5.images'
 >>> new.to_version("0.4") == old
 True
 
@@ -149,7 +149,7 @@ not carry raises `ValueError` rather than guessing.
 
 !!! example
     ```pycon
-    >>> from abczarr.ome.metadata import v0_2
+    >>> from abczarr.ome import v0_2
     >>> untyped = v0_2.Multiscale.from_json({
     ...     "version": "0.2",
     ...     "name": "x",
@@ -168,4 +168,4 @@ The shared, version-independent vocabulary is below. Each NGFF
 version's own classes are documented on its own page, listed under
 **OME** in the navigation.
 
-::: abczarr.ome.metadata.base
+::: abczarr.ome.base

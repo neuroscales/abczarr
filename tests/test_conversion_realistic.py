@@ -9,7 +9,7 @@ structures.
 import pytest
 
 from abczarr.metadata import v1, v2, v3
-from abczarr.ome.metadata import v0_3, v0_4
+from abczarr.ome import v0_3, v0_4
 
 # ==========================================================================
 #   Zarr array metadata

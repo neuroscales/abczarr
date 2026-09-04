@@ -1,23 +1,26 @@
-# Generated from v0_1 by tools/gen_ome_metadata.py -- do not edit
-
 """The multiscale image pyramid.
 
-[Multiscale][abczarr.ome.metadata.v0_3.images.Multiscale] describes a
+[Multiscale][abczarr.ome.v0_1.images.Multiscale] describes a
 pyramid of progressively downsampled resolution levels. Each level is
-a [Dataset][abczarr.ome.metadata.v0_3.images.Dataset], naming a Zarr
+a [Dataset][abczarr.ome.v0_1.images.Dataset], naming a Zarr
 array and how it is positioned relative to the others.
 """
 
 __all__ = ["Dataset", "Multiscale"]
+
+# dependencies
 import typing_extensions as tx
 
+# core
 from abczarr._core import typing as tz
 from abczarr._core.auto.attrs import autodefine, field
 from abczarr._core.rfc2119 import Optional, Recommended, Required
 
+# locals
 from ..base import OMEMetadata
 from .version import Version
 
+# typing
 SpaceAxis = tx.Literal["x", "y", "z"]
 TimeAxis = tx.Literal["t"]
 ChannelAxis = tx.Literal["c"]
@@ -37,12 +40,11 @@ class Dataset(OMEMetadata):
 
 @autodefine
 class Multiscale(OMEMetadata):
-    """A multiscale image pyramid: its axes and resolution levels.
+    """A multiscale image pyramid: its resolution levels.
 
-    `axes` names and orders the pyramid's dimensions: `t`, `c`, `z`,
-    `y`, `x`, in whatever subset and order the image uses. `datasets`
-    lists its resolution levels from full resolution down, each a
-    [Dataset][abczarr.ome.metadata.v0_3.images.Dataset].
+    `datasets` lists the pyramid's resolution levels from full
+    resolution down, each a
+    [Dataset][abczarr.ome.v0_1.images.Dataset].
     """
 
     @autodefine
@@ -58,9 +60,8 @@ class Multiscale(OMEMetadata):
         args: Optional[tx.List[tz.Json]]
         kwargs: Optional[tx.Dict[str, tz.Json]]
 
-    axes: Required[tx.List[Axis]]
     datasets: Required[tx.List[Dataset]]
     name: Recommended[str]
     type: Recommended[str]
     metadata: Recommended[Metadata]
-    version: Required[Version]
+    version: Recommended[Version]

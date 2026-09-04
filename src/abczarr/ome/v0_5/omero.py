@@ -9,7 +9,6 @@ from abczarr._core.auto.attrs import autodefine
 from abczarr._core.rfc2119 import Required
 
 from ..base import OMEMetadata
-from .version import Version
 
 
 @autodefine
@@ -43,11 +42,10 @@ class Omero(OMEMetadata):
     """Rendering settings for an image: one entry per channel.
 
     Attach one of these to an image group, alongside its
-    [Multiscale][abczarr.ome.metadata.v0_4.images.Multiscale], to
+    [Multiscale][abczarr.ome.v0_5.images.Multiscale], to
     suggest how a viewer should display it. `channels` lists a
-    [Channel][abczarr.ome.metadata.v0_4.omero.Channel] for each
+    [Channel][abczarr.ome.v0_5.omero.Channel] for each
     channel of the image, in order.
     """
 
     channels: Required[tx.List[Channel]]
-    version: Required[Version]

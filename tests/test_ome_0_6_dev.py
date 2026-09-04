@@ -23,8 +23,7 @@ import pytest
 import typing_extensions as tx
 
 from abczarr._core.auto.validators import get_validator
-from abczarr.ome import schemas
-from abczarr.ome.metadata import base
+from abczarr.ome import base, schemas
 
 TESTDIR = Path(__file__).parent
 
@@ -80,7 +79,7 @@ CARRIER_BY_KEY = {
 
 
 def _pkg(version: str) -> types.ModuleType:
-    return importlib.import_module("abczarr.ome.metadata." + version)
+    return importlib.import_module("abczarr.ome." + version)
 
 
 def _load(version: str, name: str) -> dict:
@@ -123,7 +122,7 @@ def test_version_dispatches_to_its_package(version: str) -> None:
     version's data declares, so a document routes to the right package."""
     match = (("version", VERSIONS[version]),)
     registered = base.OME._registry()[match]
-    assert registered.__module__ == f"abczarr.ome.metadata.{version}.ome"
+    assert registered.__module__ == f"abczarr.ome.{version}.ome"
     assert _pkg(version).version.VERSION == VERSIONS[version]
 
 
@@ -138,7 +137,7 @@ def test_coordinate_transformation_roundtrips(version: str, name: str) -> None:
         # dispatched to a concrete, type-specific subclass, not the base
         assert type(obj) is not pkg.transformations.CoordinateTransformation
         assert type(obj).__module__ == (
-            f"abczarr.ome.metadata.{version}.transformations"
+            f"abczarr.ome.{version}.transformations"
         )
     for cs in doc.get("coordinateSystems", []):
         _roundtrips(pkg.systems.CoordinateSystem, cs)
@@ -158,7 +157,7 @@ def test_ome_document_roundtrips(version: str, name: str) -> None:
             break
     assert carrier is not None, f"no carrier for keys {list(doc)}"
     obj = _roundtrips(carrier, doc)
-    assert type(obj).__module__ == f"abczarr.ome.metadata.{version}.ome"
+    assert type(obj).__module__ == f"abczarr.ome.{version}.ome"
 
 
 @pytest.mark.parametrize("version", list(VERSIONS))

@@ -1,14 +1,17 @@
-# Generated from v0_1 by tools/gen_ome_metadata.py -- do not edit
-
 """Rendering settings: how to display an image's channels."""
 
 __all__ = ["Omero", "Channel"]
+
+# dependencies
 import typing_extensions as tx
 
+# core
 from abczarr._core.auto.attrs import autodefine
-from abczarr._core.rfc2119 import Required
+from abczarr._core.rfc2119 import Recommended, Required
 
+# locals
 from ..base import OMEMetadata
+from .version import Version
 
 
 @autodefine
@@ -33,6 +36,7 @@ class Channel(OMEMetadata):
         start: Required[float]
         end: Required[float]
 
+
     color: Required[str]
     window: Required[Window]
 
@@ -42,10 +46,11 @@ class Omero(OMEMetadata):
     """Rendering settings for an image: one entry per channel.
 
     Attach one of these to an image group, alongside its
-    [Multiscale][abczarr.ome.metadata.v0_5.images.Multiscale], to
+    [Multiscale][abczarr.ome.v0_1.images.Multiscale], to
     suggest how a viewer should display it. `channels` lists a
-    [Channel][abczarr.ome.metadata.v0_5.omero.Channel] for each
+    [Channel][abczarr.ome.v0_1.omero.Channel] for each
     channel of the image, in order.
     """
 
     channels: Required[tx.List[Channel]]
+    version: Recommended[Version]

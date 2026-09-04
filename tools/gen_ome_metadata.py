@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate the OME-Zarr metadata version trees from hand-written templates.
 
-The packages under ``src/abczarr/ome/metadata/`` restate almost the same
+The packages under ``src/abczarr/ome/`` restate almost the same
 class surface once per NGFF version.  Adjacent versions are near-identical, so
 keeping the copies in step by hand is error-prone.  This tool keeps one
 hand-written source of truth per *chain* of versions and derives the rest from
@@ -20,7 +20,7 @@ Why codegen rather than sharing classes at runtime:
   ``class`` statements.  A class synthesised at import time would be invisible
   to the API reference.
 * **The conversion engine resolves classes by qualified name.**
-  ``abczarr.ome.metadata.base`` converts between versions by finding the class
+  ``abczarr.ome.base`` converts between versions by finding the class
   with the same ``__qualname__`` in the sibling target-version package and
   reads the version from ``__module__``.  Each version therefore needs its own
   distinct class object, in its own module, with an identical dotted
@@ -74,7 +74,7 @@ Modules = Dict[str, ast.Module]
 # --------------------------------------------------------------------------
 
 _ROOT = Path(__file__).resolve().parent.parent
-METADATA_DIR = _ROOT / "src" / "abczarr" / "ome" / "metadata"
+METADATA_DIR = _ROOT / "src" / "abczarr" / "ome"
 OME_TEMPLATES = _ROOT / "tools" / "ome_templates"
 
 
@@ -273,7 +273,7 @@ A multiscale image pyramid: its axes and resolution levels.
 `axes` names and orders the pyramid's dimensions: `t`, `c`, `z`,
 `y`, `x`, in whatever subset and order the image uses. `datasets`
 lists its resolution levels from full resolution down, each a
-[Dataset][abczarr.ome.metadata.v0_1.images.Dataset].
+[Dataset][abczarr.ome.v0_1.images.Dataset].
 """
 
 _DATASET_DOC_V0_4 = """\
@@ -282,9 +282,9 @@ One resolution level of a multiscale pyramid.
 `path` is the name of the Zarr array holding this level, relative
 to the image group. `coordinateTransformations` places it in the
 pyramid's physical space: a
-[Scale][abczarr.ome.metadata.v0_1.transformations.Scale], optionally
+[Scale][abczarr.ome.v0_1.transformations.Scale], optionally
 followed by a
-[Translation][abczarr.ome.metadata.v0_1.transformations.Translation],
+[Translation][abczarr.ome.v0_1.transformations.Translation],
 one value per axis.
 """
 
@@ -294,7 +294,7 @@ A multiscale image pyramid: its axes and resolution levels.
 `axes` names and orders the pyramid's dimensions: `t`, `c`, `z`,
 `y`, `x`, in whatever subset and order the image uses. `datasets`
 lists its resolution levels from full resolution down, each a
-[Dataset][abczarr.ome.metadata.v0_1.images.Dataset].
+[Dataset][abczarr.ome.v0_1.images.Dataset].
 `coordinateTransformations` here, if given, applies to every
 level before its own.
 """
@@ -612,13 +612,13 @@ def _copy_modules(modules: Modules) -> Modules:
 def _substitute_version(chain: Chain, source: str, version: str) -> str:
     """Rewrite the template cross-reference token in docstrings to *version*.
 
-    The token ``abczarr.ome.metadata.<template>`` appears only inside
+    The token ``abczarr.ome.<template>`` appears only inside
     docstrings (imports are relative), so a plain string replacement is
     unambiguous.
     """
     return source.replace(
-        "abczarr.ome.metadata." + chain.template,
-        "abczarr.ome.metadata." + version,
+        "abczarr.ome." + chain.template,
+        "abczarr.ome." + version,
     )
 
 
