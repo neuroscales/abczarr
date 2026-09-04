@@ -1,3 +1,5 @@
+# Generated from v0_6dev1 by tools/gen_ome_metadata.py -- do not edit
+
 __all__ = [
     "CoordinateTransformation",
     "Identity",
@@ -12,20 +14,15 @@ __all__ = [
     "Bijection",
     "ByDimension",
 ]
-
-# dependencies
 import typing_extensions as tx
 
-# core
 from abczarr._core import typing as tz
 from abczarr._core.auto.attrs import autodefine, field
 from abczarr._core.metadata import register_subclass
 from abczarr._core.rfc2119 import Optional, Required
 
-# locals
 from ..base import OMEMetadata
 
-# typing
 Interpolation = tx.Union[tx.Literal["nearest", "linear", "bspline-cubic"], str]
 
 
@@ -116,7 +113,6 @@ class Bijection(CoordinateTransformation):
 @register_subclass(type="byDimension")
 @autodefine
 class ByDimension(CoordinateTransformation):
-
     @autodefine
     class Transformation(OMEMetadata):
         transformation: Optional[CoordinateTransformation]

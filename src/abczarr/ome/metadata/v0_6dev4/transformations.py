@@ -1,3 +1,5 @@
+# Generated from v0_6dev1 by tools/gen_ome_metadata.py -- do not edit
+
 __all__ = [
     "Space",
     "CoordinateTransformation",
@@ -5,41 +7,36 @@ __all__ = [
     "MapAxis",
     "Translation",
     "Scale",
-    "Affine", "AffineMatrix", "AffinePath",
-    "Rotation", "RotationMatrix", "RotationPath",
+    "Affine",
+    "Rotation",
     "Sequence",
     "Displacements",
     "Coordinates",
     "Bijection",
-    "ByDimension"
+    "ByDimension",
 ]
-
-# dependencies
 import typing_extensions as tx
 
-# core
 from abczarr._core.auto.attrs import autodefine, field
 from abczarr._core.metadata import register_subclass
-from abczarr._core.rfc2119 import Optional, Required
+from abczarr._core.rfc2119 import Optional, Recommended, Required
 
-# locals
 from ..base import OMEMetadata
 
-# typing
 Interpolation = tx.Union[tx.Literal["nearest", "linear", "bspline-cubic"], str]
 
 
 @autodefine
 class Space(OMEMetadata):
-    name: Required[str]
+    name: Optional[str]
     path: Optional[str]
 
 
 @autodefine
 class CoordinateTransformation(OMEMetadata):
     type: Required[str] = field(factory=False)
-    output: Required[Space]
-    input: Required[Space]
+    output: Recommended[Space]
+    input: Recommended[Space]
     name: Optional[str]
 
 
@@ -60,50 +57,32 @@ class MapAxis(CoordinateTransformation):
 @autodefine
 class Translation(CoordinateTransformation):
     type: Required[tx.Literal["translation"]]
-    translation: Required[tx.List[float]]
+    translation: Optional[tx.List[float]]
+    path: Optional[str]
 
 
 @register_subclass(type="scale")
 @autodefine
 class Scale(CoordinateTransformation):
     type: Required[tx.Literal["scale"]]
-    scale: Required[tx.List[float]]
+    scale: Optional[tx.List[float]]
+    path: Optional[str]
 
 
 @register_subclass(type="affine")
 @autodefine
 class Affine(CoordinateTransformation):
     type: Required[tx.Literal["affine"]]
-
-
-@register_subclass(type="affine", affine=tx.Any)
-@autodefine
-class AffineMatrix(Affine):
-    affine: Required[tx.List[tx.List[float]]]
-
-
-@register_subclass(type="affine", path=tx.Any)
-@autodefine
-class AffinePath(Affine):
-    path: Required[str]
+    affine: Optional[tx.List[tx.List[float]]]
+    path: Optional[str]
 
 
 @register_subclass(type="rotation")
 @autodefine
 class Rotation(CoordinateTransformation):
     type: Required[tx.Literal["rotation"]]
-
-
-@register_subclass(type="rotation", affine=tx.Any)
-@autodefine
-class RotationMatrix(Rotation):
-    rotation: Required[tx.List[tx.List[float]]]
-
-
-@register_subclass(type="rotation", path=tx.Any)
-@autodefine
-class RotationPath(Rotation):
-    path: Required[str]
+    rotation: Optional[tx.List[tx.List[float]]]
+    path: Optional[str]
 
 
 @register_subclass(type="sequence")
@@ -140,5 +119,11 @@ class Bijection(CoordinateTransformation):
 @register_subclass(type="byDimension")
 @autodefine
 class ByDimension(CoordinateTransformation):
+    @autodefine
+    class Transformation(OMEMetadata):
+        transformation: Optional[CoordinateTransformation]
+        input_axes: Optional[tx.List[int]]
+        output_axes: Optional[tx.List[int]]
+
     type: Required[tx.Literal["byDimension"]]
-    transformations: Required[tx.List[CoordinateTransformation]]
+    transformations: Required[tx.List[Transformation]]

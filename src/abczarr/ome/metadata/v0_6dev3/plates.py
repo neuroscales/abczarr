@@ -1,29 +1,23 @@
-__all__ = ["Plate"]
+# Generated from v0_6dev1 by tools/gen_ome_metadata.py -- do not edit
 
-# stdlib
+__all__ = ["Plate"]
 import re
 
-# dependencies
 import typing_extensions as tx
 
-# core
 from abczarr._core.auto.attrs import autodefine, field
 from abczarr._core.auto.converters import ToNonNegative
 from abczarr._core.rfc2119 import Optional, Recommended, Required
 
-# locals
 from ..base import OMEMetadata
 
-# typing
 NonNegativeInt = tx.Annotated[int, ToNonNegative()]
-AlphaNumeric = tx.Annotated[str, re.compile(r"^[a-zA-Z0-9]+$")]
-WellPath = tx.Annotated[str, re.compile(r"^[A-Za-z0-9]+/[A-Za-z0-9]+$")]
+AlphaNumeric = tx.Annotated[str, re.compile("^[a-zA-Z0-9]+$")]
+WellPath = tx.Annotated[str, re.compile("^[A-Za-z0-9]+/[A-Za-z0-9]+$")]
 
 
 @autodefine
 class Plate(OMEMetadata):
-
-
     @autodefine
     class Acquisition(OMEMetadata):
         id: Required[NonNegativeInt] = field(factory=False)
@@ -33,23 +27,19 @@ class Plate(OMEMetadata):
         starttime: Optional[int]
         endtime: Optional[int]
 
-
     @autodefine
     class Column(OMEMetadata):
         name: Required[AlphaNumeric] = field(factory=False)
 
-
     @autodefine
     class Row(OMEMetadata):
         name: Required[AlphaNumeric] = field(factory=False)
-
 
     @autodefine
     class Well(OMEMetadata):
         path: Required[WellPath] = field(factory=False)
         rowIndex: Required[NonNegativeInt]
         columnIndex: Required[NonNegativeInt]
-
 
     acquisitions: Optional[tx.List[Acquisition]]
     columns: Required[tx.List[Column]]

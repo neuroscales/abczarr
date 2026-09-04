@@ -1,14 +1,12 @@
-__all__ = ["Dataset", "Multiscale"]
+# Generated from v0_6dev1 by tools/gen_ome_metadata.py -- do not edit
 
-# dependencies
+__all__ = ["Dataset", "Multiscale"]
 import typing_extensions as tx
 
-# core
 from abczarr._core import typing as tz
 from abczarr._core.auto.attrs import autodefine, field
 from abczarr._core.rfc2119 import Optional, Recommended, Required
 
-# locals
 from ..base import OMEMetadata
 from .systems import CoordinateSystem
 from .transformations import CoordinateTransformation
@@ -22,7 +20,6 @@ class Dataset(OMEMetadata):
 
 @autodefine
 class Multiscale(OMEMetadata):
-
     @autodefine
     class Metadata(OMEMetadata):
         method: Optional[str]

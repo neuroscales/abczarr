@@ -32,6 +32,7 @@ VERSIONS = {
     "v0_6dev1": "0.6.dev1",
     "v0_6dev2": "0.6.dev2",
     "v0_6dev3": "0.6.dev3",
+    "v0_6dev4": "0.6.dev4",
     "v0_6rc0": "0.6rc0",
 }
 
@@ -47,6 +48,15 @@ XFORMS = {
     "v0_6dev1": _XFORMS_PRE,
     "v0_6dev2": _XFORMS_PRE,
     "v0_6dev3": [n for n in _XFORMS_PRE if n != "inverseOf"],
+    # dev4 completes the input/output string->object overhaul: a transform's
+    # `input`/`output` is a coordinate-system object, not a name string. Its
+    # `mapAxis` examples still carry the transitional string form, so -- like
+    # the other transitional instances -- they are not exercised here.
+    "v0_6dev4": [
+        "affine2d2d", "affine2d3d", "identity", "scale", "translation",
+        "rotation", "sequence", "bijection", "byDimension1", "byDimension2",
+        "byDimensionXarray", "coordinates1d", "displacement1d",
+    ],
     "v0_6rc0": [
         "affine2d2d", "affine2d3d", "identity", "scale", "translation",
         "rotation", "sequence", "bijection", "mapAxis1", "byDimension1",
