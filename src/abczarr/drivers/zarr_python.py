@@ -214,6 +214,33 @@ class ZarrPythonDriver(Driver):
         )
         return ZarrPythonGroup(group)
 
+    async def create_async(
+        self, location: tx.Any, config: tx.Any
+    ) -> AsyncZarrNode:
+        # delegate to zarr-python's own async create (a coroutine), so it
+        # writes its own metadata and its caches stay consistent; the
+        # AsyncArray/AsyncGroup it returns is wrapped as the native async twin
+        import zarr.api.asynchronous as async_api
+
+        from abczarr.api.config import ArrayConfig
+
+        if isinstance(config, ArrayConfig):
+            array = await async_api.create_array(
+                store=str(location),
+                shape=config.shape,
+                dtype=config.dtype,
+                overwrite=config.overwrite,
+                zarr_format=config.zarr_version,
+                **_zarr_create_kwargs(config),
+            )
+            return _wrap_async(array).as_async()
+        group = await async_api.open_group(
+            store=str(location),
+            mode="w" if config.overwrite else "w-",
+            zarr_format=config.zarr_version,
+        )
+        return _wrap_async(group).as_async()
+
     def capability(self, capability: str) -> Support:
         if self._major < 3:
             # zarr 2.x uses a different library API; its support lands with

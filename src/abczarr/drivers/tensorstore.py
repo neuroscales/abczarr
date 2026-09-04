@@ -243,6 +243,27 @@ def _create_ts_array(
     return TensorStoreArray(array)
 
 
+async def _acreate_ts_array(
+    location: tx.Any, metadata: ArrayMetadata, *, overwrite: bool
+) -> "AsyncTensorStoreArray":
+    """Create the v3 array *metadata* describes at *location* asynchronously.
+
+    Awaits TensorStore's own create future rather than blocking on
+    ``.result()``, then wraps the array as its native async twin.
+    """
+    from bagof.paths import Path
+
+    if _node_at(Path(str(location))) is not None and not overwrite:
+        raise FileExistsError(f"a node already exists at {location}")
+    spec = {
+        "driver": "zarr3",
+        "kvstore": _kvstore_spec(location),
+        "metadata": metadata.to_dict(),
+    }
+    array = await ts.open(spec, create=True, delete_existing=overwrite)
+    return TensorStoreArray(array).as_async()
+
+
 class TensorStoreGroup(TensorStoreNode, PathGroup):
     """The group returned when the TensorStore driver opens a group.
 
@@ -304,6 +325,30 @@ class TensorStoreDriver(Driver):
             return _create_ts_array(location, metadata, overwrite=overwrite)
         # a group is just a directory; the base's write-then-open handles it
         return super().create_from_metadata(
+            location, metadata, overwrite=overwrite
+        )
+
+    async def create_async(
+        self, location: tx.Any, config: "tx.Any"
+    ) -> AsyncZarrNode:
+        # lower the config to metadata (cheap, synchronous) then await
+        # TensorStore's own create future
+        return await self.create_from_metadata_async(
+            location, self._config_metadata(config),
+            overwrite=config.overwrite,
+        )
+
+    async def create_from_metadata_async(
+        self, location: tx.Any, metadata: NodeMetadata,
+        *, overwrite: bool = False,
+    ) -> AsyncZarrNode:
+        if isinstance(metadata, ArrayMetadata):
+            return await _acreate_ts_array(
+                location, metadata, overwrite=overwrite
+            )
+        # a group is just a directory; the base's thread-bridged create handles
+        # it, opening the async path group over the async store
+        return await super().create_from_metadata_async(
             location, metadata, overwrite=overwrite
         )
 

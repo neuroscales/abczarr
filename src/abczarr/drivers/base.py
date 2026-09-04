@@ -131,6 +131,24 @@ class Driver(SupportsCapabilities):
             overwrite=config.overwrite,
         )
 
+    async def create_async(
+        self, location: tx.Any, config: "ZarrConfig"
+    ) -> "AsyncZarrNode":
+        """Create the node *config* describes and open its async twin.
+
+        The coroutine twin of [create][abczarr.drivers.base.Driver.create].
+
+        A backend with a native coroutine create overrides this to await its
+        own I/O. The default runs the synchronous
+        [create][abczarr.drivers.base.Driver.create] in a worker thread and
+        returns its async twin, so a driver with no native async create still
+        presents the coroutine surface.
+        """
+        from abczarr._core.asyncutils import run_sync
+
+        node = await run_sync(self.create, location, config)
+        return node.as_async()
+
     def create_from_metadata(
         self, location: tx.Any, metadata: "NodeMetadata",
         *, overwrite: bool = False,
@@ -161,6 +179,32 @@ class Driver(SupportsCapabilities):
         path.mkdir(parents=True, exist_ok=True)
         metadata.to_file(path)
         return self.open(location, "r+")
+
+    async def create_from_metadata_async(
+        self, location: tx.Any, metadata: "NodeMetadata",
+        *, overwrite: bool = False,
+    ) -> "AsyncZarrNode":
+        """Create a node from an exact *metadata* document and open its async
+        twin.
+
+        The coroutine twin of
+        [create_from_metadata][abczarr.drivers.base.Driver.create_from_metadata].
+        A backend with a native coroutine create overrides this; the default
+        runs the synchronous create in a worker thread and returns its async
+        twin.
+
+        Raises
+        ------
+        FileExistsError
+            When something already exists at *location* and *overwrite* is
+            false.
+        """
+        from abczarr._core.asyncutils import run_sync
+
+        node = await run_sync(
+            self.create_from_metadata, location, metadata, overwrite=overwrite
+        )
+        return node.as_async()
 
     def create_group(
         self, location: tx.Any, *,
