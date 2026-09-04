@@ -39,7 +39,7 @@ class BitroundFilter(FilterImpl):
         if version == 3:
             from abczarr.metadata.v3 import BitroundCodec
             return BitroundCodec.from_dict({
-                "name": self.name,
+                "name": "bitround",
                 "configuration": {
                     "keepbits": self.keepbits
                 }
@@ -58,7 +58,7 @@ class PackBitsFilter(FilterImpl):
         if version == 3:
             from abczarr.metadata.v3 import PackBitsCodec
             return PackBitsCodec.from_dict({
-                "name": self.name,
+                "name": "packbits",
                 "configuration": {
                     "padding_encoding": "first_byte",
                     "first_bit": None,
@@ -83,7 +83,7 @@ class ScaleOffsetFilter(FilterImpl):
         if version == 3:
             from abczarr.metadata.v3 import ScaleOffsetCodec
             return ScaleOffsetCodec.from_dict({
-                "name": self.name,
+                "name": "scale_offset",
                 "configuration": {
                     "offset": self.offset,
                     "scale": self.scale,
@@ -105,7 +105,7 @@ class AsTypeFilter(FilterImpl):
         if version == 3:
             from abczarr.metadata.v3 import CastValueCodec
             return CastValueCodec.from_dict({
-                "name": self.name,
+                "name": "cast_value",
                 "configuration": {
                     "data_type": dtype_to_zarr3(self.encode_dtype),
                     "rounding": "towards-zero",
@@ -128,7 +128,7 @@ class CategorizeFilter(FilterImpl):
         if version == 3:
             from abczarr.metadata.v3 import CastValueCodec
             return CastValueCodec.from_dict({
-                "name": self.name,
+                "name": "cast_value",
                 "configuration": {
                     "data_type": dtype_to_zarr3(self.dtype),
                     "rounding": "towards-zero",
