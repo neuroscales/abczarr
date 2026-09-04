@@ -13,6 +13,7 @@ __all__ = [
     "open_array",
     "open_group",
     "create",
+    "create_array",
     "create_group",
 ]
 
@@ -539,6 +540,61 @@ async def _acreate_group(
     node = await create(location, base, asynchronous=True, **fields)
     if not isinstance(node, AsyncZarrGroup):
         raise UnsupportedZarrOperation("create_group produced a non-group")
+    return node
+
+
+@tx.overload
+def create_array(
+    location: tz.PathLike, *,
+    config: tx.Optional[ArrayConfig] = ...,
+    asynchronous: "tx.Literal[False]" = ..., **fields: tx.Any,
+) -> ZarrArray: ...
+@tx.overload
+def create_array(
+    location: tz.PathLike, *,
+    config: tx.Optional[ArrayConfig] = ...,
+    asynchronous: "tx.Literal[True]", **fields: tx.Any,
+) -> tx.Awaitable[AsyncZarrArray]: ...
+
+
+def create_array(
+    location: tz.PathLike, *,
+    config: tx.Optional[ArrayConfig] = None,
+    asynchronous: bool = False, **fields: tx.Any,
+) -> tx.Union[ZarrArray, tx.Awaitable[AsyncZarrArray]]:
+    """Create an array at *location*, the metadata-free way.
+
+    Pass an [ArrayConfig][abczarr.api.config.ArrayConfig] as *config*, or its
+    fields (`shape`, `dtype`, `chunks`, ...) as keyword arguments. At least a
+    `shape` (and a `dtype`) is needed to describe the array; a request with no
+    array fields is a group, so use [create_group][abczarr.api.create_group]
+    for that. With `asynchronous=True` the return value is a coroutine
+    resolving to the async array twin, mirroring async
+    [create][abczarr.api.create].
+    """
+    base = config if isinstance(config, ArrayConfig) else ArrayConfig(
+        **dict(config or {})
+    )
+    if fields.get("shape", base.shape) is None:
+        got = ", ".join(sorted(fields)) or "no creation fields"
+        raise TypeError(
+            "create_array() needs at least a shape (and a dtype) to create "
+            f"the array; got {got}. Use create_group() to create a group."
+        )
+    if asynchronous:
+        return _acreate_array(location, base, fields)
+    node = create(location, base, **fields)
+    if not isinstance(node, ZarrArray):
+        raise UnsupportedZarrOperation("create_array produced a non-array")
+    return node
+
+
+async def _acreate_array(
+    location: tz.PathLike, base: ArrayConfig, fields: "tx.Dict[str, tx.Any]",
+) -> AsyncZarrArray:
+    node = await create(location, base, asynchronous=True, **fields)
+    if not isinstance(node, AsyncZarrArray):
+        raise UnsupportedZarrOperation("create_array produced a non-array")
     return node
 
 
