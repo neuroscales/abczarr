@@ -12,7 +12,7 @@ import pytest
 import typing_extensions as tx
 
 from abczarr.abc.capabilities import Support
-from abczarr.abc.path import StorePath
+from abczarr.abc.path import AsyncStorePath, StorePath
 from abczarr.abc.store import (
     AsyncPathBasedStore,
     AsyncStore,
@@ -333,3 +333,19 @@ def test_async_store_additive_members(tmp_path: pathlib.Path) -> None:
         assert [key async for key in s.list_keys()] == []
 
     asyncio.run(scenario())
+
+
+def test_a_pathlike_root_is_wrapped_in_a_storepath(
+    tmp_path: pathlib.Path,
+) -> None:
+    # a store root need not be a str: a pathlib.Path (any os.PathLike) is
+    # normalized to a StorePath, so it goes through bagof.paths rather than
+    # being used raw
+    for root in (str(tmp_path), tmp_path):
+        store = PathBasedStore(root)
+        assert isinstance(store.store_path, StorePath)
+        store.set("k", b"v")
+        assert store.get("k") == b"v"
+
+    astore = AsyncPathBasedStore(tmp_path)
+    assert isinstance(astore.store_path, AsyncStorePath)

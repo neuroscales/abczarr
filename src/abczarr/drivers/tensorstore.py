@@ -381,8 +381,14 @@ def _supports_v3_feature(kind: str, name: str) -> bool:
 
 
 def _peek_node_type(location: tx.Any) -> tx.Optional[str]:
-    """The node type recorded at *location*'s ``zarr.json``, or None."""
-    if not isinstance(location, str) or "://" in location:
+    """The node type recorded at *location*'s ``zarr.json``, or None.
+
+    Read through a [PathBasedStore][abczarr.abc.store.PathBasedStore], so
+    every scheme bagof.paths understands is inspected the same way -- a local
+    path, an fsspec URL (``memory://``), or a cloud one (``s3://``). A raw
+    kvstore dict spec is not a location to peek, so it returns None.
+    """
+    if isinstance(location, dict):  # a kvstore spec, not a location
         return None
     try:
         raw = PathBasedStore(location).get("zarr.json")
@@ -399,8 +405,13 @@ def _peek_node_type(location: tx.Any) -> tx.Optional[str]:
 async def _apeek_node_type(location: tx.Any) -> tx.Optional[str]:
     """The node type at *location*'s ``zarr.json``, read through an async
     store, or None -- the async twin of
-    [_peek_node_type][abczarr.drivers.tensorstore]."""
-    if not isinstance(location, str) or "://" in location:
+    [_peek_node_type][abczarr.drivers.tensorstore].
+
+    Read through an
+    [AsyncPathBasedStore][abczarr.abc.store.AsyncPathBasedStore], so a URL
+    (``memory://``, ``s3://``) is inspected exactly like a local path.
+    """
+    if isinstance(location, dict):  # a kvstore spec, not a location
         return None
     try:
         raw = await AsyncPathBasedStore(location).get("zarr.json")
