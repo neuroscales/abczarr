@@ -290,3 +290,15 @@ def test_group_at_a_memory_url_opens_as_a_group_async() -> None:
 
     node = asyncio.run(go())
     assert isinstance(node, AsyncPathGroup)
+
+
+def test_group_via_a_pathlike_is_detected(tmp_path: pathlib.Path) -> None:
+    # a location need not be a str -- a PathLike (pathlib.Path) is peeked the
+    # same way, so a group opened through a Path is detected as a group
+    root = tmp_path / "g.zarr"
+    group = zarr.open_group(str(root), mode="w")
+    group.create_array("a", shape=(4,), chunks=(4,), dtype="int32")
+
+    node = abczarr.open(root, mode="r", driver="tensorstore")  # Path, not str
+    assert isinstance(node, TensorStoreGroup)
+    assert list(node.keys()) == ["a"]

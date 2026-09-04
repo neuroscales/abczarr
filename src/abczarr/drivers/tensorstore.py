@@ -346,10 +346,10 @@ def _peek_node_type(location: tx.Any) -> tx.Optional[str]:
 
     from abczarr.abc.store import PathBasedStore
 
-    if not isinstance(location, str):
+    if isinstance(location, dict):  # a kvstore spec, not a location
         return None
     try:
-        raw = PathBasedStore(location).get("zarr.json")
+        raw = PathBasedStore(str(location)).get("zarr.json")
     except Exception:
         return None
     if raw is None:
@@ -373,10 +373,10 @@ async def _apeek_node_type(location: tx.Any) -> tx.Optional[str]:
 
     from abczarr.abc.store import AsyncPathBasedStore
 
-    if not isinstance(location, str):
+    if isinstance(location, dict):  # a kvstore spec, not a location
         return None
     try:
-        raw = await AsyncPathBasedStore(location).get("zarr.json")
+        raw = await AsyncPathBasedStore(str(location)).get("zarr.json")
     except Exception:
         return None
     if raw is None:
