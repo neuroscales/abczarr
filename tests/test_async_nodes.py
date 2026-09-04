@@ -89,20 +89,93 @@ def test_shared_property_names_are_identical() -> None:
     assert sync == asyncd == _SHARED_PROPERTIES
 
 
-def test_driver_open_has_a_coroutine_twin() -> None:
-    # every driver's sync open has an async twin: open is a plain method,
-    # open_async is a coroutine, and the concrete drivers keep both
-    from abczarr.drivers.base import Driver
+class _AsAsyncNode:
+    """A stand-in node whose only job is to answer as_async()."""
+
+    def as_async(self) -> str:
+        return "async-twin"
+
+
+def _concrete_driver_classes() -> tuple:
     from abczarr.drivers.tensorstore import TensorStoreDriver
     from abczarr.drivers.zarr_python import ZarrPythonDriver
     from abczarr.drivers.zarrista import ZarristaDriver
 
+    return (TensorStoreDriver, ZarrPythonDriver, ZarristaDriver)
+
+
+def test_driver_surface_has_no_async_named_methods() -> None:
+    # the driver factory is coloured by an asynchronous= flag, not by _async
+    # twins -- the retired names (open_async came in with #71) are gone
+    from abczarr.drivers.base import Driver
+
+    for name in ("open_async", "create_async", "create_from_metadata_async"):
+        assert not hasattr(Driver, name), name
+    # the flag methods are plain (return a node OR an awaitable), never
+    # coroutine functions
     assert not inspect.iscoroutinefunction(Driver.open)
-    assert inspect.iscoroutinefunction(Driver.open_async)
-    # the native drivers override open_async; zarrista inherits the
-    # thread-bridged default -- either way it stays a coroutine
-    for driver in (TensorStoreDriver, ZarrPythonDriver, ZarristaDriver):
-        assert inspect.iscoroutinefunction(driver.open_async)
+    assert not inspect.iscoroutinefunction(Driver.create)
+    assert not inspect.iscoroutinefunction(Driver.create_from_metadata)
+
+
+def test_driver_open_is_flag_coloured() -> None:
+    # open(asynchronous=False) returns a node; asynchronous=True returns an
+    # awaitable resolving to the async twin. A fake driver drives it with no
+    # backend installed.
+    from abczarr.drivers.base import Driver
+
+    class _Fake(Driver):
+        name = "fake"
+
+        def _open_sync(self, location: object, mode: str) -> _AsAsyncNode:
+            return _AsAsyncNode()
+
+    d = _Fake()
+    assert isinstance(d.open("loc", "r"), _AsAsyncNode)  # sync -> node
+    pending = d.open("loc", "r", asynchronous=True)
+    assert inspect.isawaitable(pending)
+    assert asyncio.run(_await(pending)) == "async-twin"
+
+    # the concrete drivers keep the flag surface: asynchronous=True yields an
+    # awaitable (the coroutine is not run until awaited, so no backend needed)
+    for driver_cls in _concrete_driver_classes():
+        probe = driver_cls().open("loc", "r", asynchronous=True)
+        assert inspect.isawaitable(probe)
+        probe.close()  # a probe we do not await
+
+
+def test_driver_create_is_flag_coloured() -> None:
+    # create / create_from_metadata carry the same asynchronous= flag
+    from abczarr.drivers.base import Driver
+
+    class _Fake(Driver):
+        name = "fake"
+
+        def _create_sync(
+            self, location: object, config: object
+        ) -> _AsAsyncNode:
+            return _AsAsyncNode()
+
+        def _create_from_metadata_sync(
+            self, location: object, metadata: object,
+            *, overwrite: bool = False,
+        ) -> _AsAsyncNode:
+            return _AsAsyncNode()
+
+    d = _Fake()
+    assert isinstance(d.create("loc", None), _AsAsyncNode)
+    assert isinstance(d.create_from_metadata("loc", None), _AsAsyncNode)
+    for pending in (
+        d.create("loc", None, asynchronous=True),
+        d.create_from_metadata("loc", None, asynchronous=True),
+    ):
+        assert inspect.isawaitable(pending)
+        assert asyncio.run(_await(pending)) == "async-twin"
+
+    for driver_cls in _concrete_driver_classes():
+        probe = driver_cls().create("loc", None, asynchronous=True)
+        assert inspect.isawaitable(probe)
+        probe.close()
 
 
 def test_update_attributes_parity() -> None:
@@ -568,3 +641,164 @@ def test_concurrent_map_caps_the_fan_out() -> None:
     assert result == list(range(20))
     # the semaphore held the in-flight count to the limit
     assert peak <= 3
+
+
+# --------------------------------------------------------------------------
+# async create: create(..., asynchronous=True) is an awaitable resolving to
+# the async node, mirroring async open
+# --------------------------------------------------------------------------
+
+
+def test_async_create_returns_an_awaitable(tmp_path: pathlib.Path) -> None:
+    pytest.importorskip("zarr")
+    from abczarr.api.config import ArrayConfig
+
+    pending = abczarr.create(
+        str(tmp_path / "a.zarr"),
+        ArrayConfig(shape=(4, 4), dtype="int16"),
+        asynchronous=True,
+    )
+    assert inspect.isawaitable(pending)
+    assert not isinstance(pending, (ZarrArray, AsyncZarrArray))
+    arr = asyncio.run(_await(pending))
+    assert isinstance(arr, AsyncZarrArray)
+
+
+def test_zarr_python_async_create_roundtrip(tmp_path: pathlib.Path) -> None:
+    pytest.importorskip("zarr")
+    from abczarr.api.config import ArrayConfig
+
+    async def go() -> float:
+        arr = await abczarr.create(
+            str(tmp_path / "a.zarr"),
+            ArrayConfig(shape=(4, 4), dtype="float32"),
+            asynchronous=True,
+        )
+        assert isinstance(arr, AsyncZarrArray)
+        assert arr.supports("async", native=True)
+        await arr.setitem(
+            (slice(0, 4), slice(0, 4)), np.ones((4, 4), "float32")
+        )
+        block = await arr.getitem((slice(0, 4), slice(0, 4)))
+        return float(np.asarray(block).sum())
+
+    assert asyncio.run(go()) == 16.0
+
+
+def test_zarr_python_async_create_group(tmp_path: pathlib.Path) -> None:
+    pytest.importorskip("zarr")
+
+    async def go() -> object:
+        return await abczarr.create_group(
+            str(tmp_path / "g.zarr"), asynchronous=True
+        )
+
+    grp = asyncio.run(go())
+    assert isinstance(grp, AsyncZarrGroup)
+
+
+def test_tensorstore_async_create_roundtrip(tmp_path: pathlib.Path) -> None:
+    pytest.importorskip("zarr")
+    pytest.importorskip("tensorstore")
+    from abczarr.api.config import ArrayConfig
+
+    async def go() -> float:
+        arr = await abczarr.create(
+            str(tmp_path / "a.zarr"),
+            ArrayConfig(shape=(4, 4), dtype="float32"),
+            asynchronous=True,
+            driver="tensorstore",
+        )
+        assert isinstance(arr, AsyncZarrArray)
+        assert arr.supports("async", native=True)
+        await arr.setitem(
+            (slice(0, 4), slice(0, 4)), np.full((4, 4), 2.0, "float32")
+        )
+        block = await arr.getitem((slice(0, 4), slice(0, 4)))
+        return float(np.asarray(block).sum())
+
+    assert asyncio.run(go()) == 32.0
+
+
+def test_tensorstore_async_create_fails_if_it_exists(
+    tmp_path: pathlib.Path,
+) -> None:
+    pytest.importorskip("tensorstore")
+    from abczarr.api.config import ArrayConfig
+
+    root = str(tmp_path / "a.zarr")
+
+    async def make(overwrite: bool) -> object:
+        return await abczarr.create(
+            root,
+            ArrayConfig(shape=(2, 2), dtype="int8", overwrite=overwrite),
+            asynchronous=True,
+            driver="tensorstore",
+        )
+
+    asyncio.run(make(False))
+    with pytest.raises(FileExistsError):
+        asyncio.run(make(False))
+    # overwrite=True replaces it
+    assert isinstance(asyncio.run(make(True)), AsyncZarrArray)
+
+
+# --------------------------------------------------------------------------
+# async open honours create modes too (local paths only, so this leg does not
+# depend on the metadata-peek URL fix)
+# --------------------------------------------------------------------------
+
+
+def test_async_open_create_mode_makes_an_array(tmp_path: pathlib.Path) -> None:
+    pytest.importorskip("zarr")
+
+    async def go() -> object:
+        return await abczarr.open(
+            str(tmp_path / "a.zarr"),
+            mode="w", shape=(3,), dtype="uint8", asynchronous=True,
+        )
+
+    arr = asyncio.run(go())
+    assert isinstance(arr, AsyncZarrArray)
+    assert arr.shape == (3,)
+
+
+def test_async_open_create_mode_makes_a_group(tmp_path: pathlib.Path) -> None:
+    pytest.importorskip("zarr")
+
+    async def go() -> object:
+        return await abczarr.open(
+            str(tmp_path / "g.zarr"), mode="w", asynchronous=True
+        )
+
+    grp = asyncio.run(go())
+    assert isinstance(grp, AsyncZarrGroup)
+
+
+def test_async_open_w_dash_fails_if_it_exists(tmp_path: pathlib.Path) -> None:
+    pytest.importorskip("zarr")
+    root = str(tmp_path / "g.zarr")
+
+    async def make() -> object:
+        return await abczarr.open(root, mode="w-", asynchronous=True)
+
+    asyncio.run(make())
+    with pytest.raises(FileExistsError):
+        asyncio.run(make())
+
+
+def test_async_open_a_opens_or_creates(tmp_path: pathlib.Path) -> None:
+    pytest.importorskip("zarr")
+    root = str(tmp_path / "a.zarr")
+
+    async def go() -> tuple:
+        made = await abczarr.open(
+            root, mode="a", shape=(4,), dtype="int8", asynchronous=True
+        )
+        again = await abczarr.open(root, mode="a", asynchronous=True)
+        return made, again
+
+    made, again = asyncio.run(go())
+    assert isinstance(made, AsyncZarrArray)
+    assert isinstance(again, AsyncZarrArray)
+    assert again.shape == (4,)

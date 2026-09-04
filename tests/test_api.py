@@ -114,3 +114,100 @@ def test_selection_routes_by_the_arrays_features(
 
     chosen = _choose(array_path, [_Blind(), ZarrPythonDriver()])
     assert chosen.name == "zarr-python"
+
+
+# --------------------------------------------------------------------------
+# open(mode=...) honours create modes, zarr-style -- needs zarr
+# --------------------------------------------------------------------------
+
+
+def test_open_w_with_array_fields_creates_an_array(
+    tmp_path: pathlib.Path,
+) -> None:
+    root = str(tmp_path / "a.zarr")
+    arr = abczarr.open(root, mode="w", shape=(4, 4), dtype="int16")
+    assert isinstance(arr, abczarr.ZarrArray)
+    assert arr.shape == (4, 4)
+
+
+def test_open_w_without_array_fields_creates_a_group(
+    tmp_path: pathlib.Path,
+) -> None:
+    grp = abczarr.open(str(tmp_path / "g.zarr"), mode="w")
+    assert isinstance(grp, abczarr.ZarrGroup)
+
+
+def test_open_w_overwrites_an_existing_node(tmp_path: pathlib.Path) -> None:
+    root = str(tmp_path / "a.zarr")
+    abczarr.open(root, mode="w", shape=(8,), dtype="int8")
+    arr = abczarr.open(root, mode="w", shape=(2, 2), dtype="int8")
+    assert arr.shape == (2, 2)
+
+
+def test_open_w_dash_fails_if_it_exists(tmp_path: pathlib.Path) -> None:
+    root = str(tmp_path / "g.zarr")
+    abczarr.open(root, mode="w")
+    with pytest.raises(FileExistsError):
+        abczarr.open(root, mode="w-")
+
+
+def test_open_x_is_w_dash(tmp_path: pathlib.Path) -> None:
+    root = str(tmp_path / "g.zarr")
+    grp = abczarr.open(root, mode="x")  # creates when missing
+    assert isinstance(grp, abczarr.ZarrGroup)
+    with pytest.raises(FileExistsError):
+        abczarr.open(root, mode="x")  # fails when it exists
+
+
+def test_open_a_opens_or_creates(tmp_path: pathlib.Path) -> None:
+    root = str(tmp_path / "a.zarr")
+    made = abczarr.open(root, mode="a", shape=(3,), dtype="u1")  # created
+    assert isinstance(made, abczarr.ZarrArray)
+    again = abczarr.open(root, mode="a")  # opened
+    assert isinstance(again, abczarr.ZarrArray)
+    assert again.shape == (3,)
+
+
+def test_open_r_and_r_plus_error_when_missing(tmp_path: pathlib.Path) -> None:
+    for mode in ("r", "r+"):
+        with pytest.raises(FileNotFoundError):
+            abczarr.open(str(tmp_path / "missing.zarr"), mode=mode)
+
+
+def test_open_r_with_creation_fields_is_an_error(
+    tmp_path: pathlib.Path,
+) -> None:
+    root = str(tmp_path / "a.zarr")
+    abczarr.open(root, mode="w", shape=(4,), dtype="u1")
+    with pytest.raises(TypeError, match="opens an existing node"):
+        abczarr.open(root, mode="r", shape=(4,))
+
+
+def test_open_rejects_an_overwrite_field(tmp_path: pathlib.Path) -> None:
+    with pytest.raises(TypeError, match="overwrite"):
+        abczarr.open(str(tmp_path / "a.zarr"), mode="w", overwrite=True)
+
+
+def test_open_array_create_mode_needs_a_shape(tmp_path: pathlib.Path) -> None:
+    with pytest.raises(TypeError, match="needs at least a shape"):
+        abczarr.open_array(str(tmp_path / "a.zarr"), mode="w")
+
+
+def test_open_array_create_mode_makes_an_array(tmp_path: pathlib.Path) -> None:
+    arr = abczarr.open_array(
+        str(tmp_path / "a.zarr"), mode="w", shape=(5,), dtype="int32"
+    )
+    assert isinstance(arr, abczarr.ZarrArray)
+    assert arr.shape == (5,)
+
+
+def test_open_group_create_mode_makes_a_group(tmp_path: pathlib.Path) -> None:
+    grp = abczarr.open_group(str(tmp_path / "g.zarr"), mode="w")
+    assert isinstance(grp, abczarr.ZarrGroup)
+
+
+def test_open_group_create_mode_rejects_array_fields(
+    tmp_path: pathlib.Path,
+) -> None:
+    with pytest.raises(TypeError, match="no array fields"):
+        abczarr.open_group(str(tmp_path / "g.zarr"), mode="w", shape=(4,))

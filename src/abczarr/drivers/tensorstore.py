@@ -17,9 +17,13 @@ __all__ = [
     "AsyncTensorStoreArray",
 ]
 
+# stdlib
+import json
+
 # dependencies
 import numpy.typing as npt
 import typing_extensions as tx
+from bagof.paths import Path
 
 # core
 from abczarr._core import typing as tz
@@ -30,6 +34,7 @@ from abczarr.abc.async_node import AsyncZarrNode
 from abczarr.abc.capabilities import Support
 from abczarr.abc.group import PathGroup
 from abczarr.abc.node import ZarrNode
+from abczarr.abc.store import AsyncPathBasedStore, PathBasedStore
 from abczarr.api.config import ArrayConfig
 from abczarr.drivers._metadata import metadata_from_dict
 from abczarr.drivers.base import Driver
@@ -230,8 +235,6 @@ def _create_ts_array(
     TensorStore creates from the metadata document, filling in each codec's
     defaults and validating it, which a bare write of the metadata would not.
     """
-    from bagof.paths import Path
-
     if _node_at(Path(str(location))) is not None and not overwrite:
         raise FileExistsError(f"a node already exists at {location}")
     spec = {
@@ -241,6 +244,25 @@ def _create_ts_array(
     }
     array = ts.open(spec, create=True, delete_existing=overwrite).result()
     return TensorStoreArray(array)
+
+
+async def _acreate_ts_array(
+    location: tx.Any, metadata: ArrayMetadata, *, overwrite: bool
+) -> "AsyncTensorStoreArray":
+    """Create the v3 array *metadata* describes at *location* asynchronously.
+
+    Awaits TensorStore's own create future rather than blocking on
+    ``.result()``, then wraps the array as its native async twin.
+    """
+    if _node_at(Path(str(location))) is not None and not overwrite:
+        raise FileExistsError(f"a node already exists at {location}")
+    spec = {
+        "driver": "zarr3",
+        "kvstore": _kvstore_spec(location),
+        "metadata": metadata.to_dict(),
+    }
+    array = await ts.open(spec, create=True, delete_existing=overwrite)
+    return TensorStoreArray(array).as_async()
 
 
 class TensorStoreGroup(TensorStoreNode, PathGroup):
@@ -281,13 +303,13 @@ class TensorStoreDriver(Driver):
     def available(self) -> bool:
         return ts is not None
 
-    def open(self, location: tx.Any, mode: str = "r") -> TensorStoreNode:
+    def _open_sync(self, location: tx.Any, mode: str) -> TensorStoreNode:
         if _peek_node_type(location) == "group":
             return TensorStoreGroup(location, mode)
         return _open_ts_array(location, mode)
 
-    async def open_async(
-        self, location: tx.Any, mode: str = "r"
+    async def _open_async(
+        self, location: tx.Any, mode: str
     ) -> AsyncZarrNode:
         # TensorStore has no group object, so a group opens as the async path
         # group (which lists and navigates through an async store); an array
@@ -296,14 +318,38 @@ class TensorStoreDriver(Driver):
             return TensorStoreGroup(location, mode).as_async()
         return await _aopen_ts_array(location, mode)
 
-    def create_from_metadata(
+    def _create_from_metadata_sync(
         self, location: tx.Any, metadata: NodeMetadata,
         *, overwrite: bool = False,
     ) -> ZarrNode:
         if isinstance(metadata, ArrayMetadata):
             return _create_ts_array(location, metadata, overwrite=overwrite)
         # a group is just a directory; the base's write-then-open handles it
-        return super().create_from_metadata(
+        return super()._create_from_metadata_sync(
+            location, metadata, overwrite=overwrite
+        )
+
+    async def _create_async(
+        self, location: tx.Any, config: "tx.Any"
+    ) -> AsyncZarrNode:
+        # lower the config to metadata (cheap, synchronous) then await
+        # TensorStore's own create future
+        return await self._create_from_metadata_async(
+            location, self._config_metadata(config),
+            overwrite=config.overwrite,
+        )
+
+    async def _create_from_metadata_async(
+        self, location: tx.Any, metadata: NodeMetadata,
+        *, overwrite: bool = False,
+    ) -> AsyncZarrNode:
+        if isinstance(metadata, ArrayMetadata):
+            return await _acreate_ts_array(
+                location, metadata, overwrite=overwrite
+            )
+        # a group is just a directory; the base's thread-bridged create handles
+        # it, opening the async path group over the async store
+        return await super()._create_from_metadata_async(
             location, metadata, overwrite=overwrite
         )
 
@@ -342,10 +388,6 @@ def _peek_node_type(location: tx.Any) -> tx.Optional[str]:
     path, an fsspec URL (``memory://``), or a cloud one (``s3://``). A raw
     kvstore dict spec is not a location to peek, so it returns None.
     """
-    import json
-
-    from abczarr.abc.store import PathBasedStore
-
     if isinstance(location, dict):  # a kvstore spec, not a location
         return None
     try:
@@ -369,10 +411,6 @@ async def _apeek_node_type(location: tx.Any) -> tx.Optional[str]:
     [AsyncPathBasedStore][abczarr.abc.store.AsyncPathBasedStore], so a URL
     (``memory://``, ``s3://``) is inspected exactly like a local path.
     """
-    import json
-
-    from abczarr.abc.store import AsyncPathBasedStore
-
     if isinstance(location, dict):  # a kvstore spec, not a location
         return None
     try:
