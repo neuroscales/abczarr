@@ -65,7 +65,7 @@ class ArrayMetadata(ArrayMetadataV2):
     !!! example
         ```pycon
         >>> from abczarr.metadata import v2
-        >>> meta = v2.ArrayMetadata.from_dict({
+        >>> meta = v2.ArrayMetadata.from_json({
         ...     "zarr_format": 2,
         ...     "shape": [10, 10],
         ...     "chunks": [5, 5],
@@ -96,14 +96,14 @@ class ArrayMetadata(ArrayMetadataV2):
 
     # --- Serialization ---
 
-    def to_dict(self) -> tz.JsonDict:
+    def to_json(self) -> tz.JsonDict:
         """Serialize to `.zarray`, writing `filters` as null when there are
         none.
 
         The model normalizes a missing `filters` to an empty tuple, but the
         Zarr v2 spec wants `null` for no filters, not an empty list.
         """
-        data = super().to_dict()
+        data = super().to_json()
         if not data.get("filters"):
             data["filters"] = None
         return data
@@ -180,7 +180,7 @@ class ArrayMetadata(ArrayMetadataV2):
         # v1 splits the numcodecs codec into a name and an options dict.
         compression = compression_opts = None
         if self.compressor:
-            options = dict(self.compressor.to_dict())
+            options = dict(self.compressor.to_json())
             compression = options.pop("id")
             compression_opts = options or None
 

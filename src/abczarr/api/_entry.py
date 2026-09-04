@@ -414,7 +414,7 @@ def create(
     [GroupMetadata][abczarr.metadata.base.GroupMetadata], the lowered form a
     config would produce -- which is created as it is; there `driver` and
     `overwrite` are the only keywords. For a plain dict, wrap it first with
-    `ArrayMetadata.from_dict(...)` or `ArrayConfig(**...)`.
+    `ArrayMetadata.from_json(...)` or `ArrayConfig(**...)`.
 
     With `asynchronous=True` the return value is a **coroutine you await**: the
     backend creates through its own async I/O and resolves to the coroutine
@@ -478,7 +478,7 @@ async def _acreate(
 _CREATE_TYPE_ERROR = (
     "create() takes a config (ArrayConfig/GroupConfig) or a metadata "
     "document (ArrayMetadata/GroupMetadata); for a dict, wrap it with "
-    "ArrayMetadata.from_dict(...) or ArrayConfig(**...)"
+    "ArrayMetadata.from_json(...) or ArrayConfig(**...)"
 )
 
 
@@ -658,7 +658,7 @@ def _peek_array_metadata(path: tz.PathLike) -> tx.Any:
     if not is_v3_array:
         return None
     try:
-        return v3.ArrayMetadata.from_dict(data)
+        return v3.ArrayMetadata.from_json(data)
     except Exception:
         return None
 
@@ -696,6 +696,6 @@ async def _apeek_array_metadata(path: tz.PathLike) -> tx.Any:
     if not is_v3_array:
         return None
     try:
-        return v3.ArrayMetadata.from_dict(data)
+        return v3.ArrayMetadata.from_json(data)
     except Exception:
         return None

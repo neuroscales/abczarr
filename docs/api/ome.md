@@ -18,7 +18,7 @@ from a plain dict shaped like the JSON the spec defines:
 
 ```pycon
 >>> from abczarr.ome.metadata import v0_5
->>> multiscale = v0_5.Multiscale.from_dict({
+>>> multiscale = v0_5.Multiscale.from_json({
 ...     "name": "nucleus-stain",
 ...     "type": "gaussian",
 ...     "axes": [
@@ -68,7 +68,7 @@ from abczarr.ome.metadata import v0_5
 image = v0_5.OMEImage(
     version="0.5",
     multiscales=[multiscale],
-    omero=v0_5.Omero.from_dict({
+    omero=v0_5.Omero.from_json({
         "channels": [
             {
                 "color": "00FF00",
@@ -94,19 +94,19 @@ screen, wrapped in
 OME-Zarr metadata lives in a group's user attributes, the same
 `attrs` mapping any Zarr group exposes. NGFF 0.5 nests it all under
 one `"ome"` key, so an object round-trips through
-[to_dict][abczarr._core.metadata.Metadata.to_dict] and
-[from_dict][abczarr._core.metadata.Metadata.from_dict] like this:
+[to_json][abczarr._core.metadata.Metadata.to_json] and
+[from_json][abczarr._core.metadata.Metadata.from_json] like this:
 
 ```python
-group.attrs["ome"] = image.to_dict()
+group.attrs["ome"] = image.to_json()
 
-loaded = v0_5.OMEImage.from_dict(group.attrs["ome"])
+loaded = v0_5.OMEImage.from_json(group.attrs["ome"])
 loaded.multiscales[0].axes[0].name  # "c"
 ```
 
 Earlier NGFF versions (0.4 and before) write the same fields directly
 at the top level of `attrs` instead of nesting them under `"ome"`:
-`group.attrs.update(image.to_dict())`.
+`group.attrs.update(image.to_json())`.
 
 ## Converting between NGFF versions
 
@@ -117,7 +117,7 @@ of metadata alike:
 
 ```pycon
 >>> from abczarr.ome.metadata import v0_4
->>> old = v0_4.Multiscale.from_dict({
+>>> old = v0_4.Multiscale.from_json({
 ...     "version": "0.4",
 ...     "axes": [
 ...         {"name": "y", "type": "space"},
@@ -150,7 +150,7 @@ not carry raises `ValueError` rather than guessing.
 !!! example
     ```pycon
     >>> from abczarr.ome.metadata import v0_2
-    >>> untyped = v0_2.Multiscale.from_dict({
+    >>> untyped = v0_2.Multiscale.from_json({
     ...     "version": "0.2",
     ...     "name": "x",
     ...     "datasets": [{"path": "0"}],

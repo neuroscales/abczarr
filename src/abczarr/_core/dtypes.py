@@ -99,8 +99,8 @@ def asdtype(
         The converted numpy dtype.
     """
     # Our DType metadata -> dict
-    if hasattr(dtype, "to_dict"):
-        dtype = dtype.to_dict()
+    if hasattr(dtype, "to_json"):
+        dtype = dtype.to_json()
 
     # Dictionaries are Zarr v3 data type extensions
     if isinstance(dtype, abc.Mapping):

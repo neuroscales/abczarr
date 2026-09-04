@@ -38,7 +38,7 @@ from abczarr.abc.asynchronous import (
 from abczarr.abc.capabilities import Support
 from abczarr.abc.sync import ZarrArray, ZarrGroup, ZarrNode
 from abczarr.api.config import ArrayConfig
-from abczarr.drivers._metadata import metadata_from_dict
+from abczarr.drivers._metadata import metadata_from_json
 from abczarr.drivers.base import Driver
 
 # optionals -- the module imports without zarr; a driver with no zarr simply
@@ -300,7 +300,7 @@ class ZarrPythonNode(ZarrNode):
     @property
     def metadata(self) -> tx.Any:
         # read live from the wrapped zarr object, which keeps its own cache
-        return metadata_from_dict(self._obj.metadata.to_dict())
+        return metadata_from_json(self._obj.metadata.to_dict())
 
     # attrs and update_attributes are inherited from ZarrNode: reads come from
     # the metadata above (zarr-python's live cache), and a write is delegated

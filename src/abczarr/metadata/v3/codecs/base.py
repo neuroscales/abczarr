@@ -21,13 +21,13 @@ class CodecConfig(TypedConfig):
 
 @autofrozen(extra_items=False)
 class CodecConfigImpl(CodecConfig):
-    def to_dict(self) -> tz.JsonDict:
+    def to_json(self) -> tz.JsonDict:
         # A codec configuration names only the fields the codec has, and the
         # codec schemas allow no other keys and no nulls. An unset optional
         # field (None) is therefore omitted rather than written as null.
         return {
             key: value
-            for key, value in super().to_dict().items()
+            for key, value in super().to_json().items()
             if value is not None
         }
 
@@ -50,11 +50,11 @@ def _v2_id(name: str) -> str:
 class Codec(Extension):
     configuration: CodecConfig
 
-    def to_dict(self) -> tz.JsonDict:
+    def to_json(self) -> tz.JsonDict:
         # A codec with no configuration parameters (crc32c, or a bytes codec
         # for a single-byte dtype) is written as a bare name, not with an
         # empty configuration object.
-        obj = super().to_dict()
+        obj = super().to_json()
         if obj.get("configuration") == {}:
             obj.pop("configuration")
         return obj
@@ -67,13 +67,13 @@ class Codec(Extension):
             return self.to_version(2).to_version(1)
         if version == 2:
             from abczarr.metadata.v2 import Codec as CodecV2
-            as_dict = self.to_dict()
+            as_dict = self.to_json()
             if isinstance(as_dict, str):
                 as_dict = {"id": _v2_id(as_dict)}
             else:
                 config = as_dict.get("configuration") or {}
                 as_dict = {"id": _v2_id(as_dict["name"]), **config}
-            return CodecV2.from_dict(as_dict)
+            return CodecV2.from_json(as_dict)
         else:
             raise ValueError(f"Unsupported version: {version}")
 

@@ -6,7 +6,7 @@ abczarr metadata. Shared by the backend drivers so they agree on the mapping.
 """
 
 __all__ = [
-    "metadata_from_dict",
+    "metadata_from_json",
 ]
 
 # dependencies
@@ -16,7 +16,7 @@ import typing_extensions as tx
 from abczarr._core import typing as tz
 
 
-def metadata_from_dict(data: tz.JsonDict) -> tx.Any:
+def metadata_from_json(data: tz.JsonDict) -> tx.Any:
     """Build the abczarr metadata for a node from its metadata dict.
 
     The Zarr format version and node type in *data* choose the class.
@@ -33,9 +33,9 @@ def metadata_from_dict(data: tz.JsonDict) -> tx.Any:
             2: v2.ArrayMetadata,
             3: v3.ArrayMetadata,
         }[zarr_format]
-        return array_cls.from_dict(data)
+        return array_cls.from_json(data)
     group_cls = {
         2: base.GroupMetadataV2,
         3: base.GroupMetadataV3,
     }.get(zarr_format, base.GroupMetadata)
-    return group_cls.from_dict(data)
+    return group_cls.from_json(data)

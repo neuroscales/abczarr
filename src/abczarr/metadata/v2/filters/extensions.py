@@ -38,7 +38,7 @@ class BitroundFilter(FilterImpl):
             return self
         if version == 3:
             from abczarr.metadata.v3 import BitroundCodec
-            return BitroundCodec.from_dict({
+            return BitroundCodec.from_json({
                 "name": self.id,
                 "configuration": {
                     "keepbits": self.keepbits
@@ -57,7 +57,7 @@ class PackBitsFilter(FilterImpl):
             return self
         if version == 3:
             from abczarr.metadata.v3 import PackBitsCodec
-            return PackBitsCodec.from_dict({
+            return PackBitsCodec.from_json({
                 "name": self.id,
                 "configuration": {
                     "padding_encoding": "first_byte",
@@ -84,7 +84,7 @@ class ScaleOffsetFilter(FilterImpl):
             # self.id ("fixedscaleoffset") is the numcodecs id, not the v3
             # codec name; ScaleOffsetCodec supplies its own single name.
             from abczarr.metadata.v3 import ScaleOffsetCodec
-            return ScaleOffsetCodec.from_dict({
+            return ScaleOffsetCodec.from_json({
                 "configuration": {
                     "offset": self.offset,
                     "scale": self.scale,
@@ -107,7 +107,7 @@ class AsTypeFilter(FilterImpl):
             # self.id ("astype") is the numcodecs id, not the v3 codec name;
             # CastValueCodec supplies its own single name.
             from abczarr.metadata.v3 import CastValueCodec
-            return CastValueCodec.from_dict({
+            return CastValueCodec.from_json({
                 "configuration": {
                     "data_type": dtype_to_zarr3(self.encode_dtype),
                     "rounding": "towards-zero",
@@ -131,7 +131,7 @@ class CategorizeFilter(FilterImpl):
             # self.id ("categorize") is the numcodecs id, not the v3 codec
             # name; CastValueCodec supplies its own single name.
             from abczarr.metadata.v3 import CastValueCodec
-            return CastValueCodec.from_dict({
+            return CastValueCodec.from_json({
                 "configuration": {
                     "data_type": dtype_to_zarr3(self.dtype),
                     "rounding": "towards-zero",

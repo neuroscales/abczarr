@@ -97,20 +97,20 @@ def test_v2_v3_roundtrip_over_real_dtypes(dtype: str) -> None:
         "dimension_separator": ".",
         "attributes": {},
     }
-    m2 = v2.ArrayMetadata.from_dict(meta)
+    m2 = v2.ArrayMetadata.from_json(meta)
     assert m2.to_version(3).to_version(2) == m2
 
 
 def test_v2_labels_array_roundtrips_through_v3() -> None:
     # v3 has both filters and a chunk-key separator, so a filtered v2 array
     # survives the trip through it unchanged
-    m2 = v2.ArrayMetadata.from_dict(_V2_LABELS)
+    m2 = v2.ArrayMetadata.from_json(_V2_LABELS)
     assert m2.to_version(3).to_version(2) == m2
 
 
 def test_v2_labels_array_to_v1_reports_filter_loss() -> None:
     # v1 predates filters, so the delta filter cannot survive the conversion
-    m2 = v2.ArrayMetadata.from_dict(_V2_LABELS)
+    m2 = v2.ArrayMetadata.from_json(_V2_LABELS)
     with pytest.warns(UserWarning, match="filters"):
         m1 = m2.to_version(1, policy="warn")
     # what v1 can hold does carry over
@@ -119,7 +119,7 @@ def test_v2_labels_array_to_v1_reports_filter_loss() -> None:
 
 
 def test_v3_sharded_volume_to_v2_reports_sharding_loss() -> None:
-    m3 = v3.ArrayMetadata.from_dict(_V3_SHARDED_VOLUME)
+    m3 = v3.ArrayMetadata.from_json(_V3_SHARDED_VOLUME)
     # the shard grid has no v2 equivalent
     with pytest.warns(UserWarning, match="sharding"):
         m2 = m3.to_version(2, policy="warn")
@@ -131,7 +131,7 @@ def test_v3_sharded_volume_to_v2_reports_sharding_loss() -> None:
 
 
 def test_v1_array_roundtrips_up_to_v3() -> None:
-    m1 = v1.ArrayMetadata.from_dict(
+    m1 = v1.ArrayMetadata.from_json(
         {
             "zarr_format": 1,
             "shape": [1000, 1000],
@@ -239,8 +239,8 @@ _WELL = {
     ],
 )
 def test_ome_structures_roundtrip_through_dict(cls: type, data: dict) -> None:
-    m = cls.from_dict(data)
-    assert cls.from_dict(m.to_dict()) == m
+    m = cls.from_json(data)
+    assert cls.from_json(m.to_json()) == m
 
 
 @pytest.mark.parametrize(
@@ -253,13 +253,13 @@ def test_ome_structures_roundtrip_through_dict(cls: type, data: dict) -> None:
     ],
 )
 def test_ome_structures_roundtrip_v04_v05(cls: type, data: dict) -> None:
-    m = cls.from_dict(data)
+    m = cls.from_json(data)
     assert m.to_version("0.5").to_version("0.4") == m
 
 
 def test_5d_multiscale_roundtrips_v03_v04_v05() -> None:
     # start from v0.3 (bare axis names), climb to v0.5 and back
-    m3 = v0_3.Multiscale.from_dict(
+    m3 = v0_3.Multiscale.from_json(
         {
             "version": "0.3",
             "name": "embryo",
@@ -272,7 +272,7 @@ def test_5d_multiscale_roundtrips_v03_v04_v05() -> None:
 
 
 def test_multiscale_scale_transforms_survive_conversion() -> None:
-    m4 = v0_4.Multiscale.from_dict(_MULTISCALE_5D)
+    m4 = v0_4.Multiscale.from_json(_MULTISCALE_5D)
     m5 = m4.to_version("0.5")
     scales = [
         d.coordinateTransformations[0].scale for d in m5.datasets

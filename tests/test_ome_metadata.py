@@ -42,7 +42,7 @@ _MULTISCALE_V05 = {
     ],
 )
 def test_ome_multiscale_builds(cls: type, data: dict) -> None:
-    m = cls.from_dict(data)
+    m = cls.from_json(data)
     assert [a.name for a in m.axes] == ["y", "x"]
     assert m.datasets[0].path == "0"
 
@@ -57,8 +57,8 @@ def test_ome_multiscale_builds(cls: type, data: dict) -> None:
 def test_ome_multiscale_roundtrips_through_dict(
     cls: type, data: dict
 ) -> None:
-    m = cls.from_dict(data)
-    assert cls.from_dict(m.to_dict()) == m
+    m = cls.from_json(data)
+    assert cls.from_json(m.to_json()) == m
 
 
 # --------------------------------------------------------------------------
@@ -67,7 +67,7 @@ def test_ome_multiscale_roundtrips_through_dict(
 
 
 def test_multiscale_converts_v04_to_v05_and_back() -> None:
-    m4 = v0_4.Multiscale.from_dict(_MULTISCALE_V04)
+    m4 = v0_4.Multiscale.from_json(_MULTISCALE_V04)
     m5 = m4.to_version("0.5")
     assert type(m5).__module__.endswith("v0_5.images")
     assert [a.name for a in m5.axes] == ["y", "x"]
@@ -85,12 +85,12 @@ def test_omero_converts_v04_to_v05_and_back() -> None:
             }
         ]
     }
-    o4 = v0_4.Omero.from_dict(data)
+    o4 = v0_4.Omero.from_json(data)
     assert o4.to_version("0.5").to_version("0.4") == o4
 
 
 def test_conversion_to_absent_version_raises() -> None:
-    m4 = v0_4.Multiscale.from_dict(_MULTISCALE_V04)
+    m4 = v0_4.Multiscale.from_json(_MULTISCALE_V04)
     with pytest.raises(ValueError, match="Unknown OME version"):
         m4.to_version("9.9")
 
@@ -111,7 +111,7 @@ _MULTISCALE_V03 = {
 def test_multiscale_v03_to_v04_types_the_axes() -> None:
     from abczarr.ome.metadata import v0_3
 
-    m3 = v0_3.Multiscale.from_dict(_MULTISCALE_V03)
+    m3 = v0_3.Multiscale.from_json(_MULTISCALE_V03)
     m4 = m3.to_version("0.4")
     assert [(a.name, a.type) for a in m4.axes] == [
         ("t", "time"),
@@ -129,7 +129,7 @@ def test_multiscale_v03_to_v04_types_the_axes() -> None:
 def test_multiscale_v03_roundtrips_up_and_back(target: str) -> None:
     from abczarr.ome.metadata import v0_3
 
-    m3 = v0_3.Multiscale.from_dict(_MULTISCALE_V03)
+    m3 = v0_3.Multiscale.from_json(_MULTISCALE_V03)
     # chains v0.3 -> v0.4 (-> v0.5) and back
     assert m3.to_version(target).to_version("0.3") == m3
 
@@ -137,15 +137,15 @@ def test_multiscale_v03_roundtrips_up_and_back(target: str) -> None:
 def test_down_conversion_drops_axes() -> None:
     from abczarr.ome.metadata import v0_3
 
-    m3 = v0_3.Multiscale.from_dict(_MULTISCALE_V03)
+    m3 = v0_3.Multiscale.from_json(_MULTISCALE_V03)
     m2 = m3.to_version("0.2")
-    assert "axes" not in m2.to_dict()
+    assert "axes" not in m2.to_json()
 
 
 def test_underdetermined_up_conversion_raises_clearly() -> None:
     from abczarr.ome.metadata import v0_2
 
-    m2 = v0_2.Multiscale.from_dict(
+    m2 = v0_2.Multiscale.from_json(
         {
             "version": "0.2",
             "name": "x",
@@ -159,7 +159,7 @@ def test_underdetermined_up_conversion_raises_clearly() -> None:
 
 
 # --------------------------------------------------------------------------
-# base.OME.from_dict dispatches by the data's declared version, not by which
+# base.OME.from_json dispatches by the data's declared version, not by which
 # version package happened to import last
 # --------------------------------------------------------------------------
 
@@ -191,7 +191,7 @@ def test_base_ome_from_dict_routes_by_version(
     from abczarr.ome.metadata import base
 
     data = {"version": version, "bioformats2raw_layout": 3, "plate": _PLATE}
-    obj = base.OME.from_dict(data)
+    obj = base.OME.from_json(data)
     assert type(obj).__module__ == f"abczarr.ome.metadata.{package}.ome"
 
 
@@ -201,14 +201,14 @@ def test_base_ome_from_dict_rejects_versionless_metadata() -> None:
     from abczarr.ome.metadata import base
 
     with pytest.raises(ValueError, match="version"):
-        base.OME.from_dict({"bioformats2raw_layout": 3, "plate": _PLATE})
+        base.OME.from_json({"bioformats2raw_layout": 3, "plate": _PLATE})
 
 
 def test_base_ome_from_dict_rejects_unknown_version() -> None:
     from abczarr.ome.metadata import base
 
     with pytest.raises(ValueError, match="Unknown OME version"):
-        base.OME.from_dict({"version": "9.9"})
+        base.OME.from_json({"version": "9.9"})
 
 
 def test_per_version_ome_from_dict_still_dispatches() -> None:
@@ -217,4 +217,4 @@ def test_per_version_ome_from_dict_still_dispatches() -> None:
     from abczarr.ome.metadata import base, v0_5
 
     data = {"version": "0.5", "bioformats2raw_layout": 3, "plate": _PLATE}
-    assert type(base.OME.from_dict(data)) is type(v0_5.OME.from_dict(data))
+    assert type(base.OME.from_json(data)) is type(v0_5.OME.from_json(data))

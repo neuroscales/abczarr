@@ -31,7 +31,7 @@ from abczarr._core.features import FEATURE_KINDS, FEATURE_VERSIONS
 from abczarr.abc.capabilities import Support
 from abczarr.abc.store import PathBasedStore
 from abczarr.abc.sync import PathGroup, ZarrArray, ZarrNode
-from abczarr.drivers._metadata import metadata_from_dict
+from abczarr.drivers._metadata import metadata_from_json
 from abczarr.drivers.base import Driver
 
 # optionals -- the module imports without zarrista; a driver with no zarrista
@@ -112,7 +112,7 @@ class ZarristaArray(ZarristaNode, ZarrArray):
         # updates this cache; zarrista's own copy would not see a store-routed
         # rewrite)
         if self._cached_metadata is None:
-            self._cached_metadata = metadata_from_dict(self._array.metadata)
+            self._cached_metadata = metadata_from_json(self._array.metadata)
         return self._cached_metadata
 
     @property

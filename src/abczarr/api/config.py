@@ -258,7 +258,7 @@ class ArrayConfig(ZarrConfig):
             "fill_value": _resolve_fill(config.fill_value, config.dtype),
             "attributes": dict(config.attributes),
         }
-        result = ArrayMetadata.from_dict(metadata).to_version(
+        result = ArrayMetadata.from_json(metadata).to_version(
             config.zarr_version
         )
         # order is Zarr v2 metadata; v3 treats it as a runtime memory layout,

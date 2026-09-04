@@ -196,7 +196,7 @@ class ArrayMetadata(ArrayMetadataV3):
     !!! example
         ```pycon
         >>> from abczarr.metadata import v1
-        >>> meta = v1.ArrayMetadata.from_dict({
+        >>> meta = v1.ArrayMetadata.from_json({
         ...     "zarr_format": 1,
         ...     "shape": [10],
         ...     "chunks": [5],
@@ -231,7 +231,7 @@ class ArrayMetadata(ArrayMetadataV3):
 
     # --- Serialization ---
 
-    def to_dict(self) -> tz.JsonDict:
+    def to_json(self) -> tz.JsonDict:
         """Serialize to ``zarr.json``, omitting the optional fields that carry
         nothing.
 
@@ -239,7 +239,7 @@ class ArrayMetadata(ArrayMetadataV3):
         the document when they are unset, rather than writing ``null`` or an
         empty list, and a strict reader (TensorStore) requires that.
         """
-        data = super().to_dict()
+        data = super().to_json()
         if data.get("dimension_names") is None:
             data.pop("dimension_names", None)
         if not data.get("storage_transformers"):
@@ -415,7 +415,7 @@ def _to_v2(
     # array->array codecs become v2 filters -- a distinct hierarchy from the
     # v2 compressor, so route them through the filter registry rather than
     # leaving them as v2 codecs.
-    filters = [v2.Filter.from_dict(c.to_version(2).to_dict()) for c in pre]
+    filters = [v2.Filter.from_json(c.to_version(2).to_json()) for c in pre]
 
     # v2 holds a single bytes->bytes compressor; any extra is a loss
     compressor = None

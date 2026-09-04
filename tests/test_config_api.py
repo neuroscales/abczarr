@@ -37,12 +37,12 @@ def test_minus_one_means_the_whole_axis() -> None:
 
 def test_auto_fill_value_lowers_to_the_dtype_zero() -> None:
     metadata = ArrayConfig(shape=(4,), dtype="float32").to_metadata()
-    assert metadata.to_dict()["fill_value"] == 0.0
+    assert metadata.to_json()["fill_value"] == 0.0
 
 
 def test_auto_compressor_lowers_to_zstd() -> None:
     metadata = ArrayConfig(shape=(4,), dtype="uint8").to_metadata()
-    names = [codec.get("name") for codec in metadata.to_dict()["codecs"]]
+    names = [codec.get("name") for codec in metadata.to_json()["codecs"]]
     assert "zstd" in names
 
 
@@ -50,7 +50,7 @@ def test_no_compressor_leaves_only_the_bytes_codec() -> None:
     metadata = ArrayConfig(
         shape=(4,), dtype="uint8", compressor=None
     ).to_metadata()
-    names = [codec.get("name") for codec in metadata.to_dict()["codecs"]]
+    names = [codec.get("name") for codec in metadata.to_json()["codecs"]]
     assert names == ["bytes"]
 
 
@@ -79,7 +79,7 @@ def test_default_zstd_compressor_writes_a_full_configuration() -> None:
     meta = ArrayConfig(
         shape=(4, 4), dtype="float32", chunks=(2, 2)
     ).to_metadata()
-    zstd = [c for c in meta.to_dict()["codecs"] if c["name"] == "zstd"]
+    zstd = [c for c in meta.to_json()["codecs"] if c["name"] == "zstd"]
     assert zstd == [
         {"name": "zstd", "configuration": {"level": 0, "checksum": False}}
     ]
@@ -91,11 +91,11 @@ def test_zstd_survives_a_round_trip_through_v2() -> None:
     meta = ArrayConfig(
         shape=(4, 4), dtype="float32", chunks=(2, 2)
     ).to_metadata()
-    m3 = v3.ArrayMetadata.from_dict(meta.to_dict())
+    m3 = v3.ArrayMetadata.from_json(meta.to_json())
     # v2's numcodecs zstd carries only the level; it comes back in full
     again = m3.to_version(2).to_version(3)
     zstd = [
-        c.to_dict() for c in again.codecs
+        c.to_json() for c in again.codecs
         if getattr(c, "name", "") == "zstd"
     ]
     assert zstd == [
@@ -108,7 +108,7 @@ def _codecs(**kw: object) -> list:
     meta = ArrayConfig(
         shape=(4, 4), dtype=dtype, chunks=(2, 2), **kw
     ).to_metadata()
-    return meta.to_dict()["codecs"]
+    return meta.to_json()["codecs"]
 
 
 def _named(codecs: list, name: str) -> dict:
@@ -153,5 +153,5 @@ def test_crc32c_is_written_as_a_bare_name() -> None:
     meta = ArrayConfig(
         shape=(8, 8), dtype="float32", chunks=(2, 2), shards=(4, 4)
     ).to_metadata()
-    index = meta.to_dict()["codecs"][0]["configuration"]["index_codecs"]
+    index = meta.to_json()["codecs"][0]["configuration"]["index_codecs"]
     assert {"name": "crc32c"} in index

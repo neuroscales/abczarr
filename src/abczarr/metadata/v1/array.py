@@ -47,7 +47,7 @@ class ArrayMetadata(ArrayMetadataV1):
     !!! example
         ```pycon
         >>> from abczarr.metadata import v1
-        >>> meta = v1.ArrayMetadata.from_dict({
+        >>> meta = v1.ArrayMetadata.from_json({
         ...     "zarr_format": 1,
         ...     "shape": [10],
         ...     "chunks": [5],

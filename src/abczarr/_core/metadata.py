@@ -124,18 +124,18 @@ class Metadata:
 
     # --- JSON conversion ----------------------------------------------
 
-    def to_dict(self) -> tz.JsonDict:
+    def to_json(self) -> tz.JsonDict:
         """Convert this metadata to a JSON-serializable dict.
 
         Serializes this object's own fields. A nested metadata value is
-        serialized through its own `to_dict`, so a subclass that overrides it
+        serialized through its own `to_json`, so a subclass that overrides it
         (an [Extension][abczarr.metadata.v3.extensions.Extension] that writes
         itself as a bare name) is respected.
         """
         return _serialize_meta(self)
 
     @classmethod
-    def from_dict(cls, data: tz.JsonDict) -> tx.Self:
+    def from_json(cls, data: tz.JsonDict) -> tx.Self:
         """Create an instance from a JSON-serializable dict."""
 
         # If not a dict, try to interpret it as a positional argument
@@ -178,7 +178,7 @@ class Metadata:
                 cls = subcls
                 break
 
-        # Split known fields from extra fields (on a copy -- from_dict must
+        # Split known fields from extra fields (on a copy -- from_json must
         # not mutate the caller's dict)
         data = dict(data)
         filtered_data = {}
@@ -230,7 +230,7 @@ def _serialize_dict(x: tx.Mapping) -> tx.Dict[str, tz.Json]:
 
 
 def _serialize_meta(x: "Metadata") -> tx.Dict[str, tz.Json]:
-    """Serialize a metadata object's own fields (not respecting a to_dict
+    """Serialize a metadata object's own fields (not respecting a to_json
     override on *x* itself -- that is the caller's job)."""
     extra = getattr(x, "extra_items", False)
     out = {
@@ -245,9 +245,9 @@ def _serialize_meta(x: "Metadata") -> tx.Dict[str, tz.Json]:
 
 def _to_json(obj: tx.Any) -> tz.Json:
     if _is_metadata(obj):
-        # delegate to the value's own to_dict, so a subclass that serializes
+        # delegate to the value's own to_json, so a subclass that serializes
         # itself specially (an Extension written as a bare name) is honored
-        return obj.to_dict()
+        return obj.to_json()
     elif isinstance(obj, np.dtype):
         # a numpy dtype is not JSON: emit its zarr string form ("<f8")
         return obj.str
@@ -313,6 +313,6 @@ class MetadataConverter(Converter[METADATA, METADATALIKE]):
         if isinstance(fallback, type) and isinstance(value, fallback):
             return value
         elif isinstance(value, abc.Mapping):
-            return fallback.from_dict(value)
+            return fallback.from_json(value)
         else:
             return fallback(value)
