@@ -23,6 +23,19 @@ Versions accept either the `abczarr` spelling (`"v0_6rc0"`) or the
 official NGFF string (`"0.6rc0"`, `"0.6.dev1"`). NGFF 0.2 never published
 a distinct schema, so its validators use the reconstruction described in
 `_ngff/README.md`.
+
+fastjsonschema (2.x) does not implement the `minContains`/`maxContains`
+bounds the schemas place on `contains` (the "2-3 space axes" rule, 0.4 on;
+"at most one scale transform"), so a second pass in `_contains.py` enforces
+them after the compiled validator runs -- a multiscales image with too many
+or too few space axes is rejected here. That count bound is scoped to image
+axes: the 0.6 schemas reuse `axes.schema` for a coordinate system's axes
+too, but a general N-D coordinate system is not held to the image rule. The
+one bound fastjsonschema handles
+*differently* rather than ignoring is `minContains: 0` (0.6.dev1's axes
+schema, permitting zero space axes): its built-in `contains` check requires
+at least one match regardless, so such a document is rejected -- an
+over-strict corner of a dev pre-release, independent of that second pass.
 """
 
 __all__ = [
@@ -43,6 +56,7 @@ import typing_extensions as tx
 
 # core
 from abczarr.errors import SchemaValidationError
+from abczarr.ome.schemas import _contains
 
 _HERE = pathlib.Path(__file__).parent
 _DATA = _HERE / "_ngff"
@@ -191,17 +205,21 @@ def _compile(
     compiled = fastjsonschema.compile(
         registry[root_uri], handlers={"https": handler}
     )
+    root_schema = registry[root_uri]
     label = f"OME-NGFF {segment} {document}"
 
     def _validate(instance: tx.Any) -> tx.Any:  # noqa: ANN401
         try:
-            return compiled(instance)
+            compiled(instance)
         except fastjsonschema.JsonSchemaException as exc:
             raise SchemaValidationError(
                 f"{label}: {exc.message}",
                 schema=label,
                 path=getattr(exc, "name", None),
             ) from exc
+        # fastjsonschema ignores minContains/maxContains; enforce them here.
+        _contains.enforce(instance, root_schema, registry, label)
+        return instance
 
     return _validate
 
