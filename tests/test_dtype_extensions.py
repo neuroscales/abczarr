@@ -20,7 +20,7 @@ import pytest
 # package
 import abczarr._core.dtypes as dtypes_mod
 from abczarr._core.dtypes import asdtype
-from abczarr.errors import UnsupportedConversion
+from abczarr._errors import UnsupportedConversion
 from abczarr.metadata import v3
 
 

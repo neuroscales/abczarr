@@ -12,7 +12,7 @@ import pytest
 zarr = pytest.importorskip("zarr")
 
 import abczarr  # noqa: E402
-from abczarr.api.config import ArrayConfig, GroupConfig  # noqa: E402
+from abczarr.api._config import ArrayConfig, GroupConfig  # noqa: E402
 from abczarr.drivers.zarr_python import ZarrPythonArray  # noqa: E402
 
 

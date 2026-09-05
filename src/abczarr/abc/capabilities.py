@@ -55,7 +55,7 @@ class Support(enum.Enum):
     correct, but possibly slower than a backend that does it
     directly.
     `NONE` -- not available; the operation raises
-    [UnsupportedZarrOperation][abczarr.errors.UnsupportedZarrOperation].
+    [UnsupportedZarrOperation][abczarr._errors.UnsupportedZarrOperation].
 
     `bool(support)` is `True` unless it is `NONE`, so a plain truth
     test answers "can this happen at all?".

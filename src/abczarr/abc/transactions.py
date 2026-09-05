@@ -82,7 +82,7 @@ class Transaction(ABC):
 
         Raises
         ------
-        [TransactionConflict][abczarr.errors.TransactionConflict]
+        [TransactionConflict][abczarr._errors.TransactionConflict]
             If the store moved on underneath this transaction.
         """
         ...

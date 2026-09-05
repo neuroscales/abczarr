@@ -11,8 +11,8 @@ import pathlib
 
 import pytest
 
+from abczarr._errors import UnsupportedZarrOperation
 from abczarr.abc.sync import PathGroup
-from abczarr.errors import UnsupportedZarrOperation
 from abczarr.metadata.base import (
     ArrayMetadataV1,
     ArrayMetadataV2,

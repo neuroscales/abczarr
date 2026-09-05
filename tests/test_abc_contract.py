@@ -9,7 +9,8 @@ import pathlib
 import pytest
 from bagof.paths import Path
 
-from abczarr import UnsupportedZarrOperation, errors
+from abczarr import UnsupportedZarrOperation
+from abczarr import _errors as errors
 from abczarr.abc import sync
 from abczarr.abc.sync import KNOWN_CAPABILITIES, Support, ZarrNode
 

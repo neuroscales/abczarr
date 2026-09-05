@@ -23,7 +23,7 @@ import json
 # dependencies
 import typing_extensions as tx
 
-from abczarr.errors import UnsupportedZarrOperation
+from abczarr._errors import UnsupportedZarrOperation
 
 # locals
 from .._core import constants
@@ -39,8 +39,8 @@ from ..abc.sync import ZarrArray, ZarrGroup, ZarrNode
 from ..drivers.base import Driver
 from ..metadata import v3
 from ..metadata.base import ArrayMetadata, NodeMetadata
-from .config import ArrayConfig, GroupConfig, ZarrConfig
-from .registry import available_drivers, select_driver
+from ._config import ArrayConfig, GroupConfig, ZarrConfig
+from ._registry import available_drivers, select_driver
 
 _DriverArg = tx.Optional[tx.Union[str, Driver]]
 
@@ -59,8 +59,8 @@ _METADATA_KEYS = (
 
 
 def _array_only_fields() -> "tx.FrozenSet[str]":
-    """The [ArrayConfig][abczarr.api.config.ArrayConfig] fields that a
-    [GroupConfig][abczarr.api.config.GroupConfig] does not have -- the fields
+    """The [ArrayConfig][abczarr.api._config.ArrayConfig] fields that a
+    [GroupConfig][abczarr.api._config.GroupConfig] does not have -- the fields
     whose presence means the caller is describing an array, not a group."""
     group_names = {f.name for f in fields(GroupConfig)}
     return frozenset(
@@ -201,8 +201,8 @@ def open(
 
     On a create mode the keyword *fields* describe the new node -- the same
     fields [create][abczarr.api.create],
-    [ArrayConfig][abczarr.api.config.ArrayConfig] and
-    [GroupConfig][abczarr.api.config.GroupConfig] accept. Array parameters
+    [ArrayConfig][abczarr.api._config.ArrayConfig] and
+    [GroupConfig][abczarr.api._config.GroupConfig] accept. Array parameters
     (a `shape`, a `dtype`, ...) create an array; with none, an empty group is
     created.
 
@@ -243,8 +243,8 @@ def open(
         is chosen for what the node needs.
     **fields
         Creation parameters, consulted only on a create mode -- the fields an
-        [ArrayConfig][abczarr.api.config.ArrayConfig] or
-        [GroupConfig][abczarr.api.config.GroupConfig] accepts.
+        [ArrayConfig][abczarr.api._config.ArrayConfig] or
+        [GroupConfig][abczarr.api._config.GroupConfig] accepts.
 
     Returns
     -------
@@ -411,8 +411,8 @@ def create(
 ) -> tx.Union[ZarrNode, tx.Awaitable[AsyncZarrNode]]:
     """Create the array or group *config* describes at *location*.
 
-    *config* is usually an [ArrayConfig][abczarr.api.config.ArrayConfig]
-    (creates an array) or a [GroupConfig][abczarr.api.config.GroupConfig]
+    *config* is usually an [ArrayConfig][abczarr.api._config.ArrayConfig]
+    (creates an array) or a [GroupConfig][abczarr.api._config.GroupConfig]
     (creates a
     group), and keyword arguments override its fields; the backend creates the
     node natively. For full control beyond what the config helpers express,
@@ -526,7 +526,7 @@ def create_group(
 ) -> tx.Union[ZarrGroup, tx.Awaitable[AsyncZarrGroup]]:
     """Create a group at *location*, the metadata-free way.
 
-    Pass a [GroupConfig][abczarr.api.config.GroupConfig] as *config*, or its
+    Pass a [GroupConfig][abczarr.api._config.GroupConfig] as *config*, or its
     fields (`zarr_version`, `overwrite`, ...) as keyword arguments. With
     `asynchronous=True` the return value is a coroutine resolving to the async
     group twin, mirroring async [create][abczarr.api.create].
@@ -572,7 +572,7 @@ def create_array(
 ) -> tx.Union[ZarrArray, tx.Awaitable[AsyncZarrArray]]:
     """Create an array at *location*, the metadata-free way.
 
-    Pass an [ArrayConfig][abczarr.api.config.ArrayConfig] as *config*, or its
+    Pass an [ArrayConfig][abczarr.api._config.ArrayConfig] as *config*, or its
     fields (`shape`, `dtype`, `chunks`, ...) as keyword arguments. At least a
     `shape` (and a `dtype`) is needed to describe the array; a request with no
     array fields is a group, so use [create_group][abczarr.api.create_group]

@@ -47,7 +47,7 @@ from abczarr._core import constants
 from abczarr._core import typing as tz
 from abczarr._core.asyncutils import run_sync
 from abczarr._core.attributes import NodeAttributes, attribute_writes
-from abczarr.api.config import ArrayConfig, ArrayOptions
+from abczarr.api._config import ArrayConfig, ArrayOptions
 from abczarr.metadata.base import NodeMetadata
 
 # locals

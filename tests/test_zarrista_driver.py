@@ -14,8 +14,8 @@ pytest.importorskip("zarrista")
 
 import abczarr  # noqa: E402
 from abczarr.abc.capabilities import Support  # noqa: E402
-from abczarr.api.config import ArrayConfig  # noqa: E402
-from abczarr.api.registry import available_drivers  # noqa: E402
+from abczarr.api._config import ArrayConfig  # noqa: E402
+from abczarr.api._registry import available_drivers  # noqa: E402
 from abczarr.drivers.zarrista import (  # noqa: E402
     ZarristaArray,
     ZarristaDriver,

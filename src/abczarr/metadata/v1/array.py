@@ -19,7 +19,7 @@ import typing_extensions as tx
 from abczarr._core import typing as tz
 from abczarr._core.auto.attrs import autofrozen, eq_safenan, field
 from abczarr._core.features import feature_key
-from abczarr.errors import UnsupportedConversion
+from abczarr._errors import UnsupportedConversion
 from abczarr.metadata import base
 from abczarr.metadata.base import ConversionPolicy, register_subclass
 
@@ -180,7 +180,7 @@ class ArrayMetadata(ArrayMetadataV1):
         is placed under the option that codec fills it into (``zlib`` ``1``
         -> ``{"level": 1}``; ``lz4`` -> ``acceleration``; ``blosc`` ``"lz4"``
         -> ``cname``). A codec with no scalar form raises
-        [UnsupportedConversion][abczarr.errors.UnsupportedConversion]. No
+        [UnsupportedConversion][abczarr._errors.UnsupportedConversion]. No
         compression means no options.
         """
         opts = self.compression_opts

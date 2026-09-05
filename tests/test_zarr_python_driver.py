@@ -8,10 +8,10 @@ import pytest
 
 zarr = pytest.importorskip("zarr")
 
+from abczarr._errors import UnsupportedZarrOperation  # noqa: E402
 from abczarr.abc.capabilities import Support  # noqa: E402
-from abczarr.api.registry import select_driver  # noqa: E402
+from abczarr.api._registry import select_driver  # noqa: E402
 from abczarr.drivers.zarr_python import ZarrPythonDriver  # noqa: E402
-from abczarr.errors import UnsupportedZarrOperation  # noqa: E402
 from abczarr.metadata import v3  # noqa: E402
 
 

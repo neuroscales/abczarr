@@ -19,7 +19,7 @@ or in one call::
     >>> schemas.validate(doc, "v2", "array")            # doctest: +SKIP
 
 A document that does not conform raises
-[SchemaValidationError][abczarr.errors.SchemaValidationError].
+[SchemaValidationError][abczarr._errors.SchemaValidationError].
 
 Versions accept `"v1"`/`"v2"`/`"v3"` or the bare number `"1"`/`"2"`/`"3"`.
 """
@@ -41,7 +41,7 @@ import fastjsonschema
 import typing_extensions as tx
 
 # core
-from abczarr.errors import SchemaValidationError
+from abczarr._errors import SchemaValidationError
 
 _HERE = pathlib.Path(__file__).parent
 _DATA = _HERE / "_zarr"
@@ -165,7 +165,7 @@ def get_validator(
     -------
     callable
         A function that returns a conforming document, or raises
-        [SchemaValidationError][abczarr.errors.SchemaValidationError]. The
+        [SchemaValidationError][abczarr._errors.SchemaValidationError]. The
         same validator is returned for every spelling of a version.
     """
     return _compile(_canonical(version), document)
@@ -216,7 +216,7 @@ def validate(instance: tx.Any, version: str, document: str) -> tx.Any:  # noqa: 
     """Validate *instance* against a version's *document* schema.
 
     Returns the instance when it conforms; raises
-    [SchemaValidationError][abczarr.errors.SchemaValidationError] otherwise.
+    [SchemaValidationError][abczarr._errors.SchemaValidationError] otherwise.
     A thin wrapper over [get_validator][abczarr.schemas.get_validator].
     """
     return get_validator(version, document)(instance)

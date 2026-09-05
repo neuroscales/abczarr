@@ -1,1 +1,1 @@
-# ::: abczarr.api.registry
+# ::: abczarr.api._registry

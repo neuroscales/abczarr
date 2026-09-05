@@ -13,16 +13,16 @@ zarr = pytest.importorskip("zarr")
 pytest.importorskip("tensorstore")
 
 import abczarr  # noqa: E402
+from abczarr._errors import UnsupportedZarrOperation  # noqa: E402
 from abczarr.abc.capabilities import Support  # noqa: E402
-from abczarr.api.config import ArrayConfig  # noqa: E402
-from abczarr.api.registry import available_drivers  # noqa: E402
+from abczarr.api._config import ArrayConfig  # noqa: E402
+from abczarr.api._registry import available_drivers  # noqa: E402
 from abczarr.drivers.tensorstore import (  # noqa: E402
     TensorStoreArray,
     TensorStoreDriver,
     TensorStoreGroup,
     TensorStoreNode,
 )
-from abczarr.errors import UnsupportedZarrOperation  # noqa: E402
 from abczarr.metadata.base import ArrayMetadata  # noqa: E402
 
 

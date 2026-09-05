@@ -14,7 +14,7 @@ import pytest
 import typing_extensions as tx
 
 from abczarr import schemas
-from abczarr.errors import SchemaValidationError
+from abczarr._errors import SchemaValidationError
 
 ZARR = Path(schemas.__file__).parent / "_zarr"
 EXT = ZARR / "v3" / "extensions"

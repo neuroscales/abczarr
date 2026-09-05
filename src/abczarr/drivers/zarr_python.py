@@ -37,7 +37,7 @@ from abczarr.abc.asynchronous import (
 )
 from abczarr.abc.capabilities import Support
 from abczarr.abc.sync import ZarrArray, ZarrGroup, ZarrNode
-from abczarr.api.config import ArrayConfig
+from abczarr.api._config import ArrayConfig
 from abczarr.drivers._metadata import metadata_from_json
 from abczarr.drivers.base import Driver
 
@@ -132,7 +132,7 @@ def _has_numcodec(name: str) -> bool:
 
 
 def _zarr_create_kwargs(config: tx.Any) -> tx.Dict[str, tx.Any]:
-    """Map a resolved [ArrayConfig][abczarr.api.config.ArrayConfig] to the
+    """Map a resolved [ArrayConfig][abczarr.api._config.ArrayConfig] to the
     keywords ``zarr.create_array`` takes, so zarr-python creates the array and
     writes its own metadata."""
     kwargs = {

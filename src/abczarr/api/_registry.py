@@ -19,7 +19,7 @@ import importlib
 import typing_extensions as tx
 
 # locals
-from abczarr.errors import UnsupportedZarrOperation
+from abczarr._errors import UnsupportedZarrOperation
 
 from ..drivers.base import Driver
 
@@ -40,7 +40,7 @@ def register_driver(module: str, cls: str, name: str = "") -> None:
     """Register a driver by the module and class that provide it.
 
     The driver is imported and instantiated only when
-    [available_drivers][abczarr.api.registry.available_drivers] is called, so
+    [available_drivers][abczarr.api._registry.available_drivers] is called, so
     registering one never imports its backend.
     """
     _KNOWN_DRIVERS.append((name, module, cls))
@@ -72,7 +72,7 @@ def select_driver(
 
     Raises
     ------
-    [UnsupportedZarrOperation][abczarr.errors.UnsupportedZarrOperation]
+    [UnsupportedZarrOperation][abczarr._errors.UnsupportedZarrOperation]
         When none can. The message names each candidate driver and the
         features it is missing, so the failure points at the exact gap
         rather than a backend's opaque error.
