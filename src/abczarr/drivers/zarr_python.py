@@ -138,23 +138,50 @@ def _zarr_create_kwargs(config: tx.Any) -> tx.Dict[str, tx.Any]:
     kwargs = {
         "chunks": config.chunks,
         "fill_value": config.resolved_fill_value(),
-        "compressors": config.compressor_codecs(),
-        "chunk_key_encoding": {
-            "name": "default",
-            "configuration": {"separator": config.resolved_separator()},
-        },
     }  # type: tx.Dict[str, tx.Any]
     if config.shards is not None:
         kwargs["shards"] = config.shards
+    if config.zarr_version == 2:
+        _v2_codec_kwargs(config, kwargs)
+        # order is Zarr v2 metadata; v3 has no stored memory order, so it is
+        # only sent here. dimension names are a v3-only field.
+        kwargs["order"] = config.order
+        return kwargs
+    kwargs["compressors"] = config.compressor_codecs()
+    kwargs["chunk_key_encoding"] = {
+        "name": "default",
+        "configuration": {"separator": config.resolved_separator()},
+    }
     if config.dimension_names is not None:
         kwargs["dimension_names"] = config.dimension_names
     if config.filters:
         kwargs["filters"] = [dict(f) for f in config.filters]
-    # order is Zarr v2 metadata; passing it on v3 only warns (v3 order is a
-    # runtime layout, not stored)
-    if config.zarr_version == 2:
-        kwargs["order"] = config.order
     return kwargs
+
+
+def _v2_codec_kwargs(config: tx.Any, kwargs: tx.Dict[str, tx.Any]) -> None:
+    """Fill in the Zarr v2 codec and chunk-key keywords on *kwargs*.
+
+    zarr-python wants numcodecs-shaped codecs and a ``"v2"`` chunk-key
+    encoding for a Zarr v2 array -- the v3-style ``{"name", "configuration"}``
+    specs and the ``"default"`` encoding it takes for v3 are rejected. The
+    config is lowered through the metadata layer, which maps each v3 codec
+    name to its numcodecs id, and the resulting numcodecs specs are built into
+    the codec objects zarr expects.
+    """
+    document = config.to_metadata().to_json()
+    compressor = document.get("compressor")
+    filters = document.get("filters")
+    separator = document.get("dimension_separator") or "."
+    kwargs["chunk_key_encoding"] = {
+        "name": "v2",
+        "configuration": {"separator": separator},
+    }
+    kwargs["compressors"] = (
+        [numcodecs.get_codec(compressor)] if compressor else None
+    )
+    if filters:
+        kwargs["filters"] = [numcodecs.get_codec(f) for f in filters]
 
 
 class ZarrPythonDriver(Driver):
