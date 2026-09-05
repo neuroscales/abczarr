@@ -284,13 +284,22 @@ def _serialize_dict(x: tx.Mapping) -> tx.Dict[str, tz.Json]:
 
 def _serialize_meta(x: "Metadata") -> tx.Dict[str, tz.Json]:
     """Serialize a metadata object's own fields (not respecting a to_json
-    override on *x* itself -- that is the caller's job)."""
+    override on *x* itself -- that is the caller's job).
+
+    An unset ``Recommended``/``Optional`` field holds the ``MISSING``
+    sentinel; it is simply absent from the JSON rather than emitted (which
+    would produce an unserializable value)."""
+    from abczarr._core.rfc2119 import MISSING
+
     extra = getattr(x, "extra_items", False)
-    out = {
-        json_key(f): _to_json(getattr(x, f.name))
-        for f in fields(x)
-        if f.name != "extra_items"
-    }
+    out = {}
+    for f in fields(x):
+        if f.name == "extra_items":
+            continue
+        value = getattr(x, f.name)
+        if value is MISSING:
+            continue
+        out[json_key(f)] = _to_json(value)
     if extra:
         out.update(_serialize_dict(extra))
     return out

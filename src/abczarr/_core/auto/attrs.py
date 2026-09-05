@@ -34,6 +34,26 @@ from .converters import wrap_converter
 from .factories import get_factory
 from .validators import get_validator as _get_validator
 
+
+def _permits_absence(hint: tx.Any) -> bool:
+    """Whether *hint* carries a Requirement that lets the field be absent.
+
+    A ``Recommended``/``Optional``/... field (any Requirement other than
+    ``Required``/MUST) must default to ``MISSING`` through the requirement
+    factory -- never to a value invented from a ``Literal`` or an
+    ``Optional`` inside the hint. Only a ``Required`` field (or an unmarked
+    one) may derive a concrete default via ``get_default``.
+    """
+    from abczarr._core.rfc2119 import MUST, Requirement
+
+    while tx.get_origin(hint) is tx.Annotated:
+        args = tx.get_args(hint)
+        for meta in args[1:]:
+            if isinstance(meta, Requirement):
+                return meta is not MUST
+        hint = args[0]
+    return False
+
 #: attrs field-metadata key under which a field's JSON key alias is stored.
 #: A field declared ``field(json="bioformats2raw.layout")`` carries its spec
 #: key here; a field with none serializes under its own Python name.
@@ -241,11 +261,16 @@ def field(**kwargs) -> tx.Any:
 
         # Factory
         if kwargs.get("factory") is True:
-            try:
-                kwargs["default"] = get_default(kwargs["type"])
-                kwargs.pop("factory")
-            except TypeError:
+            if _permits_absence(kwargs["type"]):
+                # a Recommended/Optional field defaults to MISSING, not to a
+                # value invented from a Literal/Optional in its hint
                 kwargs["factory"] = get_factory(kwargs["type"])
+            else:
+                try:
+                    kwargs["default"] = get_default(kwargs["type"])
+                    kwargs.pop("factory")
+                except TypeError:
+                    kwargs["factory"] = get_factory(kwargs["type"])
         elif kwargs.get("factory", None) is False:
             kwargs.pop("factory")
 
@@ -310,10 +335,15 @@ def transform_fields(
             if f.type is not None:
 
                 if factory and (f.default is NOTHING):
-                    try:
-                        f = f.evolve(default=get_default(f.type))
-                    except TypeError:
+                    if _permits_absence(f.type):
                         f = f.evolve(default=_Factory(get_factory(f.type)))
+                    else:
+                        try:
+                            f = f.evolve(default=get_default(f.type))
+                        except TypeError:
+                            f = f.evolve(
+                                default=_Factory(get_factory(f.type))
+                            )
 
                 if converter and f.converter is None:
                     f = f.evolve(converter=get_converter(f.type))
