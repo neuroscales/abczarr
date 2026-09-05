@@ -1,10 +1,10 @@
 """The errors abczarr raises, defined in one place.
 
-This module is a leaf -- it imports only `typing_extensions` and the
-`_core.typing` aliases -- so any layer (metadata, the abc surface, the
-drivers) can `from abczarr.errors import ...` at module top without a
-cycle: importing this submodule does not re-run the package's own
-`__init__`. The errors are also re-exported off the package top level
+This module is a leaf -- it imports only `typing_extensions` -- so any
+layer (metadata, the abc surface, the drivers, even `_core`) can
+`from abczarr.errors import ...` at module top without a cycle: importing
+this submodule does not re-run the package's own `__init__`. The errors
+are also re-exported off the package top level
 (`abczarr.UnsupportedZarrOperation`).
 """
 
@@ -16,8 +16,6 @@ __all__ = [
 ]
 
 import typing_extensions as tx
-
-from abczarr._core import typing as tz
 
 
 class TransactionConflict(RuntimeError):
@@ -73,7 +71,7 @@ class UnsupportedConversion(ValueError):
     represented in.
     """
 
-    def __init__(self, field: str, version: tz.ZarrVersion) -> None:
+    def __init__(self, field: str, version: int) -> None:
         super().__init__(
             f"cannot represent {field!r} in Zarr v{version}"
         )

@@ -13,6 +13,8 @@ import numpy as np
 import numpy.typing as npt
 import typing_extensions as tx
 
+from abczarr.errors import UnsupportedConversion
+
 
 class RegexMatch(str):
     def __class_getitem__(cls, pattern: tx.Union[str, re.Pattern]) -> type:
@@ -105,8 +107,6 @@ def asdtype(
     # Dictionaries are Zarr v3 data type extensions
     if isinstance(dtype, abc.Mapping):
         name = dtype["name"]
-        # The configuration lives under a mapping key, not an attribute; a
-        # data type with none is written as its bare name.
         configuration = dtype.get("configuration")
         if not configuration:
             dtype = name
@@ -126,14 +126,9 @@ def asdtype(
             time_type = name.split(".")[-1]
             dtype = f"{time_type}[{scale}{unit}]"
 
-    # A Zarr v3 extension type (e.g. "string", "bfloat16", "float8_*") has no
-    # numpy equivalent, so it cannot be represented in Zarr v2's numpy model.
     try:
         dtype = np.dtype(dtype)
     except TypeError as exc:
-        # local import: `abczarr.errors` reaches back into `_core.typing`,
-        # which imports this module, so a module-level import is a cycle.
-        from abczarr.errors import UnsupportedConversion
         raise UnsupportedConversion(str(dtype), 2) from exc
 
     if type is not None:
