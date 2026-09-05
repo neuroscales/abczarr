@@ -244,10 +244,14 @@ class ZstdConfig(CodecConfigImpl):
     def to_version(self, version: tz.ZarrVersion) -> Metadata:
         if version == 3:
             return self
-        if version in (1, 2):
+        if version == 2:
             from abczarr.metadata import v2
             # v2's numcodecs zstd carries only the level
             return v2.ZstdCodec(id="zstd", level=self.level)
+        if version == 1:
+            from abczarr.metadata import v1
+            # v1's numcodecs zstd carries only the level
+            return v1.ZstdCodecOptions(level=self.level)
         raise ValueError(f"Unsupported version: {version}")
 
 
