@@ -96,6 +96,23 @@ def test_v2_array_accepts_and_rejects() -> None:
         schemas.validate({"zarr_format": 2}, "v2", "array")  # missing fields
 
 
+def test_v2_array_accepts_object_and_vlen_codecs() -> None:
+    # zarr-python string/object arrays: dtype "|O" with a vlen-* filter and a
+    # numcodecs compressor the schema does not describe id-by-id (snappy).
+    good = {"zarr_format": 2, "shape": [3], "chunks": [3], "dtype": "|O",
+            "compressor": {"id": "snappy"},
+            "fill_value": None, "order": "C",
+            "filters": [{"id": "vlen-utf8"}]}
+    assert schemas.validate(good, "v2", "array") is good
+    # a filter/compressor entry is still an object with an "id".
+    bad = dict(good, filters=[{"no_id": "vlen-utf8"}])
+    with pytest.raises(SchemaValidationError):
+        schemas.validate(bad, "v2", "array")
+    # and "|O" does not open the dtype to arbitrary strings.
+    with pytest.raises(SchemaValidationError):
+        schemas.validate(dict(good, dtype="not-a-dtype"), "v2", "array")
+
+
 def test_v3_array_references_every_vendored_codec_and_dtype() -> None:
     # maintainability net: if the registry is re-vendored with a new codec or
     # data type, the composed v3 array schema must reference it (regenerate
