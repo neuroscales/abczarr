@@ -77,6 +77,13 @@ class ZarrNode(SupportsCapabilities, ABC):
     """
 
     def __init__(self, store_path: tz.PathLike) -> None:
+        # An os.PathLike (a pathlib.Path, say) that is not already a
+        # bagof.paths Path becomes its path string, so it is wrapped below
+        # rather than reaching driver code raw -- as Store.__init__ does.
+        if isinstance(store_path, os.PathLike) and not isinstance(
+            store_path, Path
+        ):
+            store_path = os.fspath(store_path)
         if isinstance(store_path, (str, bytes)):
             store_path = Path(store_path)
         self._store_path = store_path
