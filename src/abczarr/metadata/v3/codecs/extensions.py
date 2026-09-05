@@ -120,7 +120,7 @@ class N5DefaultCodecList(list):
                 f"N5DefaultCodecList must have at least 2 codecs, "
                 f"got {len(codecs)}"
             )
-        first, second, rest = codecs[0], codecs[1], codecs[2:]
+        first, second, *rest = codecs
         first = TransposeCodec(**first)
         second = BytesCodec(**second)
         if second.configuration.endian == "little":
