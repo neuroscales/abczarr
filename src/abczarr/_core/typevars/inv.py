@@ -10,7 +10,6 @@ positions, as it does for anything mutable.
 Invariance is the default for `#!python tx.TypeVar`, so these are
 declared without a variance keyword.
 """
-from __future__ import annotations
 
 __all__ = [
     "T",
