@@ -4,7 +4,10 @@ These exercise the surface every driver targets, using a tiny in-repo fake
 node -- so they run with no zarr / tensorstore backend installed.
 """
 
+import pathlib
+
 import pytest
+from bagof.paths import Path
 
 from abczarr import UnsupportedZarrOperation, errors
 from abczarr.abc import sync
@@ -46,6 +49,22 @@ def test_native_returns_backend_object() -> None:
     sentinel = object()
     n._native = sentinel
     assert n.native is sentinel
+
+
+# --------------------------------------------------------------------------
+# store_path normalization -- mirrors Store.__init__
+# --------------------------------------------------------------------------
+
+
+def test_a_pathlike_store_path_is_wrapped() -> None:
+    # a node's location need not be a str: a pathlib.Path (any os.PathLike)
+    # is normalized to a bagof.paths Path, so it goes through bagof.paths
+    # rather than reaching driver code raw -- exactly as Store.__init__ does
+    from_str = _FakeNode("/store")
+    from_path = _FakeNode(pathlib.Path("/store"))
+    assert isinstance(from_str.store_path, Path)
+    assert isinstance(from_path.store_path, Path)
+    assert str(from_path.store_path) == str(from_str.store_path)
 
 
 # --------------------------------------------------------------------------

@@ -125,16 +125,19 @@ def _child(prefix: str, key: str) -> str:
     return rest.split(_SEP, 1)[0]
 
 
-def _as_store_path_str(store_path: tx.Any) -> tx.Any:
-    """A path object becomes its path string, so a store wraps it in a
-    [StorePath][abczarr.abc.store.StorePath] (bagof.paths, URL-aware) rather
-    than using it raw. A str, a StorePath, or ``None`` passes through.
+def _as_store_path(store_path: tx.Any, cls: type) -> tx.Any:
+    """Wrap a store's raw path in *cls* (a bagof.paths StorePath).
+
+    ``None`` is a store with no path (a memory/session/in-process backend)
+    and stays ``None``. An already-wrapped StorePath/AsyncStorePath is left
+    as is. Anything else -- a str, bytes, or os.PathLike -- is wrapped in
+    *cls*, which converts an os.PathLike itself.
     """
-    if isinstance(store_path, os.PathLike) and not isinstance(
-        store_path, (StorePath, AsyncStorePath)
-    ):
-        return os.fspath(store_path)
-    return store_path
+    if store_path is None:
+        return None
+    if isinstance(store_path, (StorePath, AsyncStorePath)):
+        return store_path
+    return cls(store_path)
 
 
 def _ensure_writable(read_only: bool, operation: str) -> None:
@@ -192,9 +195,7 @@ class Store(SupportsCapabilities, ABC):
     ) -> None:
         if isinstance(store_path, Store):
             store_path = store_path._store_path
-        store_path = _as_store_path_str(store_path)
-        if isinstance(store_path, (str, bytes)):
-            store_path = StorePath(store_path)
+        store_path = _as_store_path(store_path, StorePath)
         #: The store's root, or ``None`` for a store that has no path -- a
         #: native memory store, a session store, an in-process backend.
         self._store_path = store_path
@@ -538,9 +539,7 @@ class AsyncStore(SupportsCapabilities, ABC):
     ) -> None:
         if isinstance(store_path, AsyncStore):
             store_path = store_path._store_path
-        store_path = _as_store_path_str(store_path)
-        if isinstance(store_path, (str, bytes)):
-            store_path = AsyncStorePath(store_path)
+        store_path = _as_store_path(store_path, AsyncStorePath)
         self._store_path = store_path
         self._native: tx.Any = None
 
