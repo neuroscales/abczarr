@@ -3,9 +3,11 @@
 ``asdtype`` read a data type's configuration with ``getattr`` on a mapping
 (always ``None``), so any configured extension dtype -- ``numpy.datetime64``,
 ``struct`` -- was reduced to its bare name and then indexed as a string.
-And an extension dtype with no numpy equivalent (``string``, ``bfloat16``,
+And an extension dtype with no numpy equivalent (``complex_float32``,
 ``float8_*``) surfaced a raw numpy ``TypeError`` instead of the package's
-``UnsupportedConversion``.
+``UnsupportedConversion``. (``string`` and ``bytes`` do have a conventional
+numpy representation -- ``object`` plus a vlen codec -- and are covered by
+``test_dtype_v3_vlen``.)
 """
 
 # dependencies
@@ -47,17 +49,17 @@ def test_asdtype_mapping_with_configuration() -> None:
 
 
 def test_unrepresentable_v3_dtype_to_version_2() -> None:
-    # "string" is a Zarr v3 variable-length string, which numpy has no dtype
-    # for, so it cannot be carried into Zarr v2's numpy model. (bfloat16 and
-    # the float8_* types are unrepresentable the same way unless a numpy
-    # extension such as ml_dtypes registers them.)
-    dt = v3.DType.from_json("string")
+    # "complex_float32" is a Zarr v3 extension dtype numpy has no scalar for,
+    # so it cannot be carried into Zarr v2's numpy model (numpy has no complex
+    # type over an extension float, and does not understand the name even when
+    # ml_dtypes is installed).
+    dt = v3.DType.from_json("complex_float32")
     with pytest.raises(UnsupportedConversion) as info:
         dt.to_version(2)
-    assert info.value.field == "string"
+    assert info.value.field == "complex_float32"
     assert info.value.version == 2
 
 
 def test_unrepresentable_dtype_via_asdtype() -> None:
     with pytest.raises(UnsupportedConversion):
-        asdtype("string")
+        asdtype("complex_float32")
