@@ -21,9 +21,10 @@ DTYPE_V3_BUILTIN = [
     "uint8", "uint16", "uint32", "uint64",
     "float16", "float32", "float64", "complex64", "complex128",
 ]
-# _core.dtypes.RegexDataTypeV2
+# _core.dtypes.RegexDataTypeV2, plus "|O" for object arrays (zarr-python
+# writes dtype "|O" for string/object arrays alongside a vlen-* filter).
 DTYPE_V2_PATTERN = (
-    r"^(?:\|b1|[<>|][iu][1248]|[<>][f][248]|[<>][c][816]"
+    r"^(?:\|b1|\|O|[<>|][iu][1248]|[<>][f][248]|[<>][c][816]"
     r"|[<>|][mM][1248]"
     r"(?:\[(?:h|m|s|ms|us|μs|ns|ps|fs|as|Y|M|W|D"
     r"|nat|naT|nAt|nAT|Nat|NaT|NAt|NAT)\])?"
@@ -31,6 +32,9 @@ DTYPE_V2_PATTERN = (
 )
 INT = {"type": "integer"}
 NONNEG_INT = {"type": "integer", "minimum": 0}
+# any numcodecs codec/filter identified by its "id" (open beyond the ids we
+# describe field-by-field), so an unknown-but-valid numcodecs id still passes.
+_OPEN_CODEC = {"type": "object", "required": ["id"]}
 # a Zarr fill value: number / special-float string / bool / null / composite
 FILL_VALUE = {"anyOf": [
     {"type": "number"},
@@ -302,12 +306,17 @@ def v2_array() -> dict:
             "shape": {"type": "array", "items": NONNEG_INT},
             "chunks": {"type": "array", "items": NONNEG_INT},
             "dtype": _dtype_v2(),
+            # the known-id $defs stay for the ids we describe in detail; the
+            # open alternative lets any other numcodecs codec (vlen-utf8,
+            # crc32, snappy, ...) validate on its "id" alone.
             "compressor": {"anyOf": [{"type": "null"}]
-                           + [{"$ref": f"#/$defs/codec_{n}"} for n in codecs]},
+                           + [{"$ref": f"#/$defs/codec_{n}"} for n in codecs]
+                           + [_OPEN_CODEC]},
             "fill_value": FILL_VALUE,
             "order": {"enum": ["C", "F"]},
             "filters": {"type": ["array", "null"], "items": {
-                "anyOf": [{"$ref": f"#/$defs/filter_{n}"} for n in filters]}},
+                "anyOf": [{"$ref": f"#/$defs/filter_{n}"} for n in filters]
+                         + [_OPEN_CODEC]}},
             "dimension_separator": {"enum": [".", "/"]},
         },
         "required": ["zarr_format", "shape", "chunks", "dtype",

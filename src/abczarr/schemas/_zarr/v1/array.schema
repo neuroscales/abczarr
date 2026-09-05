@@ -24,7 +24,7 @@
       "anyOf": [
         {
           "type": "string",
-          "pattern": "^(?:\\|b1|[<>|][iu][1248]|[<>][f][248]|[<>][c][816]|[<>|][mM][1248](?:\\[(?:h|m|s|ms|us|\u03bcs|ns|ps|fs|as|Y|M|W|D|nat|naT|nAt|nAT|Nat|NaT|NAt|NAT)\\])?|[<>|][SUV]\\d+)$"
+          "pattern": "^(?:\\|b1|\\|O|[<>|][iu][1248]|[<>][f][248]|[<>][c][816]|[<>|][mM][1248](?:\\[(?:h|m|s|ms|us|\u03bcs|ns|ps|fs|as|Y|M|W|D|nat|naT|nAt|nAT|Nat|NaT|NAt|NAT)\\])?|[<>|][SUV]\\d+)$"
         },
         {
           "type": "array"
