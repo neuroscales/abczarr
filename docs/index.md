@@ -1,5 +1,5 @@
 ---
-icon: fontawesome/solid/circle-right
+icon: material/home
 ---
 
 --8<-- "README.md"
