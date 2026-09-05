@@ -112,6 +112,7 @@ class Metadata:
         if hasattr(self, "extra_items"):
             extra = self.extra_items or {}
             return extra[key]
+        raise KeyError(key)
 
     def __iter__(self) -> tx.Iterator[tx.Tuple[str, tx.Any]]:
         for f in fields(self):

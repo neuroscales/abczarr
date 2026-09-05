@@ -26,6 +26,7 @@ import typing_extensions as tx
 from abczarr.errors import UnsupportedZarrOperation
 
 # locals
+from .._core import constants
 from .._core import typing as tz
 from .._core.attrs import evolve, fields
 from ..abc.asynchronous import (
@@ -47,8 +48,14 @@ _DriverArg = tx.Optional[tx.Union[str, Driver]]
 _READ_MODES = frozenset({"r", "r+"})
 
 #: The metadata keys whose presence marks a node at a location, across the
-#: format versions (a v3 ``zarr.json``, a v2 ``.zgroup`` / ``.zarray``).
-_METADATA_KEYS = ("zarr.json", ".zgroup", ".zarray")
+#: format versions (a v3 ``zarr.json``, a v2 ``.zgroup`` / ``.zarray``, a v1
+#: ``meta``).
+_METADATA_KEYS = (
+    constants.Z3_JSON,
+    constants.Z2GROUP_JSON,
+    constants.Z2ARRAY_JSON,
+    constants.Z1META_JSON,
+)
 
 
 def _array_only_fields() -> "tx.FrozenSet[str]":

@@ -11,7 +11,7 @@ import pytest
 
 import abczarr
 from abczarr.abc.capabilities import Support
-from abczarr.api import registry
+from abczarr.api import _entry, registry
 from abczarr.api.registry import available_drivers
 from abczarr.drivers.base import Driver
 from abczarr.errors import UnsupportedZarrOperation
@@ -255,3 +255,11 @@ def test_create_array_rejects_a_group_shaped_request(
         abczarr.create_array(
             str(tmp_path / "a.zarr"), config=GroupConfig()
         )
+
+
+def test_exists_detects_a_v1_meta_file(tmp_path: pathlib.Path) -> None:
+    # a v1 array is marked by a ``meta`` file; _METADATA_KEYS omitted it, so
+    # a location holding one was read as absent (and open(mode="a") on a v1
+    # array would try to create rather than open).
+    (tmp_path / "meta").write_bytes(b"{}")
+    assert _entry._exists(str(tmp_path)) is True

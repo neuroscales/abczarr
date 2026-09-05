@@ -7,6 +7,7 @@ once per inner chunk. Dask is imported lazily, inside the method.
 
 import numpy as np
 import numpy.typing as npt
+import pytest
 import typing_extensions as tx
 
 from abczarr.abc.sync import ZarrArray
@@ -90,3 +91,26 @@ def test_array_module_does_not_import_dask_itself() -> None:
         elif isinstance(node, ast.ImportFrom) and node.module:
             module_level.append(node.module)
     assert not any(m == "dask" or m.startswith("dask.") for m in module_level)
+
+
+def test_array_accepts_the_numpy2_copy_keyword() -> None:
+    # NumPy 2 calls __array__(dtype, copy); the method must accept copy
+    # (regression: the signature lacked it, so this call raised TypeError).
+    a = _FakeArray(shards=None)
+    assert np.asarray(a.__array__(copy=True)).shape == (8, 8)
+    assert np.asarray(a.__array__(copy=None)).shape == (8, 8)
+
+
+def test_array_refuses_copy_false() -> None:
+    # reading always materializes a fresh array, so a no-copy view is refused
+    a = _FakeArray(shards=None)
+    with pytest.raises(ValueError):
+        a.__array__(copy=False)
+
+
+def test_np_array_copy_true_reads_values() -> None:
+    # the NumPy-2 integration path: np.array(..., copy=True) round-trips
+    if int(np.__version__.split(".")[0]) < 2:
+        pytest.skip("copy= is only passed to __array__ on NumPy 2+")
+    a = _FakeArray(shards=None)
+    assert np.array(a, copy=True).shape == (8, 8)

@@ -67,6 +67,11 @@ def broadcast_spec(
     # Right-pad chunk size
     if not isinstance(spec, abc.Mapping):
         chunks = list(spec)
+        if not chunks:
+            # No sizes given: nothing to chunk on, so each dimension is left
+            # at its full extent (its shape size), the same fallback the
+            # mapping branch uses for a dimension it does not name.
+            return list(shape)
         chunks += [chunks[-1]] * max(0, len(shape) - len(chunks))
         chunks = chunks[:len(shape)]
         return chunks
@@ -78,10 +83,16 @@ def broadcast_spec(
     # Map name to chunk size
     chunks = []
     for size, name in zip(shape, names):
+        # Fall through on a genuinely-absent key, not on a falsy value: a
+        # ``0`` ("no chunking along that dimension") is a real answer and
+        # must be kept, not read as missing.
         chunk_size = spec.get(name)
-        chunk_size = chunk_size or spec.get(None)
-        chunk_size = chunk_size or spec.get("")
-        chunk_size = chunk_size or size
+        if chunk_size is None:
+            chunk_size = spec.get(None)
+        if chunk_size is None:
+            chunk_size = spec.get("")
+        if chunk_size is None:
+            chunk_size = size
         chunks.append(chunk_size)
     return chunks
 

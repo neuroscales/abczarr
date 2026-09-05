@@ -120,7 +120,14 @@ def _child(prefix: str, key: str) -> str:
     ``"c/"`` is ``"0"``. An empty *prefix* returns the leading
     segment of *key*.
     """
-    rest = key[len(prefix):] if prefix and key.startswith(prefix) else key
+    # Match *prefix* on a path boundary, not as a raw string prefix, so
+    # ``_child("c", "cat/1")`` is ``"cat"`` (not ``"at"``). This mirrors
+    # ``_under`` in the transactions module.
+    stem = prefix.rstrip(_SEP)
+    if stem and (key == stem or key.startswith(stem + _SEP)):
+        rest = key[len(stem):]
+    else:
+        rest = key
     rest = rest.lstrip(_SEP)
     return rest.split(_SEP, 1)[0]
 
