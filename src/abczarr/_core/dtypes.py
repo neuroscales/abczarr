@@ -190,13 +190,13 @@ def to_zarr3(dtype: tx.Union[npt.DTypeLike, tx.Mapping]) -> DataTypeV3:
 
     prefix_datetime64 = ("<M8", "|M8", ">M8")
     if descr.upper().startswith(prefix_datetime64):
-        if dtype.startswith(prefix_datetime64):
+        if descr.startswith(prefix_datetime64):
             name = "numpy.datetime64"
         else:
             name = "numpy.timedelta64"
         if "[" in descr:
             unit = descr.split("[")[-1].split("]")[0]
-            scale, unit = re.match(r"(\d+)(\w+)", unit).groups()
+            scale, unit = re.match(r"(\d*)(\w+)", unit).groups()
             scale = int(scale or 1)
             unit = unit or "generic"
         else:
