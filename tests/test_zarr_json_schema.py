@@ -63,6 +63,23 @@ def test_unknown_version_and_document_raise() -> None:
         schemas.get_validator("v3", "nope")
 
 
+def test_unknown_ref_raises_named_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # a `$ref` the offline handler cannot resolve names the missing URI in a
+    # clear error, rather than surfacing as a bare KeyError. Emptying the
+    # extension registry makes the v3 array's vendored codec refs unresolvable.
+    from abczarr.schemas import _validation
+
+    monkeypatch.setattr(_validation, "_extension_registry", dict)
+    _validation._compile.cache_clear()
+    try:
+        with pytest.raises(ValueError, match="cannot resolve schema"):
+            schemas.get_validator("v3", "array")
+    finally:
+        _validation._compile.cache_clear()
+
+
 def test_v3_array_composes_core_and_vendored_codecs() -> None:
     doc = {
         "zarr_format": 3,

@@ -193,6 +193,52 @@ def test_rc0_image_accepts_and_rejects() -> None:
                          "0.6rc0", "image")
 
 
+def test_documents_excludes_internal_version_helper() -> None:
+    # `_version` is an internal enum schema referenced by `$ref`, not a
+    # validatable document, so it must not appear in the listing (nor,
+    # therefore, in get_validator's "available:" error message).
+    for version in ("0.5", "0.6rc0", "0.6.dev1"):
+        docs = schemas.documents(version)
+        assert "_version" not in docs
+        assert not any(d.startswith("_") for d in docs)
+        assert "image" in docs  # a real document is still listed
+
+
+def test_version_spelling_is_case_insensitive() -> None:
+    # like the Zarr resolver, an uppercase spelling (previously rejected)
+    # now resolves to the same compiled validator.
+    assert schemas.get_validator("0.6RC0", "image") is schemas.get_validator(
+        "0.6rc0", "image"
+    )
+    assert schemas.get_validator("V0_6RC0", "image") is schemas.get_validator(
+        "v0_6rc0", "image"
+    )
+
+
+def test_unknown_ref_raises_named_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # a `$ref` the offline handler cannot resolve names the missing URI in a
+    # clear error, rather than surfacing as a bare KeyError.
+    from abczarr.ome.schemas import _validation
+
+    seg = _validation._SEGMENT["v0_6rc0"]
+    host = _validation._HOST
+    root_uri = f"{host}/{seg}/schemas/image.schema"
+    missing = f"{host}/{seg}/schemas/does_not_exist.schema"
+    monkeypatch.setattr(
+        _validation,
+        "_registry",
+        lambda suffix: {root_uri: {"$id": root_uri, "$ref": missing}},
+    )
+    _validation._compile.cache_clear()
+    try:
+        with pytest.raises(ValueError, match="does_not_exist"):
+            schemas.get_validator("0.6rc0", "image")
+    finally:
+        _validation._compile.cache_clear()
+
+
 def test_dev1_transformations_compile_despite_upstream_typo() -> None:
     # the dev1/dev2 coordinate-transformation schemas misplace a `required`
     # inside `properties`; the loader lifts it, so compilation succeeds.
