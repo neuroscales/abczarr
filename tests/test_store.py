@@ -268,6 +268,34 @@ def test_read_only_flag_comes_from_the_path(tmp_path: pathlib.Path) -> None:
     assert PathBasedStore(str(tmp_path)).read_only is False
 
 
+def test_read_only_store_refuses_set_and_delete(
+    tmp_path: pathlib.Path,
+) -> None:
+    ro = PathBasedStore(StorePath(str(tmp_path), read_only=True))
+    with pytest.raises(PermissionError, match="set"):
+        ro.set("a", b"1")
+    with pytest.raises(PermissionError, match="delete"):
+        ro.delete("a")
+    # the write really did not happen
+    assert ro.get("a") is None
+
+
+def test_async_read_only_store_refuses_set_and_delete(
+    tmp_path: pathlib.Path,
+) -> None:
+    async def scenario() -> None:
+        ro = AsyncPathBasedStore(
+            AsyncStorePath(str(tmp_path), read_only=True)
+        )
+        with pytest.raises(PermissionError, match="set"):
+            await ro.set("a", b"1")
+        with pytest.raises(PermissionError, match="delete"):
+            await ro.delete("a")
+        assert await ro.get("a") is None
+
+    asyncio.run(scenario())
+
+
 def test_context_manager_closes(tmp_path: pathlib.Path) -> None:
     with PathBasedStore(str(tmp_path)) as s:
         s.set("k", b"v")
