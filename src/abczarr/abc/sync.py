@@ -77,14 +77,13 @@ class ZarrNode(SupportsCapabilities, ABC):
     """
 
     def __init__(self, store_path: tz.PathLike) -> None:
-        # An os.PathLike (a pathlib.Path, say) that is not already a
-        # bagof.paths Path becomes its path string, so it is wrapped below
-        # rather than reaching driver code raw -- as Store.__init__ does.
-        if isinstance(store_path, os.PathLike) and not isinstance(
+        # Wrap a raw path in a bagof.paths Path -- which itself converts an
+        # os.PathLike (a pathlib.Path, say) -- so it does not reach driver
+        # code raw. An already-wrapped Path (or StorePath) is left as is.
+        raw_path = (str, bytes, os.PathLike)
+        if isinstance(store_path, raw_path) and not isinstance(
             store_path, Path
         ):
-            store_path = os.fspath(store_path)
-        if isinstance(store_path, (str, bytes)):
             store_path = Path(store_path)
         self._store_path = store_path
         # The raw backend object (a zarr.Array, a tensorstore.TensorStore,
