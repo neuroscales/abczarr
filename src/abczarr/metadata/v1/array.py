@@ -19,6 +19,7 @@ import typing_extensions as tx
 from abczarr._core import typing as tz
 from abczarr._core.auto.attrs import autofrozen, eq_safenan, field
 from abczarr._core.features import feature_key
+from abczarr.errors import UnsupportedConversion
 from abczarr.metadata import base
 from abczarr.metadata.base import ConversionPolicy, register_subclass
 
@@ -28,6 +29,23 @@ from .codecs.aliases import Codec
 
 # locals
 from .dtypes import DType
+
+# The single numcodecs option a scalar ``compression_opts`` fills, by codec.
+# A scalar is codec-specific in Zarr v1: an integer compression level, or --
+# for blosc -- a string compressor name. These tables are kept here rather
+# than derived from numcodecs, so this metadata layer needs no numcodecs
+# dependency; a codec absent from the matching table has no scalar form.
+_SCALAR_LEVEL_KEY = {
+    "zlib": "level",
+    "gzip": "level",
+    "bz2": "level",
+    "zstd": "level",
+    "lzma": "preset",
+    "lz4": "acceleration",
+}
+_SCALAR_NAME_KEY = {
+    "blosc": "cname",
+}
 
 # ----------------------------------------------------------------------
 #   ARRAY
@@ -69,7 +87,10 @@ class ArrayMetadata(ArrayMetadataV1):
     chunks: tz.Shape
     dtype: DType
     compression: tx.Optional[Codec]
-    compression_opts: tx.Optional[CodecOptions]
+    # numcodecs carries a codec's options as an object, but the authored v1
+    # ``array.schema`` also allows the scalar forms (an integer level, or a
+    # string) that some codecs use, so accept those alongside the object.
+    compression_opts: tx.Optional[tx.Union[CodecOptions, int, str]]
     fill_value: tx.Optional[tz.BuiltinNumber] = field(eq=eq_safenan)
     order: tz.MemoryOrder
 
@@ -135,8 +156,7 @@ class ArrayMetadata(ArrayMetadataV1):
         # v1 splits the codec into a name + options; v2 keeps them together.
         compressor = None
         if self.compression:
-            options = dict(self.compression_opts or {})
-            compressor = {"id": self.compression, **options}
+            compressor = {"id": self.compression, **self._compressor_options()}
 
         return v2.ArrayMetadata(
             shape=self.shape,
@@ -149,3 +169,33 @@ class ArrayMetadata(ArrayMetadataV1):
             dimension_separator=".",
             attributes=self.attributes,
         )
+
+    def _compressor_options(self) -> tx.Dict[str, tx.Any]:
+        """The compressor's numcodecs options, to merge onto its ``id``.
+
+        v1 keeps a codec's options in ``compression_opts``. That is usually
+        an object, used as is. The spec (and the authored ``array.schema``)
+        also allow a scalar -- an integer level, or a string -- for codecs
+        that take one; a scalar is not a numcodecs config on its own, so it
+        is placed under the option that codec fills it into (``zlib`` ``1``
+        -> ``{"level": 1}``; ``lz4`` -> ``acceleration``; ``blosc`` ``"lz4"``
+        -> ``cname``). A codec with no scalar form raises
+        [UnsupportedConversion][abczarr.errors.UnsupportedConversion]. No
+        compression means no options.
+        """
+        opts = self.compression_opts
+        if opts is None:
+            return {}
+        name = str(self.compression)
+        if isinstance(opts, str):
+            key = _SCALAR_NAME_KEY.get(name)
+        elif isinstance(opts, int):
+            key = _SCALAR_LEVEL_KEY.get(name)
+        else:
+            # an object (a CodecOptions, or a plain mapping): dict-able as is.
+            return dict(opts)
+        if key is None:
+            raise UnsupportedConversion(
+                f"scalar compression_opts for {self.compression!r}", 2
+            )
+        return {key: opts}
