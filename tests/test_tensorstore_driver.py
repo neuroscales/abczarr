@@ -329,16 +329,98 @@ def test_a_v2_group_reopens_as_a_v2_group(tmp_path: pathlib.Path) -> None:
     assert reopened.zarr_version == 2
 
 
-def test_opening_a_v2_array_is_refused_by_name(tmp_path: pathlib.Path) -> None:
-    # TensorStore reads only a v3 array here, so a v2 array is refused with a
-    # clear error that names the operation and the driver, not an opaque
-    # backend NOT_FOUND
-    root = str(tmp_path / "a2.zarr")
-    group = zarr.open_group(root, mode="w", zarr_format=2)
-    group.create_array("img", shape=(4,), chunks=(4,), dtype="int32")
+# --------------------------------------------------------------------------
+# a Zarr v2 array -- opened and created through TensorStore's native ``zarr``
+# driver (v3 goes through ``zarr3``), so a v2 array reads and writes rather
+# than raising an opaque backend error
+# --------------------------------------------------------------------------
 
-    with pytest.raises(UnsupportedZarrOperation) as excinfo:
-        abczarr.open(root + "/img", mode="r", driver="tensorstore")
-    message = str(excinfo.value)
-    assert "tensorstore" in message
-    assert "v2" in message
+
+def test_create_write_read_a_v2_array(tmp_path: pathlib.Path) -> None:
+    arr = abczarr.create(
+        str(tmp_path / "a2.zarr"),
+        ArrayConfig(
+            shape=(8,), dtype="int32", chunks=(4,), zarr_version=2,
+            driver="tensorstore",
+        ),
+    )
+    assert isinstance(arr, TensorStoreArray)
+    assert arr.zarr_version == 2
+    assert arr.dtype == np.dtype("int32")
+    assert arr.chunks == (4,)
+    arr[:4] = np.arange(4, dtype="int32")
+    assert np.asarray(arr[:4]).tolist() == [0, 1, 2, 3]
+
+
+def test_a_v2_array_reopens_as_a_v2_array(tmp_path: pathlib.Path) -> None:
+    root = str(tmp_path / "a2.zarr")
+    arr = abczarr.create(
+        root,
+        ArrayConfig(
+            shape=(4,), dtype="int16", chunks=(4,), zarr_version=2,
+            driver="tensorstore",
+        ),
+    )
+    arr[:] = np.arange(4, dtype="int16")
+
+    reopened = abczarr.open(root, mode="r", driver="tensorstore")
+    assert isinstance(reopened, TensorStoreArray)
+    assert reopened.zarr_version == 2
+    assert reopened.dtype == np.dtype("int16")
+    assert np.asarray(reopened[:]).tolist() == [0, 1, 2, 3]
+
+
+def test_a_v2_array_round_trips_dtype_compressor_and_fill(
+    tmp_path: pathlib.Path,
+) -> None:
+    root = str(tmp_path / "a2.zarr")
+    arr = abczarr.create(
+        root,
+        ArrayConfig(
+            shape=(8,), dtype="int32", chunks=(4,), zarr_version=2,
+            fill_value=7, driver="tensorstore",
+        ),
+    )
+    arr[:4] = np.arange(4, dtype="int32")
+    reopened = abczarr.open(root, mode="r", driver="tensorstore")
+    meta = reopened.metadata.to_json()
+    assert meta["dtype"] == "<i4"
+    assert meta["fill_value"] == 7
+    assert meta["compressor"]["id"] == "zstd"
+    # the fill value shows in the untouched half
+    assert np.asarray(reopened[:]).tolist() == [0, 1, 2, 3, 7, 7, 7, 7]
+
+
+def test_a_v2_array_attributes_round_trip(tmp_path: pathlib.Path) -> None:
+    # TensorStore's zarr driver writes only .zarray, so a v2 array's user
+    # attributes are persisted to .zattrs and read back from there
+    root = str(tmp_path / "a2.zarr")
+    arr = abczarr.create(
+        root,
+        ArrayConfig(
+            shape=(4,), dtype="int32", chunks=(4,), zarr_version=2,
+            attributes={"unit": "micrometer"}, driver="tensorstore",
+        ),
+    )
+    assert dict(arr.attrs) == {"unit": "micrometer"}
+    reopened = abczarr.open(root, mode="r", driver="tensorstore")
+    assert dict(reopened.attrs) == {"unit": "micrometer"}
+
+
+def test_reads_a_blosc_compressed_v2_array(tmp_path: pathlib.Path) -> None:
+    # a v2 array written by zarr-python with a blosc compressor reads through
+    # TensorStore's zarr driver
+    numcodecs = pytest.importorskip("numcodecs")
+    root = str(tmp_path / "g.zarr")
+    group = zarr.open_group(root, mode="w", zarr_format=2)
+    array = group.create_array(
+        "img", shape=(4,), chunks=(4,), dtype="uint8",
+        compressors=numcodecs.Blosc(cname="lz4", clevel=5),
+    )
+    array[:] = np.arange(4)
+
+    node = abczarr.open(root + "/img", mode="r", driver="tensorstore")
+    assert isinstance(node, TensorStoreArray)
+    assert node.zarr_version == 2
+    assert np.asarray(node[:]).tolist() == [0, 1, 2, 3]
+    assert node.metadata.to_json()["compressor"]["id"] == "blosc"
