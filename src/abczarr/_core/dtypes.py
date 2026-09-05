@@ -137,6 +137,19 @@ def asdtype(
             length = configuration["length_bytes"]
             dtype = "S" + str(length)
 
+    # Variable-length string and bytes. Zarr v3 spells these ``string``
+    # (variable-length UTF-8) and ``bytes`` (variable-length bytes) -- a bare
+    # name with no configuration, so a ``DType`` serializes to the plain
+    # string here. numpy has no fixed-width scalar for either, so the
+    # conventional Zarr representation -- the one zarr-python uses -- is numpy
+    # ``object`` (``|O``) carrying a vlen codec (``vlen-utf8`` for ``string``,
+    # ``vlen-bytes`` for ``bytes``). The array-metadata conversion surfaces
+    # that codec as a v2 filter so the "is-a-string / is-a-bytes" tag numpy
+    # ``object`` drops is restored. See
+    # https://github.com/zarr-developers/zarr-extensions/tree/main/data-types
+    if isinstance(dtype, str) and dtype in ("string", "bytes"):
+        dtype = "object"
+
     try:
         dtype = np.dtype(dtype)
     except TypeError as exc:

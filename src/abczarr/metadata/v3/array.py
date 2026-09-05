@@ -349,6 +349,12 @@ def _collect_codec_features(codec: Codec, feats: tx.Set[str]) -> None:
 # ----------------------------------------------------------------------
 
 
+# The v3 variable-length data types and the v2 vlen filter each maps to. A
+# vlen filter on an |O array is what tags it as variable-length string
+# ("vlen-utf8") or bytes ("vlen-bytes"), which numpy object alone cannot hold.
+_VLEN_DTYPE_TO_FILTER = {"string": "vlen-utf8", "bytes": "vlen-bytes"}
+
+
 def _pop_next(
     seq: tx.List[tx.Type[Codec]], cls: tx.Type[Codec]
 ) -> tx.Optional[Codec]:
@@ -431,6 +437,15 @@ def _to_v2(
     # v2 compressor, so route them through the filter registry rather than
     # leaving them as v2 codecs.
     filters = [v2.Filter.from_json(c.to_version(2).to_json()) for c in pre]
+
+    # A variable-length string/bytes array is numpy object (|O) in v2 with a
+    # vlen filter (vlen-utf8 / vlen-bytes). The v3 pipeline carries that codec
+    # as its array->bytes serializer, which flows into the filters above; guard
+    # against a pipeline that omitted it so the string / bytes tag numpy object
+    # drops is never lost.
+    vlen_id = _VLEN_DTYPE_TO_FILTER.get(getattr(self.data_type, "name", None))
+    if vlen_id and not any(getattr(f, "id", None) == vlen_id for f in filters):
+        filters.insert(0, v2.Filter.from_json({"id": vlen_id}))
 
     # v2 holds a single bytes->bytes compressor; any extra is a loss
     compressor = None
