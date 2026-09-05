@@ -82,7 +82,7 @@ def _canonical(version: str) -> str:
 
 
 def _normalize_extension(node: tx.Any) -> tx.Any:  # noqa: ANN401
-    """Correct two known upstream defects in the vendored extension schemas.
+    """Correct three known upstream defects in the vendored extension schemas.
 
     The vendored bytes are untouched; this runs on the in-memory copy:
 
@@ -92,7 +92,12 @@ def _normalize_extension(node: tx.Any) -> tx.Any:  # noqa: ANN401
       "rest" schema -- so the tuple constraint is actually enforced;
     - a ``type`` whose value is a JSON pointer or URL (a plain typo for
       ``$ref``; meaningless as a type) is read as the ``$ref`` it was meant
-      to be.
+      to be;
+    - the custom ``"format": "uint"`` annotation (the rectilinear chunk
+      grid), which older fastjsonschema rejects at *compile* time as an
+      unknown format. A ``format`` is only an annotation, and the field's
+      ``"type": "integer"`` with ``"minimum"`` already carries the
+      unsignedness, so dropping it enforces the same constraint everywhere.
     """
     if isinstance(node, dict):
         if "prefixItems" in node:
@@ -107,6 +112,8 @@ def _normalize_extension(node: tx.Any) -> tx.Any:  # noqa: ANN401
         ):
             node.pop("type")
             node.setdefault("$ref", kind)
+        if node.get("format") == "uint":
+            node.pop("format")
         for value in node.values():
             _normalize_extension(value)
     elif isinstance(node, list):

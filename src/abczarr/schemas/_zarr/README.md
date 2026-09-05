@@ -24,7 +24,7 @@ present: every registered extension codec and data type, plus the
 
 ### Known upstream defects (normalized at load time)
 
-Two extension schemas use constructs an eager compiler cannot take verbatim.
+Some extension schemas use constructs an eager compiler cannot take verbatim.
 The vendored bytes are untouched; the loader (`schemas/_validation.py`)
 normalizes the in-memory copy:
 
@@ -32,7 +32,11 @@ normalizes the in-memory copy:
   fastjsonschema does not implement and would silently ignore. The loader
   rewrites `prefixItems` to the equivalent draft-07 tuple form (`items` as a
   list, plus `additionalItems` for any `items` "rest" schema), so the
-  constraint is actually enforced.
+  constraint is actually enforced. It also annotates its integer chunk-edge
+  lengths with the custom `"format": "uint"`; older fastjsonschema rejects an
+  unknown `format` at compile time, so the loader drops it. A `format` is only
+  an annotation and the field's `"type": "integer"` with `"minimum"` already
+  carries the unsignedness, so nothing is lost.
 - **`codecs/n5_default`** additionally writes `"type": "#/$defs/codec"` —
   a JSON-pointer where a type name belongs (a plain typo for `"$ref"`; it is
   meaningless as a `type` and every validator rejects it). The loader reads

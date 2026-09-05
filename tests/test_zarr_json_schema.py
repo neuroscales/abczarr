@@ -154,6 +154,29 @@ def test_v3_array_rectilinear_chunk_grid_is_typed() -> None:
         schemas.validate(with_chunk_shapes([[[2, 3, 9]]]), "v3", "array")
 
 
+def test_normalized_extensions_drop_unknown_uint_format() -> None:
+    # older fastjsonschema (the pinned floor) rejects the vendored rectilinear
+    # schema's custom `"format": "uint"` at compile time. The loader drops it
+    # in-memory, so no normalized extension keeps a `format: "uint"` that would
+    # break compilation. Version-independent: it guards the normalization, not
+    # a particular fastjsonschema's tolerance.
+    from abczarr.schemas import _validation
+
+    def _formats(node: object) -> tx.Iterator[str]:
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if key == "format" and isinstance(value, str):
+                    yield value
+                else:
+                    yield from _formats(value)
+        elif isinstance(node, list):
+            for value in node:
+                yield from _formats(value)
+
+    registry = _validation._extension_registry()
+    assert "uint" not in {f for s in registry.values() for f in _formats(s)}
+
+
 def test_v3_array_references_every_vendored_codec_and_dtype() -> None:
     # maintainability net: if the registry is re-vendored with a new codec or
     # data type, the composed v3 array schema must reference it (regenerate
