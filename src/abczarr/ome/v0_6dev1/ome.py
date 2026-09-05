@@ -10,7 +10,7 @@ import typing_extensions as tx
 # core
 from abczarr._core.auto.attrs import autodefine, field
 from abczarr._core.metadata import register_subclass
-from abczarr._core.rfc2119 import Required
+from abczarr._core.rfc2119 import Recommended, Required
 
 # locals
 from ..base import OME as OMEBase
@@ -38,7 +38,7 @@ class OMESeries(OME):
 @autodefine
 class OMEImage(OME):
     multiscales: Required[tx.List[Multiscale]]
-    omero: tx.Optional[Omero]
+    omero: Recommended[Omero]
 
 
 @register_subclass(image_label=tx.Any)

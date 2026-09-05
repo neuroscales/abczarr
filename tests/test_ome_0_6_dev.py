@@ -277,3 +277,61 @@ def test_schema_transformation_validates(
     doc = _ome_attrs(_load(version, name))
     # version's official string (e.g. "0.6.dev1") drives schema selection.
     validate_systems_and_transforms(doc, VERSIONS[version])
+
+
+# --------------------------------------------------------------------------
+# An unset optional ``omero`` is OMITTED, not emitted as ``"omero": null``.
+# The NGFF ``image`` schema types ``omero`` as an object, so a serialized
+# ``"omero": null`` fails validation ("omero must be object"); an absent
+# ``omero`` conforms. Regression for issue #116: the field was declared with
+# the typing ``tx.Optional`` (a bare ``Union[Omero, None]``) instead of the
+# RFC-2119 ``Recommended`` marker, so it defaulted to ``None`` and
+# round-tripped invalid metadata. ``Recommended`` makes an unset ``omero``
+# the MISSING sentinel, which ``to_json`` drops.
+# --------------------------------------------------------------------------
+
+# A minimal ``omero`` conforming to the 0.6 ``image`` schema (``channels``
+# required, each channel's ``window`` carrying start/min/end/max).
+_OMERO = {
+    "channels": [
+        {
+            "color": "FF0000",
+            "window": {"start": 0.0, "min": 0.0, "end": 255.0, "max": 255.0},
+        }
+    ]
+}
+
+
+@pytest.mark.parametrize("version", list(VERSIONS))
+def test_unset_omero_is_omitted_and_validates(version: str) -> None:
+    from abczarr.ome import schemas
+
+    pkg = _pkg(version)
+    doc = dict(_ome_attrs(_load(version, "multiscales_example")))
+    doc["version"] = VERSIONS[version]
+
+    obj = base.OME.from_json(doc)
+    assert type(obj) is pkg.ome.OMEImage
+    out = obj.to_json()
+    # no ``omero`` key at all -- not ``"omero": null``
+    assert "omero" not in out
+    # and the serialized image conforms to the official schema
+    schemas.validate({"ome": out}, VERSIONS[version], "image")
+
+
+@pytest.mark.parametrize("version", list(VERSIONS))
+def test_present_omero_round_trips(version: str) -> None:
+    from abczarr.ome import schemas
+
+    pkg = _pkg(version)
+    doc = dict(_ome_attrs(_load(version, "multiscales_example")))
+    doc["version"] = VERSIONS[version]
+    doc["omero"] = _OMERO
+
+    obj = base.OME.from_json(doc)
+    assert type(obj) is pkg.ome.OMEImage
+    out = obj.to_json()
+    # a present ``omero`` is preserved on the way out and still round-trips
+    assert out.get("omero") == _OMERO
+    assert base.OME.from_json(out) == obj
+    schemas.validate({"ome": out}, VERSIONS[version], "image")
