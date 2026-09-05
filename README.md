@@ -2,43 +2,51 @@
 
 <img src="docs/images/logo_title_color.svg" style="display: block; margin: 0 auto; width: 75%; height: auto;" alt="abczarr logo" />
 
-One interface for reading and writing Zarr arrays and
-groups, no matter which backend or storage location holds them.
+One interface for reading and writing Zarr arrays and groups -- sync or
+async -- no matter which backend or storage location holds them.
 
 > [!WARNING]
 > **Status:** pre-release -- under active development, not ready for use yet.
 
 ## What it does
 
-abczarr gives you a single, uniform API for Zarr -- `ZarrArray`, `ZarrGroup`,
-and a key→bytes `Store` -- the way a pathlib-style wrapper gives you one API
-over many filesystems. Write your code against that surface once, and swap
-what's underneath without touching it:
+abczarr gives you a single, uniform API for Zarr -- `ZarrArray` and
+`ZarrGroup`, in both a synchronous and an asynchronous flavour. Write your
+code against that surface once, and swap what's underneath without touching
+it:
 
-- **One surface, many backends.** `ZarrArray` and `ZarrGroup` behave the
-  same whether the data lives behind zarr-python or tensorstore; the right
-  driver is chosen automatically for what an array needs.
-- **One surface, many stores.** The default store is built on
-  [bagof-paths](https://github.com/bagofseeds/bagof-paths), so a local
-  directory and any fsspec or cloud URL (`s3://`, `gs://`, ...) work with no
-  extra code.
-- **Honest capabilities.** Ask a store or a driver what it supports -- and
-  whether that support is native to the backend or built up from simpler
-  operations -- before you rely on it.
-- **Clear failures.** When something is genuinely unsupported, the error
-  names exactly what is missing, instead of failing deep in someone else's
-  internals.
-- **Typed, versioned metadata.** A single metadata model spans Zarr formats
-  v1, v2 and v3, with lossless-where-possible conversion between them, and
-  first-class support for OME-Zarr.
+- **One API, sync or async.** Write against `ZarrArray` / `ZarrGroup` once;
+  every node has an `await`-able twin -- native where the backend offers
+  async I/O, transparently threaded where it doesn't.
+- **Three interchangeable drivers, auto-selected.** zarr-python, tensorstore
+  and zarrista sit behind the same interface. Name one explicitly, or let
+  abczarr pick the one that supports what an array actually needs. Local
+  paths and cloud URLs (`s3://`, `gs://`, ...) work out of the box.
+- **Honest about what works.** Ask a driver what it supports -- and whether
+  that support is native to the backend or synthesized from simpler
+  operations -- before you rely on it. When something genuinely isn't
+  supported, the error names the missing feature instead of failing deep in
+  a backend's internals.
+- **Typed, versioned metadata with conversion.** One frozen, validated model
+  spans Zarr v1, v2 and v3 and converts between them -- keeping equivalent
+  options where the target format allows, and telling you what it drops when
+  it can't (`lossy`, `warn` or `strict`).
+- **OME-Zarr, first class.** The versioned OME-NGFF metadata gets the same
+  typed model, offline JSON-Schema validation, and cross-version conversion
+  as the core Zarr metadata.
 
 ```python
-from abczarr.abc.store import PathBasedStore
+from abczarr.api import open
 
-store = PathBasedStore("s3://my-bucket/dataset.zarr")
-group = open_group(store)  # same code, any backend or scheme
+# any backend, any location -- the driver is chosen for what the array needs
+group = open("s3://my-bucket/dataset.zarr")
 array = group["images"]
 data = array[:100, :100]
+
+# the same call is await-able -- native async where the backend provides it
+agroup = await open("s3://my-bucket/dataset.zarr", asynchronous=True)
+aimages = await agroup.getitem("images")
+tile = await aimages.getitem((slice(100), slice(100)))
 ```
 
 ## Learn more
