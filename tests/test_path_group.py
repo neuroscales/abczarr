@@ -19,6 +19,7 @@ from abczarr.metadata.base import (
     GroupMetadataV2,
     GroupMetadataV3,
     NodeMetadata,
+    NodeMetadataV3,
     _node_type_at,
 )
 
@@ -322,3 +323,10 @@ def test_v1_array_metadata_from_file(tmp_path: pathlib.Path) -> None:
     assert isinstance(meta, ArrayMetadataV1)
     assert meta.zarr_format == 1
     assert meta.attributes == {"note": "v1 array"}
+
+
+def test_v3_from_file_without_zarr_json_raises(tmp_path: pathlib.Path) -> None:
+    node = pathlib.Path(tmp_path) / "arr"
+    node.mkdir()
+    with pytest.raises(FileNotFoundError, match="zarr.json"):
+        NodeMetadataV3.from_file(node)

@@ -565,11 +565,21 @@ class NodeMetadataV3(NodeMetadata):
 
     @classmethod
     def from_file(cls, root: os.PathLike) -> tx.Self:
-        """Load a v3 node's metadata from its `zarr.json`."""
+        """Load a v3 node's metadata from its `zarr.json`.
+
+        Raises
+        ------
+        FileNotFoundError
+            If *root* holds no `zarr.json`.
+        """
         zarr_json = root / constants.Z3_JSON
-        if zarr_json.exists():
-            with zarr_json.open("r", encoding="utf-8") as f:
-                d = json.load(f)
+        if not zarr_json.exists():
+            raise FileNotFoundError(
+                f"No Zarr v3 metadata found in {root}. Expected: "
+                f"{constants.Z3_JSON}"
+            )
+        with zarr_json.open("r", encoding="utf-8") as f:
+            d = json.load(f)
         return cls.from_json(d)
 
     def to_file(self, root: os.PathLike) -> None:
