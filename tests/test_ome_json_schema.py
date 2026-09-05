@@ -32,13 +32,13 @@ _UNSUPPORTED = {
     "maxContains",
 }
 
-# Of those, the ones the vendored OME schemas genuinely use -- so the guard
-# tolerates them rather than pretend they are absent. Each is a documented,
-# unenforced gap: `minContains`/`maxContains` express the "2-3 space axes"
-# rule (image/axes/ome schemas, 0.4 on) and "at most one scale transform",
-# neither of which fastjsonschema enforces. See
-# test_axis_count_rule_is_a_known_gap and issue #95.
-_KNOWN_UNENFORCED = {
+# Of those, the ones the vendored OME schemas genuinely use. fastjsonschema
+# ignores `minContains`/`maxContains` (the "2-3 space axes" rule, 0.4 on, and
+# "at most one scale transform"), but abczarr's own `_contains` pass enforces
+# them after the compiled validator runs -- so they are tolerated here because
+# they are enforced elsewhere, not because they are a silent gap. See
+# test_axis_count_rule_is_enforced and issue #95.
+_ENFORCED_SEPARATELY = {
     "minContains",
     "maxContains",
 }
@@ -79,49 +79,87 @@ def _unsupported_in(version: str) -> tx.Set[str]:
 @pytest.mark.parametrize("version", schemas.VERSIONS)
 def test_no_new_unsupported_keywords(version: str) -> None:
     # No vendored schema may use a keyword fastjsonschema ignores, except the
-    # documented, already-tracked gaps in _KNOWN_UNENFORCED. A new one
-    # creeping in would silently drop a constraint with no sign.
-    new = _unsupported_in(version) - _KNOWN_UNENFORCED
+    # ones in _ENFORCED_SEPARATELY (which abczarr's _contains pass enforces).
+    # A new one creeping in would silently drop a constraint with no sign.
+    new = _unsupported_in(version) - _ENFORCED_SEPARATELY
     assert not new, (
         f"{version} uses keywords fastjsonschema ignores (constraint "
         f"silently dropped): {sorted(new)}"
     )
 
 
-def test_known_unenforced_keywords_are_still_present() -> None:
-    # Keep _KNOWN_UNENFORCED honest: if upstream ever drops these, tighten
-    # the tolerance list (and revisit the gap) rather than keep tolerating a
-    # keyword no vendored schema uses any more.
+def test_separately_enforced_keywords_are_still_present() -> None:
+    # Keep _ENFORCED_SEPARATELY honest: if upstream ever drops these, drop the
+    # _contains pass and this tolerance rather than keep carrying a keyword no
+    # vendored schema uses any more.
     used = set()
     for version in schemas.VERSIONS:
         used |= _unsupported_in(version)
-    assert _KNOWN_UNENFORCED <= used, (
-        "tolerated keywords no longer used by any vendored schema: "
-        f"{sorted(_KNOWN_UNENFORCED - used)}"
+    assert _ENFORCED_SEPARATELY <= used, (
+        "separately-enforced keywords no longer used by any vendored schema: "
+        f"{sorted(_ENFORCED_SEPARATELY - used)}"
     )
 
 
-def _four_space_axis_image() -> dict:
-    space = [{"name": n, "type": "space"} for n in ("x", "y", "z", "w")]
+def _axes(*types: str) -> tx.List[dict]:
+    # distinct names -> the schemas' uniqueItems on axes is satisfied, so a
+    # count case fails on the count bound and nothing else.
+    return [{"name": f"{t}{i}", "type": t} for i, t in enumerate(types)]
+
+
+def _image_04(axes: tx.List[dict], n_transforms: int = 1) -> dict:
+    scale = {"type": "scale", "scale": [1.0] * len(axes)}
     return {"multiscales": [{
-        "axes": space,
-        "datasets": [{"path": "0", "coordinateTransformations": [
-            {"type": "scale", "scale": [1.0, 1.0, 1.0, 1.0]}]}],
+        "version": "0.4",
+        "axes": axes,
+        "datasets": [{"path": "0",
+                      "coordinateTransformations": [scale] * n_transforms}],
     }]}
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="fastjsonschema 2.x ignores minContains/maxContains, so the OME "
-           "0.4 axis-count rule (2-3 space axes) is unenforced (#95)",
-)
-def test_axis_count_rule_is_a_known_gap() -> None:
+def test_axis_count_rule_is_enforced() -> None:
     # The 0.4 image schema bounds the space axes with minContains 2 /
-    # maxContains 3; fastjsonschema drops both, so four space axes wrongly
-    # validate. This documents the residual gap -- an xpass here means the
-    # constraint became enforced, so tighten the guard and drop the tolerance.
+    # maxContains 3 (reached through `$ref #/$defs/axes`). fastjsonschema
+    # ignores both; the _contains pass enforces them.
+    assert schemas.validate(_image_04(_axes("space", "space")), "0.4", "image")
+    assert schemas.validate(
+        _image_04(_axes("space", "space", "space")), "0.4", "image"
+    )
+    for bad in (
+        _axes("space"),                                    # too few (< 2)
+        _axes("space", "space", "space", "space"),         # too many (> 3)
+    ):
+        with pytest.raises(SchemaValidationError):
+            schemas.validate(_image_04(bad), "0.4", "image")
+
+
+def test_scale_transform_count_is_enforced() -> None:
+    # The 0.4 image schema allows at most one scale transform per dataset
+    # (maxContains 1 on `$defs/coordinateTransformations`).
+    axes = _axes("space", "space")
+    assert schemas.validate(_image_04(axes, n_transforms=1), "0.4", "image")
     with pytest.raises(SchemaValidationError):
-        schemas.validate(_four_space_axis_image(), "0.4", "image")
+        schemas.validate(_image_04(axes, n_transforms=2), "0.4", "image")
+
+
+def test_oneof_axis_count_rule_is_enforced() -> None:
+    # The 0.6 axes schema expresses the count rule as a `oneOf` of two bare
+    # count-constraint branches (2-3 space axes XOR >=2 array axes), which the
+    # branch a document satisfies is decided *by*. The _contains pass resolves
+    # the branch selection the way a spec-complete validator does.
+    assert schemas.validate(_axes("space", "space"), "0.6rc0", "axes")
+    assert schemas.validate(_axes("space", "space", "space"), "0.6rc0", "axes")
+    assert schemas.validate(_axes("array", "array"), "0.6rc0", "axes")
+    assert schemas.validate(
+        _axes("space", "space", "time"), "0.6rc0", "axes"
+    )
+    for bad in (
+        _axes("space"),                             # < 2 space, no array
+        _axes("space", "space", "space", "space"),  # > 3 space
+        _axes("space", "space", "array", "array"),  # matches both branches
+    ):
+        with pytest.raises(SchemaValidationError):
+            schemas.validate(bad, "0.6rc0", "axes")
 
 
 def test_version_spellings_share_one_validator() -> None:
