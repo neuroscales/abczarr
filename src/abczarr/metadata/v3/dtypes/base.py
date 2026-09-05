@@ -78,7 +78,9 @@ def _make_dtype_class(
     )))
 
 
-def _splitall(*s: str, sep: tx.Optional[tx.Tuple[str]] = None) -> tx.List[str]:
+def _splitall(
+    *s: str, sep: tx.Optional[tx.Tuple[str]] = None
+) -> tx.Tuple[str, ...]:
     if sep is None or isinstance(sep, str):
         sep = (sep,)
     if len(sep) == 0:

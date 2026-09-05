@@ -18,7 +18,6 @@ __all__ = [
     "ZarrConfig",
     "GroupConfig",
     "ArrayConfig",
-    "OMEZarrConfig",
     "ZarrOptions",
     "GroupOptions",
     "ArrayOptions",
@@ -285,45 +284,6 @@ class ArrayConfig(ZarrConfig):
     def resolved_separator(self) -> str:
         """The chunk-key separator, with `"auto"` (or `None`) resolved."""
         return _resolve_separator(self.dimension_separator)
-
-
-@autodefine
-class OMEZarrConfig(ArrayConfig):
-    """A description of an OME-Zarr image to create.
-
-    Extends [ArrayConfig][abczarr.api.config.ArrayConfig] with the pyramid and
-    axis choices OME-Zarr adds: how many resolution levels to build, which
-    axis to hold at full resolution, and whether to give each channel or time
-    point its own chunk or shard.
-
-    Parameters
-    ----------
-    chunk_channels : bool
-        Give each channel its own chunk.
-    chunk_time : bool
-        Give each time point its own chunk.
-    shard_channels : bool
-        Give each channel its own shard.
-    shard_time : bool
-        Give each time point its own shard.
-    no_time : bool
-        Read a fourth axis as channel rather than time.
-    no_pyramid_axis : str, optional
-        A spatial axis to leave un-downsampled across pyramid levels.
-    levels : int
-        The number of pyramid levels, or -1 for as many as fit a chunk.
-    ome_version : str
-        The OME-Zarr specification version to write.
-    """
-
-    chunk_channels: bool = False
-    chunk_time: bool = True
-    shard_channels: bool = False
-    shard_time: bool = False
-    no_time: bool = False
-    no_pyramid_axis: tx.Optional[tz.SpatialAxisName] = None
-    levels: int = -1
-    ome_version: tz.OMEVersion = "0.4"
 
 
 class ZarrOptions(tx.TypedDict, total=False):
