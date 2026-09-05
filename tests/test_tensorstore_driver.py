@@ -302,3 +302,43 @@ def test_group_via_a_pathlike_is_detected(tmp_path: pathlib.Path) -> None:
     node = abczarr.open(root, mode="r", driver="tensorstore")  # Path, not str
     assert isinstance(node, TensorStoreGroup)
     assert list(node.keys()) == ["a"]
+
+
+# --------------------------------------------------------------------------
+# a Zarr v2 group -- its metadata peek reads .zgroup, not only zarr.json, so
+# creating and re-opening a v2 group through TensorStore succeeds instead of
+# being mistaken for a (missing) v3 array
+# --------------------------------------------------------------------------
+
+
+def test_create_a_v2_group(tmp_path: pathlib.Path) -> None:
+    # the reported bug: writing the .zgroup and re-opening it through the
+    # driver would peek only zarr.json, mistake the group for a v3 array, and
+    # raise an opaque backend NOT_FOUND. The peek now sees the v2 metadata.
+    root = str(tmp_path / "g2.zarr")
+    node = abczarr.create_group(root, zarr_version=2, driver="tensorstore")
+    assert isinstance(node, TensorStoreGroup)
+    assert node.zarr_version == 2
+
+
+def test_a_v2_group_reopens_as_a_v2_group(tmp_path: pathlib.Path) -> None:
+    root = str(tmp_path / "g2.zarr")
+    abczarr.create_group(root, zarr_version=2, driver="tensorstore")
+    reopened = abczarr.open(root, mode="r", driver="tensorstore")
+    assert isinstance(reopened, TensorStoreGroup)
+    assert reopened.zarr_version == 2
+
+
+def test_opening_a_v2_array_is_refused_by_name(tmp_path: pathlib.Path) -> None:
+    # TensorStore reads only a v3 array here, so a v2 array is refused with a
+    # clear error that names the operation and the driver, not an opaque
+    # backend NOT_FOUND
+    root = str(tmp_path / "a2.zarr")
+    group = zarr.open_group(root, mode="w", zarr_format=2)
+    group.create_array("img", shape=(4,), chunks=(4,), dtype="int32")
+
+    with pytest.raises(UnsupportedZarrOperation) as excinfo:
+        abczarr.open(root + "/img", mode="r", driver="tensorstore")
+    message = str(excinfo.value)
+    assert "tensorstore" in message
+    assert "v2" in message

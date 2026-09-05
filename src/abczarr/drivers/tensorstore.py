@@ -26,6 +26,7 @@ import typing_extensions as tx
 from bagof.paths import Path
 
 # core
+from abczarr._core import constants
 from abczarr._core import typing as tz
 from abczarr._core.features import FEATURE_KINDS, FEATURE_VERSIONS
 from abczarr.abc.asynchronous import AsyncZarrArray, AsyncZarrNode
@@ -35,6 +36,7 @@ from abczarr.abc.sync import PathGroup, ZarrArray, ZarrNode
 from abczarr.api.config import ArrayConfig
 from abczarr.drivers._metadata import metadata_from_json
 from abczarr.drivers.base import Driver
+from abczarr.errors import UnsupportedZarrOperation
 from abczarr.metadata.base import ArrayMetadata, NodeMetadata, _node_at
 
 # optionals -- the module imports without tensorstore; a driver with no
@@ -301,8 +303,19 @@ class TensorStoreDriver(Driver):
         return ts is not None
 
     def _open_sync(self, location: tx.Any, mode: str) -> TensorStoreNode:
-        if _peek_node_type(location) == "group":
-            return TensorStoreGroup(location, mode)
+        peeked = _peek_node(location)
+        if peeked is not None:
+            node_type, version = peeked
+            # TensorStore has no group object, so a group of any version is
+            # read straight from the store by the path group.
+            if node_type == "group":
+                return TensorStoreGroup(location, mode)
+            # TensorStore reads only a v3 array here; a v2/v1 array would give
+            # an opaque backend error, so it is refused by name instead.
+            if version != 3:
+                raise UnsupportedZarrOperation(
+                    f"open a Zarr v{version} array", self.name or None
+                )
         return _open_ts_array(location, mode)
 
     async def _open_async(
@@ -311,8 +324,15 @@ class TensorStoreDriver(Driver):
         # TensorStore has no group object, so a group opens as the async path
         # group (which lists and navigates through an async store); an array
         # awaits TensorStore's own open future.
-        if await _apeek_node_type(location) == "group":
-            return TensorStoreGroup(location, mode).as_async()
+        peeked = await _apeek_node(location)
+        if peeked is not None:
+            node_type, version = peeked
+            if node_type == "group":
+                return TensorStoreGroup(location, mode).as_async()
+            if version != 3:
+                raise UnsupportedZarrOperation(
+                    f"open a Zarr v{version} array", self.name or None
+                )
         return await _aopen_ts_array(location, mode)
 
     def _create_from_metadata_sync(
@@ -377,32 +397,57 @@ def _supports_v3_feature(kind: str, name: str) -> bool:
     return False
 
 
-def _peek_node_type(location: tx.Any) -> tx.Optional[str]:
-    """The node type recorded at *location*'s ``zarr.json``, or None.
+def _v3_node(raw: tx.Any) -> tx.Optional[tx.Tuple[str, int]]:
+    """The ``(node_type, 3)`` pair a v3 ``zarr.json`` document names, or None.
 
-    Read through a [PathBasedStore][abczarr.abc.store.PathBasedStore], so
-    every scheme bagof.paths understands is inspected the same way -- a local
-    path, an fsspec URL (``memory://``), or a cloud one (``s3://``). A raw
-    kvstore dict spec is not a location to peek, so it returns None.
+    A ``zarr.json`` without a valid ``node_type`` is treated as no node, since
+    the format requires one.
+    """
+    try:
+        node_type = json.loads(raw).get("node_type")
+    except (ValueError, TypeError):
+        return None
+    if node_type in ("array", "group"):
+        return node_type, 3
+    return None
+
+
+def _peek_node(location: tx.Any) -> tx.Optional[tx.Tuple[str, int]]:
+    """The node kind and Zarr version recorded at *location*, or None.
+
+    Detects both a v3 ``zarr.json`` (through its ``node_type`` field) and a v2
+    node (through which of ``.zgroup`` and ``.zarray`` is present), so a v2
+    group or array is recognised as well as a v3 one. Read through a
+    [PathBasedStore][abczarr.abc.store.PathBasedStore], so every scheme
+    bagof.paths understands is inspected the same way -- a local path, an
+    fsspec URL (``memory://``), or a cloud one (``s3://``). A raw kvstore dict
+    spec is not a location to peek, so it returns None.
+
+    Returns
+    -------
+    tuple of (str, int) or None
+        A ``("array" | "group", zarr_format)`` pair for a node, else None.
     """
     if isinstance(location, dict):  # a kvstore spec, not a location
         return None
     try:
-        raw = PathBasedStore(location).get("zarr.json")
+        store = PathBasedStore(location)
+        raw = store.get(constants.Z3_JSON)
+        if raw is not None:
+            return _v3_node(raw)
+        if store.get(constants.Z2GROUP_JSON) is not None:
+            return "group", 2
+        if store.get(constants.Z2ARRAY_JSON) is not None:
+            return "array", 2
     except Exception:
         return None
-    if raw is None:
-        return None
-    try:
-        return json.loads(raw).get("node_type")
-    except (ValueError, TypeError):
-        return None
+    return None
 
 
-async def _apeek_node_type(location: tx.Any) -> tx.Optional[str]:
-    """The node type at *location*'s ``zarr.json``, read through an async
+async def _apeek_node(location: tx.Any) -> tx.Optional[tx.Tuple[str, int]]:
+    """The node kind and Zarr version at *location*, read through an async
     store, or None -- the async twin of
-    [_peek_node_type][abczarr.drivers.tensorstore].
+    [_peek_node][abczarr.drivers.tensorstore].
 
     Read through an
     [AsyncPathBasedStore][abczarr.abc.store.AsyncPathBasedStore], so a URL
@@ -411,12 +456,14 @@ async def _apeek_node_type(location: tx.Any) -> tx.Optional[str]:
     if isinstance(location, dict):  # a kvstore spec, not a location
         return None
     try:
-        raw = await AsyncPathBasedStore(location).get("zarr.json")
+        store = AsyncPathBasedStore(location)
+        raw = await store.get(constants.Z3_JSON)
+        if raw is not None:
+            return _v3_node(raw)
+        if await store.get(constants.Z2GROUP_JSON) is not None:
+            return "group", 2
+        if await store.get(constants.Z2ARRAY_JSON) is not None:
+            return "array", 2
     except Exception:
         return None
-    if raw is None:
-        return None
-    try:
-        return json.loads(raw).get("node_type")
-    except (ValueError, TypeError):
-        return None
+    return None
