@@ -13,6 +13,8 @@ import numpy as np
 import numpy.typing as npt
 import typing_extensions as tx
 
+from abczarr.errors import UnsupportedConversion
+
 
 class RegexMatch(str):
     def __class_getitem__(cls, pattern: tx.Union[str, re.Pattern]) -> type:
@@ -105,12 +107,13 @@ def asdtype(
     # Dictionaries are Zarr v3 data type extensions
     if isinstance(dtype, abc.Mapping):
         name = dtype["name"]
-        if not getattr(dtype, "configuration", None):
+        configuration = dtype.get("configuration")
+        if not configuration:
             dtype = name
 
         # Structured data type
         if name in ("struct", "structured"):
-            fields = dtype["configuration"]["fields"]
+            fields = configuration["fields"]
             dtype = [
                 (field["name"], asdtype(field["data_type"]))
                 for field in fields
@@ -118,12 +121,15 @@ def asdtype(
 
         # Time data type
         if name in ("numpy.datetime64", "numpy.timedelta64"):
-            unit = dtype["configuration"]["unit"]
-            scale = dtype["configuration"]["scale_factor"]
+            unit = configuration["unit"]
+            scale = configuration["scale_factor"]
             time_type = name.split(".")[-1]
             dtype = f"{time_type}[{scale}{unit}]"
 
-    dtype = np.dtype(dtype)
+    try:
+        dtype = np.dtype(dtype)
+    except TypeError as exc:
+        raise UnsupportedConversion(str(dtype), 2) from exc
 
     if type is not None:
         if not issubclass(dtype.type, type):
