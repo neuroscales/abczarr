@@ -137,6 +137,25 @@ def _as_store_path_str(store_path: tx.Any) -> tx.Any:
     return store_path
 
 
+def _ensure_writable(read_only: bool, operation: str) -> None:
+    """Refuse a mutating *operation* when the store is read-only.
+
+    Parameters
+    ----------
+    read_only : bool
+        Whether the store refuses writes.
+    operation : str
+        The operation being attempted, named in the error message.
+
+    Raises
+    ------
+    PermissionError
+        When *read_only* is true; the message names *operation*.
+    """
+    if read_only:
+        raise PermissionError(f"cannot {operation} on a read-only store")
+
+
 class Store(SupportsCapabilities, ABC):
     """A key to bytes map, addressed under a
     [StorePath][abczarr.abc.store.StorePath] root.
@@ -479,11 +498,13 @@ class PathBasedStore(Store):
             return None
 
     def set(self, key: str, value: _BytesLike) -> None:
+        _ensure_writable(self.read_only, "set")
         target = self._key_path(key)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(value)
 
     def delete(self, key: str) -> None:
+        _ensure_writable(self.read_only, "delete")
         self._key_path(key).unlink(missing_ok=True)
 
     def exists(self, key: str) -> bool:
@@ -734,11 +755,13 @@ class AsyncPathBasedStore(AsyncStore):
             return None
 
     async def set(self, key: str, value: _BytesLike) -> None:
+        _ensure_writable(self.read_only, "set")
         target = self._key_path(key)
         await target.parent.mkdir(parents=True, exist_ok=True)
         await target.write_bytes(value)
 
     async def delete(self, key: str) -> None:
+        _ensure_writable(self.read_only, "delete")
         await self._key_path(key).unlink(missing_ok=True)
 
     async def exists(self, key: str) -> bool:
