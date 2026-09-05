@@ -81,7 +81,7 @@ class CastValueCodec(ArrayToArrayCodec):
 
 @autofrozen
 class ConditionalConfig(CodecConfigImpl):
-    codecs: tx.Tuple[Codec]
+    codecs: tx.Tuple[Codec, ...]
 
 
 @register_subclass(name="conditional")
