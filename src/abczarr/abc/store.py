@@ -126,16 +126,18 @@ def _child(prefix: str, key: str) -> str:
 
 
 def _as_store_path(store_path: tx.Any, cls: type) -> tx.Any:
-    """Wrap a raw path in *cls* (a bagof.paths StorePath) so a store does not
-    use it raw. *cls* converts an os.PathLike itself, so no separate string
-    step is needed. A ``None``, or an already-wrapped StorePath/AsyncStorePath,
-    passes through unchanged.
+    """Wrap a store's raw path in *cls* (a bagof.paths StorePath).
+
+    ``None`` is a store with no path (a memory/session/in-process backend)
+    and stays ``None``. An already-wrapped StorePath/AsyncStorePath is left
+    as is. Anything else -- a str, bytes, or os.PathLike -- is wrapped in
+    *cls*, which converts an os.PathLike itself.
     """
-    if isinstance(store_path, (str, bytes, os.PathLike)) and not isinstance(
-        store_path, (StorePath, AsyncStorePath)
-    ):
-        return cls(store_path)
-    return store_path
+    if store_path is None:
+        return None
+    if isinstance(store_path, (StorePath, AsyncStorePath)):
+        return store_path
+    return cls(store_path)
 
 
 class Store(SupportsCapabilities, ABC):
