@@ -11,6 +11,10 @@ on:
         description: Python version
         required: true
         default: ""
+      extra-constraints:
+        description: Extra pip requirements installed after the package (e.g. a dependency floor)
+        required: false
+        default: ""
   workflow_call:
     inputs:
       tag:
@@ -21,6 +25,11 @@ on:
       python-version:
         description: Python version
         required: true
+        default: ""
+        type: string
+      extra-constraints:
+        description: Extra pip requirements installed after the package (e.g. a dependency floor)
+        required: false
         default: ""
         type: string
 
@@ -44,6 +53,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[test]"
           pip install pytest
+          if [ -n "${{ inputs.extra-constraints }}" ]; then
+            # Pin a dependency to its declared floor so drift is caught here,
+            # not by a user on the oldest supported version.
+            pip install ${{ inputs.extra-constraints }}
+          fi
       - name: Test with pytest
         shell: bash
         run: pytest

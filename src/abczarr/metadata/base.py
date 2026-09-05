@@ -57,6 +57,12 @@ from abczarr._core.metadata import (
 )
 from abczarr.errors import UnsupportedConversion
 
+#: Protocols whose paths live on a local filesystem, for which the
+#: temp-file-and-replace atomic write is possible. An empty protocol is a
+#: plain local path; ``file`` and ``local`` are its aliases. A remote store
+#: takes the direct-write branch instead (see ``_atomic_write``).
+_LOCAL_PROTOCOLS = frozenset({"", "file", "local"})
+
 # ======================================================================
 #
 #                          CONVERSION POLICY
@@ -623,14 +629,42 @@ class ArrayMetadataV3(NodeMetadataV3, ArrayMetadata):
 
 
 def _atomic_write(path: os.PathLike, data: tz.JsonDict) -> None:
-    """Write JSON data to path atomically."""
-    PathType = type(path)
+    """Write JSON data to *path* so a reader never sees a partial file.
+
+    A local filesystem gets the classic temp-file-and-rename dance: write a
+    sibling temporary file, ``fsync`` it, then ``os.replace`` it over the
+    target, which POSIX guarantees is atomic. A remote/object store has no
+    such rename, but a single object PUT is itself atomic at the object
+    level, so the metadata is written directly through the store's own API
+    (``write_bytes``) and a reader still never observes a half-written
+    ``zarr.json``. This keeps the path-based group/array fallback working on
+    remote backends.
+
+    Which branch runs is read off the path's ``protocol`` (``""``/``file``/
+    ``local`` are local; a plain ``pathlib.Path`` has none and counts as
+    local).
+
+    Note: the *final* write is atomic on both branches, but the
+    read-modify-write the callers do around it (read the existing metadata,
+    merge, write it back) is not a compare-and-swap on a remote store, so two
+    concurrent creators of the same node can still clobber each other -- the
+    same race the local path already has. True transactional remote writes
+    are a separate concern.
+    """
+    payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     parent = path.parent
     parent.mkdir(parents=True, exist_ok=True)
+    protocol = getattr(path, "protocol", "")
+    if protocol not in _LOCAL_PROTOCOLS:
+        # No local temp file or rename on a remote store; a single object PUT
+        # is atomic at the object level, which is the guarantee this needs.
+        path.write_bytes(payload.encode("utf-8"))
+        return
+    PathType = type(path)
     fd, tmp = tempfile.mkstemp(prefix=".meta_tmp_", dir=str(parent))
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
+            f.write(payload)
             f.flush()
             os.fsync(f.fileno())
         PathType(tmp).replace(path)

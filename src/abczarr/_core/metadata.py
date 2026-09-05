@@ -83,7 +83,14 @@ class Metadata:
                     kwargs_value = kwargs_copy.get(f.name)
                     match_value = match_copy.get(f.name)
                     if isinstance(match_value, re.Pattern):
-                        if not match_value.match(kwargs_value):
+                        # A regex discriminator only matches a string value;
+                        # a non-string one simply does not match this subclass
+                        # (mirrors ``_match_score``), so fall through rather
+                        # than let ``re.Pattern.match`` raise ``TypeError``.
+                        if not (
+                            isinstance(kwargs_value, str)
+                            and match_value.match(kwargs_value)
+                        ):
                             break
                     elif kwargs_value != match_value:
                         break

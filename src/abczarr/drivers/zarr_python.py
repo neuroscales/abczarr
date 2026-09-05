@@ -336,17 +336,19 @@ class ZarrPythonNode(ZarrNode):
     def _write_metadata(self, new_metadata: tx.Any) -> None:
         """Persist new attributes by delegating to zarr-python.
 
-        zarr-python's own `update_attributes` writes the metadata and keeps
+        zarr-python's own attribute mapping writes the metadata and keeps
         the object's caches consistent; going through it -- rather than
         writing the store directly -- means abczarr and zarr-python never
-        disagree about the attributes. The new attributes are applied whole
-        (clear, then update), so a removed key is removed, matching
-        zarr-python's own attribute mapping.
+        disagree about the attributes. `attrs.put` applies the new
+        attributes whole (overwriting all of them), so a removed key is
+        removed. Delegating the wholesale replace to that public method
+        keeps a removed key removed even if a future zarr-python changes
+        how a node's attributes are stored, rather than depending on
+        clearing the metadata object's attribute dict in place here.
         """
         obj = self._obj
-        obj.metadata.attributes.clear()
-        self._obj = obj.update_attributes(dict(new_metadata.attributes))
-        self._native = self._obj
+        obj.attrs.put(dict(new_metadata.attributes))
+        self._native = self._obj = obj
 
     @property
     def zarr_version(self) -> tz.ZarrVersion:
