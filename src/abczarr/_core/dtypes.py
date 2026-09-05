@@ -190,13 +190,17 @@ def to_zarr3(dtype: tx.Union[npt.DTypeLike, tx.Mapping]) -> DataTypeV3:
 
     prefix_datetime64 = ("<M8", "|M8", ">M8")
     if descr.upper().startswith(prefix_datetime64):
-        if dtype.startswith(prefix_datetime64):
+        # ``descr`` is the dtype string ("<M8[ns]" / "<m8[ns]"); datetime64
+        # keeps the "M8" spelling while timedelta64 lowercases it to "m8".
+        if descr.startswith(prefix_datetime64):
             name = "numpy.datetime64"
         else:
             name = "numpy.timedelta64"
         if "[" in descr:
             unit = descr.split("[")[-1].split("]")[0]
-            scale, unit = re.match(r"(\d+)(\w+)", unit).groups()
+            # A unit written without a count ("ns") has an empty scale, so the
+            # count is optional (``\d*``) rather than mandatory (``\d+``).
+            scale, unit = re.match(r"(\d*)(\w+)", unit).groups()
             scale = int(scale or 1)
             unit = unit or "generic"
         else:
