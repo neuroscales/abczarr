@@ -252,11 +252,8 @@ def test_v1_scalar_compression_opts_accepted() -> None:
 
 
 def test_v1_scalar_compression_opts_converts_to_v2_and_v3() -> None:
-    # Expanding a scalar goes through numcodecs, absent on the minimal-deps
-    # test leg -- skip there (the metadata layer still imports without it).
-    pytest.importorskip("numcodecs")
-    # A scalar ``compression_opts`` must still convert: numcodecs defines
-    # which parameter the scalar fills, so ``zlib`` ``1`` becomes ``level=1``
+    # A scalar ``compression_opts`` must still convert: it is placed under the
+    # option that codec fills it into, so ``zlib`` ``1`` becomes ``level=1``
     # in the v2 compressor -- and the result is identical to the object form.
     base = {
         "zarr_format": 1,
@@ -295,3 +292,13 @@ def test_v1_scalar_compression_opts_converts_to_v2_and_v3() -> None:
         {**base, "compression": "blosc", "compression_opts": "lz4"}
     )
     assert blosc.to_version(2).compressor.to_json()["cname"] == "lz4"
+
+    # a codec with no scalar form (blosc takes an object, not an integer)
+    # cannot represent a scalar and says so, rather than guessing.
+    from abczarr.errors import UnsupportedConversion
+
+    bad = v1.ArrayMetadata.from_json(
+        {**base, "compression": "blosc", "compression_opts": 5}
+    )
+    with pytest.raises(UnsupportedConversion):
+        bad.to_version(2)
