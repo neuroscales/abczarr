@@ -95,6 +95,47 @@ def test_multiscale_metadata_args_string_is_not_shredded() -> None:
 
 
 # --------------------------------------------------------------------------
+# An unset optional ``omero`` is OMITTED, not emitted as ``"omero": null``
+# (regression for issue #116; the stable chain shared the same bug). The NGFF
+# ``image`` schema types ``omero`` as an object, so a serialized
+# ``"omero": null`` fails validation; an absent ``omero`` conforms.
+# --------------------------------------------------------------------------
+
+
+def test_stable_unset_omero_is_omitted_and_validates() -> None:
+    from abczarr.ome import schemas
+
+    o = v0_5.OME.from_json(
+        {"version": "0.5", "multiscales": [_MULTISCALE_V05]}
+    )
+    assert type(o).__name__ == "OMEImage"
+    out = o.to_json()
+    assert "omero" not in out
+    schemas.validate({"ome": out}, "0.5", "image")
+
+
+def test_stable_present_omero_round_trips() -> None:
+    from abczarr.ome import schemas
+
+    omero = {
+        "channels": [
+            {
+                "color": "FF0000",
+                "window": {"start": 0.0, "min": 0.0, "end": 255.0,
+                           "max": 255.0},
+            }
+        ]
+    }
+    o = v0_5.OME.from_json(
+        {"version": "0.5", "multiscales": [_MULTISCALE_V05], "omero": omero}
+    )
+    out = o.to_json()
+    assert out.get("omero") == omero
+    assert v0_5.OME.from_json(out) == o
+    schemas.validate({"ome": out}, "0.5", "image")
+
+
+# --------------------------------------------------------------------------
 # cross-version conversion between same-structure OME versions (v0.4 <-> v0.5)
 # --------------------------------------------------------------------------
 

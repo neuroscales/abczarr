@@ -38,7 +38,7 @@ class OMESeries(OME):
 @autodefine
 class OMEImage(OME):
     multiscales: Required[tx.List[Multiscale]]
-    omero: tx.Optional[Omero]
+    omero: Optional[Omero]
 
 
 @register_subclass(image_label=tx.Any)
