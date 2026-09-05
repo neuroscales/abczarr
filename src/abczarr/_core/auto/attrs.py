@@ -27,6 +27,7 @@ from attrs import fields as _attrs_fields
 
 # internals
 from ..frozendict import FrozenDict
+from ..rfc2119 import MISSING
 from ._typing import ClassDecorator, FieldTransformer
 from ._utils import eq_safenan, get_default
 from .converters import get_converter as _get_converter
@@ -56,8 +57,6 @@ def get_converter(hint: tx.Any) -> tx.Optional[tx.Callable]:
     def convert(value: tx.Any) -> tx.Any:
         # a required-but-unset field carries the MISSING sentinel (from an
         # RFC-2119 requirement factory); pass it through unconverted.
-        from abczarr._core.rfc2119 import MISSING
-
         if value is MISSING:
             return value
         return wrapped(value)
