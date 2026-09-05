@@ -1,45 +1,41 @@
 # abczarr
 
-abczarr is one interface for reading and writing Zarr arrays and
-groups -- synchronous or asynchronous -- no matter which backend or
-storage location holds them. Write against a single API, and swap
-zarr-python, tensorstore or zarrista, a local directory or a cloud
-bucket, underneath it without touching your code.
+Zarr has several good Python implementations -- zarr-python, tensorstore,
+zarrista -- and they don't all support the same things or speak the same
+API. abczarr sits on top of them and gives you one interface to write
+against, `ZarrArray` and `ZarrGroup`, whether the data lives on a local
+disk or behind a cloud URL like `s3://` or `gs://`. abczarr picks a backend
+that supports what you're asking for, or you can name one yourself.
 
-## What you get
+Every node comes in a synchronous and an asynchronous form, and you don't
+have to think about which backend makes that easy. Where the backend has
+real async I/O, abczarr uses it directly; where it doesn't, the call quietly
+runs in a background thread instead. Either way you get an `await`-able
+array or group with the same behavior.
 
-- **One API, sync or async.** Write against `ZarrArray` /
-  `ZarrGroup` once; every node has an `await`-able twin -- native
-  where the backend offers async I/O, transparently threaded where
-  it doesn't.
-- **Three interchangeable drivers, auto-selected.** zarr-python,
-  tensorstore and zarrista sit behind the same interface. Name one
-  explicitly, or let abczarr pick the one that supports what an
-  array actually needs. Local paths and cloud URLs (`s3://`,
-  `gs://`, ...) work out of the box.
-- **Honest about what works.** Ask a driver what it supports -- and
-  whether that support is native to the backend or synthesized from
-  simpler operations -- before you rely on it. When something
-  genuinely isn't supported, the error names the missing feature
-  instead of failing deep in a backend's internals.
-- **Typed, versioned metadata with conversion.** One frozen,
-  validated model spans Zarr v1, v2 and v3 and converts between
-  them -- keeping equivalent options where the target format allows,
-  and telling you what it drops when it can't (`lossy`, `warn` or
-  `strict`).
-- **OME-Zarr, first class.** The versioned OME-NGFF metadata gets
-  the same typed model, offline JSON-Schema validation, and
-  cross-version conversion as the core Zarr metadata.
+Because backends genuinely differ in what they can do, abczarr lets you
+check a backend's capabilities before you rely on them, rather than finding
+out partway through a write. And when an operation really isn't supported,
+you get an error that says what's missing -- not a stack trace from deep
+inside someone else's driver.
+
+Zarr's metadata has changed shape across versions -- v1, v2, and v3 all
+describe an array a little differently -- and abczarr models all of them as
+one typed, validated object that knows how to convert between versions. When
+a conversion can carry an option across cleanly, it does; when it can't, you
+choose whether that's silently dropped, a warning, or a hard error. OME-Zarr
+metadata gets the same treatment: a typed model, schema validation you can
+run offline, and conversion between OME-NGFF versions.
 
 ```python
 from abczarr.api import open
 
-# any backend, any location -- the driver is chosen for the array
+# open a Zarr node anywhere; the right backend is chosen for you
 group = open("s3://my-bucket/dataset.zarr")
 array = group["images"]
 data = array[:100, :100]
 
-# the same call is await-able -- native async where the backend has it
+# the async version awaits the open call and uses method calls instead of indexing
 agroup = await open("s3://my-bucket/dataset.zarr", asynchronous=True)
 aimages = await agroup.getitem("images")
 tile = await aimages.getitem((slice(100), slice(100)))
