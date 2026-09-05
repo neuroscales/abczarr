@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - src/**
+      - tests/**
       - setup.py
       - pyproject.toml
   pull_request:
