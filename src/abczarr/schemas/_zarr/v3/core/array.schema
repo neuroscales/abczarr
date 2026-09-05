@@ -154,7 +154,7 @@
           "$ref": "#/$defs/regular_chunk_grid"
         },
         {
-          "$ref": "#/$defs/rectilinear_chunk_grid"
+          "$ref": "https://raw.githubusercontent.com/zarr-developers/zarr-extensions/refs/heads/main/chunk-grids/rectilinear/schema.json"
         }
       ]
     },
@@ -411,29 +411,6 @@
           "required": [
             "chunk_shape"
           ]
-        }
-      },
-      "required": [
-        "name",
-        "configuration"
-      ]
-    },
-    "rectilinear_chunk_grid": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "const": "rectilinear"
-        },
-        "configuration": {
-          "type": "object",
-          "properties": {
-            "kind": {
-              "const": "inline"
-            },
-            "chunk_shapes": {
-              "type": "array"
-            }
-          }
         }
       },
       "required": [

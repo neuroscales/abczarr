@@ -151,16 +151,11 @@ def v3_array() -> dict:
         },
         "required": ["name", "configuration"],
     }
-    rectilinear = {
-        "type": "object",
-        "properties": {
-            "name": {"const": "rectilinear"},
-            "configuration": {"type": "object", "properties": {
-                "kind": {"const": "inline"},
-                "chunk_shapes": {"type": "array"}}},
-        },
-        "required": ["name", "configuration"],
-    }
+    # the rectilinear chunk grid is a vendored official extension: compose its
+    # properly-typed schema (chunk_shapes is an array of arrays of integers,
+    # not an open array) rather than re-author a looser stub, so a malformed
+    # chunk_shapes is rejected. The raw-URL key mirrors vendored_refs.
+    rectilinear_ref = RAW + "chunk-grids/rectilinear/schema.json"
     cke = {
         "type": "object",
         "properties": {
@@ -184,7 +179,7 @@ def v3_array() -> dict:
             "data_type": {"anyOf": dtype_alts},
             "chunk_grid": {"oneOf": [
                 {"$ref": "#/$defs/regular_chunk_grid"},
-                {"$ref": "#/$defs/rectilinear_chunk_grid"}]},
+                {"$ref": rectilinear_ref}]},
             "chunk_key_encoding": {"$ref": "#/$defs/chunk_key_encoding"},
             "fill_value": FILL_VALUE,
             "codecs": {"type": "array", "items": {"$ref": "#/$defs/codec"}},
@@ -198,7 +193,6 @@ def v3_array() -> dict:
                      "codecs"],
         "$defs": {**defs,
                   "regular_chunk_grid": regular,
-                  "rectilinear_chunk_grid": rectilinear,
                   "chunk_key_encoding": cke},
     }
 
