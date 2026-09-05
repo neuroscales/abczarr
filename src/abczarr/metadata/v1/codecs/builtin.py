@@ -46,7 +46,6 @@ class GzipCodecOptions(CodecOptionsImpl):
     CompressionLevel: tx.ClassVar = codecs.GzipCompressionLevel
 
     # attributes
-    id: tx.Literal["gzip"]
     level: CompressionLevel = 5
 
     # classvar

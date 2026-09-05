@@ -49,7 +49,6 @@ __all__ = [
     "AccessMode",
     "KnownDriver",
     "ZarrVersion",
-    "OMEVersion",
     "CompressorTypeV1",
     "CompressorTypeV2",
     "CompressorTypeV3",
@@ -68,7 +67,6 @@ __all__ = [
     "FrozenAttributes",
     "AnyDriver",
     "AnyZarrVersion",
-    "AnyOMEVersion",
     "AnyCompressorType",
     "CompressorOptions",
     "PyramidFunction",
@@ -225,7 +223,6 @@ LogLevel = tx.Literal["debug", "info", "warning", "error", "critical"]
 AccessMode = tx.Literal["r", "r+", "a", "w", "w-"]
 KnownDriver = tx.Literal["zarr-python", "tensorstore"]
 ZarrVersion = tx.Literal[1, 2, 3]
-OMEVersion = tx.Literal["0.1", "0.2", "0.3", "0.4", "0.5", "0.6"]
 CompressorTypeV1 = tx.Literal[
     "blosc", "gzip", "bz2", "lzma", "lz4", "pcodec", "zfpy", "zlib", "zstd",
     "none"
@@ -250,7 +247,6 @@ Attributes = tx.MutableMapping[str, Json]
 FrozenAttributes = tx.Mapping[str, Json]
 AnyDriver = tx.Union[KnownDriver, str]
 AnyZarrVersion = tx.Union[ZarrVersion, int]
-AnyOMEVersion = tx.Union[OMEVersion, str]
 AnyCompressorType = tx.Union[CompressorType, str]
 CompressorOptions = tx.Mapping[str, tx.Union[float, str]]
 PyramidFunction = tx.Callable[[npt.ArrayLike], npt.ArrayLike]

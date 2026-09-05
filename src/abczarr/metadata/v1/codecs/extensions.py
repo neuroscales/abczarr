@@ -56,7 +56,11 @@ class LZMACodecOptions(CodecOptionsImpl):
 @register_subclass(id="lz4")
 @autofrozen
 class LZ4CodecOptions(CodecOptionsImpl):
+    # attributes
     acceleration: int
+
+    # classvar
+    id: tx.ClassVar[tx.Literal["lz4"]] = "lz4"
 
 
 @register_subclass(id="pcodec")
