@@ -55,7 +55,12 @@ from abczarr._core.metadata import (
     Metadata,
     register_subclass,
 )
-from abczarr.errors import UnsupportedConversion
+from abczarr.errors import UnsupportedConversion, UnsupportedZarrOperation
+
+#: Protocols whose paths live on a local filesystem, for which the
+#: temp-file-and-replace atomic write is possible. An empty protocol is a
+#: plain local path; ``file`` and ``local`` are its aliases.
+_LOCAL_PROTOCOLS = frozenset({"", "file", "local"})
 
 # ======================================================================
 #
@@ -623,7 +628,20 @@ class ArrayMetadataV3(NodeMetadataV3, ArrayMetadata):
 
 
 def _atomic_write(path: os.PathLike, data: tz.JsonDict) -> None:
-    """Write JSON data to path atomically."""
+    """Write JSON data to path atomically.
+
+    The write goes to a temporary file in the same directory and is then
+    renamed over the target, so a reader never sees a half-written file.
+    That technique needs a local filesystem: a remote store (``s3://``,
+    ``memory://``, ...) is refused with a clear error rather than the
+    opaque one the local temp-file machinery would raise on its path.
+    """
+    protocol = getattr(path, "protocol", "")
+    if protocol not in _LOCAL_PROTOCOLS:
+        raise UnsupportedZarrOperation(
+            f"an atomic metadata write to a {protocol!r} store (atomic "
+            "write needs a local filesystem)"
+        )
     PathType = type(path)
     parent = path.parent
     parent.mkdir(parents=True, exist_ok=True)

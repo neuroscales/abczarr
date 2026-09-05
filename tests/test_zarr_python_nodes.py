@@ -153,3 +153,16 @@ def test_attrs_write_through(tmp_path: pathlib.Path) -> None:
     assert _open(root, "r")["img"].attrs["scale"] == 0.5
     del node.attrs["scale"]
     assert "scale" not in _open(root, "r")["img"].attrs
+
+
+def test_removing_one_attr_keeps_the_others(tmp_path: pathlib.Path) -> None:
+    # A metadata write replaces the whole attribute set, so deleting one key
+    # removes exactly that key and leaves the rest -- it neither wipes the
+    # others nor silently keeps the removed one.
+    root = _store(tmp_path)
+    node = _open(root, "a")["img"]
+    node.update_attributes({"scale": 0.5, "unit": "um"})
+    del node.attrs["scale"]
+    reopened = _open(root, "r")["img"]
+    assert "scale" not in reopened.attrs
+    assert reopened.attrs["unit"] == "um"

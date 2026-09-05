@@ -24,8 +24,14 @@ jobs:
         include:
           - python-version: "3.8"
           - python-version: "3.14"
+          # The fastjsonschema floor: 2.16 has no draft2019 module and
+          # compiles a 2020-12 schema with the draft-07 generator, so pin it
+          # here to catch behaviour drift across the declared floor.
+          - python-version: "3.8"
+            extra-constraints: "fastjsonschema==2.16.0"
 
     uses: ./.github/workflows/test.yaml
     with:
       tag: ${{ inputs.tag }}
       python-version: ${{ matrix.python-version }}
+      extra-constraints: ${{ matrix.extra-constraints || '' }}
