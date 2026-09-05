@@ -11,9 +11,8 @@ import pytest
 
 import abczarr
 from abczarr.abc.capabilities import Support
-from abczarr.api import _entry
-from abczarr.api import _registry as registry
-from abczarr.api._registry import available_drivers
+from abczarr.api import _entry, registry
+from abczarr.api.registry import available_drivers
 from abczarr.drivers.base import Driver
 from abczarr.errors import UnsupportedZarrOperation
 
@@ -231,7 +230,7 @@ def test_create_array_makes_an_array(tmp_path: pathlib.Path) -> None:
 
 
 def test_create_array_from_a_config(tmp_path: pathlib.Path) -> None:
-    from abczarr.api._config import ArrayConfig
+    from abczarr.api.config import ArrayConfig
 
     arr = abczarr.create_array(
         str(tmp_path / "a.zarr"),
@@ -250,7 +249,7 @@ def test_create_array_needs_a_shape(tmp_path: pathlib.Path) -> None:
 def test_create_array_rejects_a_group_shaped_request(
     tmp_path: pathlib.Path,
 ) -> None:
-    from abczarr.api._config import GroupConfig
+    from abczarr.api.config import GroupConfig
 
     with pytest.raises(TypeError, match="needs at least a shape"):
         abczarr.create_array(

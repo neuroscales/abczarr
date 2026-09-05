@@ -651,7 +651,7 @@ def test_concurrent_map_caps_the_fan_out() -> None:
 
 def test_async_create_returns_an_awaitable(tmp_path: pathlib.Path) -> None:
     pytest.importorskip("zarr")
-    from abczarr.api._config import ArrayConfig
+    from abczarr.api.config import ArrayConfig
 
     pending = abczarr.create(
         str(tmp_path / "a.zarr"),
@@ -666,7 +666,7 @@ def test_async_create_returns_an_awaitable(tmp_path: pathlib.Path) -> None:
 
 def test_zarr_python_async_create_roundtrip(tmp_path: pathlib.Path) -> None:
     pytest.importorskip("zarr")
-    from abczarr.api._config import ArrayConfig
+    from abczarr.api.config import ArrayConfig
 
     async def go() -> float:
         arr = await abczarr.create(
@@ -719,7 +719,7 @@ def test_zarr_python_async_create_array(tmp_path: pathlib.Path) -> None:
 def test_tensorstore_async_create_roundtrip(tmp_path: pathlib.Path) -> None:
     pytest.importorskip("zarr")
     pytest.importorskip("tensorstore")
-    from abczarr.api._config import ArrayConfig
+    from abczarr.api.config import ArrayConfig
 
     async def go() -> float:
         arr = await abczarr.create(
@@ -743,7 +743,7 @@ def test_tensorstore_async_create_fails_if_it_exists(
     tmp_path: pathlib.Path,
 ) -> None:
     pytest.importorskip("tensorstore")
-    from abczarr.api._config import ArrayConfig
+    from abczarr.api.config import ArrayConfig
 
     root = str(tmp_path / "a.zarr")
 

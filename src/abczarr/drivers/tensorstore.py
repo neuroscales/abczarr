@@ -34,7 +34,7 @@ from abczarr.abc.asynchronous import AsyncZarrArray, AsyncZarrNode
 from abczarr.abc.capabilities import Support
 from abczarr.abc.store import AsyncPathBasedStore, PathBasedStore
 from abczarr.abc.sync import PathGroup, ZarrArray, ZarrNode
-from abczarr.api._config import ArrayConfig
+from abczarr.api.config import ArrayConfig
 from abczarr.drivers._metadata import metadata_from_json
 from abczarr.drivers.base import Driver
 from abczarr.metadata.base import ArrayMetadata, NodeMetadata, _node_at

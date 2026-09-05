@@ -1,7 +1,7 @@
 """Describe a Zarr array or group to create.
 
-An [ArrayConfig][abczarr.api._config.ArrayConfig] or
-[GroupConfig][abczarr.api._config.GroupConfig] is a reusable description of
+An [ArrayConfig][abczarr.api.config.ArrayConfig] or
+[GroupConfig][abczarr.api.config.GroupConfig] is a reusable description of
 what to create. It carries the coarse choices (chunking, sharding,
 compression, the
 format version) and lowers them to the exact metadata a driver writes. Hand
@@ -82,7 +82,7 @@ class GroupConfig(ZarrConfig):
     """A description of a group to create.
 
     A group holds no data of its own, so it adds nothing to
-    [ZarrConfig][abczarr.api._config.ZarrConfig].
+    [ZarrConfig][abczarr.api.config.ZarrConfig].
     """
 
 
@@ -287,7 +287,7 @@ class ArrayConfig(ZarrConfig):
 
 
 class ZarrOptions(tx.TypedDict, total=False):
-    """The keyword form of [ZarrConfig][abczarr.api._config.ZarrConfig]."""
+    """The keyword form of [ZarrConfig][abczarr.api.config.ZarrConfig]."""
 
     zarr_version: tz.ZarrVersion
     overwrite: bool
@@ -296,13 +296,13 @@ class ZarrOptions(tx.TypedDict, total=False):
 
 
 class GroupOptions(ZarrOptions, total=False):
-    """The keyword form of [GroupConfig][abczarr.api._config.GroupConfig]."""
+    """The keyword form of [GroupConfig][abczarr.api.config.GroupConfig]."""
 
 
 class ArrayOptions(ZarrOptions, total=False):
-    """The keyword form of [ArrayConfig][abczarr.api._config.ArrayConfig].
+    """The keyword form of [ArrayConfig][abczarr.api.config.ArrayConfig].
 
-    Every [ArrayConfig][abczarr.api._config.ArrayConfig] field except `shape`
+    Every [ArrayConfig][abczarr.api.config.ArrayConfig] field except `shape`
     and `dtype`, which a group's `create_array` takes as positional arguments.
     """
 

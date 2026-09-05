@@ -40,7 +40,7 @@ def register_driver(module: str, cls: str, name: str = "") -> None:
     """Register a driver by the module and class that provide it.
 
     The driver is imported and instantiated only when
-    [available_drivers][abczarr.api._registry.available_drivers] is called, so
+    [available_drivers][abczarr.api.registry.available_drivers] is called, so
     registering one never imports its backend.
     """
     _KNOWN_DRIVERS.append((name, module, cls))

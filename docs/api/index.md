@@ -17,7 +17,7 @@ The public API, grouped by what it does. New to abczarr? Start with the
   [errors][abczarr.errors.UnsupportedZarrOperation] raised when it does
   not.
 - **Drivers**: how a [driver][abczarr.drivers.base.Driver] is chosen for an
-  array, including the [registry][abczarr.api._registry] that picks one.
+  array, including the [registry][abczarr.api.registry] that picks one.
 - **Metadata**: the typed, versioned
   [metadata model][abczarr.metadata.base.ArrayMetadata] and conversion
   between Zarr formats.

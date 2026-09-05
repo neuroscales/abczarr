@@ -7,7 +7,7 @@ Uses fake drivers with a static feature map, so it needs no backend.
 import pytest
 
 from abczarr.abc.capabilities import Support
-from abczarr.api._registry import select_driver
+from abczarr.api.registry import select_driver
 from abczarr.drivers.base import Driver, Verdict
 from abczarr.errors import UnsupportedZarrOperation
 from abczarr.metadata import v3

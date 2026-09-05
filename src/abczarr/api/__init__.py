@@ -47,14 +47,6 @@ if tx.TYPE_CHECKING:
     # For type checkers and the API-reference builder only: at runtime the
     # reader/writer and the registry are resolved lazily by __getattr__ below,
     # so importing this package never pulls in a backend.
-    from ._config import (  # noqa: F401
-        ArrayConfig,
-        ArrayOptions,
-        GroupConfig,
-        GroupOptions,
-        ZarrConfig,
-        ZarrOptions,
-    )
     from ._entry import (  # noqa: F401
         create,
         create_array,
@@ -63,14 +55,22 @@ if tx.TYPE_CHECKING:
         open_array,
         open_group,
     )
-    from ._registry import (  # noqa: F401
+    from .config import (  # noqa: F401
+        ArrayConfig,
+        ArrayOptions,
+        GroupConfig,
+        GroupOptions,
+        ZarrConfig,
+        ZarrOptions,
+    )
+    from .registry import (  # noqa: F401
         available_drivers,
         register_driver,
         select_driver,
     )
 
-#: Which private module each public name lives in. The reader/writer
-#: (`_entry`) and the registry (`_registry`) both import `drivers.base`, and
+#: Which module each public name is re-exported from. The reader/writer
+#: (`_entry`) and the `registry` both import `drivers.base`, and
 #: `drivers.base` imports the config layer from this package -- so they are
 #: resolved lazily to keep that import from cycling back through here.
 _MODULES = {
@@ -78,11 +78,11 @@ _MODULES = {
         "open", "open_array", "open_group",
         "create", "create_array", "create_group",
     },
-    "abczarr.api._config": {
+    "abczarr.api.config": {
         "ZarrConfig", "GroupConfig", "ArrayConfig",
         "ZarrOptions", "GroupOptions", "ArrayOptions",
     },
-    "abczarr.api._registry": {
+    "abczarr.api.registry": {
         "register_driver", "available_drivers", "select_driver",
     },
 }

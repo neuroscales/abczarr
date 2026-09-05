@@ -9,7 +9,7 @@ through the same
 surface uses, and answers whether it can open a given array.
 
 Which drivers exist and how one is chosen for an array live in
-[abczarr.api._registry][abczarr.api._registry].
+[abczarr.api.registry][abczarr.api.registry].
 """
 
 __all__ = [
@@ -25,14 +25,14 @@ from bagof.paths import Path
 from abczarr._core.asyncutils import run_sync
 from abczarr._core.attrs import evolve
 from abczarr.abc.capabilities import SupportsCapabilities
-from abczarr.api._config import ArrayConfig, GroupConfig
+from abczarr.api.config import ArrayConfig, GroupConfig
 from abczarr.errors import UnsupportedZarrOperation
 from abczarr.metadata.base import GroupMetadataV2, GroupMetadataV3, _node_at
 
 if tx.TYPE_CHECKING:
     from abczarr.abc.asynchronous import AsyncZarrNode
     from abczarr.abc.sync import ZarrNode
-    from abczarr.api._config import ZarrConfig
+    from abczarr.api.config import ZarrConfig
     from abczarr.metadata.base import ArrayMetadata, NodeMetadata
 
 
@@ -276,7 +276,7 @@ class Driver(SupportsCapabilities):
     ) -> "ZarrNode":
         """Create a new group at *location* and open it.
 
-        Pass a [GroupConfig][abczarr.api._config.GroupConfig] as *config*, or
+        Pass a [GroupConfig][abczarr.api.config.GroupConfig] as *config*, or
         its fields (`zarr_version`, `overwrite`, ...) as keyword arguments,
         which
         override the config.
