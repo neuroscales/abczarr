@@ -23,6 +23,12 @@ Versions accept either the `abczarr` spelling (`"v0_6rc0"`) or the
 official NGFF string (`"0.6rc0"`, `"0.6.dev1"`). NGFF 0.2 never published
 a distinct schema, so its validators use the reconstruction described in
 `_ngff/README.md`.
+
+One constraint is not enforced: the `minContains`/`maxContains` bounds the
+schemas place on `contains` (the "2-3 space axes" rule, 0.4 on) are not
+implemented by the validator, so a document with the wrong number of space
+axes still passes here. Presence of at least one matching axis (`contains`
+itself) *is* checked.
 """
 
 __all__ = [
