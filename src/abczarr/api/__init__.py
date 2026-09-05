@@ -47,14 +47,6 @@ if tx.TYPE_CHECKING:
     # For type checkers and the API-reference builder only: at runtime the
     # reader/writer and the registry are resolved lazily by __getattr__ below,
     # so importing this package never pulls in a backend.
-    from ._entry import (  # noqa: F401
-        create,
-        create_array,
-        create_group,
-        open,
-        open_array,
-        open_group,
-    )
     from .config import (  # noqa: F401
         ArrayConfig,
         ArrayOptions,
@@ -63,6 +55,14 @@ if tx.TYPE_CHECKING:
         ZarrConfig,
         ZarrOptions,
     )
+    from .entrypoint import (  # noqa: F401
+        create,
+        create_array,
+        create_group,
+        open,
+        open_array,
+        open_group,
+    )
     from .registry import (  # noqa: F401
         available_drivers,
         register_driver,
@@ -70,11 +70,11 @@ if tx.TYPE_CHECKING:
     )
 
 #: Which module each public name is re-exported from. The reader/writer
-#: (`_entry`) and the `registry` both import `drivers.base`, and
+#: (`entrypoint`) and the `registry` both import `drivers.base`, and
 #: `drivers.base` imports the config layer from this package -- so they are
 #: resolved lazily to keep that import from cycling back through here.
 _MODULES = {
-    "abczarr.api._entry": {
+    "abczarr.api.entrypoint": {
         "open", "open_array", "open_group",
         "create", "create_array", "create_group",
     },
