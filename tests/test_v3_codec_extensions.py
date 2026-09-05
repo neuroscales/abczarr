@@ -5,7 +5,7 @@ These round-trip through the metadata model (no backend needed).
 
 import pytest
 
-from abczarr.metadata.v3.codecs import ReshapeCodec, ZfpCodec
+from abczarr.metadata.v3.codecs import ConditionalCodec, ReshapeCodec, ZfpCodec
 from abczarr.metadata.v3.codecs.base import Codec
 
 
@@ -49,3 +49,31 @@ def test_zfp_dispatches_by_name() -> None:
         {"name": "zfp", "configuration": {"mode": "reversible"}}
     )
     assert isinstance(codec, ZfpCodec)
+
+
+@pytest.mark.parametrize(
+    "codecs",
+    [
+        [{"name": "vlen-bytes"}],
+        [{"name": "vlen-bytes"}, {"name": "vlen-utf8"}],
+    ],
+)
+def test_conditional_round_trips_with_any_number_of_codecs(
+    codecs: list,
+) -> None:
+    # conditional's codecs list is variable length: one codec or several
+    # both round-trip (a two-codec list once failed the length-1 tuple type).
+    spec = {"name": "conditional", "configuration": {"codecs": codecs}}
+    assert ConditionalCodec.from_json(spec).to_json() == spec
+
+
+def test_conditional_dispatches_by_name() -> None:
+    codec = Codec.from_json(
+        {
+            "name": "conditional",
+            "configuration": {
+                "codecs": [{"name": "vlen-bytes"}, {"name": "vlen-utf8"}]
+            },
+        }
+    )
+    assert isinstance(codec, ConditionalCodec)
