@@ -36,6 +36,13 @@ tqdm = ["tqdm"]
 upath = ["universal-pathlib"]
 anypath = ["cloudpathlib"]
 
+# dtypes
+# Registers exotic v3 extension floats (bfloat16, float8_*, ...) with numpy
+# on import, so ``asdtype`` resolves them. Optional -- the core needs none of
+# it. The 0.2 floor is what pip resolves on the 3.8 leg; newer wheels are
+# selected automatically on newer interpreters.
+ml-dtypes = ["ml_dtypes >= 0.2"]
+
 # drivers
 zarr-py = ["zarr"]
 tensorstore = ["tensorstore"]

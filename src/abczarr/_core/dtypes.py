@@ -15,6 +15,29 @@ import typing_extensions as tx
 
 from abczarr.errors import UnsupportedConversion
 
+# Zarr v3 extension float dtypes that have no numpy scalar on their own but
+# gain one once ``ml_dtypes`` is imported: importing that package registers
+# these names with numpy, after which ``np.dtype("bfloat16")`` (and the
+# float8/float6/float4 variants) resolves. The names match ml_dtypes' numpy
+# registrations exactly. Complex extension floats (``complex_float32``, ...)
+# are deliberately absent -- ml_dtypes provides no scalar for those, so
+# installing it would not help and they keep the plain error. See
+# https://github.com/zarr-developers/zarr-extensions/tree/main/data-types
+_ML_DTYPES_EXTENSION_NAMES = frozenset({
+    "bfloat16",
+    "float4_e2m1fn",
+    "float6_e2m3fn",
+    "float6_e3m2fn",
+    "float8_e3m4",
+    "float8_e4m3",
+    "float8_e4m3b11fnuz",
+    "float8_e4m3fn",
+    "float8_e4m3fnuz",
+    "float8_e5m2",
+    "float8_e5m2fnuz",
+    "float8_e8m0fnu",
+})
+
 
 class RegexMatch(str):
     def __class_getitem__(cls, pattern: tx.Union[str, re.Pattern]) -> type:
@@ -153,7 +176,24 @@ def asdtype(
     try:
         dtype = np.dtype(dtype)
     except TypeError as exc:
-        raise UnsupportedConversion(str(dtype), 2) from exc
+        # ``ml_dtypes`` provides a numpy scalar for a handful of exotic v3
+        # extension floats, but only once it is imported (importing it
+        # registers the names with numpy). If the requested name is one of
+        # those, import ``ml_dtypes`` lazily and resolve again -- this keeps
+        # resolution transparent for anyone who installed the optional extra
+        # without also importing the package. If ``ml_dtypes`` is missing (or
+        # too old to supply this name), point the error at the extra.
+        name = str(dtype)
+        if name in _ML_DTYPES_EXTENSION_NAMES:
+            hint = "install abczarr[ml-dtypes] to enable this dtype"
+            try:
+                import ml_dtypes  # noqa: F401 (registers dtypes on import)
+
+                dtype = np.dtype(name)
+            except (ImportError, TypeError):
+                raise UnsupportedConversion(name, 2, hint) from exc
+        else:
+            raise UnsupportedConversion(name, 2) from exc
 
     if type is not None:
         if not issubclass(dtype.type, type):

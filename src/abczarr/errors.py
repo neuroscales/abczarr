@@ -68,15 +68,21 @@ class UnsupportedConversion(ValueError):
     Raised by `to_version` when it is asked to convert under the
     ``"strict"`` policy and a field cannot be carried over. The
     message names the field and the version it could not be
-    represented in.
+    represented in. An optional `hint` is appended when there is a
+    concrete way to make the conversion succeed (for example, an
+    optional dependency that would supply the missing dtype).
     """
 
-    def __init__(self, field: str, version: int) -> None:
-        super().__init__(
-            f"cannot represent {field!r} in Zarr v{version}"
-        )
+    def __init__(
+        self, field: str, version: int, hint: tx.Optional[str] = None
+    ) -> None:
+        message = f"cannot represent {field!r} in Zarr v{version}"
+        if hint:
+            message = f"{message}; {hint}"
+        super().__init__(message)
         self.field = field
         self.version = version
+        self.hint = hint
 
 
 class SchemaValidationError(ValueError):
