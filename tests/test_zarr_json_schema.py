@@ -113,6 +113,47 @@ def test_v2_array_accepts_object_and_vlen_codecs() -> None:
         schemas.validate(dict(good, dtype="not-a-dtype"), "v2", "array")
 
 
+def test_v3_array_rectilinear_chunk_grid_is_typed() -> None:
+    # the v3 array composes the vendored rectilinear chunk-grid schema, whose
+    # chunk_shapes is an array of arrays of integers -- so a malformed
+    # chunk_shapes is rejected, not waved through by a loose {"type": "array"}
+    # stub. This also exercises the prefixItems normalization in
+    # _validation.py (the vendored schema's inner [start, length] pairs).
+    base = {
+        "zarr_format": 3,
+        "node_type": "array",
+        "shape": [10, 10],
+        "data_type": "float32",
+        "chunk_key_encoding": {"name": "default"},
+        "fill_value": 0.0,
+        "codecs": [{"name": "bytes", "configuration": {"endian": "little"}}],
+    }
+
+    def with_chunk_shapes(chunk_shapes: object) -> dict:
+        doc = dict(base)
+        doc["chunk_grid"] = {
+            "name": "rectilinear",
+            "configuration": {"kind": "inline", "chunk_shapes": chunk_shapes},
+        }
+        return doc
+
+    # well-formed: an array of arrays whose entries are integers or
+    # [start, length] integer pairs.
+    good = with_chunk_shapes([[[2, 3], [4, 1]], [5, 5]])
+    assert schemas.validate(good, "v3", "array") is good
+
+    # malformed: a bare string where a chunk-edge-length array belongs. Under
+    # the old loose stub this validated; it must now be rejected.
+    with pytest.raises(SchemaValidationError):
+        schemas.validate(with_chunk_shapes([[[2, 3], [4, 1]], "bad"]), "v3",
+                         "array")
+
+    # a 3-element inner tuple violates the prefixItems (max two) constraint,
+    # proving the normalization is enforced rather than silently ignored.
+    with pytest.raises(SchemaValidationError):
+        schemas.validate(with_chunk_shapes([[[2, 3, 9]]]), "v3", "array")
+
+
 def test_v3_array_references_every_vendored_codec_and_dtype() -> None:
     # maintainability net: if the registry is re-vendored with a new codec or
     # data type, the composed v3 array schema must reference it (regenerate

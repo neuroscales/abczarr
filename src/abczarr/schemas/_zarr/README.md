@@ -16,8 +16,11 @@ Copied verbatim from <https://github.com/zarr-developers/zarr-extensions> at
 commit `4da7b37a84f76e660902f6d3de3eaef0e0febae6`, preserving the upstream `<category>/<name>/schema.json`
 layout so that each schema's cross-references (absolute
 `raw.githubusercontent.com/.../main/<category>/<name>/schema.json` URLs)
-resolve to the vendored files. Covers every registered extension codec, data
-type, chunk grid, chunk-key encoding and storage transformer.
+resolve to the vendored files. Only the categories with vendored files are
+present: every registered extension codec and data type, plus the
+`rectilinear` chunk grid. Chunk-key encodings and storage transformers are
+**not** vendored — the authored v3 core array schema constrains those inline
+(`chunk_key_encoding`, `storage_transformers`).
 
 ### Known upstream defects (normalized at load time)
 
