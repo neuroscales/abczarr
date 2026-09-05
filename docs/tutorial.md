@@ -1,3 +1,7 @@
+---
+icon: material/school
+---
+
 # Tutorial
 
 A short walkthrough of the four things you do most: create a group and

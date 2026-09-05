@@ -1,3 +1,7 @@
+---
+icon: material/code-tags
+---
+
 # Reference
 
 The public API, grouped by what it does. New to abczarr? Start with the
