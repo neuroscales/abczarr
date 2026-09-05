@@ -137,8 +137,17 @@ class CategorizeFilter(FilterImpl):
                     "rounding": "towards-zero",
                     "out_of_range": "wrap",
                     "scalar_map": {
-                        "encode": list(map(reversed, enumerate(self.labels))),
-                        "decode": list(enumerate(self.labels)),
+                        # Materialize each pair: ``reversed`` returns a
+                        # single-use iterator, so a list of them yields its
+                        # values only on the first read and nothing after.
+                        "encode": [
+                            [label, index]
+                            for index, label in enumerate(self.labels)
+                        ],
+                        "decode": [
+                            [index, label]
+                            for index, label in enumerate(self.labels)
+                        ],
                     }
                 }
             })

@@ -212,4 +212,13 @@ def to_zarr3(dtype: tx.Union[npt.DTypeLike, tx.Mapping]) -> DataTypeV3:
             "configuration": {"unit": unit, "scale_factor": scale}
         }
 
+    if dtype.kind in ("U", "S"):
+        # Fixed-length Unicode ('U') and byte ('S') numpy dtypes have no
+        # builtin Zarr v3 data type: ``dtype.name`` here would be numpy's
+        # internal spelling ("str160", "bytes24"), which is not a valid v3
+        # type. Refuse rather than emit a bogus type, matching how
+        # ``asdtype`` refuses an unrepresentable extension type. Broader
+        # variable-length string support is tracked separately (#127).
+        raise UnsupportedConversion(descr, 3)
+
     return dtype.name
