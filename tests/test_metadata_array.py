@@ -295,7 +295,7 @@ def test_v1_scalar_compression_opts_converts_to_v2_and_v3() -> None:
 
     # a codec with no scalar form (blosc takes an object, not an integer)
     # cannot represent a scalar and says so, rather than guessing.
-    from abczarr._errors import UnsupportedConversion
+    from abczarr.errors import UnsupportedConversion
 
     bad = v1.ArrayMetadata.from_json(
         {**base, "compression": "blosc", "compression_opts": 5}

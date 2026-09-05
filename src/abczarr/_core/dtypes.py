@@ -13,7 +13,7 @@ import numpy as np
 import numpy.typing as npt
 import typing_extensions as tx
 
-from abczarr._errors import UnsupportedConversion
+from abczarr.errors import UnsupportedConversion
 
 # Zarr v3 extension float dtypes that have no numpy scalar on their own but
 # gain one once ``ml_dtypes`` is imported: importing that package registers

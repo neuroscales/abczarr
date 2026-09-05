@@ -20,7 +20,7 @@ from pathlib import Path
 import pytest
 import typing_extensions as tx
 
-from abczarr._errors import SchemaValidationError
+from abczarr.errors import SchemaValidationError
 from abczarr.ome import schemas
 
 TESTDIR = Path(__file__).parent

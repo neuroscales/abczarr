@@ -50,7 +50,7 @@ from types import TracebackType
 import typing_extensions as tx
 from bagof.paths import AsyncPath, Path
 
-from abczarr._errors import UnsupportedZarrOperation
+from abczarr.errors import UnsupportedZarrOperation
 
 # locals
 from .capabilities import Support, SupportsCapabilities

@@ -8,8 +8,9 @@ behind it. The whole user-facing API is
 re-exported here at the top level: the [ArrayConfig][abczarr.ArrayConfig] and
 [GroupConfig][abczarr.GroupConfig] that creation rests on, the
 [select_driver][abczarr.select_driver] registry that picks a backend, and the
-errors abczarr raises. The same names are also available under
-[api][abczarr.api].
+errors abczarr raises. The open/create, config and registry names are also
+available under [api][abczarr.api]; the errors keep their own home in
+[abczarr.errors][abczarr.errors].
 """
 
 __all__ = [
@@ -17,6 +18,7 @@ __all__ = [
     "abc",
     "api",
     "drivers",
+    "errors",
     "metadata",
     "ome",
     "schemas",
@@ -59,15 +61,10 @@ from . import (
     abc,
     api,
     drivers,
+    errors,
     metadata,
     ome,
     schemas,
-)
-from ._errors import (
-    SchemaValidationError,
-    TransactionConflict,
-    UnsupportedConversion,
-    UnsupportedZarrOperation,
 )
 from .abc import (
     AsyncZarrArray,
@@ -93,4 +90,10 @@ from .api import (
     open_group,
     register_driver,
     select_driver,
+)
+from .errors import (
+    SchemaValidationError,
+    TransactionConflict,
+    UnsupportedConversion,
+    UnsupportedZarrOperation,
 )

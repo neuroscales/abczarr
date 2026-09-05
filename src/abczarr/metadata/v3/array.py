@@ -28,7 +28,7 @@ from abczarr._core.auto.attrs import autofrozen, eq_safenan, field, update
 from abczarr._core.dtypes import asdtype
 from abczarr._core.features import feature_key
 from abczarr._core.metadata import register_subclass
-from abczarr._errors import UnsupportedConversion
+from abczarr.errors import UnsupportedConversion
 
 # metadata
 from abczarr.metadata import base

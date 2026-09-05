@@ -37,9 +37,9 @@ from abczarr._core import constants
 from abczarr._core import typing as tz
 from abczarr._core.attributes import NodeAttributes, attribute_writes
 from abczarr._core.attrs import evolve
-from abczarr._errors import UnsupportedZarrOperation
 from abczarr.abc.store import PathBasedStore
 from abczarr.api._config import ArrayConfig, ArrayOptions
+from abczarr.errors import UnsupportedZarrOperation
 from abczarr.metadata.base import (
     GroupMetadataV2,
     GroupMetadataV3,

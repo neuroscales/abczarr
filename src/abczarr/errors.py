@@ -2,7 +2,7 @@
 
 This module is a leaf -- it imports only `typing_extensions` -- so any
 layer (metadata, the abc surface, the drivers, even `_core`) can
-`from abczarr._errors import ...` at module top without a cycle: importing
+`from abczarr.errors import ...` at module top without a cycle: importing
 this submodule does not re-run the package's own `__init__`. The errors
 are also re-exported off the package top level
 (`abczarr.UnsupportedZarrOperation`).

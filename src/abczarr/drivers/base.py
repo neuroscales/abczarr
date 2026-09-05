@@ -24,9 +24,9 @@ from bagof.paths import Path
 # core
 from abczarr._core.asyncutils import run_sync
 from abczarr._core.attrs import evolve
-from abczarr._errors import UnsupportedZarrOperation
 from abczarr.abc.capabilities import SupportsCapabilities
 from abczarr.api._config import ArrayConfig, GroupConfig
+from abczarr.errors import UnsupportedZarrOperation
 from abczarr.metadata.base import GroupMetadataV2, GroupMetadataV3, _node_at
 
 if tx.TYPE_CHECKING:
@@ -119,7 +119,7 @@ class Driver(SupportsCapabilities):
 
         Raises
         ------
-        [UnsupportedZarrOperation][abczarr._errors.UnsupportedZarrOperation]
+        [UnsupportedZarrOperation][abczarr.errors.UnsupportedZarrOperation]
             When this driver cannot open a location.
         """
         if asynchronous:

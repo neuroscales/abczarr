@@ -55,7 +55,7 @@ from abczarr._core.metadata import (
     Metadata,
     register_subclass,
 )
-from abczarr._errors import UnsupportedConversion
+from abczarr.errors import UnsupportedConversion
 
 #: Protocols whose paths live on a local filesystem, for which the
 #: temp-file-and-replace atomic write is possible. An empty protocol is a
@@ -74,7 +74,7 @@ _LOCAL_PROTOCOLS = frozenset({"", "file", "local"})
 #: * ``"lossy"`` (the default) -- drop the field silently.
 #: * ``"warn"`` -- drop the field, but emit one warning naming it.
 #: * ``"strict"`` -- raise
-#:   [UnsupportedConversion][abczarr._errors.UnsupportedConversion]
+#:   [UnsupportedConversion][abczarr.errors.UnsupportedConversion]
 #:   instead of dropping anything.
 ConversionPolicy = tx.Literal["lossy", "warn", "strict"]
 
@@ -87,7 +87,7 @@ def _report_loss(
     Called by a version's `to_version` implementation for each field
     it cannot carry over to *version*. Does nothing under
     ``"lossy"``, emits a warning under ``"warn"``, and raises
-    [UnsupportedConversion][abczarr._errors.UnsupportedConversion]
+    [UnsupportedConversion][abczarr.errors.UnsupportedConversion]
     under ``"strict"``.
 
     Parameters

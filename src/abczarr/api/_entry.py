@@ -23,7 +23,7 @@ import json
 # dependencies
 import typing_extensions as tx
 
-from abczarr._errors import UnsupportedZarrOperation
+from abczarr.errors import UnsupportedZarrOperation
 
 # locals
 from .._core import constants

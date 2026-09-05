@@ -47,7 +47,7 @@ from urllib.parse import urljoin
 import fastjsonschema
 import typing_extensions as tx
 
-from abczarr._errors import SchemaValidationError
+from abczarr.errors import SchemaValidationError
 
 # The keywords a "bare count-constraint" branch may carry. A branch with
 # anything else (its own ``properties``, a nested ``oneOf``, ...) is not one

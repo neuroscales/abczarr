@@ -17,7 +17,7 @@ or validate in one call::
     >>> schemas.validate(doc, "0.6rc0", "image")     # doctest: +SKIP
 
 A document that does not conform raises
-[SchemaValidationError][abczarr._errors.SchemaValidationError].
+[SchemaValidationError][abczarr.errors.SchemaValidationError].
 
 Versions accept either the `abczarr` spelling (`"v0_6rc0"`) or the
 official NGFF string (`"0.6rc0"`, `"0.6.dev1"`). NGFF 0.2 never published
@@ -55,7 +55,7 @@ import fastjsonschema
 import typing_extensions as tx
 
 # core
-from abczarr._errors import SchemaValidationError
+from abczarr.errors import SchemaValidationError
 from abczarr.ome.schemas import _contains
 
 _HERE = pathlib.Path(__file__).parent
@@ -185,7 +185,7 @@ def get_validator(
     callable
         A function that takes a document and returns it when it conforms,
         or raises
-        [SchemaValidationError][abczarr._errors.SchemaValidationError]. The
+        [SchemaValidationError][abczarr.errors.SchemaValidationError]. The
         same validator is returned for every spelling of a version.
     """
     return _compile(_canonical(version), document)
@@ -241,7 +241,7 @@ def validate(instance: tx.Any, version: str, document: str) -> tx.Any:  # noqa: 
     """Validate *instance* against a version's *document* schema.
 
     Returns the instance when it conforms; raises
-    [SchemaValidationError][abczarr._errors.SchemaValidationError] otherwise.
+    [SchemaValidationError][abczarr.errors.SchemaValidationError] otherwise.
     A thin wrapper over
     [get_validator][abczarr.ome.schemas.get_validator].
     """

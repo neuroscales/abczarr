@@ -10,12 +10,12 @@ import numpy as np
 import pytest
 
 import abczarr
-from abczarr._errors import UnsupportedZarrOperation
 from abczarr.abc.capabilities import Support
 from abczarr.api import _entry
 from abczarr.api import _registry as registry
 from abczarr.api._registry import available_drivers
 from abczarr.drivers.base import Driver
+from abczarr.errors import UnsupportedZarrOperation
 
 # --------------------------------------------------------------------------
 # registry -- no backend needed
