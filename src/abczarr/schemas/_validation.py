@@ -186,7 +186,13 @@ def _compile(
     registry = _extension_registry()
 
     def handler(uri: str) -> tx.Any:  # noqa: ANN401
-        return registry[uri]
+        try:
+            return registry[uri]
+        except KeyError:
+            raise ValueError(
+                f"Zarr {suffix} {document}: cannot resolve schema "
+                f"reference {uri!r}"
+            ) from None
 
     compiled = fastjsonschema.compile(
         json.loads(path.read_text("utf-8")), handlers={"https": handler}

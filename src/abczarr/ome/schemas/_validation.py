@@ -91,7 +91,7 @@ del _suffix, _seg
 
 def _canonical(version: str) -> str:
     """Resolve any accepted version spelling to its `abczarr` suffix."""
-    key = str(version).strip()
+    key = str(version).strip().lower()
     try:
         return _ALIASES[key]
     except KeyError:
@@ -155,7 +155,14 @@ def documents(version: str) -> tx.Tuple[str, ...]:
     [get_validator][abczarr.ome.schemas.get_validator].
     """
     suffix = _canonical(version)
-    stems = sorted(p.stem for p in (_DATA / suffix).glob("*.schema"))
+    # `_`-prefixed stems are internal helper schemas referenced by `$ref`
+    # (e.g. `_version`, an enum of the version string), not validatable
+    # documents, so they are left out of the listing.
+    stems = sorted(
+        p.stem
+        for p in (_DATA / suffix).glob("*.schema")
+        if not p.stem.startswith("_")
+    )
     return tuple(stems)
 
 
@@ -200,7 +207,13 @@ def _compile(
         )
 
     def handler(uri: str) -> tx.Any:  # noqa: ANN401
-        return registry[uri]
+        try:
+            return registry[uri]
+        except KeyError:
+            raise ValueError(
+                f"OME-NGFF {segment} {document}: cannot resolve schema "
+                f"reference {uri!r}"
+            ) from None
 
     compiled = fastjsonschema.compile(
         registry[root_uri], handlers={"https": handler}
