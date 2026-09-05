@@ -161,10 +161,10 @@ class NodeMetadata(Metadata):
         zgroup = root / constants.Z2GROUP_JSON
         zarrays = root / constants.Z2ARRAY_JSON
         if zgroup.exists() or zarrays.exists():
-            return NodeMetadataV2.from_files(root)
+            return NodeMetadataV2.from_file(root)
         zmeta = root / constants.Z1META_JSON
         if zmeta.exists():
-            return NodeMetadataV1.from_files(root)
+            return NodeMetadataV1.from_file(root)
         raise FileNotFoundError(
             f"No metadata found in {root}.Expected one of: "
             f"{constants.Z3_JSON}, "
@@ -454,10 +454,10 @@ class NodeMetadataV2(NodeMetadata):
         if cls is NodeMetadataV2:
 
             if (root / constants.Z2ARRAY_JSON).exists():
-                return ArrayMetadataV2.from_files(root)
+                return ArrayMetadataV2.from_file(root)
 
             if (root / constants.Z2GROUP_JSON).exists():
-                return GroupMetadataV2.from_files(root)
+                return GroupMetadataV2.from_file(root)
 
             raise FileNotFoundError(
                 f"No Zarr v2 metadata found in {root}. Expected one of: "
