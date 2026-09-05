@@ -94,6 +94,32 @@ class NumpyTimedelta64(DTypeExtra):
     configuration: NumpyTimeConfig
 
 
+# Fixed-length string data types. These carry a ``length_bytes`` and mirror
+# the numpy fixed-length Unicode (``<U``) and byte (``S``) dtypes:
+# ``fixed_length_utf32`` <-> numpy ``<U{n}`` (``length_bytes == n * 4``) and
+# ``null_terminated_bytes`` <-> numpy ``S{n}`` (``length_bytes == n``). These
+# extension types are marked "unstable / not finalized" upstream; the shape
+# here matches zarr-python's representation. See
+# https://github.com/zarr-developers/zarr-extensions/tree/main/data-types
+@autofrozen
+class FixedLengthConfig(DTypeConfigImpl):
+    length_bytes: int
+
+
+@register_subclass(name="fixed_length_utf32")
+@autofrozen
+class FixedLengthUtf32(DTypeExtra):
+    name: tx.Literal["fixed_length_utf32"]
+    configuration: FixedLengthConfig
+
+
+@register_subclass(name="null_terminated_bytes")
+@autofrozen
+class NullTerminatedBytes(DTypeExtra):
+    name: tx.Literal["null_terminated_bytes"]
+    configuration: FixedLengthConfig
+
+
 __all__ += _make_dtype_classes(
     globals(),
     DTYPES_EXTENSIONS,
