@@ -139,6 +139,29 @@ def test_create_a_group_from_a_config(tmp_path: pathlib.Path) -> None:
 
 
 # --------------------------------------------------------------------------
+# create() a Zarr v2 array natively, through the driver's own create
+# --------------------------------------------------------------------------
+
+
+def test_create_a_v2_array_from_a_config(tmp_path: pathlib.Path) -> None:
+    arr = abczarr.create(
+        str(tmp_path / "v2.zarr"),
+        ArrayConfig(
+            shape=(8,), dtype="int16", chunks=(4,), zarr_version=2
+        ),
+        driver="zarr-python",
+    )
+    assert isinstance(arr, ZarrPythonArray)
+    assert arr.zarr_version == 2
+    assert arr.shape == (8,)
+    assert np.dtype(arr.dtype) == np.dtype("int16")
+    assert arr.chunks == (4,)
+    # the chunks are addressable: a written value reads back
+    arr[:] = np.arange(8)
+    assert np.asarray(arr[4:6]).tolist() == [4, 5]
+
+
+# --------------------------------------------------------------------------
 # the write-then-open fallback: our written metadata must be valid
 # --------------------------------------------------------------------------
 
