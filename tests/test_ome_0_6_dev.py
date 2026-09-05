@@ -285,9 +285,10 @@ def test_schema_transformation_validates(
 # ``"omero": null`` fails validation ("omero must be object"); an absent
 # ``omero`` conforms. Regression for issue #116: the field was declared with
 # the typing ``tx.Optional`` (a bare ``Union[Omero, None]``) instead of the
-# RFC-2119 ``Recommended`` marker, so it defaulted to ``None`` and
-# round-tripped invalid metadata. ``Recommended`` makes an unset ``omero``
-# the MISSING sentinel, which ``to_json`` drops.
+# RFC-2119 ``Optional`` marker, so it defaulted to ``None`` and round-tripped
+# invalid metadata. The RFC-2119 ``Optional`` (omero is not required and has
+# no SHOULD language in the schema) makes an unset ``omero`` the MISSING
+# sentinel, which ``to_json`` drops.
 # --------------------------------------------------------------------------
 
 # A minimal ``omero`` conforming to the 0.6 ``image`` schema (``channels``
