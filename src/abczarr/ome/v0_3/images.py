@@ -50,12 +50,14 @@ class Multiscale(OMEMetadata):
         """How the pyramid's lower resolutions were generated.
 
         Free-form: `method` names the downsampling function, `args`
-        and `kwargs` are what it was called with.
+        and `kwargs` are what it was called with. `args` is any JSON
+        value -- the upstream corpus writes it as a bare string as
+        well as a list -- so it is not coerced into a list.
         """
 
         method: Optional[str]
         version: Optional[str]
-        args: Optional[tx.List[tz.Json]]
+        args: Optional[tz.Json]
         kwargs: Optional[tx.Dict[str, tz.Json]]
 
     axes: Required[tx.List[Axis]]
