@@ -13,7 +13,14 @@ import pytest
 
 from abczarr.abc.sync import PathGroup
 from abczarr.errors import UnsupportedZarrOperation
-from abczarr.metadata.base import GroupMetadataV3, _node_type_at
+from abczarr.metadata.base import (
+    ArrayMetadataV1,
+    ArrayMetadataV2,
+    GroupMetadataV2,
+    GroupMetadataV3,
+    NodeMetadata,
+    _node_type_at,
+)
 
 
 class _StubArray:
@@ -239,3 +246,79 @@ def test_attrs_persist_on_mutation(tmp_path: pathlib.Path) -> None:
     assert dict(reopened.attrs) == {"author": "me", "levels": 3}
     del group.attrs["levels"]
     assert "levels" not in _Group(group.store_path).attrs
+
+
+# --------------------------------------------------------------------------
+# v1 / v2 metadata load through from_file (regression: it used to call a
+# non-existent from_files and always raise AttributeError)
+# --------------------------------------------------------------------------
+
+
+def _write_v2_array(path: pathlib.Path) -> None:
+    path.mkdir(parents=True, exist_ok=True)
+    (path / ".zarray").write_text(
+        json.dumps(
+            {
+                "zarr_format": 2,
+                "shape": [10],
+                "chunks": [5],
+                "dtype": "<f8",
+                "compressor": None,
+                "fill_value": 0,
+                "order": "C",
+                "filters": [],
+            }
+        )
+    )
+    (path / ".zattrs").write_text(json.dumps({"note": "v2 array"}))
+
+
+def _write_v1_array(path: pathlib.Path) -> None:
+    path.mkdir(parents=True, exist_ok=True)
+    # v1 stores its metadata in "meta" and user attributes in "attrs"
+    (path / "meta").write_text(
+        json.dumps(
+            {
+                "zarr_format": 1,
+                "shape": [10],
+                "chunks": [5],
+                "dtype": "<f8",
+                "compression": None,
+                "compression_opts": None,
+                "fill_value": 0,
+                "order": "C",
+            }
+        )
+    )
+    (path / "attrs").write_text(json.dumps({"note": "v1 array"}))
+
+
+def test_v2_group_loads_through_path_group(tmp_path: pathlib.Path) -> None:
+    root = pathlib.Path(tmp_path) / "v2.zarr"
+    GroupMetadataV2(attributes={"kind": "root"}).to_file(root)
+    _write_v2_array(root / "img")
+
+    group = _Group(str(root))
+    assert group.zarr_version == 2
+    assert group.attrs == {"kind": "root"}
+    assert isinstance(group.metadata, GroupMetadataV2)
+    assert group.metadata.node_type == "group"
+    assert sorted(group.keys()) == ["img"]
+
+
+def test_v2_array_metadata_from_file(tmp_path: pathlib.Path) -> None:
+    node = pathlib.Path(tmp_path) / "arr"
+    _write_v2_array(node)
+    meta = NodeMetadata.from_file(node)
+    assert isinstance(meta, ArrayMetadataV2)
+    assert meta.zarr_format == 2
+    assert meta.attributes == {"note": "v2 array"}
+
+
+def test_v1_array_metadata_from_file(tmp_path: pathlib.Path) -> None:
+    node = pathlib.Path(tmp_path) / "arr"
+    _write_v1_array(node)
+    meta = NodeMetadata.from_file(node)
+    assert isinstance(meta, ArrayMetadataV1)
+    assert meta.zarr_format == 1
+    assert meta.attributes == {"note": "v1 array"}
