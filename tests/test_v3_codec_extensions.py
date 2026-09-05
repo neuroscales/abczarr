@@ -5,8 +5,14 @@ These round-trip through the metadata model (no backend needed).
 
 import pytest
 
-from abczarr.metadata.v3.codecs import ConditionalCodec, ReshapeCodec, ZfpCodec
+from abczarr.metadata.v3.codecs import (
+    ConditionalCodec,
+    N5DefaultCodec,
+    ReshapeCodec,
+    ZfpCodec,
+)
 from abczarr.metadata.v3.codecs.base import Codec
+from abczarr.metadata.v3.codecs.builtin import BytesCodec, TransposeCodec
 
 
 @pytest.mark.parametrize(
@@ -77,3 +83,37 @@ def test_conditional_dispatches_by_name() -> None:
         }
     )
     assert isinstance(codec, ConditionalCodec)
+
+
+_N5_DEFAULT_SPEC = {
+    "name": "n5_default",
+    "configuration": {
+        "codecs": [
+            {"name": "transpose", "configuration": {"order": [0, 1]}},
+            {"name": "bytes", "configuration": {"endian": "big"}},
+            {"name": "gzip", "configuration": {"level": 5}},
+        ]
+    },
+}
+
+
+def test_n5_default_codecs_are_converted_objects_not_raw_dicts() -> None:
+    # The stored codec chain must be converted codec objects, not the raw
+    # dicts they were read from -- a transpose codec, a bytes codec, then
+    # the trailing codecs.
+    codecs = N5DefaultCodec.from_json(_N5_DEFAULT_SPEC).configuration.codecs
+    assert not any(isinstance(codec, dict) for codec in codecs)
+    assert all(isinstance(codec, Codec) for codec in codecs)
+    assert isinstance(codecs[0], TransposeCodec)
+    assert isinstance(codecs[1], BytesCodec)
+
+
+def test_n5_default_round_trips() -> None:
+    assert N5DefaultCodec.from_json(_N5_DEFAULT_SPEC).to_json() == (
+        _N5_DEFAULT_SPEC
+    )
+
+
+def test_n5_default_dispatches_by_name() -> None:
+    codec = Codec.from_json(_N5_DEFAULT_SPEC)
+    assert isinstance(codec, N5DefaultCodec)

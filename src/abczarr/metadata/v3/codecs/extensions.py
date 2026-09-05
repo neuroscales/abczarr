@@ -91,21 +91,36 @@ class ConditionalCodec(Codec):
     configuration: ConditionalConfig
 
 
-@autofrozen
-class N5TransposeCodec(TransposeCodec):
-    endian: tx.Literal["big"]
-
-
 class N5DefaultCodecList(list):
+    """The fixed codec chain of an ``n5_default`` codec.
 
-    def __new__(cls, codecs: tx.Iterable[Codec]) -> tx.Self:
+    A transpose codec, then a big-endian bytes codec, then any number of
+    trailing codecs. Each element is converted to the concrete codec type
+    on construction, so the stored elements are codec objects rather than
+    the raw dicts they were read from.
+
+    Parameters
+    ----------
+    codecs : iterable
+        The codecs to store, as codec objects or as JSON-like mappings.
+        The first is read as a transpose codec, the second as a big-endian
+        bytes codec, and the rest as arbitrary codecs.
+
+    Raises
+    ------
+    ValueError
+        If fewer than two codecs are given, or the second codec is
+        little-endian.
+    """
+
+    def __init__(self, codecs: tx.Iterable[Codec]) -> None:
         codecs = list(codecs)
         if len(codecs) < 2:
             raise ValueError(
                 f"N5DefaultCodecList must have at least 2 codecs, "
                 f"got {len(codecs)}"
             )
-        first, second, *rest = codecs
+        first, second, rest = codecs[0], codecs[1], codecs[2:]
         first = TransposeCodec(**first)
         second = BytesCodec(**second)
         if second.configuration.endian == "little":
@@ -114,7 +129,7 @@ class N5DefaultCodecList(list):
                 f"got {second.configuration.endian}"
             )
         rest = [Codec(**c) for c in rest]
-        return super().__new__(cls, [first, second, *rest])
+        super().__init__([first, second, *rest])
 
 
 @autofrozen
@@ -127,11 +142,6 @@ class N5DefaultConfig(CodecConfigImpl):
 class N5DefaultCodec(Codec):
     name: tx.Literal["n5_default"]
     configuration: N5DefaultConfig
-
-
-@autofrozen
-class N5DefaultCodecListConfig(CodecConfigImpl):
-    codecs: N5DefaultCodecList
 
 
 @autofrozen
