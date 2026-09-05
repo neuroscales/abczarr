@@ -383,6 +383,15 @@ def _to_v2(
     chunk_grid = tx.cast(RegularChunkGrid, self.chunk_grid)
     chunk_shape = chunk_grid.configuration.chunk_shape
 
+    # Chunk-key encoding: only a V2ChunkKeyEncoding maps onto v2's flat key
+    # layout. A "default" (or any non-v2) encoding prefixes chunk keys with
+    # "c/", which v2 cannot express, so keeping only its separator produces a
+    # .zarray that addresses chunks where the data is not. That is a
+    # policy-governed loss: reported (and raised under "strict"), while the
+    # lenient path keeps today's separator-only behaviour.
+    if not isinstance(self.chunk_key_encoding, V2ChunkKeyEncoding):
+        base._report_loss(policy, "chunk_key_encoding", 2)
+
     # Separator
     separator = getattr(
         self.chunk_key_encoding.configuration, "separator", "."

@@ -296,6 +296,50 @@ def test_v3_default_key_roundtrip_through_v2_is_lossy() -> None:
     assert m.to_version(2).to_version(3) == m
 
 
+def _v3_default_key_array() -> v3.ArrayMetadata:
+    # a v3 array whose default chunk-key encoding has no v2 form: v2 cannot
+    # express the "c/" prefix, so only its separator would carry over.
+    return v3.ArrayMetadata.from_json(
+        {
+            "zarr_format": 3,
+            "node_type": "array",
+            "shape": [10, 10],
+            "data_type": "float64",
+            "chunk_grid": {
+                "name": "regular",
+                "configuration": {"chunk_shape": [5, 5]},
+            },
+            "chunk_key_encoding": {
+                "name": "default",
+                "configuration": {"separator": "/"},
+            },
+            "codecs": [
+                {"name": "bytes", "configuration": {"endian": "little"}}
+            ],
+            "fill_value": 0,
+            "attributes": {},
+        }
+    )
+
+
+def test_v3_default_key_to_v2_strict_raises() -> None:
+    # under "strict", the unrepresentable default encoding is an error rather
+    # than a .zarray that addresses chunks where the data is not
+    m = _v3_default_key_array()
+    with pytest.raises(UnsupportedConversion) as info:
+        m.to_version(2, policy="strict")
+    assert info.value.field == "chunk_key_encoding"
+
+
+def test_v3_default_key_to_v2_lenient_still_converts() -> None:
+    # the lenient path keeps today's lossy behaviour: it converts, carrying
+    # the separator over without complaint
+    m = _v3_default_key_array()
+    m2 = m.to_version(2)
+    assert m2.zarr_format == 2
+    assert m2.dimension_separator == "/"
+
+
 # ==========================================================================
 #   Group metadata
 # ==========================================================================

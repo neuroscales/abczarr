@@ -141,7 +141,13 @@ def test_filter_and_compressor_roundtrip_together() -> None:
 
 
 def _v3_sharded() -> dict:
+    # a v2 chunk-key encoding, so the shard grid is the only field v2 cannot
+    # hold and the policy tests below name exactly that loss
     return _v3(
+        chunk_key_encoding={
+            "name": "v2",
+            "configuration": {"separator": "."},
+        },
         codecs=[
             {
                 "name": "sharding_indexed",
