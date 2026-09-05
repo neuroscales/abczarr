@@ -15,6 +15,7 @@ from abczarr._core.auto import (
     register_converter,
 )
 from abczarr._core.auto.attrs import json_key
+from abczarr._core.rfc2119 import MISSING
 
 
 def register_subclass(
@@ -289,8 +290,6 @@ def _serialize_meta(x: "Metadata") -> tx.Dict[str, tz.Json]:
     An unset ``Recommended``/``Optional`` field holds the ``MISSING``
     sentinel; it is simply absent from the JSON rather than emitted (which
     would produce an unserializable value)."""
-    from abczarr._core.rfc2119 import MISSING
-
     extra = getattr(x, "extra_items", False)
     out = {}
     for f in fields(x):
