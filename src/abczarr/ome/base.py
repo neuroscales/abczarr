@@ -141,7 +141,7 @@ def _package(version: str) -> str:
     return "abczarr.ome." + _MODULES[version]
 
 
-def _version_package(data: abc.Mapping) -> tx.Any:
+def _version_package(data: tx.Mapping) -> tx.Any:
     """The version package a piece of top-level OME metadata belongs to, read
     from its ``version`` field."""
     version = data.get("version")
