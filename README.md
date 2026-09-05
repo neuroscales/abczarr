@@ -1,12 +1,9 @@
 # abczarr
 
-<img src="docs/images/logo_title_color.svg" style="display: block; margin: 0 auto; width: 75%; height: auto;" alt="abczarr logo" />
+<img src="https://neuroscales.github.io/abczarr/images/logo_title_color.svg" style="display: block; margin: 0 auto; width: 75%; height: auto;" alt="abczarr logo" />
 
 One interface for reading and writing Zarr arrays and groups -- sync or
 async -- no matter which backend or storage location holds them.
-
-> [!WARNING]
-> **Status:** pre-release -- under active development, not ready for use yet.
 
 ## What it does
 
@@ -39,25 +36,43 @@ metadata gets the same treatment: a typed model, schema validation you can
 run offline, and conversion between OME-NGFF versions.
 
 ```python
-from abczarr.api import open
+from abczarr import open
 
 # open a Zarr node anywhere; the right backend is chosen for you
 group = open("s3://my-bucket/dataset.zarr")
 array = group["images"]
 data = array[:100, :100]
 
-# the async version awaits the open call and uses method calls instead of indexing
+# or name the backend yourself
+volume = open("data.zarr", driver="tensorstore")
+
+# the async version awaits the open call and reads through method calls
 agroup = await open("s3://my-bucket/dataset.zarr", asynchronous=True)
 aimages = await agroup.getitem("images")
 tile = await aimages.getitem((slice(100), slice(100)))
 ```
 
+## Install
+
+```sh
+pip install abczarr
+```
+
+The core installs no backend of its own. Add the driver you want to read and
+write with, plus any storage or dtype support you need, as extras:
+
+| extra | enables |
+| --- | --- |
+| `abczarr[zarr-py]` | the zarr-python driver |
+| `abczarr[tensorstore]` | the TensorStore driver |
+| `abczarr[zarrista]` | the zarrista driver |
+| `abczarr[upath]` | fsspec and cloud URLs (`s3://`, `gs://`, ...) via universal-pathlib |
+| `abczarr[anypath]` | cloud paths via cloudpathlib |
+| `abczarr[ml-dtypes]` | exotic v3 float dtypes (`bfloat16`, `float8_*`, ...) |
+
+Combine what you need, for example `pip install "abczarr[zarr-py,upath]"`.
+
 ## Learn more
 
 Full documentation lives at
 [neuroscales.github.io/abczarr](https://neuroscales.github.io/abczarr/).
-
-abczarr is part of the **bagof** ecosystem of small, focused packages --
-see [bagof-paths](https://github.com/bagofseeds/bagof-paths) for the
-storage layer and [bagof-magic](https://github.com/bagofseeds/bagof-magic)
-for the type-hint-driven data classes abczarr's metadata model is built on.
