@@ -13,6 +13,7 @@ __all__ = [
 ]
 
 # dependencies
+import numcodecs.registry
 import typing_extensions as tx
 
 # core
@@ -138,8 +139,7 @@ class ArrayMetadata(ArrayMetadataV1):
         # v1 splits the codec into a name + options; v2 keeps them together.
         compressor = None
         if self.compression:
-            options = dict(self.compression_opts or {})
-            compressor = {"id": self.compression, **options}
+            compressor = {"id": self.compression, **self._compressor_options()}
 
         return v2.ArrayMetadata(
             shape=self.shape,
@@ -152,3 +152,27 @@ class ArrayMetadata(ArrayMetadataV1):
             dimension_separator=".",
             attributes=self.attributes,
         )
+
+    def _compressor_options(self) -> tx.Dict[str, tx.Any]:
+        """The compressor's numcodecs options, to merge onto its ``id``.
+
+        v1 keeps a codec's options in ``compression_opts``, usually an
+        object. The spec (and the authored ``array.schema``) also allow a
+        scalar -- an integer level, or a string -- for codecs that take one.
+        A bare scalar is not a numcodecs config on its own; numcodecs defines
+        which parameter it fills (zlib ``1`` is ``level``; lz4 ``2`` is
+        ``acceleration``), so a scalar is expanded through the named codec.
+        An object is used as is, and no compression means no options.
+        """
+        opts = self.compression_opts
+        if opts is None:
+            return {}
+        if isinstance(opts, (int, str)):
+            codec = numcodecs.registry.codec_registry[str(self.compression)](
+                opts
+            )
+            config = dict(codec.get_config())
+            config.pop("id", None)
+            return config
+        # an object (a CodecOptions, or a plain mapping): dict-able as is.
+        return dict(opts)

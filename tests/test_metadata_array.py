@@ -247,3 +247,46 @@ def test_v1_scalar_compression_opts_accepted() -> None:
     out = meta.to_json()
     assert out["compression_opts"] == 1
     validate(out, "v1", "array")
+
+
+def test_v1_scalar_compression_opts_converts_to_v2_and_v3() -> None:
+    # A scalar ``compression_opts`` must still convert: numcodecs defines
+    # which parameter the scalar fills, so ``zlib`` ``1`` becomes ``level=1``
+    # in the v2 compressor -- and the result is identical to the object form.
+    base = {
+        "zarr_format": 1,
+        "shape": [10],
+        "chunks": [5],
+        "dtype": "<f8",
+        "compression": "zlib",
+        "fill_value": 0,
+        "order": "C",
+        "attributes": {},
+    }
+    scalar = v1.ArrayMetadata.from_json({**base, "compression_opts": 1})
+    obj = v1.ArrayMetadata.from_json(
+        {**base, "compression_opts": {"level": 1}}
+    )
+
+    v2_meta = scalar.to_version(2)
+    assert v2_meta.compressor.to_json() == {"id": "zlib", "level": 1}
+    validate(v2_meta.to_json(), "v2", "array")
+
+    # the scalar form converts to exactly what the object form does, for v2
+    # and v3 alike (the point of the widening -- a scalar is not a special
+    # case downstream).
+    assert scalar.to_version(2).to_json() == obj.to_version(2).to_json()
+    assert scalar.to_version(3).to_json() == obj.to_version(3).to_json()
+
+    # a scalar for a codec that IS a v3 core codec round-trips all the way to
+    # a valid v3 document (gzip ``5`` -> ``level=5``).
+    gzip = v1.ArrayMetadata.from_json(
+        {**base, "compression": "gzip", "compression_opts": 5}
+    )
+    validate(gzip.to_version(3).to_json(), "v3", "array")
+
+    # a string scalar (blosc's cname) is expanded the same way.
+    blosc = v1.ArrayMetadata.from_json(
+        {**base, "compression": "blosc", "compression_opts": "lz4"}
+    )
+    assert blosc.to_version(2).compressor.to_json()["cname"] == "lz4"
