@@ -142,7 +142,7 @@ def _exists(path: tz.PathLike) -> bool:
 
 
 async def _aexists(path: tz.PathLike) -> bool:
-    """The async twin of [_exists][abczarr.api._entry], through an async
+    """The async twin of [_exists][abczarr.api.entrypoint], through an async
     store."""
     try:
         store = AsyncPathBasedStore(str(path))
@@ -672,7 +672,7 @@ def _peek_array_metadata(path: tz.PathLike) -> tx.Any:
 
 async def _achoose(path: tz.PathLike, drivers: "tx.List[Driver]") -> Driver:
     """The driver to open *path* with, selected through an async metadata
-    peek -- the async twin of [_choose][abczarr.api._entry]."""
+    peek -- the async twin of [_choose][abczarr.api.entrypoint]."""
     if len(drivers) == 1:
         return drivers[0]
     metadata = await _apeek_array_metadata(path)
@@ -684,7 +684,7 @@ async def _achoose(path: tz.PathLike, drivers: "tx.List[Driver]") -> Driver:
 async def _apeek_array_metadata(path: tz.PathLike) -> tx.Any:
     """Read an array's metadata through an async store, for selection, or
     ``None`` when *path* is a group or its metadata cannot be read -- the
-    async twin of [_peek_array_metadata][abczarr.api._entry]."""
+    async twin of [_peek_array_metadata][abczarr.api.entrypoint]."""
     try:
         raw = await AsyncPathBasedStore(str(path)).get("zarr.json")
     except Exception:

@@ -48,13 +48,13 @@ array([4., 5., 6., 7.], dtype=float32)
 
 ## Create via a config
 
-[ArrayConfig][abczarr.api.config.ArrayConfig] describes an array once,
+[ArrayConfig][abczarr.ArrayConfig] describes an array once,
 chunking, sharding, compression, fill value, so you can reuse the same
 shape of description across arrays. Pass it to
-[create][abczarr.api.create]:
+[create][abczarr.create]:
 
 ```pycon
->>> from abczarr.api.config import ArrayConfig
+>>> from abczarr import ArrayConfig
 
 >>> counts = abczarr.create(
 ...     "weather.zarr/counts",

@@ -11,7 +11,7 @@ import pytest
 
 import abczarr
 from abczarr.abc.capabilities import Support
-from abczarr.api import _entry, registry
+from abczarr.api import entrypoint, registry
 from abczarr.api.registry import available_drivers
 from abczarr.drivers.base import Driver
 from abczarr.errors import UnsupportedZarrOperation
@@ -101,7 +101,7 @@ def test_selection_routes_by_the_arrays_features(
 ) -> None:
     # two drivers offered; the capable one is chosen even though a driver
     # that supports nothing is listed first
-    from abczarr.api._entry import _choose
+    from abczarr.api.entrypoint import _choose
     from abczarr.drivers.zarr_python import ZarrPythonDriver
 
     array_path = _store(tmp_path) + "/img"
@@ -262,4 +262,4 @@ def test_exists_detects_a_v1_meta_file(tmp_path: pathlib.Path) -> None:
     # a location holding one was read as absent (and open(mode="a") on a v1
     # array would try to create rather than open).
     (tmp_path / "meta").write_bytes(b"{}")
-    assert _entry._exists(str(tmp_path)) is True
+    assert entrypoint._exists(str(tmp_path)) is True
