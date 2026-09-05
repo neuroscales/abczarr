@@ -1,6 +1,7 @@
 import json
 
-from abczarr.metadata import v2, v3
+from abczarr.metadata import v1, v2, v3
+from abczarr.schemas import validate
 
 
 def test_zarray_v3() -> None:
@@ -191,3 +192,58 @@ def test_a_core_data_type_serializes_as_a_bare_string() -> None:
     # a codec keeps its object form
     assert isinstance(out["codecs"][0], dict)
     assert out["codecs"][0]["name"] == "bytes"
+
+
+def test_v3_complex_fill_value_accepts_re_im_array() -> None:
+    # The Zarr v3 spec encodes a complex fill value as a two-element
+    # ``[real, imag]`` array (JSON has no complex literal), which the
+    # authored ``array.schema`` allows. The model must accept it.
+    document = {
+        "zarr_format": 3,
+        "node_type": "array",
+        "shape": [4],
+        "data_type": "complex64",
+        "chunk_grid": {
+            "name": "regular",
+            "configuration": {"chunk_shape": [4]},
+        },
+        "chunk_key_encoding": {
+            "name": "default",
+            "configuration": {"separator": "/"},
+        },
+        "codecs": [{"name": "bytes", "configuration": {"endian": "little"}}],
+        "fill_value": [1, 2],
+        "attributes": {},
+    }
+
+    meta = v3.ArrayMetadata.from_json(document)
+    assert meta.fill_value == (1, 2)
+
+    # round-trips back to the ``[real, imag]`` array, which the authored
+    # schema accepts -- model and schema agree in both directions.
+    out = meta.to_json()
+    assert out["fill_value"] == [1, 2]
+    validate(out, "v3", "array")
+
+
+def test_v1_scalar_compression_opts_accepted() -> None:
+    # The authored v1 ``array.schema`` allows a scalar ``compression_opts``
+    # (an integer or string) alongside the object form; the model must too.
+    document = {
+        "zarr_format": 1,
+        "shape": [10],
+        "chunks": [5],
+        "dtype": "<f8",
+        "compression": "zlib",
+        "compression_opts": 1,
+        "fill_value": 0,
+        "order": "C",
+        "attributes": {},
+    }
+
+    meta = v1.ArrayMetadata.from_json(document)
+    assert meta.compression_opts == 1
+
+    out = meta.to_json()
+    assert out["compression_opts"] == 1
+    validate(out, "v1", "array")

@@ -180,6 +180,12 @@ class V2ChunkKeyEncoding(ChunkKeyEncoding):
 
 _AxisNames = tx.Tuple[tx.Optional[str], ...]
 
+# A fill value is a scalar, or -- for a complex dtype -- the two-element
+# ``[real, imag]`` array the Zarr v3 spec uses to encode a complex number
+# (JSON has no complex literal). The authored ``array.schema`` allows both.
+_ComplexFillValue = tx.Tuple[tz.BuiltinReal, tz.BuiltinReal]
+_FillValue = tx.Union[tz.BuiltinNumber, _ComplexFillValue]
+
 
 @register_subclass(zarr_format=3, node_type="array")
 @autofrozen(kw_only=True, extra_items=ExtraField)
@@ -221,7 +227,7 @@ class ArrayMetadata(ArrayMetadataV3):
     data_type: DType
     chunk_grid: ChunkGrid
     chunk_key_encoding: ChunkKeyEncoding
-    fill_value: tx.Optional[tz.BuiltinNumber] = field(eq=eq_safenan)
+    fill_value: tx.Optional[_FillValue] = field(eq=eq_safenan)
     codecs: tx.Tuple[Codec, ...]
 
     # --- Optional ----

@@ -69,7 +69,10 @@ class ArrayMetadata(ArrayMetadataV1):
     chunks: tz.Shape
     dtype: DType
     compression: tx.Optional[Codec]
-    compression_opts: tx.Optional[CodecOptions]
+    # numcodecs carries a codec's options as an object, but the authored v1
+    # ``array.schema`` also allows the scalar forms (an integer level, or a
+    # string) that some codecs use, so accept those alongside the object.
+    compression_opts: tx.Optional[tx.Union[CodecOptions, int, str]]
     fill_value: tx.Optional[tz.BuiltinNumber] = field(eq=eq_safenan)
     order: tz.MemoryOrder
 
