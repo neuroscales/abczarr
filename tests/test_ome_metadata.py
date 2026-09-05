@@ -330,3 +330,46 @@ def test_image_label_document_dispatches_to_image_label_carrier() -> None:
     assert "image_label" not in j
     assert "image_labels" not in j
     assert v0_5.OME.from_json(j) == o
+
+
+# --------------------------------------------------------------------------
+# ImageLabel matches the NGFF spec: ``properties`` is an array and ``source``
+# carries only ``image`` (regression for the stable chain -- issue #97). The
+# schema defines ``properties`` as ``type: array`` (a list of per-label
+# property objects) and ``source`` as ``{"image": str}`` with no
+# ``label-value``.
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("version", ["0.2", "0.4"])
+def test_image_label_source_is_image_only(version: str) -> None:
+    labels = importlib.import_module(
+        f"abczarr.ome.v0_{version.split('.')[1]}.labels"
+    )
+    data = {"version": version, "source": {"image": "../../"}}
+    # ``source`` is ``{"image": str}`` -- building it must not demand a
+    # ``label-value`` that the spec does not define on ``source``.
+    il = labels.ImageLabel.from_json(data)
+    assert il.source.image == "../../"
+    assert not il.source.extra_items
+    assert il.source.to_json() == {"image": "../../"}
+
+
+@pytest.mark.parametrize("version", ["0.2", "0.4"])
+def test_image_label_properties_is_a_list(version: str) -> None:
+    labels = importlib.import_module(
+        f"abczarr.ome.v0_{version.split('.')[1]}.labels"
+    )
+    data = {
+        "version": version,
+        "properties": [{"label-value": 1}, {"label-value": 2}],
+    }
+    # ``properties`` is a list of per-label property objects, one per label
+    # value -- not a single object.
+    il = labels.ImageLabel.from_json(data)
+    assert [p.label_value for p in il.properties] == [1, 2]
+    assert il.to_json()["properties"] == [
+        {"label-value": 1},
+        {"label-value": 2},
+    ]
+    assert labels.ImageLabel.from_json(il.to_json()) == il

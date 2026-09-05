@@ -61,10 +61,9 @@ class ImageLabel(OMEMetadata):
         """
 
         image: Optional[str] = None
-        label_value: Required[int] = field(json="label-value")
 
 
     colors: Recommended[tx.List[Color]]
-    properties: Optional[Property]
+    properties: Optional[tx.List[Property]]
     source: Optional[Source]
     version: Recommended[Version]
