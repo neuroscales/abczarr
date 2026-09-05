@@ -27,7 +27,7 @@ class Multiscale(OMEMetadata):
     class Metadata(OMEMetadata):
         method: Optional[str]
         version: Optional[str]
-        args: Optional[tx.List[tz.Json]]
+        args: Optional[tz.Json]
         kwargs: Optional[tx.Dict[str, tz.Json]]
 
     coordinateSystems: Required[tx.List[CoordinateSystem]]

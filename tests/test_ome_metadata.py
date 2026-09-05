@@ -63,6 +63,37 @@ def test_ome_multiscale_roundtrips_through_dict(
     assert cls.from_json(m.to_json()) == m
 
 
+def test_multiscale_metadata_args_string_is_not_shredded() -> None:
+    """A bare-string ``metadata.args`` stays a string, not a list of chars.
+
+    The upstream OME corpus writes ``multiscales.metadata.args`` as a
+    bare string as well as a list, so the field is free-form JSON. A
+    sequence-typed field would have iterated the string, coercing
+    ``"[true]"`` into ``['[', 't', 'r', 'u', 'e', ']']``.
+    """
+    data = {
+        "axes": [
+            {"name": "y", "type": "space"},
+            {"name": "x", "type": "space"},
+        ],
+        "datasets": [
+            {
+                "path": "0",
+                "coordinateTransformations": [
+                    {"type": "scale", "scale": [1, 1]}
+                ],
+            }
+        ],
+        "metadata": {"method": "x", "args": "[true]"},
+    }
+    m = v0_4.Multiscale.from_json(data)
+    assert m.metadata.args == "[true]"
+    assert m.metadata.args != ["[", "t", "r", "u", "e", "]"]
+    # A genuine list of JSON values still passes through element-wise.
+    m2 = v0_4.Multiscale.from_json({**data, "metadata": {"args": [True, 3]}})
+    assert m2.metadata.args == [True, 3]
+
+
 # --------------------------------------------------------------------------
 # cross-version conversion between same-structure OME versions (v0.4 <-> v0.5)
 # --------------------------------------------------------------------------
