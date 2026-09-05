@@ -5,11 +5,15 @@ These round-trip through the metadata model (no backend needed).
 
 import pytest
 
+from abczarr.metadata.v1.codecs.base import CodecOptions as V1CodecOptions
+from abczarr.metadata.v2.codecs import ZstdCodec as V2ZstdCodec
 from abczarr.metadata.v3.codecs import (
+    BloscCodec,
     ConditionalCodec,
     N5DefaultCodec,
     ReshapeCodec,
     ZfpCodec,
+    ZstdCodec,
 )
 from abczarr.metadata.v3.codecs.base import Codec
 from abczarr.metadata.v3.codecs.builtin import BytesCodec, TransposeCodec
@@ -55,6 +59,21 @@ def test_zfp_dispatches_by_name() -> None:
         {"name": "zfp", "configuration": {"mode": "reversible"}}
     )
     assert isinstance(codec, ZfpCodec)
+
+
+def test_zstd_to_version_1_yields_v1_codec_options_like_siblings() -> None:
+    # zstd's to_version(1) must return a v1 codec-options shape, the same
+    # kind BloscCodec.to_version(1) returns -- not a v2 codec object.
+    zstd = ZstdCodec.from_json({"name": "zstd", "configuration": {"level": 3}})
+    blosc = BloscCodec.from_json({"name": "blosc", "configuration": {}})
+    zstd_v1 = zstd.to_version(1)
+    assert isinstance(zstd_v1, V1CodecOptions)
+    assert not isinstance(zstd_v1, V2ZstdCodec)
+    # the same family the sibling codec lands in for version 1
+    assert isinstance(blosc.to_version(1), V1CodecOptions)
+    # version 2 still returns the v2 codec, and version 3 returns self
+    assert isinstance(zstd.to_version(2), V2ZstdCodec)
+    assert zstd.to_version(3) is zstd
 
 
 @pytest.mark.parametrize(
