@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from abczarr.metadata import v1, v2, v3
 from abczarr.schemas import validate
 
@@ -250,6 +252,9 @@ def test_v1_scalar_compression_opts_accepted() -> None:
 
 
 def test_v1_scalar_compression_opts_converts_to_v2_and_v3() -> None:
+    # Expanding a scalar goes through numcodecs, absent on the minimal-deps
+    # test leg -- skip there (the metadata layer still imports without it).
+    pytest.importorskip("numcodecs")
     # A scalar ``compression_opts`` must still convert: numcodecs defines
     # which parameter the scalar fills, so ``zlib`` ``1`` becomes ``level=1``
     # in the v2 compressor -- and the result is identical to the object form.

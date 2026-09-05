@@ -13,7 +13,6 @@ __all__ = [
 ]
 
 # dependencies
-import numcodecs.registry
 import typing_extensions as tx
 
 # core
@@ -163,11 +162,18 @@ class ArrayMetadata(ArrayMetadataV1):
         which parameter it fills (zlib ``1`` is ``level``; lz4 ``2`` is
         ``acceleration``), so a scalar is expanded through the named codec.
         An object is used as is, and no compression means no options.
+
+        numcodecs is imported here rather than at module scope so this
+        metadata layer still imports where numcodecs is absent (the
+        minimal-dependency test leg); it is only needed to interpret a
+        scalar, which is what real codec work needs numcodecs for anyway.
         """
         opts = self.compression_opts
         if opts is None:
             return {}
         if isinstance(opts, (int, str)):
+            import numcodecs.registry
+
             codec = numcodecs.registry.codec_registry[str(self.compression)](
                 opts
             )
