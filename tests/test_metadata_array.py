@@ -302,3 +302,12 @@ def test_v1_scalar_compression_opts_converts_to_v2_and_v3() -> None:
     )
     with pytest.raises(UnsupportedConversion):
         bad.to_version(2)
+
+
+def test_getitem_raises_keyerror_for_absent_key_without_extra_items() -> None:
+    # v3.BytesCodec has no extra_items; an absent key must raise KeyError,
+    # not return None (regression: it fell off the end of __getitem__).
+    codec = v3.BytesCodec()
+    assert codec["name"] == "bytes"
+    with pytest.raises(KeyError):
+        codec["not_a_field"]

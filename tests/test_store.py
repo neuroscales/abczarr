@@ -19,6 +19,7 @@ from abczarr.abc.store import (
     PathBasedStore,
     Store,
     StorePath,
+    _child,
 )
 
 # --------------------------------------------------------------------------
@@ -378,3 +379,12 @@ def test_a_pathlike_root_is_wrapped_in_a_storepath(
 
     astore = AsyncPathBasedStore(tmp_path)
     assert isinstance(astore.store_path, AsyncStorePath)
+
+
+def test_child_matches_the_prefix_on_a_path_boundary() -> None:
+    # a prefix without a trailing slash matches on a segment boundary, not
+    # as a raw string prefix (regression: _child("c", "cat/1") -> "at")
+    assert _child("c", "cat/1") == "cat"
+    assert _child("c", "c/0/1") == "0"
+    assert _child("c/", "c/0/1") == "0"
+    assert _child("", "a/b") == "a"

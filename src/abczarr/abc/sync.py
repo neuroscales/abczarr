@@ -261,9 +261,27 @@ class ZarrArray(ZarrNode):
         ...
 
     def __array__(
-        self, dtype: tx.Optional[npt.DTypeLike] = None
+        self,
+        dtype: tx.Optional[npt.DTypeLike] = None,
+        copy: tx.Optional[bool] = None,
     ) -> npt.ArrayLike:
-        """Convert this array to a NumPy array."""
+        """Convert this array to a NumPy array.
+
+        Parameters
+        ----------
+        dtype : numpy.dtype, optional
+            The dtype of the returned array.
+        copy : bool, optional
+            NumPy 2's array protocol passes this. Reading the array always
+            materializes a fresh array, so ``copy=False`` (return a view
+            without copying) cannot be honored and is refused; ``copy=True``
+            and ``copy=None`` both return the freshly-read array.
+        """
+        if copy is False:
+            raise ValueError(
+                "cannot read this array without making a copy: "
+                "pass copy=True or copy=None"
+            )
         return np.asarray(self[()], dtype=dtype)
 
     def as_async(self) -> "AsyncZarrArray":
