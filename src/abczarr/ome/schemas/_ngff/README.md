@@ -46,3 +46,18 @@ property's value cannot be a bare array). Lenient validators tolerate it
 lazily; an eager compiler rejects it. The vendored files keep the upstream
 bytes; the loader lifts any such misplaced `required` to its correct sibling
 position when building the validators. See `abczarr/ome/schemas/_validation.py`.
+
+The 0.6 schemas put the "2-3 space axes" count bound in the shared
+`axes.schema`, which `coordinate_systems.schema` `$ref`s — so the bound is
+applied to *every* coordinate system's axes, not just an image's. RFC-5
+(Coordinate Systems and Transformations) scopes that rule to axes "inside
+multiscales metadata" only and leaves a general coordinate system's
+dimensionality unbounded (an array coordinate system's length equals its
+Zarr array's dimensionality; axis `type` is only *SHOULD*). The shared
+schema is therefore over-broad: reference `jsonschema` (Draft 2020-12)
+rejects upstream's own canonical examples against it — a 4-space-axis system
+(`v0_6rc0/byDimension2.json`) and 1-D transformation systems
+(`v0_6dev2/coordinates1d.json`, `displacement1d.json`). The vendored files
+keep the upstream bytes; the `contains` count-bound enforcement in
+`_contains.py` is suppressed once a `$ref` crosses into `axes.schema`, so
+abczarr holds only image axes to the bound. Tracked upstream (issue #125).

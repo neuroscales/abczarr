@@ -25,12 +25,19 @@ worst a count bound in a shape not listed above would stay unenforced, and
 the ``test_no_new_unsupported_keywords`` guard flags a new one creeping in.
 
 **Scope.** The "2-3 space axes" bound is the image-axis rule, but the
-vendored 0.6 schemas reuse ``axes.schema`` for a *coordinate system*'s axes
-too -- so a faithful reading of them (and the reference validator's) rejects
-a 1-D or 4-D coordinate system in a transformation document. That is an
-upstream over-constraint, tracked separately; here the enforcement is
-therefore suppressed inside any ``coordinateSystems`` subtree, so only
-multiscales/image axes are held to the count bound.
+vendored 0.6 schemas reuse the shared ``axes.schema`` file for a *coordinate
+system*'s axes too -- so a faithful reading of them (and the reference
+validator's) rejects a 1-D or 4-D coordinate system in a transformation
+document. RFC-5 scopes the 2-3 rule to axes "inside multiscales metadata"
+only and leaves a general coordinate system's dimensionality unbounded, so
+this is an upstream over-constraint (see ``_ngff/README.md``). The
+enforcement is therefore suppressed once a ``$ref`` crosses into the shared
+``axes.schema`` file -- that file *is* a coordinate system's axes. An image's
+own axis bound lives in ``image.schema``'s local ``$defs/axes`` (0.4/0.5) and
+is reached without crossing into ``axes.schema``, so it stays enforced. Only
+the definition site of the bound decides this, not the instance property name
+-- so ``arrayCoordinateSystem`` axes and any future container are covered
+too.
 """
 
 import functools
@@ -135,6 +142,22 @@ def _fail(label: str, message: str) -> "tx.NoReturn":
     raise SchemaValidationError(f"{label}: {message}", schema=label)
 
 
+def _is_axes_ref(new_base: tx.Mapping, base: tx.Mapping) -> bool:
+    """Whether a ``$ref`` crossed into the shared ``axes.schema`` file.
+
+    That file defines a *coordinate system*'s axes. Its 2-3 space-axis bound
+    is the image rule (``image.schema``'s own ``$defs/axes`` in 0.4/0.5) and
+    does not apply to a general coordinate system, so the count bound is not
+    enforced below a ref that reaches ``axes.schema``. A local ``#/...`` ref
+    stays within the same document (``new_base is base``) and so an image's
+    own inline axes bound is unaffected.
+    """
+    if new_base is base:
+        return False
+    uri = new_base.get("$id", "")
+    return isinstance(uri, str) and uri.rsplit("/", 1)[-1] == "axes.schema"
+
+
 def _walk(
     schema: tx.Any,
     instance: tx.Any,
@@ -152,8 +175,12 @@ def _walk(
         target, new_base = _deref(ref, registry, base)
         key = (id(target), id(instance))
         if target is not None and key not in seen:
+            # Crossing into the shared axes.schema means these are a
+            # coordinate system's axes, not an image's, so the count bound
+            # (the image rule) is not enforced below here.
+            child = enforce_counts and not _is_axes_ref(new_base, base)
             _walk(target, instance, registry, new_base, label,
-                  seen | {key}, enforce_counts)
+                  seen | {key}, child)
 
     if enforce_counts and isinstance(instance, list):
         if "contains" in schema and (
@@ -185,11 +212,8 @@ def _walk(
     if isinstance(properties, dict) and isinstance(instance, dict):
         for name, subschema in properties.items():
             if name in instance:
-                # A coordinate system's axes reuse axes.schema but are not
-                # image axes, so the count bound does not apply below here.
-                child = enforce_counts and name != "coordinateSystems"
                 _walk(subschema, instance[name], registry, base, label,
-                      seen, child)
+                      seen, enforce_counts)
 
     items = schema.get("items")
     if isinstance(items, dict) and isinstance(instance, list):

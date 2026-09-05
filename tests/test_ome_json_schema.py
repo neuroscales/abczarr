@@ -162,6 +162,45 @@ def test_oneof_axis_count_rule_is_enforced() -> None:
             schemas.validate(bad, "0.6rc0", "axes")
 
 
+def test_count_bound_is_scoped_by_axes_schema_ref_not_property_name() -> None:
+    # The count bound is the image-axis rule; a coordinate system's axes reuse
+    # the shared `axes.schema` and must not be held to it (issue #125). The
+    # scoping keys on a `$ref` crossing into `axes.schema`, not on an instance
+    # property literally named `coordinateSystems` -- so a coordinate-system
+    # container under any other name (here `arrayCoordinateSystem`) is scoped
+    # correctly too, which the earlier property-name heuristic missed.
+    from abczarr.ome.schemas import _contains
+
+    space = {"type": "object",
+             "properties": {"type": {"const": "space"}},
+             "required": ["type"]}
+    bound = {"contains": space, "minContains": 2, "maxContains": 3}
+    axes_schema = dict(bound, **{
+        "$id": "https://example/0.6/schemas/axes.schema", "type": "array"})
+    root = {
+        "$id": "https://example/0.6/schemas/root.schema",
+        "type": "object",
+        "properties": {
+            # a coordinate system's axes, reached via $ref into axes.schema
+            "arrayCoordinateSystem": {
+                "properties": {"axes": {"$ref": "axes.schema"}}},
+            # an image's own axes, bounded inline (no axes.schema crossing)
+            "image": {"properties": {"axes": {"$ref": "#/$defs/imageAxes"}}},
+        },
+        "$defs": {"imageAxes": dict(bound, **{"type": "array"})},
+    }
+    registry = {"https://example/0.6/schemas/axes.schema": axes_schema}
+    one_axis = [{"name": "x", "type": "space"}]  # count 1: below minContains 2
+
+    # coordinate-system axes: suppressed, so an out-of-bound count is accepted
+    _contains.enforce(
+        {"arrayCoordinateSystem": {"axes": one_axis}}, root, registry, "lbl")
+
+    # image axes: still enforced, so the same bad count is rejected
+    with pytest.raises(SchemaValidationError):
+        _contains.enforce({"image": {"axes": one_axis}}, root, registry, "lbl")
+
+
 def test_version_spellings_share_one_validator() -> None:
     # the abczarr suffix and the official string resolve to the same compiled
     # validator (not two independent compiles).
