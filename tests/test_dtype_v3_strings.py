@@ -5,9 +5,10 @@ Two related defects produced non-Zarr-v3 data:
 * ``to_zarr3`` on a fixed-length Unicode (``<U5``) or byte (``S3``) numpy
   dtype fell through to ``dtype.name`` and returned numpy's internal
   spelling (``"str160"``, ``"bytes24"``), neither of which is a valid Zarr
-  v3 data type. It now raises ``UnsupportedConversion`` -- the same refusal
-  ``asdtype`` makes for an unrepresentable extension dtype (#92). Broader
-  variable-length string support is tracked separately (#127).
+  v3 data type. It now maps to the ``fixed_length_utf32`` /
+  ``null_terminated_bytes`` extension data types, carrying the storage size
+  in ``length_bytes``, and ``asdtype`` reverses the mapping so the numpy
+  dtype round-trips.
 * ``CategorizeFilter.to_version(3)`` built its ``scalar_map`` ``encode``
   entries from ``reversed`` iterators, which are single-use: reading the
   mapping a second time yielded nothing. The entries are now materialized.
@@ -19,25 +20,35 @@ import pytest
 import typing_extensions as tx
 
 # package
-from abczarr._core.dtypes import to_zarr3
-from abczarr.errors import UnsupportedConversion
+from abczarr._core.dtypes import asdtype, to_zarr3
 from abczarr.metadata.v2.filters.extensions import CategorizeFilter
 
 
-@pytest.mark.parametrize("spelling", ["<U5", "S3"])
-def test_to_zarr3_string_bytes_raises(spelling: str) -> None:
+@pytest.mark.parametrize(
+    "spelling, expected",
+    [
+        ("<U5", {"name": "fixed_length_utf32",
+                 "configuration": {"length_bytes": 20}}),
+        ("<U1", {"name": "fixed_length_utf32",
+                 "configuration": {"length_bytes": 4}}),
+        ("S3", {"name": "null_terminated_bytes",
+                "configuration": {"length_bytes": 3}}),
+        ("S1", {"name": "null_terminated_bytes",
+                "configuration": {"length_bytes": 1}}),
+    ],
+)
+def test_to_zarr3_string_bytes_maps_to_extension(
+    spelling: str, expected: dict
+) -> None:
+    # never numpy's internal name ("str160"/"bytes24"); the v3 extension type
+    assert to_zarr3(np.dtype(spelling)) == expected
+
+
+@pytest.mark.parametrize("spelling", ["<U1", "<U5", "S1", "S3"])
+def test_to_zarr3_string_bytes_round_trips(spelling: str) -> None:
+    # the v3 extension dict reverses back to the original numpy dtype
     dtype = np.dtype(spelling)
-    with pytest.raises(UnsupportedConversion) as info:
-        to_zarr3(dtype)
-    # never numpy's internal name for a v3 data type
-    assert info.value.version == 3
-
-
-def test_to_zarr3_string_bytes_no_internal_name() -> None:
-    # guard specifically against the old bogus "str*"/"bytes*" output
-    for spelling in ("<U1", "<U5", "S1", "S3"):
-        with pytest.raises(UnsupportedConversion):
-            to_zarr3(np.dtype(spelling))
+    assert asdtype(to_zarr3(dtype)) == dtype
 
 
 def test_to_zarr3_numeric_still_converts() -> None:

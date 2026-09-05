@@ -126,6 +126,17 @@ def asdtype(
             time_type = name.split(".")[-1]
             dtype = f"{time_type}[{scale}{unit}]"
 
+        # Fixed-length string data types. ``length_bytes`` is the numpy
+        # ``itemsize``: UTF-32 stores 4 bytes per code unit ("<U" length),
+        # while bytes store one byte per character ("S" length). See
+        # https://github.com/zarr-developers/zarr-extensions/tree/main/data-types
+        if name == "fixed_length_utf32":
+            length = configuration["length_bytes"]
+            dtype = "<U" + str(length // 4)
+        if name == "null_terminated_bytes":
+            length = configuration["length_bytes"]
+            dtype = "S" + str(length)
+
     try:
         dtype = np.dtype(dtype)
     except TypeError as exc:
@@ -212,13 +223,23 @@ def to_zarr3(dtype: tx.Union[npt.DTypeLike, tx.Mapping]) -> DataTypeV3:
             "configuration": {"unit": unit, "scale_factor": scale}
         }
 
-    if dtype.kind in ("U", "S"):
-        # Fixed-length Unicode ('U') and byte ('S') numpy dtypes have no
-        # builtin Zarr v3 data type: ``dtype.name`` here would be numpy's
-        # internal spelling ("str160", "bytes24"), which is not a valid v3
-        # type. Refuse rather than emit a bogus type, matching how
-        # ``asdtype`` refuses an unrepresentable extension type. Broader
-        # variable-length string support is tracked separately (#127).
-        raise UnsupportedConversion(descr, 3)
+    # Fixed-length Unicode ('U') and byte ('S') numpy dtypes map to Zarr v3
+    # extension data types carrying the storage size in ``length_bytes``.
+    # These extension types are marked "unstable / not finalized" upstream;
+    # the shape here matches zarr-python's representation. See
+    # https://github.com/zarr-developers/zarr-extensions/tree/main/data-types
+    if dtype.kind == "U":
+        # numpy stores each UTF-32 code unit in 4 bytes, so ``itemsize`` is
+        # already the byte length ("<U5" -> length_bytes 20).
+        return {
+            "name": "fixed_length_utf32",
+            "configuration": {"length_bytes": dtype.itemsize},
+        }
+    if dtype.kind == "S":
+        # numpy stores one byte per character ("S3" -> length_bytes 3).
+        return {
+            "name": "null_terminated_bytes",
+            "configuration": {"length_bytes": dtype.itemsize},
+        }
 
     return dtype.name
