@@ -7,7 +7,7 @@ readme = "README.md"
 dynamic = ["version"]
 requires-python = ">=3.8"
 dependencies = [
-    "typing_extensions >= 4.13",            # TypedDict(..., extra_items=...)
+    "typing_extensions >= 4.13",            # shared floor of the bagof-* engine
     "attrs >= 25.2",                        # @define
     "numpy >= 1.20",                        # numpy.typing.DTypeLike
     "dask[array,diagnostics] >= 2.9.1",     # nanmedian
@@ -19,9 +19,9 @@ dependencies = [
     # model derives per-field conversion and validation from type hints; these
     # provide that engine (the same one bagof-magic uses), replacing the
     # home-grown version under _core/auto.
-    "bagof-converters",
-    "bagof-validators",
-    "bagof-factories",
+    "bagof-converters >= 0.1",
+    "bagof-validators >= 0.1",
+    "bagof-factories >= 0.1",
     # Offline JSON-schema validation of OME-Zarr / Zarr metadata against the
     # vendored NGFF and Zarr schemas. Pure-Python, zero runtime dependencies,
     # no python_requires floor (installs on the 3.8 floor), and fast (compiles
