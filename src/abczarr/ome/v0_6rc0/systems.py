@@ -88,6 +88,19 @@ Unit = tx.Union[SpaceUnit, TimeUnit]
 
 @autodefine
 class Axis(OMEMetadata):
+    """Describes one dimension of a
+    [CoordinateSystem][abczarr.ome.v0_6rc0.systems.CoordinateSystem].
+
+    `name` is the axis's label, such as `"x"` or `"channel"`. `type`
+    identifies what kind of axis it is: `"space"`, `"time"`, `"channel"`,
+    `"array"`, `"displacement"`, or `"coordinate"`. `unit` gives its
+    physical unit, when it has one. `discrete` marks an axis whose values
+    are integer indices rather than continuous coordinates. `longName` is a
+    human-readable label beyond `name`. Constructing an `Axis` with a
+    recognized `type` returns the matching subclass, such as
+    [SpaceAxis][abczarr.ome.v0_6rc0.systems.SpaceAxis].
+    """
+
     name: Required[str] = field(factory=False)
     type: Recommended[tx.Union[AxisType, str]]
     discrete: Optional[bool]
@@ -97,41 +110,78 @@ class Axis(OMEMetadata):
 
 @register_subclass(type="space")
 class SpaceAxis(Axis):
+    """A spatial axis, such as `x`, `y`, or `z`, with a length unit."""
+
     type: Recommended[tx.Literal["space"]]
     unit: Recommended[SpaceUnit]
 
 
 @register_subclass(type="time")
 class TimeAxis(Axis):
+    """A temporal axis, with a duration unit."""
+
     type: Recommended[tx.Literal["time"]]
     unit: Recommended[TimeUnit]
 
 
 @register_subclass(type="channel")
 class ChannelAxis(Axis):
+    """Indexes an image's channels, carrying no physical unit."""
+
     type: Recommended[tx.Literal["channel"]]
     unit: NotRecommended[Unit]
 
 
 @register_subclass(type="array")
 class ArrayAxis(Axis):
+    """A discrete axis of an array's own coordinate system.
+
+    The axis's values are raw pixel or voxel indices, before any
+    transformation into a physical or temporal coordinate system.
+    """
+
     type: Required[tx.Literal["array"]]
     unit: NotRecommended[Unit]
 
 
 @register_subclass(type="displacement")
 class DisplacementAxis(Axis):
+    """An axis whose values are the components of a displacement vector.
+
+    The axis labels a dimension of the array that a
+    [Displacements][abczarr.ome.v0_6rc0.transformations.Displacements]
+    transformation reads its offsets from.
+    """
+
     type: Required[tx.Literal["displacement"]]
     unit: NotRecommended[Unit]
 
 
 @register_subclass(type="coordinate")
 class CoordinateAxis(Axis):
+    """An axis whose values are the components of a coordinate vector.
+
+    The axis labels a dimension of the array that a
+    [Coordinates][abczarr.ome.v0_6rc0.transformations.Coordinates]
+    transformation reads its positions from.
+    """
+
     type: Required[tx.Literal["coordinate"]]
     unit: NotRecommended[Unit]
 
 
 @autodefine
 class CoordinateSystem(OMEMetadata):
+    """A named set of axes.
+
+    A coordinate system is a space that data and transformations refer to
+    by name. `axes` lists its [Axis][abczarr.ome.v0_6rc0.systems.Axis]
+    objects in order. That order is the order every coordinate tuple in
+    this coordinate system uses. A
+    [Dataset][abczarr.ome.v0_6rc0.images.Dataset] or a
+    `CoordinateTransformation` names a `CoordinateSystem` by its `name` as
+    its input or output.
+    """
+
     name: Required[str] = field(factory=False)
     axes: Required[tx.List[Axis]]

@@ -18,6 +18,15 @@ WellPath = tx.Annotated[str, re.compile("^[A-Za-z0-9]+/[A-Za-z0-9]+$")]
 
 @autodefine
 class Plate(OMEMetadata):
+    """Describes a high-content screening plate.
+
+    `rows` and `columns` name the plate's grid, such as `"A"`, `"B"`, ...
+    and `"1"`, `"2"`, .... `wells` places each well in that grid and points,
+    by `path`, at the group that holds the well's images. `acquisitions`
+    lists the imaging runs the wells' images belong to, when the screen ran
+    more than one acquisition.
+    """
+
     @autodefine
     class Acquisition(OMEMetadata):
         id: Required[NonNegativeInt] = field(factory=False)
