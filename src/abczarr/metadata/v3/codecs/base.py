@@ -61,6 +61,11 @@ class Codec(Extension):
     and
     [`BytesToBytesCodec`][abczarr.metadata.v3.codecs.base.BytesToBytesCodec]
     for what each stage does.
+
+    See
+    [`abczarr.metadata.v2.codecs.base.Codec`][abczarr.metadata.v2.codecs.base.Codec]
+    for a worked example comparing the same codec across the v1, v2 and
+    v3 metadata models.
     """
 
     configuration: CodecConfig

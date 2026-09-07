@@ -16,6 +16,26 @@ class Codec(Metadata):
 
     A v2 codec's parameters sit directly alongside ``id``, not nested
     under a separate key.
+
+    The three metadata versions spell the same codec differently. A v1
+    codec carries its numcodecs id as a class attribute and its
+    parameters as fields. A v2 codec carries the id as a field alongside
+    its parameters, as shown here. A v3 codec names itself through
+    ``name`` and nests its parameters under a separate ``configuration``
+    object. The gzip codec, with its single ``level`` parameter, shows
+    the three side by side:
+
+    ```pycon
+    >>> from abczarr.metadata import v1, v2, v3
+    >>> v1.GzipCodecOptions(level=1)
+    GzipCodecOptions(level=1)
+    >>> v2.GzipCodec(id="gzip", level=1)
+    GzipCodec(id='gzip', level=1)
+    >>> codec = v3.GzipCodec(name="gzip", configuration={"level": 1})
+    >>> codec.name, codec.configuration
+    ('gzip', GzipConfig(level=1))
+
+    ```
     """
 
     id: str
