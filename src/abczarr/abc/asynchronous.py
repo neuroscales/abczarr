@@ -449,9 +449,10 @@ class AsyncZarrGroup(AsyncZarrNode):
     async def create_array(
         self,
         name: str,
-        shape: tz.ShapeLike,
-        dtype: npt.DTypeLike,
+        shape: tx.Optional[tz.ShapeLike] = None,
+        dtype: tx.Optional[npt.DTypeLike] = None,
         *,
+        data: tx.Optional[npt.ArrayLike] = None,
         config: tx.Union[ArrayConfig, ArrayOptions, None] = None,
         **options: tx.Unpack[ArrayOptions],
     ) -> AsyncZarrArray:
@@ -459,12 +460,22 @@ class AsyncZarrGroup(AsyncZarrNode):
 
         This method mirrors
         [ZarrGroup.create_array][abczarr.abc.sync.ZarrGroup.create_array].
-        See that method for the parameters it accepts.
+        See that method for the parameters it accepts. When *data* is given,
+        the data is written into the new array through the backend's native
+        asynchronous write.
         """
+        if data is not None and (
+            getattr(data, "shape", None) is None
+            or getattr(data, "dtype", None) is None
+        ):
+            data = np.asarray(data)
         resolved = _resolve_array_config(
-            shape, dtype, config, options, self.zarr_version
+            shape, dtype, config, options, self.zarr_version, data
         )
-        return await self._create_array(name, resolved)
+        array = await self._create_array(name, resolved)
+        if data is not None:
+            await array.setitem(Ellipsis, data)
+        return array
 
     @abstractmethod
     async def _create_array(

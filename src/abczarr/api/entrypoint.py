@@ -460,6 +460,9 @@ def create(
         ```python
         arr = abczarr.create("a.zarr", ArrayConfig(shape=(4, 4), dtype="i1"))
         arr = abczarr.create("a.zarr", data=np.zeros((4, 4), "i1"))
+        arr = await abczarr.create(
+            "a.zarr", ArrayConfig(shape=(4, 4), dtype="i1"), asynchronous=True
+        )
         ```
     """
     if data is not None:

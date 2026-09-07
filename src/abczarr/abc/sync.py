@@ -533,26 +533,33 @@ _GROUP_METADATA = {
 
 
 def _resolve_array_config(
-    shape: tz.ShapeLike,
-    dtype: npt.DTypeLike,
+    shape: tx.Optional[tz.ShapeLike],
+    dtype: tx.Optional[npt.DTypeLike],
     config: tx.Union[ArrayConfig, ArrayOptions, None],
     options: ArrayOptions,
     version: tz.ZarrVersion,
+    data: tx.Optional[npt.ArrayLike] = None,
 ) -> ArrayConfig:
     """Build the resolved [ArrayConfig][abczarr.api.config.ArrayConfig] a
     `create_array` call describes.
 
-    A config (an `ArrayConfig` or a mapping of its fields) is the base;
-    *shape*, *dtype* and the per-call *options* are layered on top, with the
-    array taking the group's format version. `"auto"` chunking and sharding
-    are worked out, so a driver receives concrete values.
+    A config (an `ArrayConfig` or a mapping of its fields) is the base.
+    *shape*, *dtype* and the per-call *options* are layered on top, and the
+    array takes the group's format version. A *shape* or *dtype* that is left
+    out falls back to *data* when *data* is given, so an explicit value always
+    takes precedence over the data. `"auto"` chunking and sharding are worked
+    out, so a driver receives concrete values.
     """
     base = config if isinstance(config, ArrayConfig) else ArrayConfig(
         **dict(config or {})
     )
     merged = dict(options)
-    merged.update(shape=shape, dtype=dtype, zarr_version=version)
-    return evolve(base, **merged).resolve()
+    merged["zarr_version"] = version
+    if shape is not None:
+        merged["shape"] = shape
+    if dtype is not None:
+        merged["dtype"] = dtype
+    return evolve(base, **merged).resolve(data)
 
 
 class ZarrGroup(ZarrNode):
@@ -602,31 +609,48 @@ class ZarrGroup(ZarrNode):
     def create_array(
         self,
         name: str,
-        shape: tz.ShapeLike,
-        dtype: npt.DTypeLike,
+        shape: tx.Optional[tz.ShapeLike] = None,
+        dtype: tx.Optional[npt.DTypeLike] = None,
         *,
+        data: tx.Optional[npt.ArrayLike] = None,
         config: tx.Union[ArrayConfig, ArrayOptions, None] = None,
         **options: tx.Unpack[ArrayOptions],
     ) -> ZarrArray:
         """Create a new array named *name* within this group.
 
+        The array is created from existing *data* when *data* is given. The
+        array's shape and dtype then default to the data's, and the data is
+        written into the new array. A *shape* or *dtype* passed explicitly, or
+        one carried by *config*, takes precedence over the data.
+
         Parameters
         ----------
         name : str
             The array's name.
-        shape : tuple of int
-            The array's shape.
-        dtype : numpy dtype
-            The array's data type.
+        shape : tuple of int, optional
+            The array's shape. Required unless *data* or *config* supplies one.
+        dtype : numpy dtype, optional
+            The array's data type. Required unless *data* or *config* supplies
+            one.
+        data : array-like, optional
+            Existing data to size the array from and write into it.
         config : ArrayConfig or mapping, optional
             A reusable [ArrayConfig][abczarr.api.config.ArrayConfig], or a
             mapping of the same fields. Individual fields may also be passed as
             keyword arguments, which override the config.
         """
+        if data is not None and (
+            getattr(data, "shape", None) is None
+            or getattr(data, "dtype", None) is None
+        ):
+            data = np.asarray(data)
         resolved = _resolve_array_config(
-            shape, dtype, config, options, self.zarr_version
+            shape, dtype, config, options, self.zarr_version, data
         )
-        return self._create_array(name, resolved)
+        array = self._create_array(name, resolved)
+        if data is not None:
+            array.store(data)
+        return array
 
     @abstractmethod
     def _create_array(self, name: str, config: ArrayConfig) -> ZarrArray:

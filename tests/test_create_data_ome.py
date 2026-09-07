@@ -151,3 +151,60 @@ def test_async_create_writes_ome(tmp_path: pathlib.Path) -> None:
     group = asyncio.run(go())
     assert group.ome is not None
     assert group.ome.version == "0.5"
+
+
+# --- group.create_array from data ------------------------------------------
+
+
+def test_group_create_array_takes_shape_and_dtype_from_data(
+    tmp_path: pathlib.Path,
+) -> None:
+    group = abczarr.create_group(str(tmp_path / "g.zarr"))
+    data = np.arange(16, dtype="int16").reshape(4, 4)
+    arr = group.create_array("a", data=data)
+    assert arr.shape == (4, 4)
+    assert arr.dtype == np.dtype("int16")
+    assert np.array_equal(_read(arr), data)
+
+
+def test_group_create_array_dtype_keyword_overrides_the_data(
+    tmp_path: pathlib.Path,
+) -> None:
+    group = abczarr.create_group(str(tmp_path / "g.zarr"))
+    arr = group.create_array("a", data=np.ones((3, 3), "float64"), dtype="i1")
+    assert arr.dtype == np.dtype("int8")
+
+
+def test_group_create_array_turns_a_nested_list_into_an_array(
+    tmp_path: pathlib.Path,
+) -> None:
+    group = abczarr.create_group(str(tmp_path / "g.zarr"))
+    arr = group.create_array("a", data=[[1, 2], [3, 4]])
+    assert arr.shape == (2, 2)
+    assert np.array_equal(_read(arr), [[1, 2], [3, 4]])
+
+
+def test_group_create_array_still_takes_an_explicit_shape(
+    tmp_path: pathlib.Path,
+) -> None:
+    group = abczarr.create_group(str(tmp_path / "g.zarr"))
+    arr = group.create_array("a", (2, 2), "uint8")
+    assert arr.shape == (2, 2)
+    assert arr.dtype == np.dtype("uint8")
+
+
+def test_async_group_create_array_stores_data(
+    tmp_path: pathlib.Path,
+) -> None:
+    data = np.arange(9, dtype="int16").reshape(3, 3)
+
+    async def go() -> object:
+        group = await abczarr.create_group(
+            str(tmp_path / "g.zarr"), asynchronous=True
+        )
+        return await group.create_array("a", data=data)
+
+    arr = asyncio.run(go())
+    assert arr.shape == (3, 3)
+    reopened = abczarr.open(str(tmp_path / "g.zarr" / "a"), mode="r")
+    assert np.array_equal(_read(reopened), data)
