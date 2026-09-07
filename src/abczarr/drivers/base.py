@@ -199,7 +199,7 @@ class Driver(SupportsCapabilities):
         self, location: tx.Any, config: "ZarrConfig"
     ) -> "AsyncZarrNode":
         """Create *config* asynchronously. The default thread-bridges the
-        synchronous create; a backend with a native coroutine create
+        synchronous create. A backend with a native coroutine create
         overrides this."""
         node = await run_sync(self._create_sync, location, config)
         return node.as_async()
@@ -275,7 +275,7 @@ class Driver(SupportsCapabilities):
         *, overwrite: bool = False,
     ) -> "AsyncZarrNode":
         """Create from *metadata* asynchronously. The default thread-bridges
-        the synchronous create; a backend with a native coroutine create
+        the synchronous create. A backend with a native coroutine create
         overrides this."""
         node = await run_sync(
             self._create_from_metadata_sync, location, metadata,
@@ -294,6 +294,22 @@ class Driver(SupportsCapabilities):
         and `overwrite`, may instead be passed as keyword arguments.
         A keyword argument overrides the corresponding field of
         *config*.
+
+        Parameters
+        ----------
+        location : Any
+            Where to create the group.
+        config : GroupConfig, optional
+            The group to create. Defaults to a `GroupConfig` built
+            from *fields* alone.
+        **fields : Any
+            Individual `GroupConfig` fields, overriding the matching
+            field of *config*.
+
+        Returns
+        -------
+        ZarrNode
+            The newly created group, opened through this driver.
         """
         base = config if isinstance(config, GroupConfig) else GroupConfig(
             **dict(config or {})

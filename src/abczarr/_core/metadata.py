@@ -1,3 +1,8 @@
+"""The base class abczarr's typed metadata classes build on: JSON
+conversion, dict-like field access, and construction dispatch to the most
+specific registered subclass.
+"""
+
 # stdlib
 import re
 from collections import abc
@@ -22,11 +27,31 @@ def register_subclass(
     match: tx.Tuple[tx.Tuple[str, tx.Any], ...] = (),
     **other_matches
 ) -> tx.Callable[[tx.Type["Metadata"]], tx.Type["Metadata"]]:
-    """
-    Register a subclass of Metadata for a given match dictionary.
+    """Register a `Metadata` subclass to be returned in place of one of
+    its bases, when the base is constructed with matching field values.
 
-    The base class' `__new__` method will return an instance of the
-    registered subclass if its input parameters match the given dictionary.
+    A keyword argument, or an entry in *match*, names one of the
+    decorated class's own init fields and the value that field must
+    equal (or, for a string field, a compiled pattern it must match) for
+    that class to be selected. `Metadata.__new__` checks the registered
+    subclasses of whichever class it is called on, in registration
+    order, and returns an instance of the first one whose match
+    conditions the constructor arguments satisfy. The registered class
+    itself, called directly, still builds an instance of itself.
+
+    Parameters
+    ----------
+    match : tuple of (str, Any), optional
+        Field name and required value pairs, as an alternative to
+        keyword arguments. This form is needed for a field name that
+        is not a valid Python identifier.
+    **other_matches : Any
+        Field name and required value pairs.
+
+    Returns
+    -------
+    callable
+        A decorator that registers its class and returns it unchanged.
     """
 
     if isinstance(match, abc.Mapping):
@@ -51,24 +76,34 @@ def register_subclass(
 
 @autofrozen
 class Metadata:
-    """Frozen, recursive, JSON-serializable metadata class."""
+    """A frozen, JSON-serializable metadata document.
+
+    An instance's fields are set at construction and never change
+    afterward. `to_json` serializes the fields, recursing into any field
+    that is itself a `Metadata` instance, and `from_json` rebuilds an
+    instance from the result. A field also supports dict-like read
+    access: `metadata["field"]` and iteration work alongside the usual
+    attribute access.
+    """
 
     # --- Subclass registry --------------------------------------------
 
     def __new__(cls, *args, **kwargs) -> tx.Self:
-        # Some subclasses register themselves with their base class,
-        # so that the base class can return an instance of the subclass
-        # if the input parameters match the subclass' fields.
-        # This allows for polymorphic behavior when creating instances
-        # of the base class.
+        # A subclass registered through `register_subclass` is returned
+        # in place of `cls` when the constructor arguments satisfy that
+        # subclass's match conditions, so a caller building the base
+        # class by name still gets back the specific subclass its
+        # arguments describe.
 
         for match, subcls in cls._registry().items():
 
-            # Not a subclass -> pass
             if not issubclass(subcls, cls):
                 continue
 
-            # Check if the match dictionary matches the input arguments
+            # Fill in the constructor call the same way it would be bound
+            # to `subcls`'s own fields, so a value supplied positionally
+            # or omitted (and defaulted) is checked exactly like one
+            # supplied by keyword.
             match_copy = dict(match)
             args_copy = list(args)
             kwargs_copy = dict(kwargs)
@@ -83,10 +118,11 @@ class Metadata:
                     kwargs_value = kwargs_copy.get(f.name)
                     match_value = match_copy.get(f.name)
                     if isinstance(match_value, re.Pattern):
-                        # A regex discriminator only matches a string value;
-                        # a non-string one simply does not match this subclass
-                        # (mirrors ``_match_score``), so fall through rather
-                        # than let ``re.Pattern.match`` raise ``TypeError``.
+                        # A regex discriminator only matches a string value.
+                        # A non-string one does not match this subclass,
+                        # mirroring ``_match_score``. Falling through here
+                        # avoids letting ``re.Pattern.match`` raise
+                        # ``TypeError`` on a non-string value.
                         if not (
                             isinstance(kwargs_value, str)
                             and match_value.match(kwargs_value)
@@ -102,7 +138,13 @@ class Metadata:
 
     @classmethod
     def _registry(cls) -> dict:
-        # Return the dictionary of registered subclasses.
+        """The subclasses registered against *cls*, keyed by their match
+        conditions.
+
+        Only entries whose registered class is actually a subclass of
+        *cls* are included, so a class further up the hierarchy does not
+        see a sibling's registrations.
+        """
         return {
             match: subcls
             for match, subcls in getattr(cls, "_REGISTRY", {}).items()
@@ -110,10 +152,16 @@ class Metadata:
         }
 
     # --- Dict-like interface ------------------------------------------
-    # NOTE: Metadata is not a subclass of abc.Mapping, but it implements
-    # `__getitem__` and `keys()` and can therefore be unpacked as a dict.
+    # `Metadata` does not subclass `abc.Mapping`, but implementing
+    # `__getitem__`, `__iter__` and `keys` lets an instance be unpacked
+    # with `dict(metadata)` or `**metadata` like an ordinary mapping.
 
     def __getitem__(self, key: str) -> tx.Any:
+        """Get a field's value by name, or an extra item's value by key
+        on a subclass that carries `extra_items`.
+
+        Raises `KeyError` when *key* names neither.
+        """
         if any(f.name == key for f in fields(self)):
             return getattr(self, key)
         if hasattr(self, "extra_items"):
@@ -122,6 +170,9 @@ class Metadata:
         raise KeyError(key)
 
     def __iter__(self) -> tx.Iterator[tx.Tuple[str, tx.Any]]:
+        """Iterate over the field names, and, on a subclass that carries
+        `extra_items`, the keys of those extra items afterward.
+        """
         for f in fields(self):
             if f.name == "extra_items":
                 continue
@@ -130,6 +181,7 @@ class Metadata:
             yield from self.extra_items or {}
 
     def keys(self) -> tx.Tuple[str, ...]:
+        """The field names, and any extra item keys, as a tuple."""
         return tuple(self)
 
     # --- JSON conversion ----------------------------------------------
@@ -146,16 +198,40 @@ class Metadata:
 
     @classmethod
     def from_json(cls, data: tz.JsonDict) -> tx.Self:
-        """Create an instance from a JSON-serializable dict."""
+        """Build an instance from a JSON document.
 
-        # If not a dict, try to interpret it as a positional argument
+        *data* is ordinarily a dict, keyed by each field's JSON key.
+        When it is not a mapping, it is treated as the value of the
+        class's first positional field, provided the class has one.
+        Otherwise, `TypeError` is raised. The class actually
+        constructed may be a subclass more specific than *cls*, chosen
+        by `register_subclass`'s discriminators. Any key in *data* that
+        names no field of the chosen class is collected into
+        `extra_items`, on a subclass that carries one.
+
+        Parameters
+        ----------
+        data : dict or Any
+            The JSON document, or a single positional value.
+
+        Returns
+        -------
+        Self
+            The constructed instance, of *cls* or one of its registered
+            subclasses.
+
+        Raises
+        ------
+        TypeError
+            When *data* is not a mapping and *cls* has no positional
+            field to hold it.
+        """
         if not isinstance(data, abc.Mapping):
             for f in fields(cls):
                 if f.init and not f.kw_only:
                     data = {f.name: data}
                     break
 
-        # If no positional argument -> error
         if not isinstance(data, abc.Mapping):
             raise TypeError(
                 f"Cannot create {cls.__name__} from non-mapping data: {data}"
@@ -220,7 +296,13 @@ JSONMetadata = tx.TypeVar(
 
 @autofrozen(extra_items=JSONMetadata)
 class FlexibleMetadata(Metadata):
-    """A flexible metadata class that allows extra fields."""
+    """A `Metadata` subclass that keeps every unrecognized JSON key
+    instead of rejecting it.
+
+    A key in a JSON document that names none of a subclass's own fields
+    is collected into `extra_items` rather than raised as an error, and
+    `to_json` writes those extra items back alongside the typed fields.
+    """
     ...
 
 
@@ -237,27 +319,53 @@ def _match_score(
     defaults: tx.Mapping[str, tx.Any],
     subcls: type,
 ) -> tx.Optional[tx.Tuple[int, int, int]]:
-    """Score how well *match* fits the data, or ``None`` if it does not.
+    """Score how well *match* fits the data, or return `None` when it
+    does not fit at all.
 
-    *data* is the document as written (keyed by its JSON keys); *defaults* is
-    what the class ``from_json`` was called on already implies -- its own
-    fields' defaults, keyed by field name. A discriminator names a field by its
-    Python name and its value is read from *data* under that field's JSON key
-    (its ``json=`` alias, or its name). A ``typing.Any`` key must appear in
-    *data* itself (a discriminator that is only ever implied is not a
-    discriminator). A value constraint (a literal, or a regex) is satisfied by
-    the value in *data*, or, when the key is absent there, by the class's own
-    default -- so ``ArrayMetadata.from_json`` still resolves an array document
-    that omits the ``node_type`` the class already fixes.
+    *data* is the document as written, keyed by its JSON keys.
+    *defaults* holds the fields' defaults, keyed by field name, of the
+    class `from_json` was originally called on. A discriminator names a
+    field by its Python name, and that field's value is read from
+    *data* under the field's JSON key, its ``json=`` alias when it has
+    one or its own name otherwise. A ``typing.Any`` discriminator counts
+    only when its key is present in *data* itself, since a
+    discriminator that is only ever implied by a default is not a
+    discriminator. A literal or regex discriminator is satisfied by the
+    value in *data*, or, when the key is absent there, by the class's
+    own default. This lets ``ArrayMetadata.from_json`` still resolve an
+    array document that omits the ``node_type`` the class already
+    fixes.
 
-    A discriminator only counts when it names one of *subcls*'s own init
-    fields: a value it does not carry as a settable field is not a shape it can
-    be told apart by (a codec whose ``id`` is a class attribute is recovered
-    another way, not selected here).
+    A discriminator counts only when it names one of *subcls*'s own
+    init fields. A value the class does not carry as a settable field
+    is not a shape this function can tell the class apart by. A codec
+    whose ``id`` is a class attribute, for instance, is recovered
+    another way and is not selected here.
 
-    A higher score is a more specific match. The score ranks by number of keys,
-    then subclass depth (a derived carrier beats its base), then number of
-    value constraints (an exact literal beats ``Any``).
+    A higher score is a more specific match. Scores rank first by the
+    number of discriminator keys, then by subclass depth, so a derived
+    carrier beats its own base, then by the number of value
+    constraints, so an exact literal beats a bare ``Any``.
+
+    Parameters
+    ----------
+    match : tuple of (str, Any)
+        The discriminator field names and required values, as
+        `register_subclass` records them.
+    data : mapping
+        The JSON document being matched against, keyed by JSON key.
+    defaults : mapping
+        The field defaults of the class `from_json` was originally
+        called on, keyed by field name.
+    subcls : type
+        The registered subclass being scored.
+
+    Returns
+    -------
+    tuple of (int, int, int) or None
+        The match's specificity score, ordered by discriminator count,
+        subclass depth, and value-constraint count, or `None` when
+        *match* does not fit *data* at all.
     """
     init_fields = {f.name: f for f in fields(subcls) if f.init}
     concrete = 0
@@ -286,18 +394,20 @@ def _match_score(
 
 
 def _serialize_dict(x: tx.Mapping) -> tx.Dict[str, tz.Json]:
+    """Serialize each value of the mapping *x* with `_to_json`."""
     if not callable(getattr(x, "items", None)):
         x = dict(**x)
     return {k: _to_json(v) for k, v in x.items()}
 
 
 def _serialize_meta(x: "Metadata") -> tx.Dict[str, tz.Json]:
-    """Serialize a metadata object's own fields (not respecting a to_json
-    override on *x* itself -- that is the caller's job).
+    """Serialize a metadata object's own fields.
 
-    An unset ``Recommended``/``Optional`` field holds the ``MISSING``
-    sentinel; it is simply absent from the JSON rather than emitted (which
-    would produce an unserializable value)."""
+    Does not call a `to_json` override on *x* itself. That call is the
+    caller's job. An unset `Recommended`/`Optional` field holds the
+    `MISSING` sentinel and is omitted from the result entirely, since
+    the sentinel itself is not JSON serializable.
+    """
     extra = getattr(x, "extra_items", False)
     out = {}
     for f in fields(x):
@@ -313,12 +423,18 @@ def _serialize_meta(x: "Metadata") -> tx.Dict[str, tz.Json]:
 
 
 def _to_json(obj: tx.Any) -> tz.Json:
+    """Render one value as JSON, recursing into a mapping, an iterable,
+    or a nested `Metadata` instance.
+
+    A `Metadata` value is serialized through its own `to_json`, so a
+    subclass with a custom serialization (an `Extension` written as a
+    bare name) is honored. A numpy dtype renders as its Zarr string
+    form (``"<f8"``), and a numpy scalar as the equivalent Python
+    value. Anything else is returned unchanged.
+    """
     if _is_metadata(obj):
-        # delegate to the value's own to_json, so a subclass that serializes
-        # itself specially (an Extension written as a bare name) is honored
         return obj.to_json()
     elif isinstance(obj, np.dtype):
-        # a numpy dtype is not JSON: emit its zarr string form ("<f8")
         return obj.str
     elif isinstance(obj, np.generic):
         return obj.item()
@@ -331,13 +447,20 @@ def _to_json(obj: tx.Any) -> tz.Json:
 
 
 def _is_iterable(obj: tx.Any) -> bool:
-    """Check if an object is iterable (e.g., list, tuple, set, dict)."""
+    """Whether *obj* iterates like a list or tuple, rather than a single
+    scalar value.
+
+    A string, `bytes`, or `bytearray` is excluded even though it is
+    iterable, since `_to_json` treats those as scalars.
+    """
     str_like = (str, bytes, bytearray)
     return hasattr(obj, "__iter__") and not isinstance(obj, str_like)
 
 
 def _is_mapping(obj: tx.Any) -> bool:
-    """Check if an object is a mapping-like (e.g., dict)."""
+    """Whether *obj* has the `keys` and `__getitem__` methods a mapping
+    provides.
+    """
     return (
         callable(getattr(obj, "keys", None)) and
         callable(getattr(obj, "__getitem__", None))
@@ -345,7 +468,7 @@ def _is_mapping(obj: tx.Any) -> bool:
 
 
 def _is_metadata(obj: tx.Any) -> bool:
-    """Check if an object is an instance of Metadata."""
+    """Whether *obj* is a `Metadata` instance."""
     return isinstance(obj, Metadata)
 
 
@@ -358,11 +481,28 @@ METADATALIKE = tx.TypeVar(
 
 @register_converter(Metadata)
 class MetadataConverter(Converter[METADATA, METADATALIKE]):
+    """Converts a value to a `Metadata` instance of the field's own type.
+
+    A value already of that type is returned as it is. A mapping is
+    read through `Metadata.from_json`. Any other value is passed as the
+    single positional argument to the target type's constructor, so a
+    field typed to a `Metadata` subclass with one positional field
+    accepts that field's value directly.
+    """
 
     DEFAULT = Metadata
     FALLBACK = Metadata
 
     def like(self, __reentrant: tuple = ()) -> tx.Any:
+        """The hints this converter accepts as input for its field's
+        type.
+
+        Besides the field's own type and a JSON-shaped mapping, a
+        `Metadata` type with a positional first field also accepts that
+        field's own type directly, matching what `__call__` does with a
+        non-mapping value. *__reentrant* guards against a field type
+        that refers to itself.
+        """
         if self.hint in __reentrant:
             return self.hint
         __reentrant += (self.hint,)
@@ -378,6 +518,20 @@ class MetadataConverter(Converter[METADATA, METADATALIKE]):
         return tx.Union[hints]
 
     def __call__(self, value: METADATALIKE) -> METADATA:
+        """Convert *value* to the field's `Metadata` type.
+
+        Parameters
+        ----------
+        value : Metadata, mapping, or Any
+            The value to convert.
+
+        Returns
+        -------
+        Metadata
+            *value* unchanged, when it is already an instance of the
+            target type. Otherwise, the result of building that type
+            from *value*.
+        """
         fallback = self.fallback
         if isinstance(fallback, type) and isinstance(value, fallback):
             return value

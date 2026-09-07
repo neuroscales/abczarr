@@ -1,10 +1,8 @@
-"""Hint-driven converters, from :mod:`bagof.converters`.
+"""Re-exports the hint-driven converter engine from :mod:`bagof.converters`.
 
-This module used to carry a home-grown converter engine; that surface now
-lives in ``bagof.converters`` (the same one bagof-magic uses), so this
-re-exports it. abczarr's own converters -- ``ToJson``, ``MetadataConverter``,
-``DTypeConverter`` -- subclass ``Converter`` and register through
-``register_converter`` from here, unchanged.
+abczarr's own converters, such as ``ToJson``, ``MetadataConverter``, and
+``DTypeConverter``, subclass ``Converter`` and register through
+``register_converter`` imported from here.
 """
 
 from bagof.converters import *  # noqa: F401,F403

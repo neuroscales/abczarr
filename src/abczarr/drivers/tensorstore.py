@@ -42,7 +42,7 @@ from abczarr.drivers._metadata import metadata_from_json
 from abczarr.drivers.base import Driver
 from abczarr.metadata.base import ArrayMetadata, NodeMetadata, _node_at
 
-# optionals -- the module imports without tensorstore; a driver with no
+# optionals -- the module imports without tensorstore. A driver with no
 # tensorstore reports that it can open nothing.
 try:
     import tensorstore as ts
@@ -87,8 +87,8 @@ def _parse_feature(key: str) -> tx.Optional[tx.Tuple[str, str, str]]:
 def _kvstore_spec(location: tx.Any) -> tx.Any:
     """The TensorStore kvstore spec for *location*.
 
-    A kvstore spec (a dict or URL) is used as it is; a local path becomes the
-    file kvstore.
+    A kvstore spec, a dict or URL, is used as it is. A local path
+    becomes the file kvstore.
     """
     if isinstance(location, (dict, str)) and not _looks_like_path(location):
         return location
@@ -112,9 +112,10 @@ def _ts_metadata(metadata: "ArrayMetadata") -> tx.Any:
     """The metadata document TensorStore's driver accepts for *metadata*.
 
     A v3 array's document is TensorStore's ``zarr.json`` as it is. A v2
-    array's ``.zarray`` carries neither ``node_type`` nor the user attributes
-    (those live in ``.zattrs``), and TensorStore's ``zarr`` driver rejects
-    both, so they are dropped here; the attributes are persisted separately.
+    array's ``.zarray`` carries neither ``node_type`` nor the user
+    attributes, since those live in ``.zattrs``, and TensorStore's
+    ``zarr`` driver rejects both, so they are dropped here. The
+    attributes are persisted separately.
     """
     doc = metadata.to_json()
     if metadata.zarr_format == 2:
@@ -273,7 +274,7 @@ def _open_ts_array(
 ) -> TensorStoreArray:
     """Open the array at *location* through TensorStore and wrap it.
 
-    *version* selects TensorStore's driver -- ``zarr3`` for a v3 array,
+    *version* selects TensorStore's driver: ``zarr3`` for a v3 array,
     ``zarr`` for a v2 array.
     """
     spec = {
@@ -312,9 +313,10 @@ def _create_ts_array(
 
     TensorStore creates from the metadata document, filling in each codec's
     defaults and validating it, which a bare write of the metadata would not.
-    A v3 array goes through the ``zarr3`` driver, a v2 array through the
-    ``zarr`` driver; a v2 array's user attributes are written to ``.zattrs``
-    afterwards, since TensorStore's ``zarr`` driver writes only ``.zarray``.
+    A v3 array goes through the ``zarr3`` driver, and a v2 array through
+    the ``zarr`` driver. A v2 array's user attributes are written to
+    ``.zattrs`` afterwards, since TensorStore's ``zarr`` driver writes
+    only ``.zarray``.
     """
     if _node_at(Path(str(location))) is not None and not overwrite:
         raise FileExistsError(f"a node already exists at {location}")
@@ -374,8 +376,8 @@ class TensorStoreGroup(TensorStoreNode, PathGroup):
     def _create_array(
         self, name: str, config: ArrayConfig
     ) -> TensorStoreArray:
-        # tensorstore validates and fills a codec's defaults on create, so we
-        # hand it the config's metadata document
+        # TensorStore validates and fills in a codec's defaults on create,
+        # so the config's metadata document is handed to it directly
         return _create_ts_array(
             str(self._store_path / name), config.to_metadata(), overwrite=False
         )
@@ -509,9 +511,9 @@ def _peek_node(location: tx.Any) -> tx.Optional[tx.Tuple[str, int]]:
     node (through which of ``.zgroup`` and ``.zarray`` is present), so a v2
     group or array is recognised as well as a v3 one. Read through a
     [PathBasedStore][abczarr.abc.store.PathBasedStore], so every scheme
-    bagof.paths understands is inspected the same way -- a local path, an
-    fsspec URL (``memory://``), or a cloud one (``s3://``). A raw kvstore dict
-    spec is not a location to peek, so it returns None.
+    bagof.paths understands is inspected the same way, whether a local path,
+    an fsspec URL (``memory://``), or a cloud one (``s3://``). A raw kvstore
+    dict spec is not a location to peek, so it returns None.
 
     Returns
     -------
@@ -536,8 +538,7 @@ def _peek_node(location: tx.Any) -> tx.Optional[tx.Tuple[str, int]]:
 
 async def _apeek_node(location: tx.Any) -> tx.Optional[tx.Tuple[str, int]]:
     """The node kind and Zarr version at *location*, read through an async
-    store, or None -- the async twin of
-    [_peek_node][abczarr.drivers.tensorstore].
+    store, or None. The async twin of `_peek_node`.
 
     Read through an
     [AsyncPathBasedStore][abczarr.abc.store.AsyncPathBasedStore], so a URL

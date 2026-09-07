@@ -34,8 +34,8 @@ from abczarr.abc.sync import PathGroup, ZarrArray, ZarrNode
 from abczarr.drivers._metadata import metadata_from_json
 from abczarr.drivers.base import Driver
 
-# optionals -- the module imports without zarrista; a driver with no zarrista
-# reports that it can open nothing.
+# optionals -- the module imports without zarrista. A driver with no
+# zarrista reports that it can open nothing.
 try:
     import zarrista
     from zarrista.store import FilesystemStore

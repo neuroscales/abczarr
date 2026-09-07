@@ -44,7 +44,7 @@ from abczarr.api.config import ArrayConfig
 from abczarr.drivers._metadata import metadata_from_json
 from abczarr.drivers.base import Driver
 
-# optionals -- the module imports without zarr; a driver with no zarr simply
+# optionals -- the module imports without zarr. A driver with no zarr
 # reports that it can open nothing.
 try:
     import numcodecs
@@ -119,9 +119,10 @@ def _supports_v3_feature(kind: str, name: str) -> bool:
 def _has_numcodec(name: str) -> bool:
     """Whether numcodecs provides the v1/v2 codec or filter *name*.
 
-    A name numcodecs does not know raises ``UnknownCodecError``; a known one
-    that merely needs more configuration (a filter like ``delta`` wants a
-    dtype) raises something else -- and is still provided.
+    A name numcodecs does not know raises ``UnknownCodecError`` and
+    counts as not provided. A known name that merely needs more
+    configuration, such as a filter like ``delta`` that wants a dtype,
+    raises a different error but still counts as provided.
     """
     if numcodecs is None:
         return False
@@ -165,12 +166,13 @@ def _zarr_create_kwargs(config: tx.Any) -> tx.Dict[str, tx.Any]:
 def _v2_codec_kwargs(config: tx.Any, kwargs: tx.Dict[str, tx.Any]) -> None:
     """Fill in the Zarr v2 codec and chunk-key keywords on *kwargs*.
 
-    zarr-python wants numcodecs-shaped codecs and a ``"v2"`` chunk-key
-    encoding for a Zarr v2 array -- the v3-style ``{"name", "configuration"}``
-    specs and the ``"default"`` encoding it takes for v3 are rejected. The
-    config is lowered through the metadata layer, which maps each v3 codec
-    name to its numcodecs id, and the resulting numcodecs specs are built into
-    the codec objects zarr expects.
+    A Zarr v2 array needs numcodecs-shaped codecs and a ``"v2"``
+    chunk-key encoding from zarr-python. It rejects both the v3-style
+    ``{"name", "configuration"}`` specs and the ``"default"`` encoding
+    it takes for v3. The config is lowered through the metadata layer,
+    which maps each v3 codec name to its numcodecs id, and the
+    resulting numcodecs specs are built into the codec objects zarr
+    expects.
     """
     document = config.to_metadata().to_json()
     compressor = document.get("compressor")

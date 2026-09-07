@@ -3,10 +3,10 @@
 A node's user attributes live in one place: the node's cached metadata
 ([NodeMetadata.attributes][abczarr.metadata.base.NodeMetadata]). Reads are
 served from there, so the mapping and `node.metadata.attributes` never
-disagree. Writes go through the node's persistence path -- for a backend that
-wraps a real Zarr object, its own `update_attributes`; for everything else, a
-rewrite of the metadata document through the [Store][abczarr.abc.store.Store]
--- so no attribute write ever bypasses the store.
+disagree. Writes go through the node's persistence path. A backend that
+wraps a real Zarr object writes through its own `update_attributes`.
+Every other backend rewrites the metadata document through the
+[Store][abczarr.abc.store.Store]. Neither path ever bypasses the store.
 
 This file contains code from the Zarr project
 https://github.com/zarr-developers/zarr-python
@@ -40,13 +40,13 @@ class NodeAttributes(AttributesBase):
     """A live, write-through view of a node's user attributes.
 
     Reads come from the node's cached metadata, so this mapping and
-    ``node.metadata.attributes`` are always the same values. A write persists
-    through the node -- `node.attrs["k"] = v` adds or replaces ``k``, and
-    `del node.attrs["k"]` removes it -- routed through the node's own
-    persistence path rather than a separate file.
+    ``node.metadata.attributes`` are always the same values. A write
+    persists through the node's own persistence path, never through a
+    separate file. ``node.attrs["k"] = v`` adds or replaces ``k``, and
+    ``del node.attrs["k"]`` removes it.
 
-    Works for both arrays and groups, and for either Zarr format version:
-    the node it wraps supplies the metadata and does the writing.
+    Works for both arrays and groups, and for either Zarr format version.
+    The node it wraps supplies the metadata and does the writing.
     """
 
     def __init__(self, node: "ZarrNode") -> None:
@@ -115,7 +115,7 @@ def attribute_writes(
     attributes : mapping
         The attributes to persist.
     existing_document : dict, optional
-        The current ``zarr.json`` document, for a v3 node -- its
+        The current ``zarr.json`` document, for a v3 node. Its
         non-attribute fields are carried over. Ignored for v1 and v2.
 
     Returns

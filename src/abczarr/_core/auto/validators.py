@@ -1,4 +1,5 @@
-"""Hint-driven validators, from :mod:`bagof.validators`."""
+"""Re-exports the hint-driven validator engine from :mod:`bagof.validators`.
+"""
 
 from bagof.validators import *  # noqa: F401,F403
 from bagof.validators import (  # noqa: F401
