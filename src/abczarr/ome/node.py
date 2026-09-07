@@ -130,12 +130,11 @@ def ome_write_plan(
 ) -> tx.Tuple[tx.Dict[str, tx.Any], tx.List[str]]:
     """Plan the attribute write that stores *ome* over *current*.
 
-    A pure function shared by the sync and async write paths: it works out
-    the envelope from the version and returns ``(payload, stale)`` -- the
-    attribute keys to set, and the OME keys already present that the new
-    payload does not write and so must be dropped (the other envelope, or a
-    carrier no longer used). Unrelated attributes are named in neither and
-    stay as they are.
+    Works out the envelope from *ome*'s version and returns
+    ``(payload, stale)``: the attribute keys to set, and the OME keys
+    already present that the new payload does not write and so must be
+    dropped (the other envelope, or a carrier no longer used). Unrelated
+    attributes are named in neither and stay as they are.
 
     Parameters
     ----------
@@ -174,16 +173,18 @@ def update_ome(
 ) -> None:
     """Shallow-merge OME metadata into a group's, and persist it.
 
-    The top-level keys of *ome* replace those on the node's current OME
-    metadata (``version`` / ``multiscales`` / ``omero`` / ...); any the node
-    already has and *ome* does not name are kept. The mirror of
-    [update_attributes][abczarr.abc.sync.ZarrNode.update_attributes] for OME
-    metadata. When the node has no OME metadata yet and the merged result
-    still names no version, it defaults to the latest released OME version.
+    The mirror of
+    [update_attributes][abczarr.abc.sync.ZarrNode.update_attributes] for
+    OME metadata: the top-level keys of *ome* (``version`` /
+    ``multiscales`` / ``omero`` / ...) replace those on the node's current
+    OME metadata, and any it already has that *ome* does not name are
+    kept. When the node has no OME metadata yet and the merged result
+    still names no version, it defaults to the latest released OME
+    version.
 
-    The merge is shallow -- it replaces whole top-level keys, it does not
-    descend into a multiscale or a plate. For a structured edit, read the
-    typed object, change it (with ``evolve``), and assign it back.
+    The merge is shallow: it replaces whole top-level keys rather than
+    descending into a multiscale or a plate. For a structured edit, read
+    the typed object, change it with ``evolve``, and assign it back.
 
     Parameters
     ----------
@@ -201,10 +202,9 @@ def merge_ome(
 ) -> tx.Dict[str, tx.Any]:
     """The shallow merge of *incoming* onto *current*, as an inner OME dict.
 
-    A pure function shared by the sync and async ``update_ome``. Top-level
-    keys of *incoming* replace those of *current*; a version is defaulted to
-    [LATEST_STABLE][abczarr.ome.base.LATEST_STABLE] only when neither side
-    supplies one.
+    Top-level keys of *incoming* replace those of *current*; a version is
+    defaulted to [LATEST_STABLE][abczarr.ome.base.LATEST_STABLE] only when
+    neither side supplies one.
     """
     merged = current.to_json() if current is not None else {}
     if isinstance(incoming, OME):
@@ -238,10 +238,9 @@ def ome_delete_plan(
 ) -> tx.Tuple[tx.Dict[str, tx.Any], tx.List[str]]:
     """Plan the attribute write that clears OME metadata from *current*.
 
-    The delete counterpart of
-    [ome_write_plan][abczarr.ome.node.ome_write_plan], with the same
-    ``(payload, stale)`` shape so the two share one async persistence path:
-    nothing to set, every OME key present to drop.
+    Returns ``(payload, stale)`` like
+    [ome_write_plan][abczarr.ome.node.ome_write_plan]: nothing to set, and
+    every OME key present in *current* to drop.
     """
     return {}, [key for key in _OME_KEYS if key in current]
 

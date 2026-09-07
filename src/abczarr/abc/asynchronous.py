@@ -127,17 +127,17 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
         """This node's OME-Zarr metadata as a typed object -- read only.
 
         Reads stay synchronous, like
-        [attrs][abczarr.abc.asynchronous.AsyncZarrNode.attrs]: the metadata
-        is parsed from the cached attributes, so there is
+        [attrs][abczarr.abc.asynchronous.AsyncZarrNode.attrs]: the
+        metadata is parsed from the cached attributes, so there is
         nothing to await. Returns the right version's
-        [OME][abczarr.ome.base.OME] object, or `None` when the node carries
-        none. Writing cannot be awaited through an assignment, so there is
-        no setter; use
+        [OME][abczarr.ome.base.OME] object, or `None` when the node
+        carries none. Writing cannot be awaited through an assignment, so
+        there is no setter; use
         [set_ome][abczarr.abc.asynchronous.AsyncZarrNode.set_ome],
         [update_ome][abczarr.abc.asynchronous.AsyncZarrNode.update_ome] or
-        [del_ome][abczarr.abc.asynchronous.AsyncZarrNode.del_ome] to persist
-        a change, the same reason the async node writes attributes with
-        `update_attributes` rather than `[]`.
+        [del_ome][abczarr.abc.asynchronous.AsyncZarrNode.del_ome] to
+        persist a change, the same reason the async node writes
+        attributes with `update_attributes` rather than `[]`.
         """
 
         return read_ome(self)
