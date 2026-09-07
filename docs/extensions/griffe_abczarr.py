@@ -198,12 +198,19 @@ def _set_init(class_: Class) -> bool:
     Returns whether a signature was added. A class that already has an
     ``__init__``, one whose runtime object is not an attrs class, and one
     built with ``init=False`` (so attrs writes ``__attrs_init__`` and no
-    ``__init__``) are all left unchanged.
+    ``__init__`` of its own) are all left unchanged.
     """
     if "__init__" in class_.members:
         return False
     cls = _runtime_object(class_)
-    if cls is None or not attrs.has(cls) or hasattr(cls, "__attrs_init__"):
+    # ``__attrs_init__`` is tested on the class's own namespace, not with
+    # hasattr, so a class that has its own field ``__init__`` is not skipped
+    # because a base built with init=False put ``__attrs_init__`` in the MRO.
+    if (
+        cls is None
+        or not attrs.has(cls)
+        or "__attrs_init__" in vars(cls)
+    ):
         return False
     try:
         init = _build_init(class_, cls)
