@@ -135,8 +135,7 @@ def _v2_attributes_payload(
 
 
 class TensorStoreNode(ZarrNode):
-    """`TensorStoreNode` is the common base for the TensorStore array and
-    group adapters.
+    """Common base for the TensorStore array and group adapters.
 
     TensorStore keeps no user attributes of its own. Both nodes read
     attributes from cached metadata and persist a write by rewriting the

@@ -444,8 +444,7 @@ class AsyncZarrGroup(AsyncZarrNode):
 
 
 class AsyncPathGroup(AsyncZarrGroup):
-    """`AsyncPathGroup` is the async twin of
-    [PathGroup][abczarr.abc.sync.PathGroup].
+    """The async twin of [PathGroup][abczarr.abc.sync.PathGroup].
 
     Listing and navigating members is genuinely non-blocking. Array
     children come back in the async color. When the underlying backend

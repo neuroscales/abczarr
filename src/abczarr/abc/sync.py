@@ -597,8 +597,8 @@ class ZarrGroup(ZarrNode):
 
 
 class PathGroup(ZarrGroup):
-    """`PathGroup` is a [ZarrGroup][abczarr.abc.sync.ZarrGroup] for a
-    backend with no group object of its own.
+    """A [ZarrGroup][abczarr.abc.sync.ZarrGroup] for a backend with no
+    group object of its own.
 
     Some backends never construct a "group" -- TensorStore opens arrays
     only, and a bare key-value store holds nothing but keys. For those, a
