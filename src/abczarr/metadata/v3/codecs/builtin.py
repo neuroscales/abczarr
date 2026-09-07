@@ -4,11 +4,17 @@ Corresponds to the codecs the Zarr v3 specification names as
 required: blosc, bytes, crc32c, gzip, sharding and transpose.
 """
 __all__ = [
+    "BloscConfig",
     "BloscCodec",
+    "BytesConfig",
     "BytesCodec",
+    "CRC32CConfig",
     "CRC32CCodec",
+    "GzipConfig",
     "GzipCodec",
+    "ShardingConfig",
     "ShardingCodec",
+    "TransposeConfig",
     "TransposeCodec",
 ]
 

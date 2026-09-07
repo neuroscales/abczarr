@@ -1,4 +1,4 @@
-__all__ = ["DType"]
+__all__ = ["DTypeConfig", "DType"]
 
 # dependencies
 import numpy as np

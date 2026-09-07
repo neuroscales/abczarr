@@ -5,16 +5,27 @@ v2 numcodecs equivalent exists, converts to it.
 """
 
 __all__ = [
+    "BitroundConfig",
     "BitroundCodec",
+    "ScalarMap",
+    "CastValueConfig",
     "CastValueCodec",
+    "ConditionalConfig",
     "ConditionalCodec",
+    "N5DefaultCodecList",
+    "N5DefaultConfig",
     "N5DefaultCodec",
+    "PackBitsConfig",
     "PackBitsCodec",
+    "ScaleOffsetConfig",
     "ScaleOffsetCodec",
     "VLenBytesCodec",
     "VLenUTF8Codec",
+    "ReshapeConfig",
     "ReshapeCodec",
+    "ZfpConfig",
     "ZfpCodec",
+    "ZstdConfig",
     "ZstdCodec",
 ]
 
