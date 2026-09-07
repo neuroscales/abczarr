@@ -16,11 +16,21 @@ from ..extensions import MustUnderstandExtension, TypedConfig
 
 @autofrozen(extra_items=tz.FrozenJson)
 class DTypeConfig(TypedConfig):
-    ...
+    """This class is the base for a v3 data type's own configuration
+    parameters."""
 
 
 @autofrozen
 class DType(MustUnderstandExtension):
+    """A `DType` names a Zarr v3 data type through ``name`` and carries
+    that type's own ``configuration``.
+
+    A core data type, such as ``float32``, has no configuration and is
+    written as a bare name. An extension data type, such as a struct or
+    a fixed-bit-width raw type, carries its parameters in
+    ``configuration``.
+    """
+
     configuration: DTypeConfig
 
     def to_json(self) -> tx.Union[str, tz.JsonDict]:
@@ -53,11 +63,15 @@ class DType(MustUnderstandExtension):
 
 @autofrozen(extra_items=False)
 class DTypeConfigImpl(DTypeConfig):
-    ...
+    """This class is the base for a data type configuration whose
+    parameters are all declared."""
 
 
 @autofrozen
 class DTypeImpl(DType):
+    """This class is the base for a data type whose configuration is
+    declared, not open-ended."""
+
     configuration: DTypeConfigImpl
 
 
