@@ -32,6 +32,7 @@ import typing_extensions as tx
 # core
 from abczarr._core import typing as tz
 from abczarr._core.features import FEATURE_KINDS, FEATURE_VERSIONS
+from abczarr._core.frozendict import unfreeze
 from abczarr.abc.asynchronous import (
     AsyncZarrArray,
     AsyncZarrGroup,
@@ -345,7 +346,7 @@ class ZarrPythonNode(ZarrNode):
         # Going through zarr-python's own writer, rather than the store
         # directly, keeps its caches consistent with what abczarr sees.
         obj = self._obj
-        obj.attrs.put(dict(new_metadata.attributes))
+        obj.attrs.put(unfreeze(new_metadata.attributes))
         self._native = self._obj = obj
 
     @property
@@ -483,7 +484,7 @@ class AsyncZarrPythonArray(AsyncZarrArray):
         `update_attributes`, so zarr-python's caches stay consistent."""
         async_array = self._async()
         async_array.metadata.attributes.clear()
-        await async_array.update_attributes(dict(new_metadata.attributes))
+        await async_array.update_attributes(unfreeze(new_metadata.attributes))
 
     async def getitem(self, index: tx.Any) -> npt.ArrayLike:
         return await self._async().getitem(index)
@@ -511,7 +512,7 @@ class AsyncZarrPythonGroup(AsyncZarrGroup):
         `update_attributes`, so zarr-python's caches stay consistent."""
         async_group = self._async()
         async_group.metadata.attributes.clear()
-        await async_group.update_attributes(dict(new_metadata.attributes))
+        await async_group.update_attributes(unfreeze(new_metadata.attributes))
 
     async def getitem(self, key: str) -> AsyncZarrNode:
         item = await self._async().getitem(key)

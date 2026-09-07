@@ -26,6 +26,7 @@ import typing_extensions as tx
 # locals
 from . import constants
 from . import typing as tz
+from .frozendict import unfreeze
 
 if tx.TYPE_CHECKING:
     # imported for the type only; a runtime import would cycle, since the node
@@ -122,14 +123,18 @@ def attribute_writes(
     list of (str, bytes)
         The store key and the bytes to write at it.
     """
+    # Metadata deep-freezes its attributes into FrozenDict values for
+    # immutability. Rebuild them from plain built-in types first, since a
+    # FrozenDict is not JSON serializable.
+    attributes = unfreeze(attributes)
     if version >= 3:
         document = dict(existing_document or {})
-        document["attributes"] = dict(attributes)
+        document["attributes"] = attributes
         return [(constants.Z3_JSON, _dumps(document))]
     if version == 2:
-        return [(constants.Z2ATTRS_JSON, _dumps(dict(attributes)))]
+        return [(constants.Z2ATTRS_JSON, _dumps(attributes))]
     if version == 1:
-        return [(constants.Z1ATTRS_JSON, _dumps(dict(attributes)))]
+        return [(constants.Z1ATTRS_JSON, _dumps(attributes))]
     raise ValueError(f"Unsupported zarr_version: {version}")
 
 
