@@ -36,7 +36,7 @@ class's MRO), so a type still cross-references the way it does today.
 from __future__ import annotations
 
 import importlib
-from typing import Any
+import inspect
 
 import attrs
 import typing_extensions as tx
@@ -51,6 +51,22 @@ from griffe import (
     Parameters,
     logger,
 )
+
+# The griffe parameter kind for each kind an inspected signature reports.
+_KINDS = {
+    inspect.Parameter.POSITIONAL_ONLY: ParameterKind.positional_only,
+    inspect.Parameter.POSITIONAL_OR_KEYWORD: (
+        ParameterKind.positional_or_keyword
+    ),
+    inspect.Parameter.VAR_POSITIONAL: ParameterKind.var_positional,
+    inspect.Parameter.KEYWORD_ONLY: ParameterKind.keyword_only,
+    inspect.Parameter.VAR_KEYWORD: ParameterKind.var_keyword,
+}
+
+# The annotation shown for an init field that has no documented attribute to
+# borrow a type from. Only the extra-items catch-all field is in this
+# position, and its stored type is a long union, so a plain mapping is shown.
+_EXTRA_ITEMS_ANNOTATION = "Mapping[str, Any]"
 
 
 def _runtime_object(class_: Class) -> tx.Optional[tx.Any]:
@@ -103,22 +119,20 @@ def _default_text(field: attrs.Attribute) -> tx.Optional[str]:
     to obtain the value it produces, and that value's `repr` is shown
     instead, since most of this project's factories build a value from
     the field's type rather than naming a reusable callable. A factory
-    that depends on the instance under construction, or that raises
-    when called with no arguments (a required field with no usable
-    default), is left without a default, which renders as required.
+    that raises when called with no arguments describes a required field
+    with no usable default, and is left without a default, which renders
+    as required. A factory that depends on the instance under
+    construction has a real default whose value is not known statically,
+    and is shown as `...`.
     """
     value = field.default
     if value is attrs.NOTHING:
         return None
-    factory = None
-    while isinstance(value, attrs.Factory):
+    if isinstance(value, attrs.Factory):
         if value.takes_self:
-            return None
-        factory = value.factory
-        value = factory
-    if factory is not None:
+            return "..."
         try:
-            value = factory()
+            value = value.factory()
         except Exception:
             return None
     try:
@@ -130,30 +144,41 @@ def _default_text(field: attrs.Attribute) -> tx.Optional[str]:
 def _build_init(class_: Class, cls: tx.Any) -> Function:
     """A synthesized ``__init__`` for the attrs class `cls`.
 
-    One `Parameter` is added per init field of `cls`, in the order and
-    keyword-only-ness attrs itself gives them, so an inherited field
-    from a base built by the same decorators is included in its real
-    position.
+    The parameters, their order, and their positional or keyword-only
+    kind are read from the real signature of the class's constructor, so
+    a keyword-only field that attrs moves after the positional ones is
+    placed correctly. Each parameter's default is resolved from the
+    matching attrs field, and its annotation and description are read
+    from the documented attribute of the same name, including one
+    inherited from a base built by the same decorators.
     """
+    fields = {
+        field.alias or field.name: field
+        for field in attrs.fields(cls)
+        if field.init
+    }
     parameters = [
         Parameter(
             "self", annotation=None, kind=ParameterKind.positional_or_keyword
         )
     ]
-    for field in attrs.fields(cls):
-        if not field.init:
+    for name, param in inspect.signature(cls.__init__).parameters.items():
+        if name == "self":
             continue
-        attribute = _find_attribute(class_, field.name)
+        field = fields.get(name)
+        attribute = _find_attribute(class_, field.name) if field else None
+        if attribute is not None:
+            annotation = attribute.annotation
+        elif field is not None:
+            annotation = _EXTRA_ITEMS_ANNOTATION
+        else:
+            annotation = None
         parameters.append(
             Parameter(
-                field.alias or field.name,
-                annotation=attribute.annotation if attribute else None,
-                kind=(
-                    ParameterKind.keyword_only
-                    if field.kw_only
-                    else ParameterKind.positional_or_keyword
-                ),
-                default=_default_text(field),
+                name,
+                annotation=annotation,
+                kind=_KINDS[param.kind],
+                default=_default_text(field) if field else None,
                 docstring=attribute.docstring if attribute else None,
             )
         )
@@ -167,31 +192,41 @@ def _build_init(class_: Class, cls: tx.Any) -> Function:
     )
 
 
-def _set_init(class_: Class) -> None:
+def _set_init(class_: Class) -> bool:
+    """Add a synthesized ``__init__`` to `class_`, if one is needed.
+
+    Returns whether a signature was added. A class that already has an
+    ``__init__``, one whose runtime object is not an attrs class, and one
+    built with ``init=False`` (so attrs writes ``__attrs_init__`` and no
+    ``__init__``) are all left unchanged.
+    """
     if "__init__" in class_.members:
-        return
+        return False
     cls = _runtime_object(class_)
-    if not hasattr(cls, "__attrs_attrs__"):
-        return
+    if cls is None or not attrs.has(cls) or hasattr(cls, "__attrs_init__"):
+        return False
     try:
         init = _build_init(class_, cls)
     except Exception:
         logger.debug("Could not synthesize __init__ for %s", class_.path)
-        return
+        return False
     class_.set_member("__init__", init)
+    return True
 
 
 def _apply_recursively(
     mod_cls: tx.Union[Module, Class], seen: tx.Set[str]
-) -> None:
+) -> int:
+    """Add synthesized signatures throughout `mod_cls`, returning the
+    number of classes augmented."""
     if mod_cls.canonical_path in seen:
-        return
+        return 0
     seen.add(mod_cls.canonical_path)
-    if isinstance(mod_cls, Class):
-        _set_init(mod_cls)
+    count = _set_init(mod_cls) if isinstance(mod_cls, Class) else 0
     for member in mod_cls.members.values():
         if not member.is_alias and (member.is_module or member.is_class):
-            _apply_recursively(member, seen)  # type: ignore[arg-type]
+            count += _apply_recursively(member, seen)  # type: ignore[arg-type]
+    return count
 
 
 class AttrsExtension(Extension):
@@ -203,7 +238,7 @@ class AttrsExtension(Extension):
     dataclasses extension does for ``@dataclass``.
     """
 
-    def on_package(self, *, pkg: Module, **kwargs: Any) -> None:
+    def on_package(self, *, pkg: Module, **kwargs: tx.Any) -> None:
         """Adds a synthesized ``__init__`` to every attrs class in `pkg`.
 
         Parameters
@@ -211,4 +246,12 @@ class AttrsExtension(Extension):
         pkg : Module
             The loaded package.
         """
-        _apply_recursively(pkg, set())
+        if pkg.name != "abczarr":
+            return
+        if _apply_recursively(pkg, set()) == 0:
+            logger.warning(
+                "griffe_abczarr augmented no classes; the abczarr package "
+                "could not be imported in the documentation environment, so "
+                "its data classes will render without their fields. Install "
+                "the package in the docs environment.",
+            )
