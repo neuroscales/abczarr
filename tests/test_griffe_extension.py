@@ -91,15 +91,16 @@ def test_every_synthesized_signature_matches_the_real_init() -> None:
 
 
 def test_a_keyword_only_field_keeps_its_position() -> None:
-    # Regression: the extension once emitted parameters in attrs-field order,
-    # which places a positional catch-all field after the keyword-only ones.
+    # Regression: the extension once emitted parameters in attrs-field order
+    # rather than in the constructor's real order and kind.
     extension = _load_extension()
     package = _package(extension)
     init = package["metadata.v3.array.ArrayMetadata"].members["__init__"]
     kinds = {p.name: p.kind.value for p in init.parameters}
-    # extra_items is positional in the real __init__, before the star.
-    assert kinds["extra_items"] == "positional or keyword"
     assert kinds["shape"] == "keyword-only"
+    # extra_items is the keyword-only catch-all, and sorts to the end.
+    assert kinds["extra_items"] == "keyword-only"
+    assert list(init.parameters)[-1].name == "extra_items"
     # the catch-all field is typed rather than left blank
     extra = next(p for p in init.parameters if p.name == "extra_items")
     assert extra.annotation == "Mapping[str, Any]"
