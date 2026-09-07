@@ -4,7 +4,7 @@
 The packages under ``src/abczarr/ome/`` restate almost the same
 class surface once per NGFF version.  Adjacent versions are near-identical, so
 keeping the copies in step by hand is error-prone.  This tool keeps one
-hand-written source of truth per *chain* of versions and derives the rest from
+hand-written source of truth per `chain` of versions and derives the rest from
 it by applying a small, explicit *forward delta table*.
 
 There are two chains:
@@ -53,7 +53,7 @@ Usage
     then run ``ruff format`` and ``ruff check --fix`` over them.
 
 This script uses ``ast`` + ``ast.unparse`` and therefore needs Python >= 3.9.
-That is fine: it is a dev-only tool.  Its *outputs* are written in the same
+That is fine: it is a dev-only tool.  Its `outputs` are written in the same
 Python-3.8-safe syntax as the templates.
 """
 
@@ -761,7 +761,7 @@ def _copy_modules(modules: Modules) -> Modules:
 
 
 def _substitute_version(chain: Chain, source: str, version: str) -> str:
-    """Rewrite the template cross-reference token in docstrings to *version*.
+    """Rewrite the template cross-reference token in docstrings to `version`.
 
     The token ``abczarr.ome.<template>`` appears only inside
     docstrings (imports are relative), so a plain string replacement is

@@ -12,9 +12,9 @@ Three coordinate spaces sit behind the config::
     voxel (array index) --scale+translation--> intrinsic --transforms--> model
 
 `scale` and `translation` place each resolution level's array indices
-into a single *intrinsic* space shared by every level. `transforms`
+into a single `intrinsic` space shared by every level. `transforms`
 (or the `voxel_to_world` shortcut) map that intrinsic space onto a
-*model* space, a world or anatomical frame. One config lowers to both
+`model` space, a world or anatomical frame. One config lowers to both
 the stable 0.5 shape and the 0.6 preview.
 """
 
@@ -77,7 +77,7 @@ def axis(
 ) -> Axis:
     """Builds a 0.6 [Axis][abczarr.ome.v0_6rc0.systems.Axis] from a name.
 
-    The axis *type* is inferred from *name* when not given: ``x``, ``y``,
+    The axis `type` is inferred from `name` when not given: ``x``, ``y``,
     and ``z`` are space, ``t`` is time, ``c`` is channel, and anything
     else is space. A known type gives back the matching axis subclass, a
     [SpaceAxis][abczarr.ome.v0_6rc0.systems.SpaceAxis] and so on.
@@ -87,7 +87,7 @@ def axis(
     name : str
         The axis name, such as ``"x"``.
     type : str, optional
-        The axis type. Inferred from *name* when omitted.
+        The axis type. Inferred from `name` when omitted.
     unit : str, optional
         The axis's physical unit, such as ``"micrometer"``.
 
@@ -203,8 +203,8 @@ class ImageConfig:
     def resolved_version(self, version: tx.Optional[str] = None) -> str:
         """The concrete OME version this config lowers to.
 
-        The method resolves *version*, or `ome_version` when
-        *version* is `None`. ``"stable"`` is the latest released
+        The method resolves `version`, or `ome_version` when
+        `version` is `None`. ``"stable"`` is the latest released
         version, ``"latest"`` is the newest version including
         previews, and any other value is taken as an explicit
         version string.
@@ -327,7 +327,7 @@ class ImageConfig:
 
         The metadata is produced by lowering the config with
         [to_ome][abczarr.ome.config.ImageConfig.to_ome], and the
-        result is assigned to *group*'s
+        result is assigned to `group`'s
         [ome][abczarr.abc.sync.ZarrNode.ome]. Keyword arguments are
         passed through to `to_ome`.
 
@@ -610,7 +610,7 @@ def _broadcast(
     """One value per axis, from a scalar, a sequence, or a name/type mapping.
 
     A mapping is looked up by axis name first, then by axis type, and falls
-    back to *default*. A sequence must have one entry per axis. `None` is
+    back to `default`. A sequence must have one entry per axis. `None` is
     the default for every axis.
     """
     if value is None:
@@ -695,12 +695,12 @@ def _with_refs(
     input_space: Space,
     output_space: Space,
 ) -> CoordinateTransformation:
-    """A copy of *transform* with its input and output systems set."""
+    """A copy of `transform` with its input and output systems set."""
     return evolve(transform, input=input_space, output=output_space)
 
 
 def _is_matrix(value: tx.Any) -> bool:
-    """Whether *value* is a 2D matrix an affine can be read from."""
+    """Whether `value` is a 2D matrix an affine can be read from."""
     return isinstance(value, (list, tuple, np.ndarray))
 
 
@@ -718,7 +718,7 @@ def _space_name(value: tx.Any) -> tx.Optional[str]:
 
 
 def _is_path_space(value: tx.Any) -> bool:
-    """Whether *value* references an array by path.
+    """Whether `value` references an array by path.
 
     A path reference names the array's own voxel coordinate system rather than
     a named coordinate system.
