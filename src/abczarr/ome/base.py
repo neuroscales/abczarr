@@ -187,16 +187,17 @@ from abczarr.errors import UnsupportedConversion
 #: How a cross-version conversion treats information the target version
 #: cannot hold.
 #:
-#: * ``"lossy"`` -- drop it silently.
-#: * ``"warn"`` (the default for OME conversions) -- drop it, but emit one
-#:   warning naming what was dropped.
-#: * ``"strict"`` -- raise
-#:   [UnsupportedConversion][abczarr.errors.UnsupportedConversion] instead of
-#:   dropping anything.
+#: * ``"lossy"`` drops the information silently.
+#: * ``"warn"`` drops the information and emits one warning naming what
+#:   was dropped. This is the default for OME conversions.
+#: * ``"strict"`` raises
+#:   [UnsupportedConversion][abczarr.errors.UnsupportedConversion] instead
+#:   of dropping anything.
 #:
-#: This mirrors the Zarr metadata layer's ``ConversionPolicy``; it is
-#: defined here rather than imported so the OME model does not pull the
-#: Zarr metadata package (and, through it, a backend) in at import time.
+#: This type mirrors the Zarr metadata layer's own ``ConversionPolicy``.
+#: It is defined again here, rather than imported, so that importing the
+#: OME model does not also import the Zarr metadata package and, through
+#: it, a storage backend.
 ConversionPolicy = tx.Literal["lossy", "warn", "strict"]
 
 #: OME-NGFF versions, oldest to newest, and the package that holds each.
@@ -216,12 +217,12 @@ _VERSIONS = list(_MODULES)
 
 
 def _is_stable(version: str) -> bool:
-    """Whether *version* names a released version.
+    """Whether `version` names a released version.
 
     A released version is written with digits and separators only. A
-    pre-release -- ``dev``, ``rc``, ``alpha``, ``beta`` and the like --
-    carries letters, following PEP 440, so any letter marks it as not yet
-    stable.
+    pre-release marker such as ``dev``, ``rc``, ``alpha``, or ``beta``
+    carries letters, following PEP 440. Any letter in `version` therefore
+    marks it as not yet stable.
     """
     return not any(char.isalpha() for char in version)
 
@@ -230,18 +231,21 @@ def _version_key(version: str) -> "tx.Tuple[int, ...]":
     """Order a version by its numeric release segments.
 
     The segments are compared as integers, so ``0.10`` comes after ``0.9``
-    rather than before it as a string comparison would have it.
+    rather than before it, as a string comparison would place it.
     """
     return tuple(int(part) for part in version.split("."))
 
 
-#: The newest released (non-preview) OME-NGFF version -- ``"0.5"`` today.
-#: The convenient default when metadata is written without a version.
+#: The newest released, non-preview OME-NGFF version. This is ``"0.5"``
+#: today, and the default version used when metadata is written without
+#: one.
 LATEST_STABLE = max(
     (v for v in _VERSIONS if _is_stable(v)), key=_version_key
 )
 
-#: A v0.3 axis is a bare name; v0.4 made it an object carrying a type.
+#: The axis type a bare axis name implies. A v0.3 axis is written as a
+#: bare name. v0.4 replaced it with an object that carries an explicit
+#: type.
 _AXIS_TYPE = {
     "x": "space",
     "y": "space",
@@ -257,8 +261,8 @@ class OMEMetadata(FlexibleMetadata):
 
     Every piece of OME-Zarr metadata is a subclass of this: a
     multiscale pyramid, an axis, a plate, a rendering setting, and so
-    on. Each lives in the version package it belongs to
-    (`abczarr.ome.v0_5.images`, for example). Build one with
+    on. Each lives in the version package it belongs to, such as
+    `abczarr.ome.v0_5.images`. Build one with
     [from_json][abczarr._core.metadata.Metadata.from_json] from the
     JSON an OME-Zarr group carries, or with keyword arguments matching
     its fields. [to_json][abczarr._core.metadata.Metadata.to_json]
@@ -274,21 +278,21 @@ class OMEMetadata(FlexibleMetadata):
     ) -> tx.Self:
         """Convert this OME metadata to another OME-NGFF version.
 
-        Works on any piece of OME metadata, not only the top-level
-        container. A [Multiscale][abczarr.ome.v0_5.images.Multiscale]
-        or an [Omero][abczarr.ome.v0_5.omero.Omero] converts
-        just as well as an
-        [OMEImage][abczarr.ome.v0_5.ome.OMEImage]. A field
-        both versions carry is passed through unchanged. A field only
-        the newer version has gets a reasonable default going forward,
-        and is dropped going back.
+        This method works on any piece of OME metadata, not only the
+        top-level container. A
+        [Multiscale][abczarr.ome.v0_5.images.Multiscale] or an
+        [Omero][abczarr.ome.v0_5.omero.Omero] converts just as well as an
+        [OMEImage][abczarr.ome.v0_5.ome.OMEImage]. A field both versions
+        carry is passed through unchanged. Converting forward, a field
+        only the newer version has gets a reasonable default. Converting
+        backward, that field is dropped.
 
-        Crossing the 0.5 <-> 0.6 boundary reshapes coordinate metadata:
-        0.5's per-multiscale `axes` and per-dataset scale/translation
-        become 0.6's named `coordinateSystems` and general coordinate
-        transformations, and vice versa. Going back to 0.5, a 0.6
-        transformation the stable model cannot express (an affine, a
-        rotation, and so on) is treated according to *policy*.
+        Crossing the 0.5/0.6 boundary reshapes coordinate metadata.
+        Converting forward, 0.5's per-multiscale `axes` and per-dataset
+        scale and translation become 0.6's named `coordinateSystems` and
+        general coordinate transformations. Converting backward, a 0.6
+        transformation the stable model cannot express, such as an affine
+        or a rotation, is treated according to `policy`.
 
         Parameters
         ----------
@@ -328,12 +332,12 @@ class OMEMetadata(FlexibleMetadata):
         Raises
         ------
         ValueError
-            If *version* names no known OME-NGFF version, or if
+            If `version` names no known OME-NGFF version, or if
             converting to it would require information this object
             does not carry.
         UnsupportedConversion
-            If *policy* is ``"strict"`` and a field or transformation
-            cannot be represented in *version*.
+            If `policy` is ``"strict"`` and a field or transformation
+            cannot be represented in `version`.
         """
         if version not in _MODULES:
             raise ValueError(f"Unknown OME version: {version!r}")
@@ -389,11 +393,11 @@ def _target_class(cls: type, version: str) -> type:
 
 
 def _report_loss(policy: ConversionPolicy, field: str, version: str) -> None:
-    """Apply a conversion policy to something the target version can't hold.
+    """Apply a conversion policy to something the target version cannot hold.
 
-    Called by a migration for each field or transformation it cannot carry
-    over to OME *version*. Does nothing under ``"lossy"``, emits one warning
-    under ``"warn"``, and raises
+    A migration calls this for each field or transformation it cannot
+    carry over to OME `version`. It does nothing under ``"lossy"``, emits
+    one warning under ``"warn"``, and raises
     [UnsupportedConversion][abczarr.errors.UnsupportedConversion] under
     ``"strict"``.
 
@@ -402,15 +406,15 @@ def _report_loss(policy: ConversionPolicy, field: str, version: str) -> None:
     policy : ConversionPolicy
         How to treat the loss.
     field : str
-        What cannot be represented -- a field name, or a transformation
-        type such as ``"affine"``.
+        The name of what cannot be represented. This is a field name, or
+        a transformation type such as ``"affine"``.
     version : str
         The OME-NGFF version being converted to.
 
     Raises
     ------
     UnsupportedConversion
-        If *policy* is ``"strict"``.
+        If `policy` is ``"strict"``.
     """
     if policy == "lossy":
         return
@@ -512,8 +516,8 @@ def _multiscale_4_to_3(
 def _carry(
     source: tx.Any, newcls: type, to_v: str, **overrides: tx.Any
 ) -> tx.Any:
-    """Build *newcls*, taking the given fields from *overrides* and the rest
-    (that both versions share) straight from *source*."""
+    """Build `newcls`, taking the given fields from `overrides` and the rest
+    (that both versions share) straight from `source`."""
     kwargs = dict(overrides)
     for f in fields(newcls):
         if not f.init or f.name in kwargs:
@@ -622,7 +626,7 @@ def _multiscale_6_to_5(
     The datasets' output coordinate system supplies the 0.5 axes. Each
     dataset's transform list is reduced to the `Scale` (+`Translation`) the
     stable model allows; anything it cannot express is routed through
-    *policy*.
+    `policy`.
     """
     v5 = importlib.import_module(_package(to_v))
     system = _output_system(ms)
@@ -685,7 +689,7 @@ def _reduce_transforms(
 
     Composes the scales and translations in the list (flattening a
     `sequence`) into one diagonal affine ``p -> scale * p + translation``.
-    A transform the stable model cannot express is routed through *policy*
+    A transform the stable model cannot express is routed through `policy`
     and otherwise dropped. A dataset left with no representable scale falls
     back to an identity scale (all ones).
     """
@@ -754,15 +758,20 @@ class OME(OMEMetadata):
     """The version-tagged, top-level OME-Zarr metadata for a group.
 
     Every OME-Zarr group carries one of these: an image and its
-    multiscale pyramid, a collection of labels, a plate, or a well.
-    Each has its own subclass in every version's package. `version`
-    records which NGFF version the metadata is written against, and
-    with it what the rest of its fields mean.
+    multiscale pyramid, a collection of labels, a plate, or a well. Each
+    kind has its own subclass in every version's package. The `version`
+    field records which NGFF version the metadata is written against, and
+    with it what the rest of the fields mean.
 
-    Build the concrete class for your version instead of this one.
-    See [v0_5.OME][abczarr.ome.v0_5.ome.OME] and its
-    siblings, including [OMEImage][abczarr.ome.v0_5.ome.OMEImage]
-    and [OMEPlate][abczarr.ome.v0_5.ome.OMEPlate].
+    Build the concrete class for the version in use instead of this one.
+    See [v0_5.OME][abczarr.ome.v0_5.ome.OME] and its siblings, including
+    [OMEImage][abczarr.ome.v0_5.ome.OMEImage] and
+    [OMEPlate][abczarr.ome.v0_5.ome.OMEPlate].
+
+    Parameters
+    ----------
+    version : str
+        The OME-NGFF version the metadata is written against.
     """
 
     version: str = field(factory=False)
@@ -771,16 +780,18 @@ class OME(OMEMetadata):
     def from_json(cls, data: tx.Any) -> tx.Self:
         """Create an OME container from a JSON-serializable dict.
 
-        Called on a version's own class -- ``v0_5.OME.from_json`` -- this
-        picks the right image / plate / well / label subclass for the data,
-        as any OME class does.
+        Called on a version's own class, such as ``v0_5.OME.from_json``,
+        this picks the right image, plate, well, or label subclass for the
+        data, the same way any OME class does.
 
-        Called on this version-independent base, it first reads the ``version``
-        field to decide which NGFF version the data belongs to, then hands off
-        to that version's ``OME``. The base cannot make that choice on its own:
-        every version's classes share this one, so it has no way to tell a
-        v0.4 image from a v0.5 one. Metadata that carries no ``version`` is
-        therefore ambiguous, and raises ``ValueError`` rather than guessing.
+        Called on this version-independent base class, it first reads the
+        ``version`` field to decide which NGFF version the data belongs
+        to, then hands the data to that version's own ``OME`` class. The
+        base class cannot make that choice on its own, because every
+        version's classes share it and it has no way to tell a v0.4 image
+        from a v0.5 one. Metadata that carries no ``version`` field is
+        therefore ambiguous and raises ``ValueError`` rather than being
+        guessed at.
 
         Raises
         ------

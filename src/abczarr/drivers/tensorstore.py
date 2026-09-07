@@ -42,7 +42,7 @@ from abczarr.drivers._metadata import metadata_from_json
 from abczarr.drivers.base import Driver
 from abczarr.metadata.base import ArrayMetadata, NodeMetadata, _node_at
 
-# optionals -- the module imports without tensorstore; a driver with no
+# optionals -- the module imports without tensorstore. A driver with no
 # tensorstore reports that it can open nothing.
 try:
     import tensorstore as ts
@@ -85,10 +85,10 @@ def _parse_feature(key: str) -> tx.Optional[tx.Tuple[str, str, str]]:
 
 
 def _kvstore_spec(location: tx.Any) -> tx.Any:
-    """The TensorStore kvstore spec for *location*.
+    """The TensorStore kvstore spec for `location`.
 
-    A kvstore spec (a dict or URL) is used as it is; a local path becomes the
-    file kvstore.
+    A kvstore spec, a dict or URL, is used as it is. A local path
+    becomes the file kvstore.
     """
     if isinstance(location, (dict, str)) and not _looks_like_path(location):
         return location
@@ -100,7 +100,7 @@ def _looks_like_path(location: tx.Any) -> bool:
 
 
 def _ts_array_driver(version: tx.Any) -> str:
-    """The TensorStore driver name for a Zarr array of *version*.
+    """The TensorStore driver name for a Zarr array of `version`.
 
     TensorStore reads a v3 array through its ``zarr3`` driver and a v2 array
     through its native ``zarr`` driver.
@@ -109,12 +109,13 @@ def _ts_array_driver(version: tx.Any) -> str:
 
 
 def _ts_metadata(metadata: "ArrayMetadata") -> tx.Any:
-    """The metadata document TensorStore's driver accepts for *metadata*.
+    """The metadata document TensorStore's driver accepts for `metadata`.
 
     A v3 array's document is TensorStore's ``zarr.json`` as it is. A v2
-    array's ``.zarray`` carries neither ``node_type`` nor the user attributes
-    (those live in ``.zattrs``), and TensorStore's ``zarr`` driver rejects
-    both, so they are dropped here; the attributes are persisted separately.
+    array's ``.zarray`` carries neither ``node_type`` nor the user
+    attributes, since those live in ``.zattrs``, and TensorStore's
+    ``zarr`` driver rejects both, so they are dropped here. The
+    attributes are persisted separately.
     """
     doc = metadata.to_json()
     if metadata.zarr_format == 2:
@@ -188,7 +189,7 @@ class TensorStoreArray(TensorStoreNode, ZarrArray):
         return self._cached_metadata
 
     def _with_v2_attributes(self, metadata: tx.Any) -> tx.Any:
-        """Merge a v2 array's ``.zattrs`` user attributes into *metadata*."""
+        """Merge a v2 array's ``.zattrs`` user attributes into `metadata`."""
         try:
             raw = PathBasedStore(str(self._store_path)).get(
                 constants.Z2ATTRS_JSON
@@ -271,9 +272,9 @@ class AsyncTensorStoreArray(AsyncZarrArray):
 def _open_ts_array(
     location: tx.Any, mode: str, version: tx.Any = 3
 ) -> TensorStoreArray:
-    """Open the array at *location* through TensorStore and wrap it.
+    """Open the array at `location` through TensorStore and wrap it.
 
-    *version* selects TensorStore's driver -- ``zarr3`` for a v3 array,
+    `version` selects TensorStore's driver: ``zarr3`` for a v3 array,
     ``zarr`` for a v2 array.
     """
     spec = {
@@ -289,10 +290,10 @@ def _open_ts_array(
 async def _aopen_ts_array(
     location: tx.Any, mode: str, version: tx.Any = 3
 ) -> "AsyncTensorStoreArray":
-    """Open the array at *location* through TensorStore asynchronously.
+    """Open the array at `location` through TensorStore asynchronously.
 
     Awaits TensorStore's own open future rather than blocking on
-    ``.result()``, then wraps the array as its native async twin. *version*
+    ``.result()``, then wraps the array as its native async twin. `version`
     selects TensorStore's driver, as for the synchronous open.
     """
     spec = {
@@ -308,13 +309,14 @@ async def _aopen_ts_array(
 def _create_ts_array(
     location: tx.Any, metadata: ArrayMetadata, *, overwrite: bool
 ) -> TensorStoreArray:
-    """Create the array *metadata* describes at *location*.
+    """Create the array `metadata` describes at `location`.
 
     TensorStore creates from the metadata document, filling in each codec's
     defaults and validating it, which a bare write of the metadata would not.
-    A v3 array goes through the ``zarr3`` driver, a v2 array through the
-    ``zarr`` driver; a v2 array's user attributes are written to ``.zattrs``
-    afterwards, since TensorStore's ``zarr`` driver writes only ``.zarray``.
+    A v3 array goes through the ``zarr3`` driver, and a v2 array through
+    the ``zarr`` driver. A v2 array's user attributes are written to
+    ``.zattrs`` afterwards, since TensorStore's ``zarr`` driver writes
+    only ``.zarray``.
     """
     if _node_at(Path(str(location))) is not None and not overwrite:
         raise FileExistsError(f"a node already exists at {location}")
@@ -333,7 +335,7 @@ def _create_ts_array(
 async def _acreate_ts_array(
     location: tx.Any, metadata: ArrayMetadata, *, overwrite: bool
 ) -> "AsyncTensorStoreArray":
-    """Create the array *metadata* describes at *location* asynchronously.
+    """Create the array `metadata` describes at `location` asynchronously.
 
     Awaits TensorStore's own create future rather than blocking on
     ``.result()``, then wraps the array as its native async twin. Driver
@@ -374,8 +376,8 @@ class TensorStoreGroup(TensorStoreNode, PathGroup):
     def _create_array(
         self, name: str, config: ArrayConfig
     ) -> TensorStoreArray:
-        # tensorstore validates and fills a codec's defaults on create, so we
-        # hand it the config's metadata document
+        # TensorStore validates and fills in a codec's defaults on create,
+        # so the config's metadata document is handed to it directly
         return _create_ts_array(
             str(self._store_path / name), config.to_metadata(), overwrite=False
         )
@@ -503,15 +505,15 @@ def _v3_node(raw: tx.Any) -> tx.Optional[tx.Tuple[str, int]]:
 
 
 def _peek_node(location: tx.Any) -> tx.Optional[tx.Tuple[str, int]]:
-    """The node kind and Zarr version recorded at *location*, or None.
+    """The node kind and Zarr version recorded at `location`, or None.
 
     Detects both a v3 ``zarr.json`` (through its ``node_type`` field) and a v2
     node (through which of ``.zgroup`` and ``.zarray`` is present), so a v2
     group or array is recognised as well as a v3 one. Read through a
     [PathBasedStore][abczarr.abc.store.PathBasedStore], so every scheme
-    bagof.paths understands is inspected the same way -- a local path, an
-    fsspec URL (``memory://``), or a cloud one (``s3://``). A raw kvstore dict
-    spec is not a location to peek, so it returns None.
+    bagof.paths understands is inspected the same way, whether a local path,
+    an fsspec URL (``memory://``), or a cloud one (``s3://``). A raw kvstore
+    dict spec is not a location to peek, so it returns None.
 
     Returns
     -------
@@ -535,9 +537,8 @@ def _peek_node(location: tx.Any) -> tx.Optional[tx.Tuple[str, int]]:
 
 
 async def _apeek_node(location: tx.Any) -> tx.Optional[tx.Tuple[str, int]]:
-    """The node kind and Zarr version at *location*, read through an async
-    store, or None -- the async twin of
-    [_peek_node][abczarr.drivers.tensorstore].
+    """The node kind and Zarr version at `location`, read through an async
+    store, or None. The async twin of `_peek_node`.
 
     Read through an
     [AsyncPathBasedStore][abczarr.abc.store.AsyncPathBasedStore], so a URL

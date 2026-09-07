@@ -1,3 +1,5 @@
+"""Rendering settings: how to display an image's channels."""
+
 __all__ = ["Omero", "Channel"]
 
 # dependencies
@@ -15,12 +17,33 @@ from ..base import OMEMetadata
 class Channel(OMEMetadata):
     """Specifies how to render one channel of a multi-channel image.
 
-    `color` is a hex RGB string, such as `"FF0000"` for red. `window` gives
-    the intensity range that is mapped onto that color.
+    Parameters
+    ----------
+    color : str
+        The channel's display color, as a hex RGB string such as
+        `"FF0000"` for red.
+    window : Window
+        The intensity range mapped onto that color.
     """
 
     @autodefine
     class Window(OMEMetadata):
+        """The intensity range a channel's color is mapped over.
+
+        Parameters
+        ----------
+        min : float
+            The lowest value the channel's data can take.
+        max : float
+            The highest value the channel's data can take.
+        start : float
+            The value a viewer should render at zero intensity. This may
+            narrow the range `min` and `max` bound.
+        end : float
+            The value a viewer should render at full intensity. This may
+            narrow the range `min` and `max` bound.
+        """
+
         min: Required[float]
         max: Required[float]
         start: Required[float]
@@ -35,11 +58,15 @@ class Channel(OMEMetadata):
 class Omero(OMEMetadata):
     """Holds rendering settings for an image, one entry per channel.
 
-    An `Omero` object is attached to an image group, alongside its
+    Attach one of these to an image group, alongside its
     [Multiscale][abczarr.ome.v0_6dev1.images.Multiscale], to suggest how a
-    viewer should display it. `channels` lists a
-    [Channel][abczarr.ome.v0_6dev1.omero.Channel] for each channel of the
-    image, in the image's channel order.
+    viewer should display it.
+
+    Parameters
+    ----------
+    channels : list of Channel
+        A [Channel][abczarr.ome.v0_6dev1.omero.Channel] for each channel
+        of the image, in the image's channel order.
     """
 
     channels: Required[tx.List[Channel]]

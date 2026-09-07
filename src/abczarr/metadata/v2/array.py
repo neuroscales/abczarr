@@ -2,11 +2,12 @@
 
 Zarr v2 describes an array with a single numcodecs compressor, an
 ordered list of numcodecs filters applied before it, and a
-byte-order-bearing dtype. Converting to v1 (see
-[ArrayMetadata.to_version][abczarr.metadata.v2.array.ArrayMetadata.to_version])
-keeps only the compressor, since v1 has no filters; converting to v3
-maps the filters and compressor onto v3's codec pipeline and folds
-the dtype's byte order into an explicit serializer codec.
+byte-order-bearing dtype.
+[ArrayMetadata.to_version][abczarr.metadata.v2.array.ArrayMetadata.to_version]
+converts to v1 by keeping only the compressor, since v1 has no
+filters. It converts to v3 by mapping the filters and compressor
+onto v3's codec pipeline, folding the dtype's byte order into an
+explicit serializer codec.
 """
 
 __all__ = [
@@ -80,6 +81,31 @@ class ArrayMetadata(ArrayMetadataV2):
         ['bytes', 'zstd']
 
         ```
+
+    Attributes
+    ----------
+    shape : tuple of int
+        The array's shape, one entry per dimension.
+    chunks : tuple of int
+        The shape of one chunk, one entry per dimension.
+    dtype : DType
+        The array's numpy dtype, encoded as a Zarr v2 dtype string
+        or, for a structured dtype, a field list.
+    compressor : Codec or None
+        The codec applied last on encode and first on decode, or
+        `None` for no compression.
+    fill_value : int, float or None
+        The value an unwritten element of the array reads as.
+    order : str
+        The memory layout of a decoded chunk: ``"C"`` for row-major
+        or ``"F"`` for column-major.
+    filters : tuple of Filter
+        The codecs applied, in order, before `compressor` on encode,
+        and in reverse order after it on decode.
+    dimension_separator : str or None
+        The character joining a chunk index into its store key,
+        ``"."`` or ``"/"``. `None` means the default, ``"."``,
+        applies.
     """
 
     # --- Required ----
@@ -97,11 +123,16 @@ class ArrayMetadata(ArrayMetadataV2):
     # --- Serialization ---
 
     def to_json(self) -> tz.JsonDict:
-        """Serialize to `.zarray`, writing `filters` as null when there are
-        none.
+        """Serialize this metadata to the contents of `.zarray`.
 
-        The model normalizes a missing `filters` to an empty tuple, but the
-        Zarr v2 spec wants `null` for no filters, not an empty list.
+        `filters` is written as ``null`` when there are none, rather
+        than an empty list, matching how the Zarr v2 specification
+        represents an array with no filters.
+
+        Returns
+        -------
+        dict
+            The JSON-compatible representation of this metadata.
         """
         data = super().to_json()
         if not data.get("filters"):
@@ -118,9 +149,9 @@ class ArrayMetadata(ArrayMetadataV2):
         """Convert this array's metadata to another Zarr version.
 
         Converting to v1 keeps only the compressor: v1 has no
-        filters, so any `filters` are subject to *policy*. Converting
+        filters, so any `filters` are subject to `policy`. Converting
         to v3 maps each filter and the compressor onto v3's codec
-        pipeline and, when `order` is not ``"C"``, applies *policy*
+        pipeline and, when `order` is not ``"C"``, applies `policy`
         as well, since v3 has no memory-order field.
 
         Parameters
@@ -133,16 +164,16 @@ class ArrayMetadata(ArrayMetadataV2):
         Returns
         -------
         ArrayMetadata
-            Equivalent metadata for *version*. Converting to 2
+            Equivalent metadata for `version`. Converting to 2
             returns this object unchanged.
 
         Raises
         ------
         ValueError
-            If *version* is not 1, 2 or 3.
+            If `version` is not 1, 2 or 3.
         UnsupportedConversion
-            If *policy* is ``"strict"`` and a field cannot be
-            represented in *version*.
+            If `policy` is ``"strict"`` and a field cannot be
+            represented in `version`.
         """
         if version == 1:
             return self._to_v1(policy)
@@ -154,10 +185,13 @@ class ArrayMetadata(ArrayMetadataV2):
             raise ValueError(f"Unsupported version: {version}")
 
     def required_features(self) -> tx.FrozenSet[str]:
-        """The features a driver needs to read or write this array.
+        """Report the features a driver needs to read or write this array.
 
-        One key per named filter and, if set, the compressor -- e.g.
-        ``{"v2:filter:delta", "v2:codec:zstd"}``.
+        Returns
+        -------
+        frozenset of str
+            One key per named filter and, if set, the compressor, for
+            example ``{"v2:filter:delta", "v2:codec:zstd"}``.
         """
         feats = set()  # type: tx.Set[str]
         if self.compressor is not None:
@@ -266,7 +300,8 @@ def _vlen_data_type(filters: tx.Iterable[tx.Any]) -> tx.Optional[str]:
 
 
 def _bytes_codec(v3: tx.Any, dtype: tx.Any) -> tx.Any:
-    """The v3 array-to-bytes codec carrying *dtype*'s byte order."""
+    """Build the v3 array-to-bytes codec that carries `dtype`'s byte
+    order."""
     endian = {
         "<": "little",
         ">": "big",

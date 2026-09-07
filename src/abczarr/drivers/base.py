@@ -80,7 +80,7 @@ class Driver(SupportsCapabilities):
         return True
 
     def can_open(self, metadata: "ArrayMetadata") -> Verdict:
-        """Whether this driver provides every feature *metadata*
+        """Whether this driver provides every feature `metadata`
         requires."""
         missing = [
             feature
@@ -92,7 +92,7 @@ class Driver(SupportsCapabilities):
     def open(
         self, location: tx.Any, mode: str = "r", *, asynchronous: bool = False,
     ) -> "tx.Union[ZarrNode, tx.Awaitable[AsyncZarrNode]]":
-        """Open *location* and wrap it as a node.
+        """Open `location` and wrap it as a node.
 
         !!! note
             With `asynchronous=True`, the return value is a coroutine
@@ -119,7 +119,7 @@ class Driver(SupportsCapabilities):
         Returns
         -------
         ZarrNode or Awaitable[AsyncZarrNode]
-            The node, or, when *asynchronous* is true, a coroutine
+            The node, or, when `asynchronous` is true, a coroutine
             resolving to its async twin.
 
         Raises
@@ -132,13 +132,13 @@ class Driver(SupportsCapabilities):
         return self._open_sync(location, mode)
 
     def _open_sync(self, location: tx.Any, mode: str) -> "ZarrNode":
-        """Open *location* synchronously. A driver overrides this."""
+        """Open `location` synchronously. A driver overrides this."""
         raise UnsupportedZarrOperation("open", self.name or None)
 
     async def _open_async(
         self, location: tx.Any, mode: str
     ) -> "AsyncZarrNode":
-        """Open *location* asynchronously.
+        """Open `location` asynchronously.
 
         A backend with a native coroutine open overrides this to await its own
         I/O. The default runs the synchronous open in a worker thread and
@@ -152,10 +152,10 @@ class Driver(SupportsCapabilities):
         self, location: tx.Any, config: "ZarrConfig",
         *, asynchronous: bool = False,
     ) -> "tx.Union[ZarrNode, tx.Awaitable[AsyncZarrNode]]":
-        """Create the node *config* describes at *location*, and open
+        """Create the node `config` describes at `location`, and open
         it.
 
-        By default, *config* is lowered to a metadata document, and
+        By default, `config` is lowered to a metadata document, and
         the node is created from that document. A backend may
         override the underlying create it runs to build the node
         through its own machinery from the config's coarse fields
@@ -187,7 +187,7 @@ class Driver(SupportsCapabilities):
     def _create_sync(
         self, location: tx.Any, config: "ZarrConfig"
     ) -> "ZarrNode":
-        """Create *config* synchronously. A backend overrides this to create
+        """Create `config` synchronously. A backend overrides this to create
         natively from the config's coarse fields."""
         return self._create_from_metadata_sync(
             location,
@@ -198,8 +198,8 @@ class Driver(SupportsCapabilities):
     async def _create_async(
         self, location: tx.Any, config: "ZarrConfig"
     ) -> "AsyncZarrNode":
-        """Create *config* asynchronously. The default thread-bridges the
-        synchronous create; a backend with a native coroutine create
+        """Create `config` asynchronously. The default thread-bridges the
+        synchronous create. A backend with a native coroutine create
         overrides this."""
         node = await run_sync(self._create_sync, location, config)
         return node.as_async()
@@ -208,7 +208,7 @@ class Driver(SupportsCapabilities):
         self, location: tx.Any, metadata: "NodeMetadata",
         *, overwrite: bool = False, asynchronous: bool = False,
     ) -> "tx.Union[ZarrNode, tx.Awaitable[AsyncZarrNode]]":
-        """Create a node from an exact *metadata* document, and open
+        """Create a node from an exact `metadata` document, and open
         it.
 
         This method is the escape hatch for a setup the config
@@ -233,7 +233,7 @@ class Driver(SupportsCapabilities):
         metadata : NodeMetadata
             The exact metadata document to write.
         overwrite : bool, optional
-            Replace whatever is already at *location*.
+            Replace whatever is already at `location`.
         asynchronous : bool, optional
             When true, return a coroutine resolving to the async twin.
 
@@ -244,7 +244,7 @@ class Driver(SupportsCapabilities):
         Raises
         ------
         FileExistsError
-            When something already exists at *location* and *overwrite* is
+            When something already exists at `location` and `overwrite` is
             false.
         """
         if asynchronous:
@@ -259,7 +259,7 @@ class Driver(SupportsCapabilities):
         self, location: tx.Any, metadata: "NodeMetadata",
         *, overwrite: bool = False,
     ) -> "ZarrNode":
-        """Write *metadata* to the store and open it. A backend overrides this
+        """Write `metadata` to the store and open it. A backend overrides this
         to create through its own machinery."""
         path = Path(str(location))
         if _node_at(path) is not None:
@@ -274,8 +274,8 @@ class Driver(SupportsCapabilities):
         self, location: tx.Any, metadata: "NodeMetadata",
         *, overwrite: bool = False,
     ) -> "AsyncZarrNode":
-        """Create from *metadata* asynchronously. The default thread-bridges
-        the synchronous create; a backend with a native coroutine create
+        """Create from `metadata` asynchronously. The default thread-bridges
+        the synchronous create. A backend with a native coroutine create
         overrides this."""
         node = await run_sync(
             self._create_from_metadata_sync, location, metadata,
@@ -287,13 +287,29 @@ class Driver(SupportsCapabilities):
         self, location: tx.Any, *,
         config: "tx.Optional[ZarrConfig]" = None, **fields: tx.Any,
     ) -> "ZarrNode":
-        """Create a new group at *location*, and open it.
+        """Create a new group at `location`, and open it.
 
         A [GroupConfig][abczarr.api.config.GroupConfig] may be passed
-        as *config*. Its individual fields, such as `zarr_version`
+        as `config`. Its individual fields, such as `zarr_version`
         and `overwrite`, may instead be passed as keyword arguments.
         A keyword argument overrides the corresponding field of
-        *config*.
+        `config`.
+
+        Parameters
+        ----------
+        location : Any
+            Where to create the group.
+        config : GroupConfig, optional
+            The group to create. Defaults to a `GroupConfig` built
+            from `fields` alone.
+        **fields : Any
+            Individual `GroupConfig` fields, overriding the matching
+            field of `config`.
+
+        Returns
+        -------
+        ZarrNode
+            The newly created group, opened through this driver.
         """
         base = config if isinstance(config, GroupConfig) else GroupConfig(
             **dict(config or {})

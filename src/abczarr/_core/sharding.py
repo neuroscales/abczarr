@@ -1,4 +1,4 @@
-"""Helper functions for Zarr I/O."""
+"""Automatic chunk and shard size selection, kept within a byte budget."""
 
 # stdlib
 import math
@@ -30,6 +30,17 @@ ChunkSize = tz.Shape
 
 
 class ShardsAndChunks(tx.NamedTuple):
+    """A resolved shard and chunk shape, returned together because
+    neither is chosen without the other.
+
+    Parameters
+    ----------
+    shards : tuple of int
+        The shard size along each dimension.
+    chunks : tuple of int
+        The chunk size along each dimension.
+    """
+
     shards: tz.Shape
     chunks: tz.Shape
 
@@ -39,26 +50,33 @@ def broadcast_spec(
     spec: ChunkSpec = "auto",
     names: tx.Iterable[tx.Optional[str]] = (),
 ) -> tx.Tuple[tx.Union[int, tx.Literal["auto"]], ...]:
-    """
-    Assign a chunk size to each dimension, based on a specification.
+    """Spread a chunk-size specification across every dimension of
+    `shape`.
+
+    A single integer or `"auto"` applies to every dimension. A sequence
+    shorter than `shape` has its last entry repeated to fill the
+    remaining dimensions. One longer than `shape` is truncated. A
+    mapping is read by dimension name, matched against `names`. A
+    dimension with no matching name falls back to the mapping's `None`
+    key, then its `""` key, then its own full size in `shape`.
+
+    A size of zero means no chunking along that dimension, and
+    `"auto"` defers the choice to `auto_chunk` or `auto_shard`.
 
     Parameters
     ----------
-    shape : sequence[int]
-        Shape of the data array.
-    spec : int | {"auto"} | sequence | mapping
-        Chunk size along each dimension, or a mapping from dimension names to
-        chunk sizes, or a single integer to use for all dimensions.
-        * Zero means no chunking along that dimension.
-        * "auto" means that the chunk size will be automatically determined
-          later.
-    names : sequence[str]
-        Names of the dimensions, if `spec` is a mapping.
+    shape : sequence of int
+        The shape of the array.
+    spec : int, {"auto"}, sequence, or mapping
+        The chunk-size specification, in any of the forms above.
+    names : sequence of str
+        The name of each dimension, used to resolve `spec` when it is a
+        mapping.
 
     Returns
     -------
-    chunks : tuple[int | {"auto"}, ...]
-        Chunk or shard size along each dimension.
+    tuple of (int or {"auto"})
+        The chunk or shard size along each dimension.
     """
 
     if isinstance(spec, (int, str)):
@@ -105,65 +123,71 @@ def auto_chunk(
     compression_ratio: float = 1.8,
     names: tx.Iterable[tx.Optional[str]] = (),
 ) -> tz.ShapeLike:
-    """
-    Compute chunk size that ensures blob size below cap.
+    """Choose a chunk size for each dimension that keeps the estimated
+    on-disk chunk size under `maxsize`.
+
+    A dimension fixed by `spec` keeps that size. Every dimension left as
+    `"auto"` starts at 1 and doubles in turn, one dimension per
+    iteration, until either every dimension reaches the full extent of
+    `shape` or no dimension can grow further without the projected
+    chunk size, divided by `compression_ratio`, exceeding `maxsize`.
 
     Parameters
     ----------
-    shape : sequence[int]
-        (Maximum) shape along each dimension.
-    itemsize : np.dtype or int
-        Data type, or data type size
+    shape : sequence of int
+        The shape to chunk.
     spec : ChunkSpec
-        See `broadcast_spec` for details.
+        The chunk-size specification, as `broadcast_spec` accepts.
+    itemsize : np.dtype or int
+        The array's data type, or its itemsize in bytes.
     maxsize : int
-        Maximum size of each chunk, in bytes (default: 8 MB).
+        The maximum estimated chunk size, in bytes.
     compression_ratio : float
-        Estimated compression factor.
-    names : sequence[str]
-        Names of the dimensions, if `spec` is a mapping.
+        The estimated compression factor applied to the raw chunk size
+        before it is compared against `maxsize`.
+    names : sequence of str
+        The name of each dimension, used to resolve `spec` when it is a
+        mapping.
 
     Returns
     -------
-    chunks : tuple[int, ...]
-        Estimated chunk size along each dimension.
+    tuple of int
+        The chosen chunk size along each dimension.
     """
     if not isinstance(itemsize, int):
         itemsize = np.dtype(itemsize).itemsize
 
-    # Broadcast specifications
     spec = broadcast_spec(shape, spec, names)
 
-    # Replace 0 with the shape size in spec
+    # A zero in the spec falls back to the dimension's full size.
     spec = [(c or d) for c, d in zip(spec, shape)]
 
-    # Maximum number of elements in the chunk
+    # The chunk byte budget, expressed as a maximum element count so the
+    # loop below compares against `math.prod(chunks)` directly.
     max_numel = maxsize * compression_ratio / itemsize
 
-    # Initial chunk size
     chunks = [1 if c == "auto" else c for c in spec]
 
-    # Optimization loop
     while True:
 
-        # If chunk larger than volume, we can stop
+        # Every dimension has reached the full extent of the array: no
+        # further growth is possible or needed.
         if all(x >= s for x, s in zip(chunks, shape)):
             break
 
-        # Loop over dimensions
         improved = False
         for d in range(len(chunks)):
 
             if spec[d] != "auto":
                 continue
 
-            # Compute candidate shard size
             old_chunk = chunks[d]
             new_chunk = min(2 * chunks[d], shape[d])
             chunks[d] = new_chunk
 
             if math.prod(chunks) > max_numel:
-                # If chunk is too large, stop and keep previous chunk
+                # The doubled chunk would exceed the byte budget, so the
+                # dimension keeps its previous size.
                 chunks[d] = old_chunk
             elif new_chunk > old_chunk:
                 # Only an actual growth counts as an improvement. A dimension
@@ -173,7 +197,8 @@ def auto_chunk(
                 improved = True
 
         if not improved:
-            # We cannot improve any further, so we stop
+            # No dimension could grow this pass, so no further pass would
+            # change anything.
             break
 
     return tuple(chunks)
@@ -188,55 +213,67 @@ def auto_shard(
     compression_ratio: float = 1.8,
     names: tx.Iterable[tx.Optional[str]] = (),
 ) -> ShardsAndChunks:
-    """
-    Find maximal shard size that ensures file size below cap.
+    """Choose a shard size for each dimension that keeps the estimated
+    on-disk shard size under `maxsize`, then chunk each shard to the
+    same byte budget `auto_chunk` applies.
+
+    Growing the shard follows the same doubling strategy as `auto_chunk`.
+    A dimension fixed by `shard_spec` keeps that size. One left as
+    `"auto"` starts from `chunk_spec`'s size for that dimension when
+    that is fixed, or from 1 otherwise, and doubles from there. Once the
+    shard shape is settled, `auto_chunk` sizes the chunks within it
+    against `itemsize` directly, so the chunk byte budget reflects the
+    real data type rather than the estimate `broadcast_spec` alone would
+    give. The chunk and shard shapes are then reconciled through
+    `fix_shard_chunk`, since a shard has to be an exact multiple of its
+    chunk.
 
     Parameters
     ----------
-    shape : sequence[int]
-        (Maximum) shape along each dimension.
-    itemsize : np.dtype or int
-        Data type, or data type size
+    shape : sequence of int
+        The shape to shard and chunk.
     shard_spec : ChunkSpec
-        See `broadcast_spec` for details.
+        The shard-size specification, as `broadcast_spec` accepts.
     chunk_spec : ChunkSpec
-        See `broadcast_spec` for details.
+        The chunk-size specification, as `broadcast_spec` accepts.
+    itemsize : np.dtype or int
+        The array's data type, or its itemsize in bytes.
     maxsize : int
-        Maximum size of each shard, in bytes (default: 2 TB).
-        S3 has a 5TB/file limit, but given that we use an estimated
-        compression factor, we aim for 2TB to leave some leeway.
+        The maximum estimated shard size, in bytes. The default of 2 TB
+        stays under S3's 5 TB per-object limit even though the estimate
+        is only as good as `compression_ratio`.
     compression_ratio : float
-        Estimated compression factor.
-    names : sequence[str]
-        Names of the dimensions, if `spec` is a mapping.
+        The estimated compression factor applied to the raw shard size
+        before it is compared against `maxsize`.
+    names : sequence of str
+        The name of each dimension, used to resolve `shard_spec` and
+        `chunk_spec` when either is a mapping.
 
     Returns
     -------
-    shards : tuple[int, ...]
-        Estimated shard size along each dimension.
-    chunks : tuple[int, ...]
-        Estimated chunk size along each dimension.
+    ShardsAndChunks
+        The chosen shard and chunk size along each dimension.
     """
     if not isinstance(itemsize, int):
         itemsize = np.dtype(itemsize).itemsize
 
-    # Broadcast specifications
     shard_spec = broadcast_spec(shape, shard_spec, names)
     chunk_spec = broadcast_spec(shape, chunk_spec, names)
 
-    # Replace 0 with the shape size in shard spec
+    # A zero in the shard spec falls back to the dimension's full size.
     shard_spec = [(s or d) for s, d in zip(shard_spec, shape)]
 
-    # Replace 0 with either the shard size in chunk spec
+    # A zero in the chunk spec falls back to the (already resolved) shard
+    # size for that dimension.
     chunk_spec = [(c or s) for c, s in zip(chunk_spec, shard_spec)]
 
-    # Maximum number of elements in the shard
+    # The shard byte budget, expressed as a maximum element count so the
+    # loop below compares against `math.prod(shards)` directly.
     max_numel = maxsize * compression_ratio / itemsize
 
-    # Initial shard size
-    # =>            if shard is fixed -> use shard
-    # => otherwise, if chunk is fixed -> use chunk
-    # => otherwise,                   -> use 1
+    # A fixed shard size is used as given. Otherwise, a fixed chunk size
+    # is the starting point to grow from. With neither fixed, growth
+    # starts from 1.
     shards = [
         1 if s == "auto" and c == "auto" else
         c if s == "auto" else
@@ -244,28 +281,26 @@ def auto_shard(
         for s, c in zip(shard_spec, chunk_spec)
     ]
 
-    # Optimization loop
     while True:
 
-        # If shard larger than volume, we can stop
+        # Every dimension has reached the full extent of the array: no
+        # further growth is possible or needed.
         if all(x >= s for x, s in zip(shards, shape)):
             break
 
-
-        # Loop over dimensions
         improved = False
         for d in range(len(shards)):
 
             if shard_spec[d] != "auto":
                 continue
 
-            # Compute candidate shard size
             old_shard = shards[d]
             new_shard = min(2 * shards[d], shape[d])
             shards[d] = new_shard
 
             if math.prod(shards) > max_numel:
-                # If shard is too large, stop and keep previous shard
+                # The doubled shard would exceed the byte budget, so the
+                # dimension keeps its previous size.
                 shards[d] = old_shard
             elif new_shard > old_shard:
                 # Only an actual growth counts as an improvement. A dimension
@@ -275,11 +310,12 @@ def auto_shard(
                 improved = True
 
         if not improved:
-            # We cannot improve any further, so we stop
+            # No dimension could grow this pass, so no further pass would
+            # change anything.
             break
 
-    # replace "auto" chunk size, sizing chunks against the real itemsize so
-    # the chunk byte budget is respected for the actual dtype
+    # Any "auto" chunk size is resolved against the real itemsize, so the
+    # chunk byte budget reflects the actual dtype rather than the default.
     chunks = auto_chunk(
         shape,
         chunk_spec,
@@ -288,7 +324,6 @@ def auto_shard(
     )
     chunks = [min(c, s) for c, s in zip(chunks, shards)]
 
-    # Fix incompatibilities between chunk and shard size
     shards, chunks = fix_shard_chunk(shards, chunks, shape)
 
     return ShardsAndChunks(shards=tuple(shards), chunks=tuple(chunks))
@@ -299,27 +334,34 @@ def fix_shard_chunk(
     chunk: tz.ShapeLike,
     shape: tz.ShapeLike,
 ) -> ShardsAndChunks:
-    """
-    Fix incompatibilities between chunk and shard size.
+    """Adjust `chunk` and `shard` so that every shard is a whole number
+    of chunks.
+
+    On a dimension where the chunk already spans the entire array, the
+    chunk is resized to match the shard, since a chunk cannot be larger
+    than the shard it belongs to. On every dimension, a shard not evenly
+    divisible by its chunk is rounded up to the next multiple of that
+    chunk.
 
     Parameters
     ----------
-    shard : iterable[int]
-    chunk : iterable[int]
-    shape : iterable[int]
+    shard : iterable of int
+        The shard size along each dimension.
+    chunk : iterable of int
+        The chunk size along each dimension.
+    shape : iterable of int
+        The full shape being sharded and chunked.
 
     Returns
     -------
-    shard : tuple[int, ...]
-    chunk : tuple[int, ...]
+    ShardsAndChunks
+        The adjusted shard and chunk size along each dimension.
     """
     shard = list(shard)
     chunk = list(chunk)
     for i in range(len(chunk)):
-        # if chunk spans the entire volume, match chunk and shard
         if chunk[i] == shape[i] and chunk[i] != shard[i]:
             chunk[i] = shard[i]
-        # ensure that shard is a multiple of chunk
         if shard[i] % chunk[i]:
             shard[i] = chunk[i] * int(math.ceil(shard[i] / chunk[i]))
     return ShardsAndChunks(tuple(shard), tuple(chunk))

@@ -1,3 +1,11 @@
+"""Conversion between numpy dtypes and the Zarr v2 and v3 data type
+representations.
+
+`asdtype` reads either representation, and any value numpy itself accepts,
+into a numpy dtype. `to_zarr2` and `to_zarr3` go the other way, each
+producing the JSON-serializable form its format version stores.
+"""
+
 __all__ = [
     "DataTypeV2",
     "DataTypeV3",
@@ -20,8 +28,8 @@ from abczarr.errors import UnsupportedConversion
 # these names with numpy, after which ``np.dtype("bfloat16")`` (and the
 # float8/float6/float4 variants) resolves. The names match ml_dtypes' numpy
 # registrations exactly. Complex extension floats (``complex_float32``, ...)
-# are deliberately absent -- ml_dtypes provides no scalar for those, so
-# installing it would not help and they keep the plain error. See
+# are absent because ml_dtypes provides no scalar for them, so they keep the
+# plain error regardless of whether ml_dtypes is installed. See
 # https://github.com/zarr-developers/zarr-extensions/tree/main/data-types
 _ML_DTYPES_EXTENSION_NAMES = frozenset({
     "bfloat16",
@@ -40,6 +48,14 @@ _ML_DTYPES_EXTENSION_NAMES = frozenset({
 
 
 class RegexMatch(str):
+    """A string type hint, subscripted with the pattern a valid value must
+    match.
+
+    ``RegexMatch[r"r\\d+"]`` is `Annotated[str, pattern]`, where `pattern`
+    is a compiled `re.Pattern`. A validator resolved from that hint checks
+    a value against the pattern.
+    """
+
     def __class_getitem__(cls, pattern: tx.Union[str, re.Pattern]) -> type:
         if isinstance(pattern, str):
             pattern = re.compile(pattern)
@@ -106,22 +122,45 @@ def asdtype(
     type: tx.Optional[tx.Type[np.generic]] = None,
     kind: tx.Optional[tx.Union[str, re.Pattern]] = None
 ) -> np.dtype:
-    """
-    Convert a string or numpy dtype to a numpy dtype.
+    """Resolve a numpy dtype from a Zarr v2 or v3 data type, or from
+    anything numpy itself accepts.
+
+    A Zarr v3 extension mapping (``{"name": ..., "configuration": ...}``)
+    is unpacked first: a structured type builds each field recursively, a
+    time type rebuilds numpy's ``datetime64``/``timedelta64`` spelling, and
+    a fixed-length string type rebuilds numpy's ``U``/``S`` spelling. The
+    variable-length ``"string"`` and ``"bytes"`` names resolve to numpy's
+    ``object`` dtype, since numpy has no dedicated scalar for either.
+    Anything else is handed to `numpy.dtype` directly, so an ordinary numpy
+    dtype, dtype string, or `DType` object all resolve the same way.
+
+    A handful of Zarr v3 extension floats (``bfloat16``, the float8
+    variants) have no numpy scalar until ``ml_dtypes`` is imported. When
+    the requested name is one of those, ``ml_dtypes`` is imported and
+    resolution is retried before giving up.
 
     Parameters
     ----------
     dtype : dtype-like
-        The dtype to convert.
+        The dtype to resolve, in any of the forms above.
     type : type[np.generic], optional
-        Check that the resulting dtype is a subclass of this type.
+        Require the resolved dtype's scalar type to be a subclass of this
+        type.
     kind : str or re.Pattern, optional
-        Check that the resulting dtype has this kind.
+        Require the resolved dtype's `numpy.dtype.kind` to equal this
+        string, or to match this pattern.
 
     Returns
     -------
     np.dtype
-        The converted numpy dtype.
+        The resolved numpy dtype.
+
+    Raises
+    ------
+    [UnsupportedConversion][abczarr.errors.UnsupportedConversion]
+        When `dtype` cannot be resolved to a numpy dtype.
+    TypeError
+        When the resolved dtype fails the `type` or `kind` check.
     """
     # Our DType metadata -> dict
     if hasattr(dtype, "to_json"):
@@ -210,18 +249,24 @@ def asdtype(
 
 
 def to_zarr2(dtype: tx.Union[npt.DTypeLike, tx.Mapping]) -> DataTypeV2:
-    """
-    Convert a numpy dtype to a Zarr v2 data type.
+    """Render a numpy dtype (or anything `asdtype` resolves) as a Zarr v2
+    data type.
+
+    A plain scalar dtype renders as its numpy string form (``"<f8"``). A
+    structured dtype with one unnamed field unwraps to that field's own
+    data type. A structured dtype with named fields renders as the
+    nested ``(name, data_type[, shape])`` structure Zarr v2 uses for a
+    structured array.
 
     Parameters
     ----------
     dtype : dtype-like
-        The dtype to convert.
+        The dtype to render.
 
     Returns
     -------
     DataTypeV2
-        The converted Zarr v2 data type.
+        The Zarr v2 data type.
     """
     dtype = asdtype(dtype)
 
@@ -232,18 +277,28 @@ def to_zarr2(dtype: tx.Union[npt.DTypeLike, tx.Mapping]) -> DataTypeV2:
 
 
 def to_zarr3(dtype: tx.Union[npt.DTypeLike, tx.Mapping]) -> DataTypeV3:
-    """
-    Convert a numpy dtype to a Zarr v3 data type.
+    """Render a numpy dtype (or anything `asdtype` resolves) as a Zarr v3
+    data type.
+
+    A dtype with a builtin Zarr v3 name (``"int32"``, ``"float64"``, ...)
+    renders as that name. A structured dtype renders as a ``"struct"``
+    extension type, with each field's own data type rendered recursively.
+    A ``datetime64``/``timedelta64`` dtype renders as the matching
+    ``"numpy.datetime64"``/``"numpy.timedelta64"`` extension type, carrying
+    its unit and scale factor. A fixed-length Unicode or byte dtype (``U``
+    or ``S``) renders as the ``"fixed_length_utf32"`` or
+    ``"null_terminated_bytes"`` extension type, carrying its storage size
+    in bytes.
 
     Parameters
     ----------
     dtype : dtype-like
-        The dtype to convert.
+        The dtype to render.
 
     Returns
     -------
     DataTypeV3
-        The converted Zarr v3 data type.
+        The Zarr v3 data type.
     """
     dtype = asdtype(dtype)
 

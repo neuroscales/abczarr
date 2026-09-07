@@ -1,3 +1,12 @@
+"""The hint-driven class-building machinery abczarr's metadata classes rest
+on.
+
+``attrs`` wraps `attrs <https://www.attrs.org>`_ with the `converter`,
+`validator` and `factory` steps each field derives from its type hint.
+``converters``, ``factories`` and ``validators`` re-export the engines
+those steps are resolved from, in the sibling `bagof` packages.
+"""
+
 __all__ = ["attrs", "converters", "factories", "validators"]
 
 from . import attrs, converters, factories, validators

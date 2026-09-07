@@ -1,15 +1,18 @@
-"""abczarr: one interface for reading and writing Zarr, over any backend.
+"""One interface for reading and writing Zarr, over any backend.
 
-Open or create a node with [open][abczarr.open] and [create][abczarr.create],
-and read or write it through the uniform
-[ZarrArray][abczarr.abc.sync.ZarrArray] /
-[ZarrGroup][abczarr.abc.sync.ZarrGroup] surface, whatever backend or storage is
-behind it. The whole user-facing API is
-re-exported here at the top level: the [ArrayConfig][abczarr.ArrayConfig] and
-[GroupConfig][abczarr.GroupConfig] that creation rests on, the
-[select_driver][abczarr.select_driver] registry that picks a backend, and the
-errors abczarr raises. The open/create, config and registry names are also
-available under [api][abczarr.api]; the errors keep their own home in
+[open][abczarr.open] and [create][abczarr.create] open or create a
+node. The node is then read or written through the uniform
+[ZarrArray][abczarr.abc.sync.ZarrArray] and
+[ZarrGroup][abczarr.abc.sync.ZarrGroup] surface, regardless of the
+backend or the storage behind it.
+
+The whole user-facing API is re-exported at this top level. This
+includes the [ArrayConfig][abczarr.ArrayConfig] and
+[GroupConfig][abczarr.GroupConfig] classes that creation rests on, the
+[select_driver][abczarr.select_driver] registry that picks a backend,
+and the errors abczarr raises. The open and create functions, the
+config classes, and the registry are also available under
+[api][abczarr.api]. The errors keep their own home in
 [abczarr.errors][abczarr.errors].
 """
 

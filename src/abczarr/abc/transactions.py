@@ -1,14 +1,15 @@
 """Transactions over a store: batch a set of writes into one commit.
 
-A transaction is a **view** of a store, not a new kind of object --
-its [store][abczarr.abc.transactions.Transaction.store] property is
-an ordinary [Store][abczarr.abc.store.Store] whose reads see the
-transaction's own pending writes, and nothing is applied to the
+A transaction is a view of a store, not a new kind of object. Its
+[store][abczarr.abc.transactions.Transaction.store] property is an
+ordinary [Store][abczarr.abc.store.Store] whose reads see the
+transaction's own pending writes. Nothing is applied to the
 underlying store until
 [commit][abczarr.abc.transactions.Transaction.commit] is called.
 
-Open one with `store.transaction()`, ideally as a context manager --
-it commits on a clean exit and aborts if the block raises:
+`store.transaction()` opens a transaction. It is best used as a
+context manager, since a context manager commits on a clean exit and
+aborts if the block raises:
 
 ```python
 with store.transaction(atomic=False) as txn:
@@ -17,17 +18,16 @@ with store.transaction(atomic=False) as txn:
 # both writes land together here
 ```
 
-Two flavours:
-
-* a backend with real transactions (tensorstore, an Icechunk
-  session) returns a native transaction from `store.transaction()`;
-* every other store gets
-  [BufferedTransaction][abczarr.abc.transactions.BufferedTransaction],
-  which buffers writes and flushes them on commit. It is **never
-  atomic** -- a failure part-way through the flush leaves a partial
-  result -- so it is only offered for `transaction(atomic=False)`.
-  An atomic transaction is never built this way; a store without
-  native support for one raises instead of pretending.
+A backend with real transactions, such as tensorstore or an Icechunk
+session, returns a native transaction from `store.transaction()`.
+Every other store gets
+[BufferedTransaction][abczarr.abc.transactions.BufferedTransaction],
+which buffers writes and flushes them on commit. This buffered
+transaction is never atomic, because a failure part-way through the
+flush leaves a partial result, so it is only offered for
+`transaction(atomic=False)`. An atomic transaction is never built
+this way. A store with no native support for one raises rather than
+pretend to provide it.
 """
 
 __all__ = [
@@ -60,8 +60,8 @@ class Transaction(ABC):
     """A batch of store operations that commit or abort together."""
 
     #: Whether a commit is all-or-nothing. A non-native transaction
-    #: sets this `False` and says so, so a caller can tell what it
-    #: actually got.
+    #: sets this to `False`, so a caller can tell what it actually
+    #: got.
     atomic: bool = False
 
     @property
@@ -77,8 +77,8 @@ class Transaction(ABC):
         Parameters
         ----------
         message : str, optional
-            Recorded by a backend that keeps commit messages
-            (Icechunk); ignored by others.
+            Recorded by a backend that keeps commit messages, such as
+            Icechunk. Other backends ignore it.
 
         Raises
         ------
@@ -101,7 +101,7 @@ class Transaction(ABC):
         exc_value: tx.Optional[BaseException],
         traceback: tx.Optional[TracebackType],
     ) -> None:
-        # commit on a clean exit, abort when the body raised
+        # Commit on a clean exit. Abort when the body raised.
         if exc_type is not None:
             self.abort()
         else:
@@ -109,7 +109,8 @@ class Transaction(ABC):
 
 
 class _BufferedView(Store):
-    """A store that reads a parent through a pending write/delete buffer."""
+    """A store that reads a parent through a pending write and delete
+    buffer."""
 
     def __init__(
         self,
@@ -124,7 +125,7 @@ class _BufferedView(Store):
         self._native = parent.native
 
     def capability(self, capability: str) -> Support:
-        # a buffered view can do whatever its parent can
+        # A buffered view can do whatever its parent can.
         return self._parent.capability(capability)
 
     def get(self, key: str) -> tx.Optional[bytes]:
@@ -164,12 +165,12 @@ class _BufferedView(Store):
 class BufferedTransaction(Transaction):
     """A non-atomic transaction: buffer writes, flush them on commit.
 
-    Reads through `store` see the buffered writes and deletes;
+    Reads through `store` see the buffered writes and deletes.
     `commit` then applies them to the parent store one at a time, so
-    a failure part-way through leaves a partial result. Useful for
-    batching many small writes on a backend with no native
-    transaction support, but never atomic -- `atomic` is always
-    `False`.
+    a failure part-way through leaves a partial result. This
+    transaction is useful for batching many small writes on a
+    backend with no native transaction support, but it is never
+    atomic. `atomic` is always `False`.
     """
 
     atomic = False
@@ -243,6 +244,7 @@ class AsyncTransaction(ABC):
         exc_value: tx.Optional[BaseException],
         traceback: tx.Optional[TracebackType],
     ) -> None:
+        # Commit on a clean exit. Abort when the body raised.
         if exc_type is not None:
             await self.abort()
         else:
@@ -340,7 +342,7 @@ class AsyncBufferedTransaction(AsyncTransaction):
 
 
 def _under(prefix: str, key: str) -> bool:
-    """Whether *key* is at or below *prefix* (matching store prefix rules)."""
+    """Whether `key` is at or below `prefix` (matching store prefix rules)."""
     if not prefix:
         return True
     return key == prefix or key.startswith(prefix.rstrip(_SEP) + _SEP)

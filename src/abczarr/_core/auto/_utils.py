@@ -1,3 +1,5 @@
+"""Deriving a default value from a type hint, and NaN-tolerant equality."""
+
 __all__ = [
     "get_default",
     "eq_safenan",
@@ -17,19 +19,20 @@ from ._typing import NoneType, UnionType
 
 
 def _unwrap_annotated(hint: tx.Any) -> tx.Any:
-    """Strip any ``Annotated[...]`` layers, returning the wrapped hint."""
+    """Strip any `Annotated[...]` layers, returning the wrapped hint."""
     while tx.get_origin(hint) is tx.Annotated:
         hint = tx.get_args(hint)[0]
     return hint
 
 
 def _permits_absence(hint: tx.Any) -> bool:
-    """Whether *hint* carries a Requirement that lets the field be absent.
+    """Whether `hint` carries a `Requirement` that lets the field be
+    absent.
 
-    A ``Recommended``/``Optional``/... field (any Requirement other than
-    ``Required``/MUST) may be unset, so no default is derived from a
-    ``Literal``/``Optional`` in the hint -- the requirement factory yields
-    ``MISSING`` instead.
+    A `Recommended`, `Optional`, or other non-`Required` requirement
+    level means the field may be unset, so `get_default` derives no
+    value from a `Literal` or `Optional` in the hint. The requirement
+    factory yields `MISSING` for it instead.
     """
     while tx.get_origin(hint) is tx.Annotated:
         args = tx.get_args(hint)
@@ -41,18 +44,18 @@ def _permits_absence(hint: tx.Any) -> bool:
 
 
 def get_default(hint: tx.Any) -> tx.Any:
-    """
-    Get a default value from a type hint.
+    """Derive a default value from a type hint, or raise `TypeError`
+    when none can be derived.
 
-    * If the hint carries a non-``Required`` Requirement (``Recommended``,
-      ``Optional``, ...), a `TypeError` is raised so the caller falls through
-      to the requirement factory -- an absent optional field must not have a
-      value invented for it.
-    * If the hint is a `Union` that contains `NoneType`, `None` is returned.
-    * If the hint is a `Literal`, the first value in the literal is returned.
-    * Otherwise, if the hint is a `Union`, we recurse through its sub-hints.
-    * If no default value can be found, a `TypeError` is raised.
-      A factory should then be used.
+    A hint carrying a non-`Required` `Requirement` (`Recommended`,
+    `Optional`, and so on) always raises, since an unset optional field
+    is absent rather than defaulted to an invented value. A `Union`
+    hint containing `NoneType` defaults to `None`. A `Literal` hint
+    defaults to its first value. Any other `Union` hint is tried
+    sub-hint by sub-hint, defaulting to the first one that itself
+    yields a default. Any other hint raises `TypeError`, since it names
+    no value a default could be derived from. A factory should be used
+    for it instead.
     """
     if _permits_absence(hint):
         raise TypeError(
@@ -77,8 +80,13 @@ def get_default(hint: tx.Any) -> tx.Any:
 
 
 def eq_safenan(x: tx.Any) -> tx.Any:
-    """
-    Safe equality comparison that treats NaN as equal to NaN.
+    """Map a NaN value to a value that compares equal to itself, for use
+    as an `attrs` field's `eq` key.
+
+    A real or floating-point NaN, which is never equal to itself under
+    ordinary comparison, is mapped to the string `"NaN"`, so a field
+    compared through this function treats two NaN values as equal. Any
+    other value is returned unchanged.
     """
     if isinstance(x, (numbers.Real, np.floating)) and math.isnan(x):
         return "NaN"

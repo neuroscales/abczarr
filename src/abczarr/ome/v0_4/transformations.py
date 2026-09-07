@@ -19,9 +19,15 @@ class CoordinateTransformation(OMEMetadata):
     """A transformation from array indices to physical coordinates.
 
     Build [Scale][abczarr.ome.v0_4.transformations.Scale] or
-    [Translation][abczarr.ome.v0_4.transformations.Translation]
-    directly rather than this base class. Constructing with
-    `type="scale"` or `type="translation"` returns the matching one.
+    [Translation][abczarr.ome.v0_4.transformations.Translation] directly
+    rather than this base class. Constructing a `CoordinateTransformation`
+    with `type="scale"` or `type="translation"` returns the matching one.
+
+    Parameters
+    ----------
+    type : str
+        Which kind of transformation this is: `"scale"` or
+        `"translation"`.
     """
 
     type: Required[str] = field(factory=False)
@@ -30,7 +36,13 @@ class CoordinateTransformation(OMEMetadata):
 @register_subclass(type="translation")
 @autodefine
 class Translation(CoordinateTransformation):
-    """An offset, one value per axis, in the axes' physical units."""
+    """An offset, one value per axis, in the axes' physical units.
+
+    Parameters
+    ----------
+    translation : list of float
+        The offset, one number per axis.
+    """
 
     type: Required[tx.Literal["translation"]]
     translation: Required[tx.List[float]]
@@ -41,10 +53,15 @@ class Translation(CoordinateTransformation):
 class Scale(CoordinateTransformation):
     """A per-axis scale factor from array indices to physical units.
 
-    For a resolution level, this is the physical size of one array
-    element along each axis. It's what turns a pixel index into a
-    micrometer, and what makes coarser levels of a pyramid line up
-    with the finest one.
+    For a resolution level, the scale factor is the physical size of one
+    array element along each axis. It turns a pixel index into a physical
+    unit such as a micrometer, and it makes coarser levels of a pyramid
+    line up with the finest one.
+
+    Parameters
+    ----------
+    scale : list of float
+        The scale factor, one number per axis.
     """
 
     type: Required[tx.Literal["scale"]]

@@ -25,16 +25,55 @@ WellPath = tx.Annotated[str, re.compile("^[A-Za-z0-9]+/[A-Za-z0-9]+$")]
 class Plate(OMEMetadata):
     """A high-content screening plate.
 
-    `rows` and `columns` name the plate's grid, like `"A"`, `"B"`, ...
-    and `"1"`, `"2"`, ... `wells` places each well in that grid, and
-    points, by `path`, at the group holding that well's images.
-    `acquisitions` lists the imaging runs the wells' images belong to,
-    when the screen ran more than one.
+    `rows` and `columns` name the plate's grid, such as `"A"`, `"B"`, and
+    so on for rows, and `"1"`, `"2"`, and so on for columns.
+
+    Parameters
+    ----------
+    rows : list of Row
+        The plate's rows, in grid order.
+    columns : list of Column
+        The plate's columns, in grid order.
+    wells : list of Well
+        Every well of the plate, each placed in the grid and pointing at
+        the group holding its images.
+    acquisitions : list of Acquisition
+        The imaging runs the wells' images belong to, when the screen ran
+        more than one. Optional.
+    name : str
+        A name for the plate. Recommended.
+    field_count : int
+        The largest number of fields of view acquired for any well of the
+        plate. Recommended.
+    version : Version
+        The OME-NGFF version the metadata is written against. Recommended
+        in OME-NGFF 0.1 and 0.2, and required from 0.3 on.
     """
 
     @autodefine
     class Acquisition(OMEMetadata):
-        """One imaging run over some or all of the plate's wells."""
+        """One imaging run over some or all of the plate's wells.
+
+        Parameters
+        ----------
+        id : int
+            A non-negative integer identifying the acquisition. A
+            [Well.Image][abczarr.ome.v0_2.wells.Well.Image] refers to
+            this run by this value.
+        name : str
+            A name for the acquisition. Recommended.
+        maximumfieldcount : int
+            The largest number of fields of view acquired for any well in
+            this run. Recommended.
+        description : str
+            A description of the acquisition. Optional.
+        starttime : int
+            The time the acquisition started, in Unix epoch milliseconds.
+            Optional.
+        endtime : int
+            The time the acquisition ended, in Unix epoch milliseconds.
+            Optional.
+        """
 
         id: Required[NonNegativeInt] = field(factory=False)
         name: Recommended[str]
@@ -45,13 +84,25 @@ class Plate(OMEMetadata):
 
     @autodefine
     class Column(OMEMetadata):
-        """One column of the plate's grid, named as it is labeled."""
+        """One column of the plate's grid, named as it is labeled.
+
+        Parameters
+        ----------
+        name : str
+            The column's label, made of letters and digits only.
+        """
 
         name: Required[AlphaNumeric] = field(factory=False)
 
     @autodefine
     class Row(OMEMetadata):
-        """One row of the plate's grid, named as it is labeled."""
+        """One row of the plate's grid, named as it is labeled.
+
+        Parameters
+        ----------
+        name : str
+            The row's label, made of letters and digits only.
+        """
 
         name: Required[AlphaNumeric] = field(factory=False)
 
@@ -59,9 +110,15 @@ class Plate(OMEMetadata):
     class Well(OMEMetadata):
         """One well's position in the plate, and the group holding it.
 
-        `path` is the well's group, relative to the plate group, as
-        `"<row>/<column>"`; `rowIndex` and `columnIndex` are its
-        position as indices into `Plate.rows` and `Plate.columns`.
+        Parameters
+        ----------
+        path : str
+            The well's group, relative to the plate group, spelled as
+            ``"<row>/<column>"``.
+        rowIndex : int
+            The well's row, as an index into `Plate.rows`.
+        columnIndex : int
+            The well's column, as an index into `Plate.columns`.
         """
 
         path: Required[WellPath] = field(factory=False)

@@ -15,19 +15,29 @@ from ..base import OMEMetadata
 class Well(OMEMetadata):
     """A well's images: one field of view per acquisition run.
 
-    A well group holds one subgroup per field of view; `images` lists
-    them, each naming its subgroup and, when the plate carries more
-    than one, which acquisition it belongs to.
+    A well group holds one subgroup per field of view.
+
+    Parameters
+    ----------
+    images : list of Image
+        The well's fields of view, each naming its subgroup and, when
+        the plate carries more than one, which acquisition it belongs
+        to.
     """
 
     @autodefine
     class Image(OMEMetadata):
         """One field of view within a well.
 
-        `path` is the image's group, relative to the well group.
-        `acquisition` is the id of the
-        [Plate.Acquisition][abczarr.ome.v0_5.plates.Plate.Acquisition]
-        it was captured in, when the plate ran more than one.
+        Parameters
+        ----------
+        path : str
+            The image's group, relative to the well group.
+        acquisition : int
+            The id of the
+            [Plate.Acquisition][abczarr.ome.v0_5.plates.Plate.Acquisition]
+            this field of view was captured in, when the plate ran more
+            than one. Recommended.
         """
 
         path: Required[str] = field(factory=False)

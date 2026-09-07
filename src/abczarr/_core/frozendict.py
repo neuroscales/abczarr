@@ -1,3 +1,5 @@
+"""An immutable mapping, and the recursive rebuild that undoes it."""
+
 from collections import abc
 
 import typing_extensions as tx
@@ -7,7 +9,14 @@ VT = tx.TypeVar("VT")
 
 
 class FrozenDict(tx.Mapping[KT, VT]):
-    """An immutable dictionary."""
+    """A hashable, immutable mapping.
+
+    Behaves like a read-only `dict`: `len`, iteration, and item lookup
+    all work, but there is no `__setitem__` or `__delitem__`. Two
+    `FrozenDict` instances with the same items hash equal, so a
+    `FrozenDict` can itself serve as a dictionary key or a member of a
+    frozen attrs class.
+    """
 
     __slots__ = ("_data", "_hash")
 
@@ -34,7 +43,7 @@ class FrozenDict(tx.Mapping[KT, VT]):
 
 
 def unfreeze(value: tx.Any) -> tx.Any:
-    """Rebuild *value* from plain built-in types, recursively.
+    """Rebuild `value` from plain built-in types, recursively.
 
     A [FrozenDict][abczarr._core.frozendict.FrozenDict], or any other
     mapping, becomes a plain ``dict``, and each of its values is rebuilt in
