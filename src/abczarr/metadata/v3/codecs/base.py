@@ -45,7 +45,7 @@ class CodecConfigImpl(CodecConfig):
 
 
 def _v2_id(name: str) -> str:
-    """Recover the numcodecs id a v3 codec *name* maps back to.
+    """Recover the numcodecs id a v3 codec `name` maps back to.
 
     A v2 filter with no dedicated v3 codec is carried in v3 under the
     numcodecs extension namespace, for example ``"numcodecs.delta"``.
@@ -113,14 +113,14 @@ class Codec(Extension):
         Returns
         -------
         Codec
-            The equivalent codec for *version*: this object unchanged
+            The equivalent codec for `version`: this object unchanged
             for version 3, or the corresponding v1 or v2 codec object
             otherwise.
 
         Raises
         ------
         ValueError
-            If *version* is not 1, 2 or 3.
+            If `version` is not 1, 2 or 3.
         """
         if version == 3:
             return self

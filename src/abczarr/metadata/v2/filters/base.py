@@ -47,7 +47,7 @@ class Filter(Metadata):
         Raises
         ------
         ValueError
-            If *version* is not 2 or 3.
+            If `version` is not 2 or 3.
         """
         if version == 2:
             return self

@@ -73,12 +73,12 @@ class BloscConfig(CodecConfigImpl):
         Returns
         -------
         Metadata
-            The equivalent Blosc codec for *version*.
+            The equivalent Blosc codec for `version`.
 
         Raises
         ------
         ValueError
-            If *version* is not 1, 2 or 3.
+            If `version` is not 1, 2 or 3.
         """
         if version == 3:
             return self
@@ -137,7 +137,7 @@ class BloscCodec(CompressorCodec):
         Returns
         -------
         Metadata
-            The equivalent Blosc codec for *version*.
+            The equivalent Blosc codec for `version`.
         """
         if version == 3:
             return self

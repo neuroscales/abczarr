@@ -31,13 +31,13 @@ class CodecOptions(Metadata):
         Returns
         -------
         Metadata
-            The equivalent codec for *version*: this object unchanged
+            The equivalent codec for `version`: this object unchanged
             for version 1, or a v2 or v3 codec object otherwise.
 
         Raises
         ------
         ValueError
-            If *version* is not 1, 2 or 3, or if the compressor's
+            If `version` is not 1, 2 or 3, or if the compressor's
             numcodecs id cannot be determined.
         """
         if version == 1:

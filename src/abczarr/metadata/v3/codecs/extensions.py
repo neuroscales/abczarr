@@ -528,14 +528,14 @@ class ZstdConfig(CodecConfigImpl):
         Returns
         -------
         Metadata
-            The equivalent Zstd codec for *version*. Only the
+            The equivalent Zstd codec for `version`. Only the
             compression level carries over to v1 and v2, since their
             numcodecs zstd codec has no checksum option.
 
         Raises
         ------
         ValueError
-            If *version* is not 1, 2 or 3.
+            If `version` is not 1, 2 or 3.
         """
         if version == 3:
             return self
@@ -581,7 +581,7 @@ class ZstdCodec(CompressorCodec):
         Returns
         -------
         Metadata
-            The equivalent Zstd codec for *version*.
+            The equivalent Zstd codec for `version`.
         """
         if version == 3:
             return self

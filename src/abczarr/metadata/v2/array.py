@@ -149,9 +149,9 @@ class ArrayMetadata(ArrayMetadataV2):
         """Convert this array's metadata to another Zarr version.
 
         Converting to v1 keeps only the compressor: v1 has no
-        filters, so any `filters` are subject to *policy*. Converting
+        filters, so any `filters` are subject to `policy`. Converting
         to v3 maps each filter and the compressor onto v3's codec
-        pipeline and, when `order` is not ``"C"``, applies *policy*
+        pipeline and, when `order` is not ``"C"``, applies `policy`
         as well, since v3 has no memory-order field.
 
         Parameters
@@ -164,16 +164,16 @@ class ArrayMetadata(ArrayMetadataV2):
         Returns
         -------
         ArrayMetadata
-            Equivalent metadata for *version*. Converting to 2
+            Equivalent metadata for `version`. Converting to 2
             returns this object unchanged.
 
         Raises
         ------
         ValueError
-            If *version* is not 1, 2 or 3.
+            If `version` is not 1, 2 or 3.
         UnsupportedConversion
-            If *policy* is ``"strict"`` and a field cannot be
-            represented in *version*.
+            If `policy` is ``"strict"`` and a field cannot be
+            represented in `version`.
         """
         if version == 1:
             return self._to_v1(policy)
@@ -300,7 +300,7 @@ def _vlen_data_type(filters: tx.Iterable[tx.Any]) -> tx.Optional[str]:
 
 
 def _bytes_codec(v3: tx.Any, dtype: tx.Any) -> tx.Any:
-    """Build the v3 array-to-bytes codec that carries *dtype*'s byte
+    """Build the v3 array-to-bytes codec that carries `dtype`'s byte
     order."""
     endian = {
         "<": "little",

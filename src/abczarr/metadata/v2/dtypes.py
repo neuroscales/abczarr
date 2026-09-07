@@ -22,7 +22,7 @@ class DType:
     [ScalarDType][abczarr.metadata.v2.dtypes.ScalarDType] for a plain
     dtype, such as ``"<f8"``, or a
     [StructDType][abczarr.metadata.v2.dtypes.StructDType] for a
-    structured one, whichever *value* describes.
+    structured one, whichever `value` describes.
 
     Parameters
     ----------
@@ -59,7 +59,7 @@ class DType:
         Raises
         ------
         ValueError
-            If *version* is not 1, 2 or 3.
+            If `version` is not 1, 2 or 3.
         """
         if version in (1, 2):
             return self
@@ -103,7 +103,7 @@ class ScalarDType(str, DType):
 
 
 def _immutable(self: "StructDType", *args, **kwargs) -> None:
-    """Refuse to mutate *self*, since a `StructDType` is immutable."""
+    """Refuse to mutate `self`, since a `StructDType` is immutable."""
     raise TypeError(f"{self.__class__.__name__} is immutable")
 
 

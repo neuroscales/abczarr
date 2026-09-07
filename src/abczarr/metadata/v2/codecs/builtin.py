@@ -76,12 +76,12 @@ class BloscCodec(CodecImpl):
         Returns
         -------
         Metadata
-            The equivalent Blosc codec for *version*.
+            The equivalent Blosc codec for `version`.
 
         Raises
         ------
         ValueError
-            If *version* is not 1, 2 or 3.
+            If `version` is not 1, 2 or 3.
         """
         if version == 2:
             return self

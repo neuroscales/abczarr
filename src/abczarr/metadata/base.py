@@ -86,7 +86,7 @@ def _report_loss(
     """Apply a conversion policy to a field the target cannot hold.
 
     A version's `to_version` implementation calls this once for each
-    field it cannot carry over to *version*. Under ``"lossy"`` the
+    field it cannot carry over to `version`. Under ``"lossy"`` the
     call does nothing. Under ``"warn"`` it emits a warning naming the
     field. Under ``"strict"`` it raises
     [UnsupportedConversion][abczarr.errors.UnsupportedConversion].
@@ -103,7 +103,7 @@ def _report_loss(
     Raises
     ------
     UnsupportedConversion
-        If *policy* is ``"strict"``.
+        If `policy` is ``"strict"``.
     """
     if policy == "lossy":
         return
@@ -175,7 +175,7 @@ class NodeMetadata(Metadata):
         """Load a node's metadata from its directory.
 
         The Zarr format version is detected from which metadata file
-        is present under *root*: `zarr.json` for v3, `.zarray` or
+        is present under `root`: `zarr.json` for v3, `.zarray` or
         `.zgroup` for v2, or `.zarray` for v1. The metadata is
         returned as an instance of the matching version's class.
 
@@ -193,7 +193,7 @@ class NodeMetadata(Metadata):
         Raises
         ------
         FileNotFoundError
-            If *root* holds no recognized metadata file.
+            If `root` holds no recognized metadata file.
         """
         zarr_json = root / constants.Z3_JSON
         if zarr_json.exists():
@@ -215,7 +215,7 @@ class NodeMetadata(Metadata):
 
 
 def _node_type_at(root: os.PathLike) -> tx.Optional[tz.NodeType]:
-    """Report whether *root* holds a Zarr array, a group, or neither.
+    """Report whether `root` holds a Zarr array, a group, or neither.
 
     Reads only enough of the metadata to answer that question, a v3
     `zarr.json`'s `node_type` field or which of `.zarray` and
@@ -231,7 +231,7 @@ def _node_type_at(root: os.PathLike) -> tx.Optional[tz.NodeType]:
     Returns
     -------
     str or None
-        ``"array"`` or ``"group"`` if *root* holds Zarr metadata of
+        ``"array"`` or ``"group"`` if `root` holds Zarr metadata of
         that kind, otherwise `None`.
     """
     detected = _node_at(root)
@@ -241,7 +241,7 @@ def _node_type_at(root: os.PathLike) -> tx.Optional[tz.NodeType]:
 def _node_at(
     root: os.PathLike,
 ) -> tx.Optional[tx.Tuple[tz.NodeType, tz.ZarrVersion]]:
-    """Identify the kind and Zarr version of the node stored at *root*.
+    """Identify the kind and Zarr version of the node stored at `root`.
 
     Reads only enough of the metadata to answer the question: a v3
     `zarr.json`'s `node_type`, or which of `.zarray` and `.zgroup` a
@@ -311,8 +311,8 @@ class GroupMetadata(NodeMetadata):
         A group carries only user attributes and a format version.
         Converting between v2 and v3 re-stamps the format and
         carries the attributes across unchanged, so nothing is lost
-        and *policy* is never invoked. Zarr v1 has no group concept,
-        so converting a group to v1 raises regardless of *policy*.
+        and `policy` is never invoked. Zarr v1 has no group concept,
+        so converting a group to v1 raises regardless of `policy`.
 
         Parameters
         ----------
@@ -328,15 +328,15 @@ class GroupMetadata(NodeMetadata):
         Returns
         -------
         GroupMetadata
-            Equivalent metadata for *version*. Converting to the group's
+            Equivalent metadata for `version`. Converting to the group's
             own version returns this object unchanged.
 
         Raises
         ------
         ValueError
-            If *version* is not 1, 2 or 3.
+            If `version` is not 1, 2 or 3.
         UnsupportedConversion
-            If *version* is 1, which has no group concept.
+            If `version` is 1, which has no group concept.
         """
         if version == self.zarr_format:
             return self
@@ -345,7 +345,7 @@ class GroupMetadata(NodeMetadata):
             # carry attributes into and the conversion cannot proceed under
             # any policy. This is a documented limitation, not a
             # policy-governed loss, so it raises a named error regardless of
-            # *policy*.
+            # `policy`.
             raise UnsupportedConversion("group", 1)
         if version in (2, 3):
             target = {2: GroupMetadataV2, 3: GroupMetadataV3}[version]
@@ -484,7 +484,7 @@ class NodeMetadataV1(NodeMetadata):
         Returns
         -------
         ArrayMetadataV1
-            The metadata built from *data*.
+            The metadata built from `data`.
         """
         if cls is NodeMetadataV1:
             # There are no groups in Zarr v1
@@ -559,7 +559,7 @@ class NodeMetadataV2(NodeMetadata):
         Raises
         ------
         FileNotFoundError
-            If *root* holds neither `.zarray` nor `.zgroup`.
+            If `root` holds neither `.zarray` nor `.zgroup`.
         """
 
         # --- Detect node type ---
@@ -704,7 +704,7 @@ class NodeMetadataV3(NodeMetadata):
         Raises
         ------
         FileNotFoundError
-            If *root* holds no `zarr.json`.
+            If `root` holds no `zarr.json`.
         """
         zarr_json = root / constants.Z3_JSON
         if not zarr_json.exists():
@@ -762,7 +762,7 @@ class ArrayMetadataV3(NodeMetadataV3, ArrayMetadata):
 
 
 def _atomic_write(path: os.PathLike, data: tz.JsonDict) -> None:
-    """Write JSON data to *path* so a reader never sees a partial file.
+    """Write JSON data to `path` so a reader never sees a partial file.
 
     A local filesystem gets the classic temp-file-and-rename dance: a
     sibling temporary file is written, ``fsync``ed, then moved onto

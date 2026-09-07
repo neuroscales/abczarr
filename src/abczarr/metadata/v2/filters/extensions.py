@@ -64,7 +64,7 @@ class BitroundFilter(FilterImpl):
         Raises
         ------
         ValueError
-            If *version* is not 2 or 3.
+            If `version` is not 2 or 3.
         """
         if version == 2:
             return self
@@ -109,7 +109,7 @@ class PackBitsFilter(FilterImpl):
         Raises
         ------
         ValueError
-            If *version* is not 2 or 3.
+            If `version` is not 2 or 3.
         """
         if version == 2:
             return self
@@ -174,7 +174,7 @@ class ScaleOffsetFilter(FilterImpl):
         Raises
         ------
         ValueError
-            If *version* is not 2 or 3.
+            If `version` is not 2 or 3.
         """
         if version == 2:
             return self
@@ -228,7 +228,7 @@ class AsTypeFilter(FilterImpl):
         Raises
         ------
         ValueError
-            If *version* is not 2 or 3.
+            If `version` is not 2 or 3.
         """
         if version == 2:
             return self
@@ -289,7 +289,7 @@ class CategorizeFilter(FilterImpl):
         Raises
         ------
         ValueError
-            If *version* is not 2 or 3.
+            If `version` is not 2 or 3.
         """
         if version == 2:
             return self

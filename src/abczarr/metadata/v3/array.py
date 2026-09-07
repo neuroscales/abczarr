@@ -364,12 +364,12 @@ class ArrayMetadata(ArrayMetadataV3):
         Requires a
         [RegularChunkGrid][abczarr.metadata.v3.array.RegularChunkGrid]
         -- v2 and v1 have no other kind. Sharding is unwrapped into
-        its inner codecs (subject to *policy*, since the sharding
+        its inner codecs (subject to `policy`, since the sharding
         structure itself is then lost), the codec pipeline is split
         back into v2's filters, byte order and compressor around its
         one array-to-bytes codec, and an `order` other than ``"C"``
         or more than one bytes-to-bytes codec is likewise subject to
-        *policy*.
+        `policy`.
 
         Parameters
         ----------
@@ -381,17 +381,17 @@ class ArrayMetadata(ArrayMetadataV3):
         Returns
         -------
         ArrayMetadata
-            Equivalent metadata for *version*. Converting to 3
+            Equivalent metadata for `version`. Converting to 3
             returns this object unchanged.
 
         Raises
         ------
         ValueError
-            If *version* is not 1, 2 or 3, or if `chunk_grid` is not
+            If `version` is not 1, 2 or 3, or if `chunk_grid` is not
             a `RegularChunkGrid`.
         UnsupportedConversion
-            If *policy* is ``"strict"`` and a field cannot be
-            represented in *version*.
+            If `policy` is ``"strict"`` and a field cannot be
+            represented in `version`.
         """
         if version == 1:
             # route through v2 -- v1 and v2 share the numcodecs model
@@ -436,7 +436,7 @@ class ArrayMetadata(ArrayMetadataV3):
 
 
 def _collect_codec_features(codec: Codec, feats: tx.Set[str]) -> None:
-    """Add *codec*'s feature key to *feats*, recursing into a sharding
+    """Add `codec`'s feature key to `feats`, recursing into a sharding
     codec's inner and index codecs so a nested codec is named too."""
     name = getattr(codec, "name", None)
     if name:
@@ -461,8 +461,8 @@ _VLEN_DTYPE_TO_FILTER = {"string": "vlen-utf8", "bytes": "vlen-bytes"}
 def _pop_next(
     seq: tx.List[tx.Type[Codec]], cls: tx.Type[Codec]
 ) -> tx.Optional[Codec]:
-    """Remove and return the first instance of *cls* in *seq*, or `None`
-    if *seq* holds none."""
+    """Remove and return the first instance of `cls` in `seq`, or `None`
+    if `seq` holds none."""
     for i, c in enumerate(seq):
         if isinstance(c, cls):
             return seq.pop(i)
@@ -470,7 +470,7 @@ def _pop_next(
 
 
 def _is_serializer(codec: Codec) -> bool:
-    """Report whether *codec* is the array-to-bytes step of the v3
+    """Report whether `codec` is the array-to-bytes step of the v3
     pipeline."""
     return isinstance(codec, BytesCodec) or getattr(codec, "name", None) == (
         "bytes"
@@ -480,7 +480,7 @@ def _is_serializer(codec: Codec) -> bool:
 def _to_v2(
     self: ArrayMetadata, policy: base.ConversionPolicy = "lossy"
 ) -> base.ArrayMetadata:
-    """Convert *self* to a v2 `ArrayMetadata`, applying *policy* to
+    """Convert `self` to a v2 `ArrayMetadata`, applying `policy` to
     whatever v2 cannot represent."""
     from abczarr.metadata import v2
 

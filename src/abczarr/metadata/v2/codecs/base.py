@@ -57,14 +57,14 @@ class Codec(Metadata):
         Returns
         -------
         Codec
-            The equivalent codec for *version*: this object
+            The equivalent codec for `version`: this object
             unchanged for version 2, or the corresponding v1 or v3
             codec object otherwise.
 
         Raises
         ------
         ValueError
-            If *version* is not 1, 2 or 3.
+            If `version` is not 1, 2 or 3.
         """
         if version == 2:
             return self

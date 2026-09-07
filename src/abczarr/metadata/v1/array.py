@@ -129,7 +129,7 @@ class ArrayMetadata(ArrayMetadataV1):
         A v1 array converts to v2 or v3 without loss. V2's compressor
         model can represent everything the `compression` and
         `compression_opts` pair can express, and v3's codec pipeline
-        can in turn represent v2's. *policy* is accepted for a
+        can in turn represent v2's. `policy` is accepted for a
         signature consistent with other versions, but it is never
         invoked here, since nothing is dropped.
 
@@ -143,13 +143,13 @@ class ArrayMetadata(ArrayMetadataV1):
         Returns
         -------
         ArrayMetadata
-            Equivalent metadata for *version*. Converting to 1
+            Equivalent metadata for `version`. Converting to 1
             returns this object unchanged.
 
         Raises
         ------
         ValueError
-            If *version* is not 1, 2 or 3.
+            If `version` is not 1, 2 or 3.
         """
         if version == 1:
             return self

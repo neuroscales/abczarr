@@ -79,7 +79,7 @@ class DType(MustUnderstandExtension):
         Raises
         ------
         ValueError
-            If *version* is not 1, 2 or 3.
+            If `version` is not 1, 2 or 3.
         """
         if version == 3:
             return self
@@ -113,9 +113,9 @@ def _make_dtype_class(
     module: str = __name__
 ) -> tx.Type[DType]:
     """Build and register a `DType` subclass for the core data type
-    named *name*.
+    named `name`.
 
-    The class name is derived from *name* by splitting on ``.`` and
+    The class name is derived from `name` by splitting on ``.`` and
     ``_`` and capitalizing each part, so ``"numpy.datetime64"``
     becomes ``NumpyDatetime64``.
 
@@ -148,7 +148,7 @@ def _make_dtype_class(
 def _splitall(
     *s: str, sep: tx.Optional[tx.Tuple[str]] = None
 ) -> tx.Tuple[str, ...]:
-    """Split each string in *s* on every separator in *sep*, in order.
+    """Split each string in `s` on every separator in `sep`, in order.
 
     Parameters
     ----------
@@ -180,8 +180,8 @@ def _make_dtype_classes(
     ignore: tx.Sequence[str] = (),
     base: tx.Type[DType] = DTypeImpl,
 ) -> None:
-    """Build and register a `DType` subclass for each name in *names*,
-    installing every class into *namespace*.
+    """Build and register a `DType` subclass for each name in `names`,
+    installing every class into `namespace`.
 
     Parameters
     ----------
@@ -199,7 +199,7 @@ def _make_dtype_classes(
     Returns
     -------
     list of str
-        The class names installed into *namespace*, suitable for
+        The class names installed into `namespace`, suitable for
         extending a module's `__all__`.
     """
     if isinstance(ignore, str):
