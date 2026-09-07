@@ -18,7 +18,7 @@ a world or anatomical frame. One config lowers to the stable 0.5 shape
 and the 0.6 preview alike.
 """
 
-__all__ = ["ImageConfig", "Transform", "axis"]
+__all__ = ["ImageConfig", "axis"]
 
 # stdlib
 from collections import abc as _abc
@@ -48,9 +48,22 @@ from .v0_6rc0.transformations import (
     Translation,
 )
 
-#: An axis, as a user may spell it: a bare name, a ``(name, type)`` or
-#: ``(name, type, unit)`` tuple, or a ready-made 0.6 [Axis][...].
-AxisSpec = tx.Union[str, tx.Sequence[tx.Any], Axis]
+#: A single axis, as a user may spell it: a bare name, a ``(name, type)`` or
+#: ``(name, type, unit)`` tuple, a JSON-style ``{"name", "type", "unit"}``
+#: dict, or a ready-made 0.6 [Axis][...].
+AxisSpec = tx.Union[str, tx.Mapping[str, tx.Any], tx.Sequence[tx.Any], Axis]
+
+#: The axes of a config: a sequence of axis specs, or an ordered mapping from
+#: axis name to a type string, a dict of the remaining fields, or `None`.
+Axes = tx.Union[tx.Sequence[AxisSpec], tx.Mapping[str, tx.Any]]
+
+#: One transform's key in the mapping form of `transforms`: a model system
+#: name, or an ``(input, output)`` pair of system names.
+TransformKey = tx.Union[str, tx.Tuple[str, str]]
+
+#: The intrinsic-to-model transforms of a config: a sequence of transforms, or
+#: a mapping from a [TransformKey][abczarr.ome.config.TransformKey] to one.
+Transforms = tx.Union[tx.Sequence[tx.Any], tx.Mapping[TransformKey, tx.Any]]
 
 #: A per-axis quantity (`scale`, `translation`, `factor`): one value for
 #: every axis, a value per axis, or a mapping keyed by axis name or type.
@@ -100,35 +113,6 @@ def axis(
 
 
 @define
-class Transform:
-    """One intrinsic-to-model transform for an
-    [ImageConfig][abczarr.ome.config.ImageConfig].
-
-    Wrap a numpy affine matrix or a typed OME transformation to say which
-    coordinate systems it maps between. The default maps the intrinsic
-    system onto the config's model system.
-
-    Parameters
-    ----------
-    data : array-like or CoordinateTransformation
-        A 2D affine matrix (turned into an
-        [Affine][abczarr.ome.v0_6rc0.transformations.Affine]) or a
-        ready-made typed transformation.
-    input : {"intrinsic", "voxel"}
-        The system the transform starts from. ``"voxel"`` lets you write
-        the transform in voxel units; it still maps from the intrinsic
-        system once resolved, like every other transform.
-    output : str, optional
-        The name of the model system the transform maps onto. `None` uses
-        the config's `model_name`.
-    """
-
-    data: tx.Any = field()
-    input: str = field(default="intrinsic")  # noqa: A003
-    output: tx.Optional[str] = field(default=None)
-
-
-@define
 class ImageConfig:
     """A high-level description of an OME-Zarr multiscale image.
 
@@ -139,13 +123,16 @@ class ImageConfig:
 
     Parameters
     ----------
-    axes : sequence of axis specs
-        One entry per array dimension: a name (``"x"``), a
-        ``(name, type)`` or ``(name, type, unit)`` tuple, or a typed
-        [Axis][abczarr.ome.v0_6rc0.systems.Axis]. Names are the OME axis
-        names and line up with a v3 array's `dimension_names`. A missing
-        type is inferred from the name (``x``/``y``/``z`` space, ``t``
-        time, ``c`` channel, else space).
+    axes : sequence or mapping
+        The array's axes, one per dimension. A sequence lists each axis as a
+        name (``"x"``), a ``(name, type)`` or ``(name, type, unit)`` tuple, a
+        ``{"name", "type", "unit"}`` dict, or a typed
+        [Axis][abczarr.ome.v0_6rc0.systems.Axis]. A mapping keys each axis by
+        its name, in order, and gives a type string, a dict of the remaining
+        fields, or `None`. An axis name matches a v3 array's
+        `dimension_names`. A missing type is inferred from the name: ``x``,
+        ``y``, and ``z`` are space, ``t`` is time, ``c`` is channel, and any
+        other name is space.
     scale : number, sequence, or mapping
         The voxel-to-intrinsic diagonal scale (physical size of one voxel).
         One value for all axes, a value per axis, or a mapping keyed by axis
@@ -157,10 +144,16 @@ class ImageConfig:
         The name of the intrinsic coordinate system every level maps into.
     model_name : str
         The default name of the model system the `transforms` map onto.
-    transforms : sequence
-        Intrinsic-to-model transforms. Each entry is a numpy affine matrix,
-        a typed OME transformation, or a
-        [Transform][abczarr.ome.config.Transform] wrapper.
+    transforms : sequence or mapping
+        The transforms from the intrinsic system to a model system. A
+        sequence lists each transform as a numpy affine matrix, which maps
+        the intrinsic system to `model_name`, or as a typed OME
+        transformation, which carries its own input and output systems. A
+        mapping instead names the systems in its key. A string key is a model
+        system name, and the transform maps `intrinsic_name` to it. An
+        ``(input, output)`` tuple key names both systems. The key sets the
+        input and output systems, overriding any that a typed transform of
+        its own carries.
     voxel_to_world : array-like or CoordinateTransformation, optional
         A shortcut for images with a single voxel-to-world affine, in
         place of separate `scale`/`translation` and `transforms`. The
@@ -181,12 +174,12 @@ class ImageConfig:
         (or an int window size) needs only the factors.
     """
 
-    axes: tx.Sequence[AxisSpec] = field()
+    axes: Axes = field()
     scale: tx.Optional[PerAxis] = field(default=None)
     translation: tx.Optional[PerAxis] = field(default=None)
     intrinsic_name: str = field(default="intrinsic")
     model_name: str = field(default="model")
-    transforms: tx.Sequence[tx.Any] = field(factory=tuple)
+    transforms: Transforms = field(factory=tuple)
     voxel_to_world: tx.Any = field(default=None)
     name: tx.Optional[str] = field(default=None)
     ome_version: str = field(default="stable")
@@ -197,7 +190,10 @@ class ImageConfig:
 
     def _axes(self) -> tx.List[Axis]:
         """The config axes as typed 0.6 [Axis][...] objects."""
-        return [_as_axis(spec) for spec in self.axes]
+        axes = self.axes
+        if isinstance(axes, _abc.Mapping):
+            return [_named_axis(name, spec) for name, spec in axes.items()]
+        return [_as_axis(spec) for spec in axes]
 
     def _axis_info(self) -> tx.List[tx.Tuple[str, str]]:
         """``(name, type)`` for each axis, for keying a per-axis mapping."""
@@ -300,9 +296,14 @@ class ImageConfig:
             for level in range(n_levels)
         ]
 
-        systems = [CoordinateSystem(name=self.intrinsic_name, axes=axes)]
-        for out in _output_names(transforms, self.model_name):
-            systems.append(CoordinateSystem(name=out, axes=list(axes)))
+        system_names = [self.intrinsic_name]
+        for name in _referenced_system_names(transforms):
+            if name not in system_names:
+                system_names.append(name)
+        systems = [
+            CoordinateSystem(name=name, axes=list(axes))
+            for name in system_names
+        ]
 
         extra = {}  # type: tx.Dict[str, tx.Any]
         if transforms:
@@ -353,66 +354,150 @@ class ImageConfig:
     ) -> tx.Tuple[tx.Tuple[float, ...], tx.List[CoordinateTransformation]]:
         """Resolve `transforms` and `voxel_to_world` to typed transforms.
 
-        Returns the (possibly derived) voxel scale and the list of
-        intrinsic-to-model transforms.
+        Returns the possibly-derived voxel scale and the list of transforms
+        that map the intrinsic system onto a model system.
         """
-        entries = list(self.transforms)
+        result = []  # type: tx.List[CoordinateTransformation]
         if self.voxel_to_world is not None:
             world = np.asarray(self.voxel_to_world, dtype=float)
             hom = _homogeneous(world, naxes)
             if not scale_given:
                 scale = _column_norms(hom, naxes)
             v_inv = np.linalg.inv(_diag_affine(scale, translation, naxes))
-            transform = Affine(
-                type="affine",
-                affine=_ome_affine(hom @ v_inv, naxes),
-                input=Space(name=self.intrinsic_name),
-                output=Space(name=self.model_name),
-            )
-            entries.append(transform)
-
-        result = []
-        for entry in entries:
             result.append(
-                self._one_transform(entry, scale, translation, naxes)
+                Affine(
+                    type="affine",
+                    affine=_ome_affine(hom @ v_inv, naxes),
+                    input=Space(name=self.intrinsic_name),
+                    output=Space(name=self.model_name),
+                )
+            )
+
+        for input_name, output_name, data in self._transform_entries():
+            result.append(
+                self._one_transform(
+                    data, input_name, output_name, scale, translation, naxes
+                )
             )
         return scale, result
 
+    def _transform_entries(
+        self,
+    ) -> tx.Iterator[tx.Tuple[tx.Optional[str], tx.Optional[str], tx.Any]]:
+        """Each `transforms` entry as an ``(input, output, data)`` triple.
+
+        A sequence yields ``(None, None, data)`` for every entry. A name is
+        then taken from the transform's own references, and falls back to the
+        intrinsic and model systems. A mapping yields the names its key
+        supplies. A string key names the output system and takes the input
+        from `intrinsic_name`. An ``(input, output)`` tuple key names both.
+        A name a key supplies is used even when the transform carries one of
+        its own.
+        """
+        transforms = self.transforms
+        if isinstance(transforms, _abc.Mapping):
+            for key, data in transforms.items():
+                if isinstance(key, str):
+                    yield self.intrinsic_name, key, data
+                elif isinstance(key, tuple) and len(key) == 2:
+                    yield key[0], key[1], data
+                else:
+                    raise ValueError(
+                        f"a transforms key must be a model name or an "
+                        f"(input, output) pair of names; got {key!r}"
+                    )
+        else:
+            for data in transforms:
+                yield None, None, data
+
     def _one_transform(
         self,
-        entry: tx.Any,
+        data: tx.Any,
+        input_name: tx.Optional[str],
+        output_name: tx.Optional[str],
         scale: tx.Tuple[float, ...],
         translation: tx.Tuple[float, ...],
         naxes: int,
     ) -> CoordinateTransformation:
-        """Turn one `transforms` entry into a typed intrinsic-to-model
-        transform."""
-        if isinstance(entry, Transform):
-            data, source, out = entry.data, entry.input, entry.output
-        else:
-            data, source, out = entry, "intrinsic", None
-        out = self.model_name if out is None else out
-
-        # a ready-made typed transform is used as is, its references filled
-        # in only where it left them unset.
+        """Turn one transform entry into a typed transform between systems."""
         if isinstance(data, CoordinateTransformation):
-            return _refer(data, self.intrinsic_name, out)
-
-        # a numpy affine matrix
-        hom = _homogeneous(np.asarray(data, dtype=float), naxes)
-        if source == "voxel":
-            v_inv = np.linalg.inv(_diag_affine(scale, translation, naxes))
-            hom = hom @ v_inv
-        elif source != "intrinsic":
-            raise ValueError(
-                f"a transform's input must be 'intrinsic' or 'voxel', "
-                f"not {source!r}"
+            return self._typed_transform(
+                data, input_name, output_name, scale, translation, naxes
             )
+        # A numpy affine matrix is read in intrinsic coordinates. The input is
+        # the intrinsic system unless a mapping key names another.
+        source = input_name if input_name is not None else self.intrinsic_name
+        output = output_name if output_name is not None else self.model_name
+        hom = _homogeneous(np.asarray(data, dtype=float), naxes)
         return Affine(
             type="affine",
             affine=_ome_affine(hom, naxes),
+            input=Space(name=source),
+            output=Space(name=output),
+        )
+
+    def _typed_transform(
+        self,
+        data: CoordinateTransformation,
+        input_name: tx.Optional[str],
+        output_name: tx.Optional[str],
+        scale: tx.Tuple[float, ...],
+        translation: tx.Tuple[float, ...],
+        naxes: int,
+    ) -> CoordinateTransformation:
+        """Resolve a ready-made 0.6 transform's input and output systems.
+
+        A name a mapping key supplies wins. Otherwise the transform's own
+        reference is kept, falling back to the intrinsic and model systems.
+        A transform whose own input is an array reference is read in voxel
+        coordinates and composed with the voxel-to-intrinsic transform so
+        that the result still starts from the intrinsic system.
+        """
+        own_input = getattr(data, "input", None)
+        output = output_name
+        if output is None:
+            output = _space_name(getattr(data, "output", None))
+        if output is None:
+            output = self.model_name
+
+        if input_name is None and _is_path_space(own_input):
+            return self._from_voxel(data, output, scale, translation, naxes)
+
+        source = input_name
+        if source is None:
+            source = _space_name(own_input)
+        if source is None:
+            source = self.intrinsic_name
+        return _with_refs(data, Space(name=source), Space(name=output))
+
+    def _from_voxel(
+        self,
+        data: CoordinateTransformation,
+        output: str,
+        scale: tx.Tuple[float, ...],
+        translation: tx.Tuple[float, ...],
+        naxes: int,
+    ) -> CoordinateTransformation:
+        """Re-express a voxel-input transform as one from the intrinsic system.
+
+        The intrinsic-to-voxel transform is the inverse of the level-0
+        voxel-to-intrinsic scale and translation. An inline affine is composed
+        with it directly.
+        """
+        inline = getattr(data, "affine", None)
+        if not (isinstance(data, Affine) and _is_matrix(inline)):
+            raise ValueError(
+                "a transform written in voxel coordinates (with an array-path "
+                "input) must be an inline affine; express other transforms in "
+                "intrinsic coordinates instead"
+            )
+        v_inv = np.linalg.inv(_diag_affine(scale, translation, naxes))
+        hom = _homogeneous(np.asarray(inline, dtype=float), naxes)
+        return Affine(
+            type="affine",
+            affine=_ome_affine(hom @ v_inv, naxes),
             input=Space(name=self.intrinsic_name),
-            output=Space(name=out),
+            output=Space(name=output),
         )
 
     def _dataset(
@@ -454,11 +539,17 @@ class ImageConfig:
 
 
 def _as_axis(spec: AxisSpec) -> Axis:
-    """One axis spec (name / tuple / typed axis) as a typed 0.6 axis."""
+    """One axis spec (name, tuple, dict, or typed axis) as a typed 0.6 axis."""
     if isinstance(spec, Axis):
         return spec
     if isinstance(spec, str):
         return axis(spec)
+    if isinstance(spec, _abc.Mapping):
+        if "name" not in spec:
+            raise ValueError(
+                f"an axis dict needs a 'name'; got {dict(spec)!r}"
+            )
+        return axis(spec["name"], spec.get("type"), spec.get("unit"))
     if isinstance(spec, _abc.Sequence):
         parts = list(spec)
         if not parts:
@@ -468,8 +559,26 @@ def _as_axis(spec: AxisSpec) -> Axis:
         unit = parts[2] if len(parts) > 2 else None
         return axis(name, atype, unit)
     raise TypeError(
-        f"an axis must be a name, a (name, type[, unit]) tuple, or an Axis; "
-        f"got {spec!r}"
+        f"an axis must be a name, a (name, type[, unit]) tuple, a dict, or an "
+        f"Axis; got {spec!r}"
+    )
+
+
+def _named_axis(name: str, spec: tx.Any) -> Axis:
+    """One axis from a ``name -> spec`` entry of the mapping form of `axes`.
+
+    The value is a type string, a dict of the axis's remaining fields, or
+    `None` to infer the type from the name.
+    """
+    if spec is None:
+        return axis(name)
+    if isinstance(spec, str):
+        return axis(name, spec)
+    if isinstance(spec, _abc.Mapping):
+        return axis(name, spec.get("type"), spec.get("unit"))
+    raise TypeError(
+        f"an axis mapping value must be a type string, a dict, or None; got "
+        f"{spec!r} for axis {name!r}"
     )
 
 
@@ -575,35 +684,61 @@ def _ome_affine(hom: "np.ndarray", n: int) -> tx.List[tx.List[float]]:
     return [[float(x) for x in row] for row in hom[:n, :]]
 
 
-def _refer(
-    transform: CoordinateTransformation, intrinsic: str, output: str
+def _with_refs(
+    transform: CoordinateTransformation,
+    input_space: Space,
+    output_space: Space,
 ) -> CoordinateTransformation:
-    """A typed transform with its input/output filled in when unset."""
-    changes = {}
-    if not _is_space(getattr(transform, "input", None)):
-        changes["input"] = Space(name=intrinsic)
-    if not _is_space(getattr(transform, "output", None)):
-        changes["output"] = Space(name=output)
-    return evolve(transform, **changes) if changes else transform
+    """A copy of *transform* with its input and output systems set."""
+    return evolve(transform, input=input_space, output=output_space)
 
 
-def _is_space(value: tx.Any) -> bool:
-    return isinstance(value, Space)
+def _is_matrix(value: tx.Any) -> bool:
+    """Whether *value* is a 2D matrix an affine can be read from."""
+    return isinstance(value, (list, tuple, np.ndarray))
 
 
-def _output_names(
-    transforms: tx.Sequence[CoordinateTransformation], model_name: str
+def _space_name(value: tx.Any) -> tx.Optional[str]:
+    """The system name a [Space][...] refers to, or `None`.
+
+    A [Space][...] that references an array by path names no system, so the
+    result is `None`.
+    """
+    if isinstance(value, Space):
+        name = getattr(value, "name", None)
+        if isinstance(name, str):
+            return name
+    return None
+
+
+def _is_path_space(value: tx.Any) -> bool:
+    """Whether *value* references an array by path.
+
+    A path reference names the array's own voxel coordinate system rather than
+    a named coordinate system.
+    """
+    return (
+        isinstance(value, Space)
+        and isinstance(getattr(value, "path", None), str)
+        and _space_name(value) is None
+    )
+
+
+def _referenced_system_names(
+    transforms: tx.Sequence[CoordinateTransformation],
 ) -> tx.List[str]:
-    """The distinct model-system names the transforms map onto, in order."""
-    seen = []  # type: tx.List[str]
+    """The distinct named systems the transforms reference, in first-seen
+    order."""
+    names = []  # type: tx.List[str]
     for transform in transforms:
-        out = getattr(transform, "output", None)
-        name = out.name if _is_space(out) else None
-        if not isinstance(name, str):
-            name = model_name
-        if name not in seen:
-            seen.append(name)
-    return seen
+        for ref in (
+            getattr(transform, "input", None),
+            getattr(transform, "output", None),
+        ):
+            name = _space_name(ref)
+            if name is not None and name not in names:
+                names.append(name)
+    return names
 
 
 # ----------------------------------------------------------------------

@@ -17,9 +17,9 @@ import pytest
 from abczarr.abc.sync import PathGroup
 from abczarr.errors import UnsupportedConversion
 from abczarr.metadata.base import GroupMetadataV3
-from abczarr.ome import ImageConfig, Transform, axis
+from abczarr.ome import ImageConfig, axis
 from abczarr.ome.base import LATEST_STABLE
-from abczarr.ome.v0_6rc0.transformations import Rotation
+from abczarr.ome.v0_6rc0.transformations import Affine, Rotation, Space
 
 
 def _level0(ome: object) -> object:
@@ -74,6 +74,34 @@ def test_axes_accept_tuples_and_typed_axes() -> None:
     assert [a.name for a in resolved] == ["x", "q", "t"]
     assert resolved[1].unit == "micrometer"
     assert resolved[2].type == "time"
+
+
+def test_axes_accept_a_json_dict_per_axis() -> None:
+    cfg = ImageConfig(
+        axes=[
+            {"name": "y", "type": "space", "unit": "micrometer"},
+            {"name": "x", "type": "space", "unit": "micrometer"},
+        ]
+    )
+    resolved = cfg._axes()
+    assert [a.name for a in resolved] == ["y", "x"]
+    assert resolved[0].unit == "micrometer"
+
+
+def test_axes_accept_a_mapping_keyed_by_name() -> None:
+    cfg = ImageConfig(
+        axes={
+            "t": None,
+            "c": "channel",
+            "y": {"unit": "micrometer"},
+            "x": {"type": "space", "unit": "micrometer"},
+        }
+    )
+    resolved = cfg._axes()
+    assert [(a.name, a.type) for a in resolved] == [
+        ("t", "time"), ("c", "channel"), ("y", "space"), ("x", "space"),
+    ]
+    assert resolved[2].unit == "micrometer"
 
 
 # --- scale / translation resolution ----------------------------------------
@@ -163,15 +191,44 @@ def test_to_ome_06_puts_intrinsic_to_model_at_the_multiscale_level() -> None:
     assert w.output.name == "model"
 
 
-def test_a_custom_output_name_gets_its_own_system() -> None:
+def test_a_mapping_string_key_names_the_output_system() -> None:
     cfg = ImageConfig(
         axes=["y", "x"],
-        transforms=[Transform(np.eye(3), output="anatomical")],
+        transforms={"anatomical": np.eye(3)},
     )
     ms = cfg.to_ome(version="0.6rc0").multiscales[0]
     names = [s.name for s in ms.coordinateSystems]
     assert names == ["intrinsic", "anatomical"]
+    assert ms.coordinateTransformations[0].input.name == "intrinsic"
     assert ms.coordinateTransformations[0].output.name == "anatomical"
+
+
+def test_a_mapping_tuple_key_names_both_systems() -> None:
+    cfg = ImageConfig(
+        axes=["y", "x"],
+        intrinsic_name="pixels",
+        transforms={("pixels", "anatomical"): np.eye(3)},
+    )
+    ms = cfg.to_ome(version="0.6rc0").multiscales[0]
+    names = [s.name for s in ms.coordinateSystems]
+    assert names == ["pixels", "anatomical"]
+    w = ms.coordinateTransformations[0]
+    assert w.input.name == "pixels"
+    assert w.output.name == "anatomical"
+
+
+def test_a_mapping_key_overrides_a_typed_transforms_own_references() -> None:
+    rot = Rotation(
+        type="rotation",
+        rotation=[[0.0, -1.0], [1.0, 0.0]],
+        input=Space(name="ignored_in"),
+        output=Space(name="ignored_out"),
+    )
+    cfg = ImageConfig(axes=["y", "x"], transforms={"anatomical": rot})
+    ms = cfg.to_ome(version="0.6rc0").multiscales[0]
+    r = ms.coordinateTransformations[0]
+    assert r.input.name == "intrinsic"
+    assert r.output.name == "anatomical"
 
 
 def test_a_typed_transform_is_used_as_is_with_references_filled() -> None:
@@ -183,6 +240,23 @@ def test_a_typed_transform_is_used_as_is_with_references_filled() -> None:
     assert r.rotation == [[0.0, -1.0], [1.0, 0.0]]
     assert r.input.name == "intrinsic"
     assert r.output.name == "model"
+
+
+def test_a_voxel_input_affine_is_composed_into_intrinsic() -> None:
+    # An affine written in voxel units, flagged by an array (path) input.
+    vox = Affine(
+        type="affine",
+        affine=[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+        input=Space(path="0"),
+    )
+    cfg = ImageConfig(axes=["y", "x"], scale=[2.0, 2.0], transforms=[vox])
+    ms = cfg.to_ome(version="0.6rc0").multiscales[0]
+    w = ms.coordinateTransformations[0]
+    assert w.type == "affine"
+    assert w.input.name == "intrinsic"
+    assert w.output.name == "model"
+    # the identity in voxel units becomes 1 / scale in intrinsic units
+    assert [row[:2] for row in w.affine] == [[0.5, 0.0], [0.0, 0.5]]
 
 
 # --- version resolution and the 0.5 loss policy ----------------------------
