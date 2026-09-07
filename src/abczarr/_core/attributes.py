@@ -65,8 +65,15 @@ class NodeAttributes(AttributesBase):
     # ---------- MutableMapping interface ----------
 
     def __getitem__(self, key: str) -> tx.Any:  # noqa: ANN401
-        """Get an attribute by key."""
-        return self._current()[key]
+        """Get an attribute by key.
+
+        An array's metadata stores its attributes as immutable, so a
+        container value read from it would otherwise come back as a
+        `FrozenDict` or a tuple. The value is rebuilt from plain built-in
+        types here, so an array and a group return the same plain `dict` or
+        `list` for the same stored value.
+        """
+        return unfreeze(self._current()[key])
 
     def __setitem__(self, key: str, value: tx.Any) -> None:  # noqa: ANN401
         """Set or update a single attribute, and persist it."""
@@ -87,11 +94,16 @@ class NodeAttributes(AttributesBase):
         return len(self._current())
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}({dict(self._current())!r})"
+        return f"{type(self).__name__}({unfreeze(dict(self._current()))!r})"
 
     def asdict(self) -> tx.Dict[str, tx.Any]:
-        """Return a plain-dict snapshot of the attributes."""
-        return dict(self._current())
+        """Return a plain-dict snapshot of the attributes.
+
+        Every value is a plain built-in type, so a nested container is a
+        `dict` or a `list` rather than the immutable form an array's metadata
+        stores.
+        """
+        return unfreeze(dict(self._current()))
 
 
 def attribute_writes(
