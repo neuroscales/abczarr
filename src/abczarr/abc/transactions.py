@@ -342,7 +342,7 @@ class AsyncBufferedTransaction(AsyncTransaction):
 
 
 def _under(prefix: str, key: str) -> bool:
-    """Whether *key* is at or below *prefix* (matching store prefix rules)."""
+    """Whether `key` is at or below `prefix` (matching store prefix rules)."""
     if not prefix:
         return True
     return key == prefix or key.startswith(prefix.rstrip(_SEP) + _SEP)

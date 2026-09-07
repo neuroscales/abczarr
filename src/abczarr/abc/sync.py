@@ -209,10 +209,10 @@ class ZarrNode(SupportsCapabilities, ABC):
 
         This method is the OME-metadata counterpart of
         [update_attributes][abczarr.abc.sync.ZarrNode.update_attributes].
-        A top-level key present in *ome*, such as ``version``,
+        A top-level key present in `ome`, such as ``version``,
         ``multiscales`` or ``omero``, replaces the value already
         stored under that key. A key the node already carries that
-        *ome* does not name is preserved. When the node has no OME
+        `ome` does not name is preserved. When the node has no OME
         metadata yet and the merged result still names no version,
         the metadata is written with the latest released OME version.
 
@@ -246,7 +246,7 @@ class ZarrNode(SupportsCapabilities, ABC):
         """Add or replace several attributes at once, and persist the
         change.
 
-        The keys in *attributes* are merged into this node's existing
+        The keys in `attributes` are merged into this node's existing
         attributes. An existing key is overwritten with the new
         value, and every other key is kept unchanged. The merged
         result is written through the node's persistence path before
@@ -281,7 +281,7 @@ class ZarrNode(SupportsCapabilities, ABC):
         return self
 
     def _write_metadata(self, new_metadata: NodeMetadata) -> None:
-        """Persist *new_metadata*, then update the cached metadata.
+        """Persist `new_metadata`, then update the cached metadata.
 
         The default rewrites the node's metadata document through a
         [Store][abczarr.abc.store.Store] over the node's location, so the
@@ -302,7 +302,7 @@ class ZarrNode(SupportsCapabilities, ABC):
         self._cache_metadata(new_metadata)
 
     def _cache_metadata(self, metadata: NodeMetadata) -> None:
-        """Record *metadata* as this node's in-memory metadata."""
+        """Record `metadata` as this node's in-memory metadata."""
         self._cached_metadata = metadata
 
     @property
@@ -367,13 +367,13 @@ class ZarrArray(ZarrNode):
 
     @abstractmethod
     def __getitem__(self, index: tx.Any) -> npt.ArrayLike:
-        """Read data from the array at *index* (a NumPy-style
+        """Read data from the array at `index` (a NumPy-style
         selection)."""
         ...
 
     @abstractmethod
     def __setitem__(self, index: tx.Any, value: npt.ArrayLike) -> None:
-        """Write *value* at *index* (a NumPy-style selection)."""
+        """Write `value` at `index` (a NumPy-style selection)."""
         ...
 
     def __array__(
@@ -398,7 +398,7 @@ class ZarrArray(ZarrNode):
         Raises
         ------
         ValueError
-            If *copy* is `False`.
+            If `copy` is `False`.
         """
         if copy is False:
             raise ValueError(
@@ -461,9 +461,9 @@ class ZarrArray(ZarrNode):
         *,
         lock: tx.Union[bool, str] = "auto",
     ) -> None:
-        """Write *source* into this array, block by block.
+        """Write `source` into this array, block by block.
 
-        *source* is any array-like object whose shape matches this
+        `source` is any array-like object whose shape matches this
         array's. A Dask array is written one block at a time, so a
         source too large to fit in memory is never fully
         materialized. A plain array is written in a single write.
@@ -501,10 +501,10 @@ class ZarrArray(ZarrNode):
 def _blocks_align_to(
     dask_chunks: tx.Sequence[tx.Sequence[int]], unit: tz.ShapeLike
 ) -> bool:
-    """Whether Dask blocks fall on whole *unit*-sized chunks.
+    """Whether Dask blocks fall on whole `unit`-sized chunks.
 
-    *dask_chunks* is a Dask array's `.chunks`, the block sizes per
-    axis. *unit* is the array's write unit. The result is true when
+    `dask_chunks` is a Dask array's `.chunks`, the block sizes per
+    axis. `unit` is the array's write unit. The result is true when
     every interior block boundary lands on a multiple of the unit
     size, so that no two blocks ever write the same chunk and a lock
     is unnecessary. The check is conservative. Anything it cannot
@@ -545,10 +545,10 @@ def _resolve_array_config(
     """Build the resolved [ArrayConfig][abczarr.api.config.ArrayConfig] a
     `create_array` call describes.
 
-    *config*, an `ArrayConfig` or a mapping of its fields, is the base.
-    *shape*, *dtype* and the per-call *options* are layered on top of it, and
-    the array takes the group's format version. A *shape* or *dtype* left out
-    falls back to *data* when *data* is given, so an explicit value always
+    `config`, an `ArrayConfig` or a mapping of its fields, is the base.
+    `shape`, `dtype` and the per-call `options` are layered on top of it, and
+    the array takes the group's format version. A `shape` or `dtype` left out
+    falls back to `data` when `data` is given, so an explicit value always
     takes precedence over the data. `"auto"` chunking and sharding are
     resolved here, so a driver receives concrete values.
     """
@@ -580,22 +580,22 @@ class ZarrGroup(ZarrNode):
 
     @abstractmethod
     def __getitem__(self, key: str) -> ZarrNode:
-        """Get the subgroup or array named *key*."""
+        """Get the subgroup or array named `key`."""
         ...
 
     @abstractmethod
     def __setitem__(self, key: str, value: ZarrNode) -> None:
-        """Set the subgroup or array named *key*."""
+        """Set the subgroup or array named `key`."""
         ...
 
     @abstractmethod
     def __delitem__(self, key: str) -> None:
-        """Delete the subgroup or array named *key*."""
+        """Delete the subgroup or array named `key`."""
         ...
 
     @abstractmethod
     def create_group(self, name: str, overwrite: bool = False) -> tx.Self:
-        """Create a subgroup named *name*, or open it if one already
+        """Create a subgroup named `name`, or open it if one already
         exists.
 
         Parameters
@@ -603,7 +603,7 @@ class ZarrGroup(ZarrNode):
         name : str
             The subgroup's name.
         overwrite : bool, optional
-            Replace an existing member named *name* instead of
+            Replace an existing member named `name` instead of
             raising an error.
 
         Returns
@@ -623,21 +623,21 @@ class ZarrGroup(ZarrNode):
         config: tx.Union[ArrayConfig, ArrayOptions, None] = None,
         **options: tx.Unpack[ArrayOptions],
     ) -> ZarrArray:
-        """Create a new array named *name* within this group.
+        """Create a new array named `name` within this group.
 
-        The array is created from existing *data* when *data* is given. The
+        The array is created from existing `data` when `data` is given. The
         array's shape and dtype then default to the data's, and the data is
-        written into the new array. A *shape* or *dtype* passed explicitly, or
-        one carried by *config*, takes precedence over the data.
+        written into the new array. A `shape` or `dtype` passed explicitly, or
+        one carried by `config`, takes precedence over the data.
 
         Parameters
         ----------
         name : str
             The array's name.
         shape : tuple of int, optional
-            The array's shape. Required unless *data* or *config* supplies one.
+            The array's shape. Required unless `data` or `config` supplies one.
         dtype : numpy dtype, optional
-            The array's data type. Required unless *data* or *config* supplies
+            The array's data type. Required unless `data` or `config` supplies
             one.
         data : array-like, optional
             Existing data to size the array from and write into it.
@@ -648,7 +648,7 @@ class ZarrGroup(ZarrNode):
         **options
             Individual [ArrayConfig][abczarr.api.config.ArrayConfig] fields,
             such as `chunks` or `compressor`. Any field passed here overrides
-            the same field on *config*.
+            the same field on `config`.
 
         Returns
         -------
@@ -670,7 +670,7 @@ class ZarrGroup(ZarrNode):
 
     @abstractmethod
     def _create_array(self, name: str, config: ArrayConfig) -> ZarrArray:
-        """Create the array named *name* from a resolved *config*, with the
+        """Create the array named `name` from a resolved `config`, with the
         backend's own creation, so the backend writes its own metadata."""
         ...
 
@@ -742,7 +742,7 @@ class PathGroup(ZarrGroup):
     def _member(
         self, store_path: tz.PathLike
     ) -> tx.Optional[tx.Tuple[tz.NodeType, tz.ZarrVersion]]:
-        """The kind and version of *store_path* when it is a member of
+        """The kind and version of `store_path` when it is a member of
         this group, else `None`.
 
         A member is a Zarr node written in this group's own format
@@ -792,7 +792,7 @@ class PathGroup(ZarrGroup):
         child.rmdir(recursive=True)
 
     def create_group(self, name: str, overwrite: bool = False) -> tx.Self:
-        """Create a subgroup named *name*, or open it if one already
+        """Create a subgroup named `name`, or open it if one already
         exists.
 
         Parameters
@@ -800,7 +800,7 @@ class PathGroup(ZarrGroup):
         name : str
             The subgroup's name.
         overwrite : bool, optional
-            Replace an existing member named *name* instead of
+            Replace an existing member named `name` instead of
             raising an error.
 
         Returns
@@ -847,7 +847,7 @@ class PathGroup(ZarrGroup):
     # array's metadata) is backend-independent.
 
     def _open_array(self, store_path: tz.PathLike) -> ZarrArray:
-        """Open the child array at *store_path*.
+        """Open the child array at `store_path`.
 
         `PathGroup` does not know how to open an array on its own. A
         driver overrides this method to open one with its own

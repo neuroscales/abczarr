@@ -73,7 +73,7 @@ class ZarrConfig:
         return [f.name for f in fields(type(self))]
 
     def __getitem__(self, key: str) -> tx.Any:
-        """Return the value of the field named *key*.
+        """Return the value of the field named `key`.
 
         Parameters
         ----------
@@ -171,9 +171,9 @@ class ArrayConfig(ZarrConfig):
     ) -> tx.Self:
         """Return a copy with `"auto"` chunking and sharding worked out.
 
-        The shape and dtype come from *overrides* first, then from the
-        config. A missing shape or dtype falls back to *data* when
-        *data* is given, so an override or a config value always
+        The shape and dtype come from `overrides` first, then from the
+        config. A missing shape or dtype falls back to `data` when
+        `data` is given, so an override or a config value always
         takes precedence over the data.
 
         Parameters
@@ -194,7 +194,7 @@ class ArrayConfig(ZarrConfig):
         Raises
         ------
         ValueError
-            If none of *overrides*, the config, and *data* supplies
+            If none of `overrides`, the config, and `data` supplies
             both a shape and a dtype.
         """
         shape = overrides.get("shape", self.shape)
@@ -396,7 +396,7 @@ def _compressor_codecs(
 
 
 def _bytes_codec(dtype: npt.DTypeLike) -> tz.JsonDict:
-    """The array-to-bytes codec for *dtype*.
+    """The array-to-bytes codec for `dtype`.
 
     A multi-byte dtype carries its endianness. A single-byte dtype,
     for which endianness does not apply, carries none, so the codec

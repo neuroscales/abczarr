@@ -118,7 +118,7 @@ class SupportsCapabilities:
     _CAPABILITIES: tx.ClassVar[tx.Mapping[str, Support]] = {}
 
     def capability(self, name: str) -> Support:
-        """How this object provides the capability *name*.
+        """How this object provides the capability `name`.
 
         Parameters
         ----------
@@ -133,7 +133,7 @@ class SupportsCapabilities:
         return self._CAPABILITIES.get(name, Support.NONE)
 
     def supports(self, name: str, *, native: bool = False) -> bool:
-        """Whether this object provides the capability *name*.
+        """Whether this object provides the capability `name`.
 
         Parameters
         ----------

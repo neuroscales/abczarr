@@ -77,8 +77,8 @@ _ARRAY_ONLY_FIELDS = _array_only_fields()
 
 
 def _create_plan(mode: str, exists: bool) -> tx.Optional[bool]:
-    """Whether *mode* creates at a location that does, or does not,
-    *exist*.
+    """Whether `mode` creates at a location that does, or does not,
+    `exist`.
 
     The return value is ``None`` to open the existing node, or the
     ``overwrite`` flag to pass to [create][abczarr.api.create].
@@ -102,9 +102,9 @@ def _build_create_config(
     """Build the config a create-mode open funnels into
     [create][abczarr.api.create].
 
-    The result is an array config when *create_fields* carry array
+    The result is an array config when `create_fields` carry array
     parameters, such as a `shape` or a `dtype`, and a group config
-    otherwise. *want* pins the kind: ``"array"`` or ``"group"`` for
+    otherwise. `want` pins the kind: ``"array"`` or ``"group"`` for
     [open_array][abczarr.api.open_array] and
     [open_group][abczarr.api.open_group], or ``None`` to decide from
     the fields.
@@ -136,7 +136,7 @@ def _build_create_config(
 
 
 def _exists(path: tz.PathLike) -> bool:
-    """Whether a Zarr node is present at *path*, read through a store."""
+    """Whether a Zarr node is present at `path`, read through a store."""
     try:
         store = PathBasedStore(str(path))
     except Exception:
@@ -167,9 +167,9 @@ async def _aexists(path: tz.PathLike) -> bool:
 
 
 def _require_kind(node: tx.Any, want: tx.Optional[str]) -> tx.Any:
-    """Return *node* when it matches *want*, else raise.
+    """Return `node` when it matches `want`, else raise.
 
-    *want* is ``"array"``, ``"group"``, or ``None`` to accept either
+    `want` is ``"array"``, ``"group"``, or ``None`` to accept either
     kind. This function is shared by both the sync and async colors,
     since it only checks the kind.
     """
@@ -199,9 +199,9 @@ def open(
     asynchronous: bool = False, driver: _DriverArg = None,
     **fields: tx.Any,
 ) -> tx.Union[ZarrNode, tx.Awaitable[AsyncZarrNode]]:
-    """Open, or on a create mode create, the Zarr node at *path*.
+    """Open, or on a create mode create, the Zarr node at `path`.
 
-    The *mode* follows the h5py/zarr convention, so `open` both opens an
+    The `mode` follows the h5py/zarr convention, so `open` both opens an
     existing node and creates a new one:
 
     | mode         | if it exists     | if it is missing |
@@ -212,7 +212,7 @@ def open(
     | `"w"`        | overwrite        | create           |
     | `"w-"`, `"x"`| error            | create           |
 
-    On a create mode the keyword *fields* describe the new node.
+    On a create mode the keyword `fields` describe the new node.
     These are the same fields [create][abczarr.api.create],
     [ArrayConfig][abczarr.api.config.ArrayConfig] and
     [GroupConfig][abczarr.api.config.GroupConfig] accept. Array
@@ -220,7 +220,7 @@ def open(
     none, an empty group is created instead.
 
     With `asynchronous=True` the return value is a coroutine that must
-    be awaited. It opens or creates *path* through the backend's own
+    be awaited. It opens or creates `path` through the backend's own
     async I/O and resolves to the coroutine twin of the node. Without
     it, the node is opened synchronously and returned directly.
 
@@ -244,7 +244,7 @@ def open(
         creates, overwriting whatever is there. `"w-"`, or its alias `"x"`,
         creates and fails if the target already exists.
     asynchronous : bool, optional
-        When true, return a coroutine that opens or creates *path*
+        When true, return a coroutine that opens or creates `path`
         asynchronously and resolves to the coroutine twin, an
         [AsyncZarrArray][abczarr.abc.asynchronous.AsyncZarrArray] or
         [AsyncZarrGroup][abczarr.abc.asynchronous.AsyncZarrGroup], whose I/O
@@ -263,7 +263,7 @@ def open(
     Returns
     -------
     ZarrNode or Awaitable[AsyncZarrNode]
-        The wrapped node directly, or, when *asynchronous* is true, a
+        The wrapped node directly, or, when `asynchronous` is true, a
         coroutine resolving to its async twin.
     """
     if asynchronous:
@@ -275,7 +275,7 @@ def _open(
     path: tz.PathLike, mode: str, driver: _DriverArg,
     create_fields: "tx.Dict[str, tx.Any]", want: tx.Optional[str],
 ) -> ZarrNode:
-    """Open *path*, or create it when *mode* is a create mode."""
+    """Open `path`, or create it when `mode` is a create mode."""
     overwrite = _create_plan(mode, _exists(path) if mode == "a" else False)
     if overwrite is None:
         if create_fields and mode not in ("a",):
@@ -293,7 +293,7 @@ async def _aopen(
     path: tz.PathLike, mode: str, driver: _DriverArg,
     create_fields: "tx.Dict[str, tx.Any]", want: tx.Optional[str],
 ) -> AsyncZarrNode:
-    """Open *path* asynchronously, or create it on a create mode.
+    """Open `path` asynchronously, or create it on a create mode.
 
     A driver is chosen through an async metadata peek, and the
     native open or create is then awaited.
@@ -344,10 +344,10 @@ def open_array(
     asynchronous: bool = False, driver: _DriverArg = None,
     **fields: tx.Any,
 ) -> tx.Union[ZarrArray, tx.Awaitable[AsyncZarrArray]]:
-    """Open *path*, requiring it to be an array.
+    """Open `path`, requiring it to be an array.
 
     This function behaves like [open][abczarr.api.open], but raises
-    if *path* is a group. On a create mode, *fields* must include
+    if `path` is a group. On a create mode, `fields` must include
     array parameters, at least a `shape`. Creating a group this way
     is an error.
 
@@ -359,7 +359,7 @@ def open_array(
         The access mode. See [open][abczarr.api.open] for the modes and
         what each one does.
     asynchronous : bool, optional
-        When true, return a coroutine that opens or creates *path*
+        When true, return a coroutine that opens or creates `path`
         asynchronously and resolves to the async array twin. When false,
         the default, the array is opened synchronously and returned
         directly.
@@ -373,7 +373,7 @@ def open_array(
     Returns
     -------
     ZarrArray or Awaitable[AsyncZarrArray]
-        The wrapped array directly, or, when *asynchronous* is true, a
+        The wrapped array directly, or, when `asynchronous` is true, a
         coroutine resolving to its async twin.
     """
     if asynchronous:
@@ -400,10 +400,10 @@ def open_group(
     asynchronous: bool = False, driver: _DriverArg = None,
     **fields: tx.Any,
 ) -> tx.Union[ZarrGroup, tx.Awaitable[AsyncZarrGroup]]:
-    """Open *path*, requiring it to be a group.
+    """Open `path`, requiring it to be a group.
 
     This function behaves like [open][abczarr.api.open], but raises
-    if *path* is an array. On a create mode, an empty group is
+    if `path` is an array. On a create mode, an empty group is
     created. Array parameters are an error.
 
     Parameters
@@ -414,7 +414,7 @@ def open_group(
         The access mode. See [open][abczarr.api.open] for the modes and
         what each one does.
     asynchronous : bool, optional
-        When true, return a coroutine that opens or creates *path*
+        When true, return a coroutine that opens or creates `path`
         asynchronously and resolves to the async group twin. When false,
         the default, the group is opened synchronously and returned
         directly.
@@ -428,7 +428,7 @@ def open_group(
     Returns
     -------
     ZarrGroup or Awaitable[AsyncZarrGroup]
-        The wrapped group directly, or, when *asynchronous* is true, a
+        The wrapped group directly, or, when `asynchronous` is true, a
         coroutine resolving to its async twin.
     """
     if asynchronous:
@@ -492,13 +492,13 @@ def create(
     asynchronous: bool = False,
     **fields: tx.Any,
 ) -> tx.Union[ZarrNode, tx.Awaitable[AsyncZarrNode]]:
-    """Create the array or group *config* describes at *location*.
+    """Create the array or group `config` describes at `location`.
 
-    *config* is usually an [ArrayConfig][abczarr.api.config.ArrayConfig],
+    `config` is usually an [ArrayConfig][abczarr.api.config.ArrayConfig],
     which creates an array, or a [GroupConfig][abczarr.api.config.GroupConfig],
     which creates a group. Keyword arguments override its fields, and the
     backend creates the node natively. For full control beyond what the
-    config helpers express, *config* may instead be an exact metadata
+    config helpers express, `config` may instead be an exact metadata
     document, an [ArrayMetadata][abczarr.metadata.base.ArrayMetadata] or
     [GroupMetadata][abczarr.metadata.base.GroupMetadata], the lowered form a
     config would produce. Such a document is created as it is, and there
@@ -506,13 +506,13 @@ def create(
     dict, wrap it first with `ArrayMetadata.from_json(...)` or
     `ArrayConfig(**...)`.
 
-    An array is created from existing *data* when *data* is given. The array's
+    An array is created from existing `data` when `data` is given. The array's
     shape and dtype then default to the data's. A `shape` or `dtype` in
-    *config* or in the keyword arguments takes precedence over the data. The
-    data is written into the new array, and *config*, when given, must be an
+    `config` or in the keyword arguments takes precedence over the data. The
+    data is written into the new array, and `config`, when given, must be an
     [ArrayConfig][abczarr.api.config.ArrayConfig].
 
-    OME-Zarr metadata is written on the new node when *ome* is given. An
+    OME-Zarr metadata is written on the new node when `ome` is given. An
     [OME][abczarr.ome.base.OME] object or a plain mapping is written as it is.
     An [ImageConfig][abczarr.ome.config.ImageConfig] is lowered to base-level
     metadata first.
@@ -539,10 +539,10 @@ def create(
         What to create. An `ArrayConfig` or `GroupConfig` describes the
         node through abczarr's own creation options. An `ArrayMetadata` or
         `GroupMetadata` document is created exactly as it is. Omitted when
-        *data* alone describes the array to create.
+        `data` alone describes the array to create.
     data : array-like, optional
         Existing data to size the new array from and write into it. Requires
-        *config* to be an `ArrayConfig`, or omitted entirely.
+        `config` to be an `ArrayConfig`, or omitted entirely.
     ome : OME, ImageConfig or dict, optional
         OME-Zarr metadata to write on the new node.
     asynchronous : bool, optional
@@ -550,14 +550,14 @@ def create(
         and resolves to its coroutine twin. When false, the default, the
         node is created synchronously and returned directly.
     **fields
-        Individual fields that override the same field on *config*, such as
-        `chunks` or `compressor`. Not accepted when *config* is a metadata
+        Individual fields that override the same field on `config`, such as
+        `chunks` or `compressor`. Not accepted when `config` is a metadata
         document. There, only `driver` and `overwrite` are accepted.
 
     Returns
     -------
     ZarrNode or Awaitable[AsyncZarrNode]
-        The newly created node directly, or, when *asynchronous* is true, a
+        The newly created node directly, or, when `asynchronous` is true, a
         coroutine resolving to its async twin.
     """
     if data is not None:
@@ -602,7 +602,7 @@ def _create_node(
 def _prepare_config(
     config: tx.Union[ZarrConfig, NodeMetadata, None], data: tx.Any
 ) -> tx.Union[ZarrConfig, NodeMetadata]:
-    """The config to create from, an array by default when *data* is given."""
+    """The config to create from, an array by default when `data` is given."""
     if config is None:
         if data is None:
             raise TypeError(_CREATE_TYPE_ERROR)
@@ -616,7 +616,7 @@ def _prepare_config(
 
 
 def _as_stored(data: tx.Any) -> tx.Any:
-    """*data* as an array with a shape and a dtype to read and to store.
+    """`data` as an array with a shape and a dtype to read and to store.
 
     An array, whether numpy, Dask, or another Zarr array, is used as it is.
     Anything else, such as a nested list, is turned into a numpy array first.
@@ -631,7 +631,7 @@ def _as_stored(data: tx.Any) -> tx.Any:
 
 
 def _apply_ome(node: ZarrNode, ome: tx.Any) -> None:
-    """Write *ome* onto *node*, lowering an ImageConfig to metadata first."""
+    """Write `ome` onto `node`, lowering an ImageConfig to metadata first."""
     from ..ome.config import ImageConfig
 
     if isinstance(ome, ImageConfig):
@@ -678,7 +678,7 @@ async def _acreate(
 
 
 async def _aapply_ome(node: AsyncZarrNode, ome: tx.Any) -> None:
-    """Write *ome* onto an async *node*, lowering an ImageConfig."""
+    """Write `ome` onto an async `node`, lowering an ImageConfig."""
     from ..ome.config import ImageConfig
 
     if isinstance(ome, ImageConfig):
@@ -729,7 +729,7 @@ def create_group(
     config: tx.Optional[GroupConfig] = None,
     asynchronous: bool = False, **fields: tx.Any,
 ) -> tx.Union[ZarrGroup, tx.Awaitable[AsyncZarrGroup]]:
-    """Create a group at *location*, the metadata-free way.
+    """Create a group at `location`, the metadata-free way.
 
     Parameters
     ----------
@@ -746,12 +746,12 @@ def create_group(
         created synchronously and returned directly.
     **fields
         Individual [GroupConfig][abczarr.api.config.GroupConfig] fields
-        that override the same field on *config*.
+        that override the same field on `config`.
 
     Returns
     -------
     ZarrGroup or Awaitable[AsyncZarrGroup]
-        The newly created group directly, or, when *asynchronous* is
+        The newly created group directly, or, when `asynchronous` is
         true, a coroutine resolving to its async twin.
     """
     base = config if isinstance(config, GroupConfig) else GroupConfig(
@@ -793,7 +793,7 @@ def create_array(
     config: tx.Optional[ArrayConfig] = None,
     asynchronous: bool = False, **fields: tx.Any,
 ) -> tx.Union[ZarrArray, tx.Awaitable[AsyncZarrArray]]:
-    """Create an array at *location*, the metadata-free way.
+    """Create an array at `location`, the metadata-free way.
 
     At least a `shape`, and a `dtype`, is needed to describe the
     array. A request with no array fields describes a group instead,
@@ -815,12 +815,12 @@ def create_array(
         created synchronously and returned directly.
     **fields
         Individual [ArrayConfig][abczarr.api.config.ArrayConfig] fields
-        that override the same field on *config*.
+        that override the same field on `config`.
 
     Returns
     -------
     ZarrArray or Awaitable[AsyncZarrArray]
-        The newly created array directly, or, when *asynchronous* is
+        The newly created array directly, or, when `asynchronous` is
         true, a coroutine resolving to its async twin.
     """
     base = config if isinstance(config, ArrayConfig) else ArrayConfig(
@@ -880,7 +880,7 @@ def _resolve_drivers(driver: _DriverArg) -> "tx.List[Driver]":
 
 
 def _choose(path: tz.PathLike, drivers: "tx.List[Driver]") -> Driver:
-    """The driver to open *path* with.
+    """The driver to open `path` with.
 
     The array's features decide when there is a choice among several
     drivers, else the first available driver is used.
@@ -897,7 +897,7 @@ def _peek_array_metadata(path: tz.PathLike) -> tx.Any:
     """Read an array's metadata straight from the store, for
     selection.
 
-    The result is ``None`` when *path* is a group or its metadata
+    The result is ``None`` when `path` is a group or its metadata
     cannot be read.
     """
     try:
@@ -924,7 +924,7 @@ def _peek_array_metadata(path: tz.PathLike) -> tx.Any:
 
 
 async def _achoose(path: tz.PathLike, drivers: "tx.List[Driver]") -> Driver:
-    """The driver to open *path* with, selected through an async
+    """The driver to open `path` with, selected through an async
     metadata peek.
 
     This function is the async twin of
@@ -942,7 +942,7 @@ async def _apeek_array_metadata(path: tz.PathLike) -> tx.Any:
     """Read an array's metadata through an async store, for
     selection.
 
-    The result is ``None`` when *path* is a group or its metadata
+    The result is ``None`` when `path` is a group or its metadata
     cannot be read. This function is the async twin of
     [_peek_array_metadata][abczarr.api.entrypoint].
     """

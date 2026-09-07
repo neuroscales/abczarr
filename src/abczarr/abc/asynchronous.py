@@ -165,7 +165,7 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
 
         This method is the coroutine twin of assigning
         [ZarrNode.ome][abczarr.abc.sync.ZarrNode.ome]. It serializes
-        *value* into the envelope its version calls for: the
+        `value` into the envelope its version calls for: the
         ``"ome"`` attribute from version 0.5 on, or the bare
         top-level attribute keys before 0.5. The serialized metadata
         is then written through the node's async persistence path.
@@ -196,9 +196,9 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
 
         This method is the coroutine twin of
         [ZarrNode.update_ome][abczarr.abc.sync.ZarrNode.update_ome].
-        A top-level key present in *ome* replaces the value already
+        A top-level key present in `ome` replaces the value already
         stored under that key on the node's current OME metadata. A
-        key the node already carries that *ome* does not name is
+        key the node already carries that `ome` does not name is
         kept. When the node has no OME metadata yet and the merged
         result still names no version, the metadata is written with
         the latest released OME version.
@@ -246,16 +246,16 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
     async def _apply_ome_plan(
         self, plan: tx.Callable, *args: tx.Any
     ) -> None:
-        """Apply an OME attribute *plan* through this node's async write
+        """Apply an OME attribute `plan` through this node's async write
         path.
 
-        *plan* takes the current attributes, plus, for a write, the
+        `plan` takes the current attributes, plus, for a write, the
         value to store, and returns ``(payload, stale)``. This method
         persists the full result, with unrelated attributes carried
         over and stale OME keys dropped, by awaiting the async
         metadata write. It is the one async persistence path that
-        ``set_ome`` and ``del_ome`` share. *args* carries the extra
-        arguments *plan* itself expects, such as the value being
+        ``set_ome`` and ``del_ome`` share. `args` carries the extra
+        arguments `plan` itself expects, such as the value being
         written.
         """
         sync = self.as_sync()
@@ -273,7 +273,7 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
 
         This method is the coroutine twin of
         [ZarrNode.update_attributes][abczarr.abc.sync.ZarrNode.update_attributes].
-        The keys in *attributes* are merged into this node's existing
+        The keys in `attributes` are merged into this node's existing
         attributes. The merged result is written through the node's
         async persistence path. The behavior mirrors zarr-python's
         own async `update_attributes`.
@@ -302,7 +302,7 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
         return self
 
     async def _awrite_metadata(self, new_metadata: NodeMetadata) -> None:
-        """Persist *new_metadata*, then update the sync twin's cache.
+        """Persist `new_metadata`, then update the sync twin's cache.
 
         The default rewrites the node's metadata document through an
         [AsyncStore][abczarr.abc.store.AsyncStore] over the node's location,
@@ -329,7 +329,7 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
         return self.as_sync().zarr_version
 
     def capability(self, name: str) -> Support:
-        """How this async node provides the capability *name*.
+        """How this async node provides the capability `name`.
 
         For `"async"`, the answer is this twin's own: native or
         synthesized, depending on the backend. For every other name,
@@ -388,12 +388,12 @@ class AsyncZarrArray(AsyncZarrNode):
 
     @abstractmethod
     async def getitem(self, index: tx.Any) -> npt.ArrayLike:
-        """Read data from the array at *index* (a NumPy-style selection)."""
+        """Read data from the array at `index` (a NumPy-style selection)."""
         ...
 
     @abstractmethod
     async def setitem(self, index: tx.Any, value: npt.ArrayLike) -> None:
-        """Write *value* at *index* (a NumPy-style selection)."""
+        """Write `value` at `index` (a NumPy-style selection)."""
         ...
 
 
@@ -408,12 +408,12 @@ class ThreadedAsyncArray(AsyncZarrArray):
     """
 
     async def getitem(self, index: tx.Any) -> npt.ArrayLike:
-        """Read data from the array at *index* (a NumPy-style
+        """Read data from the array at `index` (a NumPy-style
         selection)."""
         return await run_sync(self._sync.__getitem__, index)
 
     async def setitem(self, index: tx.Any, value: npt.ArrayLike) -> None:
-        """Write *value* at *index* (a NumPy-style selection)."""
+        """Write `value` at `index` (a NumPy-style selection)."""
         await run_sync(self._sync.__setitem__, index, value)
 
 
@@ -442,7 +442,7 @@ class AsyncZarrGroup(AsyncZarrNode):
 
     @abstractmethod
     async def getitem(self, key: str) -> AsyncZarrNode:
-        """Open the subgroup or array named *key* as an async node."""
+        """Open the subgroup or array named `key` as an async node."""
         ...
 
     @abstractmethod
@@ -463,11 +463,11 @@ class AsyncZarrGroup(AsyncZarrNode):
         config: tx.Union[ArrayConfig, ArrayOptions, None] = None,
         **options: tx.Unpack[ArrayOptions],
     ) -> AsyncZarrArray:
-        """Create a new array named *name* within this group.
+        """Create a new array named `name` within this group.
 
         This method mirrors
         [ZarrGroup.create_array][abczarr.abc.sync.ZarrGroup.create_array].
-        When *data* is given, the data is written into the new array
+        When `data` is given, the data is written into the new array
         through the backend's native asynchronous write.
 
         Parameters
@@ -475,10 +475,10 @@ class AsyncZarrGroup(AsyncZarrNode):
         name : str
             The array's name.
         shape : tuple of int, optional
-            The array's shape. Required unless *data* or *config* supplies
+            The array's shape. Required unless `data` or `config` supplies
             one.
         dtype : numpy dtype, optional
-            The array's data type. Required unless *data* or *config*
+            The array's data type. Required unless `data` or `config`
             supplies one.
         data : array-like, optional
             Existing data to size the array from and write into it.
@@ -489,7 +489,7 @@ class AsyncZarrGroup(AsyncZarrNode):
         **options
             Individual [ArrayConfig][abczarr.api.config.ArrayConfig]
             fields, such as `chunks` or `compressor`. Any field passed
-            here overrides the same field on *config*.
+            here overrides the same field on `config`.
 
         Returns
         -------
@@ -513,21 +513,21 @@ class AsyncZarrGroup(AsyncZarrNode):
     async def _create_array(
         self, name: str, config: ArrayConfig
     ) -> AsyncZarrArray:
-        """Create the array named *name* from a resolved *config*."""
+        """Create the array named `name` from a resolved `config`."""
         ...
 
     @abstractmethod
     async def create_group(
         self, name: str, overwrite: bool = False
     ) -> "AsyncZarrGroup":
-        """Create or open a subgroup named *name*.
+        """Create or open a subgroup named `name`.
 
         Parameters
         ----------
         name : str
             The subgroup's name.
         overwrite : bool, optional
-            Replace an existing member named *name* instead of
+            Replace an existing member named `name` instead of
             raising an error.
 
         Returns
@@ -567,16 +567,16 @@ class AsyncPathGroup(AsyncZarrGroup):
     async def _node_at(
         self, prefix: str
     ) -> tx.Optional[tx.Tuple[tz.NodeType, tz.ZarrVersion]]:
-        """The kind and Zarr version of the node at key *prefix*.
+        """The kind and Zarr version of the node at key `prefix`.
 
-        *prefix* is `""` for this group itself, or a member name for
+        `prefix` is `""` for this group itself, or a member name for
         a child. The result is read through the async store, and is
-        `None` when there is no Zarr node at *prefix*.
+        `None` when there is no Zarr node at `prefix`.
 
         This method mirrors [_node_at][abczarr.metadata.base] over
         the async store. It reads a v3 `zarr.json`'s `node_type`, or
         otherwise checks which v2 or v1 metadata file is present. A
-        *prefix* that names a plain file, not a directory, is simply
+        `prefix` that names a plain file, not a directory, is simply
         not a node. This case arises because the group's own
         `zarr.json` shows up in the listing.
         """
@@ -599,7 +599,7 @@ class AsyncPathGroup(AsyncZarrGroup):
             if await self._store.exists(base + constants.Z1META_JSON):
                 return "array", 1
         except OSError:
-            # *prefix* is a file, so "<prefix>/<metadata>" is not a directory.
+            # `prefix` is a file, so "<prefix>/<metadata>" is not a directory.
             return None
         return None
 
@@ -612,10 +612,10 @@ class AsyncPathGroup(AsyncZarrGroup):
     async def _member(
         self, name: str, version: tz.ZarrVersion
     ) -> tx.Optional[tx.Tuple[tz.NodeType, tz.ZarrVersion]]:
-        """The child *name*'s kind and version when it is a member of
+        """The child `name`'s kind and version when it is a member of
         this group, else `None`.
 
-        A member is a node written in the group's *version*. A Zarr
+        A member is a node written in the group's `version`. A Zarr
         hierarchy is written in a single version, so a child written
         in another version is not a member.
         """
@@ -632,7 +632,7 @@ class AsyncPathGroup(AsyncZarrGroup):
                 yield name
 
     async def getitem(self, key: str) -> AsyncZarrNode:
-        """Open the subgroup or array named *key* as an async node."""
+        """Open the subgroup or array named `key` as an async node."""
         detected = await self._member(key, await self._version())
         if detected is None:
             raise KeyError(key)
@@ -655,14 +655,14 @@ class AsyncPathGroup(AsyncZarrGroup):
     async def create_group(
         self, name: str, overwrite: bool = False
     ) -> "AsyncPathGroup":
-        """Create or open a subgroup named *name*.
+        """Create or open a subgroup named `name`.
 
         Parameters
         ----------
         name : str
             The subgroup's name.
         overwrite : bool, optional
-            Replace an existing member named *name* instead of
+            Replace an existing member named `name` instead of
             raising an error.
 
         Returns
@@ -687,7 +687,7 @@ class ThreadedAsyncGroup(AsyncZarrGroup):
     """
 
     async def getitem(self, key: str) -> AsyncZarrNode:
-        """Open the subgroup or array named *key* as an async node."""
+        """Open the subgroup or array named `key` as an async node."""
         child = await run_sync(self._sync.__getitem__, key)
         return child.as_async()
 
@@ -706,14 +706,14 @@ class ThreadedAsyncGroup(AsyncZarrGroup):
     async def create_group(
         self, name: str, overwrite: bool = False
     ) -> AsyncZarrGroup:
-        """Create or open a subgroup named *name*.
+        """Create or open a subgroup named `name`.
 
         Parameters
         ----------
         name : str
             The subgroup's name.
         overwrite : bool, optional
-            Replace an existing member named *name* instead of
+            Replace an existing member named `name` instead of
             raising an error.
 
         Returns

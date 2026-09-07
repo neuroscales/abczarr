@@ -114,12 +114,12 @@ class AsyncStorePath(AsyncPath):
 
 
 def _child(prefix: str, key: str) -> str:
-    """The first key segment below *prefix*.
+    """The first key segment below `prefix`.
 
-    ``"c/0/1"`` under ``"c/"`` is ``"0"``. An empty *prefix* returns
-    the leading segment of *key*.
+    ``"c/0/1"`` under ``"c/"`` is ``"0"``. An empty `prefix` returns
+    the leading segment of `key`.
     """
-    # Match *prefix* on a path boundary, not as a raw string prefix, so
+    # Match `prefix` on a path boundary, not as a raw string prefix, so
     # ``_child("c", "cat/1")`` is ``"cat"``, not ``"at"``. This mirrors
     # ``_under`` in the transactions module.
     stem = prefix.rstrip(_SEP)
@@ -132,12 +132,12 @@ def _child(prefix: str, key: str) -> str:
 
 
 def _as_store_path(store_path: tx.Any, cls: type) -> tx.Any:
-    """Wrap a store's raw path in *cls*, a bagof.paths StorePath class.
+    """Wrap a store's raw path in `cls`, a bagof.paths StorePath class.
 
     ``None`` denotes a store with no path, such as a memory, session,
     or in-process backend, and stays ``None``. An already-wrapped
     StorePath or AsyncStorePath is left as is. Anything else, such as
-    a str, bytes, or os.PathLike, is wrapped in *cls*, which converts
+    a str, bytes, or os.PathLike, is wrapped in `cls`, which converts
     an os.PathLike itself.
     """
     if store_path is None:
@@ -148,7 +148,7 @@ def _as_store_path(store_path: tx.Any, cls: type) -> tx.Any:
 
 
 def _ensure_writable(read_only: bool, operation: str) -> None:
-    """Refuse a mutating *operation* when the store is read-only.
+    """Refuse a mutating `operation` when the store is read-only.
 
     Parameters
     ----------
@@ -160,7 +160,7 @@ def _ensure_writable(read_only: bool, operation: str) -> None:
     Raises
     ------
     PermissionError
-        If *read_only* is true. The message names *operation*.
+        If `read_only` is true. The message names `operation`.
     """
     if read_only:
         raise PermissionError(f"cannot {operation} on a read-only store")
@@ -216,7 +216,7 @@ class Store(SupportsCapabilities, ABC):
 
     @abstractmethod
     def get(self, key: str) -> tx.Optional[bytes]:
-        """Read *key*.
+        """Read `key`.
 
         Parameters
         ----------
@@ -226,7 +226,7 @@ class Store(SupportsCapabilities, ABC):
         Returns
         -------
         bytes or None
-            The stored value, or `None` when *key* is not present.
+            The stored value, or `None` when `key` is not present.
             The result is bytes-like. Wrap it in `bytes(...)` to
             obtain exactly `bytes`.
         """
@@ -234,7 +234,7 @@ class Store(SupportsCapabilities, ABC):
 
     @abstractmethod
     def set(self, key: str, value: _BytesLike) -> None:
-        """Write *value* at *key*, creating any parent structure.
+        """Write `value` at `key`, creating any parent structure.
 
         Parameters
         ----------
@@ -248,7 +248,7 @@ class Store(SupportsCapabilities, ABC):
 
     @abstractmethod
     def delete(self, key: str) -> None:
-        """Remove *key*.
+        """Remove `key`.
 
         Parameters
         ----------
@@ -261,7 +261,7 @@ class Store(SupportsCapabilities, ABC):
 
     @abstractmethod
     def exists(self, key: str) -> bool:
-        """Whether *key* is present.
+        """Whether `key` is present.
 
         Parameters
         ----------
@@ -272,7 +272,7 @@ class Store(SupportsCapabilities, ABC):
 
     @abstractmethod
     def list_keys(self, prefix: str = "") -> tx.Iterator[str]:
-        """Iterate every key at or below *prefix*, `"/"`-joined.
+        """Iterate every key at or below `prefix`, `"/"`-joined.
 
         Parameters
         ----------
@@ -285,7 +285,7 @@ class Store(SupportsCapabilities, ABC):
     # -- capability query, with the synthesized floor ----------------------
 
     def capability(self, capability: str) -> Support:
-        """How this store provides *capability*.
+        """How this store provides `capability`.
 
         A store declares what it does natively. For an operation
         this base class can always build from the primitives, such
@@ -322,7 +322,7 @@ class Store(SupportsCapabilities, ABC):
     def get_partial(
         self, key: str, start: int, length: tx.Optional[int] = None
     ) -> tx.Optional[bytes]:
-        """Read a byte range of *key*.
+        """Read a byte range of `key`.
 
         Parameters
         ----------
@@ -337,7 +337,7 @@ class Store(SupportsCapabilities, ABC):
         Returns
         -------
         bytes or None
-            The requested range, or `None` when *key* is missing.
+            The requested range, or `None` when `key` is missing.
             The default implementation reads the whole value and
             slices it. A store with a native byte-range read
             overrides this method and declares `"partial_read"` as
@@ -350,7 +350,7 @@ class Store(SupportsCapabilities, ABC):
         return bytes(value[start:end])
 
     def set_if_not_exists(self, key: str, value: _BytesLike) -> bool:
-        """Write *value* only when *key* is absent.
+        """Write `value` only when `key` is absent.
 
         Parameters
         ----------
@@ -374,7 +374,7 @@ class Store(SupportsCapabilities, ABC):
         return True
 
     def delete_prefix(self, prefix: str = "") -> None:
-        """Delete every key at or below *prefix*.
+        """Delete every key at or below `prefix`.
 
         Parameters
         ----------
@@ -423,10 +423,10 @@ class Store(SupportsCapabilities, ABC):
         )
 
     def list_dir(self, prefix: str = "") -> tx.Iterator[str]:
-        """Iterate the immediate child names one level below *prefix*.
+        """Iterate the immediate child names one level below `prefix`.
 
         `list_keys` walks the whole subtree. This method yields only
-        the distinct first segments below *prefix*, the way `listdir`
+        the distinct first segments below `prefix`, the way `listdir`
         names one level.
 
         Parameters
@@ -443,7 +443,7 @@ class Store(SupportsCapabilities, ABC):
                 yield name
 
     def getsize(self, key: str) -> tx.Optional[int]:
-        """The size of *key* in bytes, or `None` when it is missing.
+        """The size of `key` in bytes, or `None` when it is missing.
 
         Parameters
         ----------
@@ -613,7 +613,7 @@ class AsyncStore(SupportsCapabilities, ABC):
 
     @abstractmethod
     async def get(self, key: str) -> tx.Optional[bytes]:
-        """Read *key*.
+        """Read `key`.
 
         Parameters
         ----------
@@ -623,7 +623,7 @@ class AsyncStore(SupportsCapabilities, ABC):
         Returns
         -------
         bytes or None
-            The stored value, or `None` when *key* is not present.
+            The stored value, or `None` when `key` is not present.
             The result is bytes-like. Wrap it in `bytes(...)` to
             obtain exactly `bytes`.
         """
@@ -631,7 +631,7 @@ class AsyncStore(SupportsCapabilities, ABC):
 
     @abstractmethod
     async def set(self, key: str, value: _BytesLike) -> None:
-        """Write *value* at *key*, creating any parent structure.
+        """Write `value` at `key`, creating any parent structure.
 
         Parameters
         ----------
@@ -645,7 +645,7 @@ class AsyncStore(SupportsCapabilities, ABC):
 
     @abstractmethod
     async def delete(self, key: str) -> None:
-        """Remove *key*.
+        """Remove `key`.
 
         Parameters
         ----------
@@ -658,7 +658,7 @@ class AsyncStore(SupportsCapabilities, ABC):
 
     @abstractmethod
     async def exists(self, key: str) -> bool:
-        """Whether *key* is present.
+        """Whether `key` is present.
 
         Parameters
         ----------
@@ -669,7 +669,7 @@ class AsyncStore(SupportsCapabilities, ABC):
 
     @abstractmethod
     def list_keys(self, prefix: str = "") -> tx.AsyncIterator[str]:
-        """Async-iterate every key at or below *prefix*.
+        """Async-iterate every key at or below `prefix`.
 
         Parameters
         ----------
@@ -682,7 +682,7 @@ class AsyncStore(SupportsCapabilities, ABC):
     # -- capability query, with the synthesized floor ----------------------
 
     def capability(self, capability: str) -> Support:
-        """How this store provides *capability*.
+        """How this store provides `capability`.
 
         See [Store.capability][abczarr.abc.store.Store.capability].
         """
@@ -716,7 +716,7 @@ class AsyncStore(SupportsCapabilities, ABC):
     async def get_partial(
         self, key: str, start: int, length: tx.Optional[int] = None
     ) -> tx.Optional[bytes]:
-        """Read a byte range of *key*.
+        """Read a byte range of `key`.
 
         Parameters
         ----------
@@ -731,7 +731,7 @@ class AsyncStore(SupportsCapabilities, ABC):
         Returns
         -------
         bytes or None
-            The requested range, or `None` when *key* is missing.
+            The requested range, or `None` when `key` is missing.
             The default implementation reads the whole value and
             slices it. A store with a native byte-range read
             overrides this method and declares `"partial_read"` as
@@ -744,7 +744,7 @@ class AsyncStore(SupportsCapabilities, ABC):
         return bytes(value[start:end])
 
     async def set_if_not_exists(self, key: str, value: _BytesLike) -> bool:
-        """Write *value* only when *key* is absent.
+        """Write `value` only when `key` is absent.
 
         Parameters
         ----------
@@ -767,7 +767,7 @@ class AsyncStore(SupportsCapabilities, ABC):
         return True
 
     async def delete_prefix(self, prefix: str = "") -> None:
-        """Delete every key at or below *prefix*.
+        """Delete every key at or below `prefix`.
 
         Parameters
         ----------
@@ -812,7 +812,7 @@ class AsyncStore(SupportsCapabilities, ABC):
         )
 
     async def list_dir(self, prefix: str = "") -> tx.AsyncIterator[str]:
-        """Async-iterate the child names one level below *prefix*.
+        """Async-iterate the child names one level below `prefix`.
 
         Parameters
         ----------
@@ -828,7 +828,7 @@ class AsyncStore(SupportsCapabilities, ABC):
                 yield name
 
     async def getsize(self, key: str) -> tx.Optional[int]:
-        """The size of *key* in bytes, or `None` when it is missing.
+        """The size of `key` in bytes, or `None` when it is missing.
 
         Parameters
         ----------

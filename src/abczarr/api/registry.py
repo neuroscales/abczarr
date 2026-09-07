@@ -49,7 +49,7 @@ def register_driver(module: str, cls: str, name: str = "") -> None:
     module : str
         The dotted path of the module that defines the driver class.
     cls : str
-        The name of the driver class within *module*.
+        The name of the driver class within `module`.
     name : str, optional
         The name the driver is selected by, for example through
         `open(..., driver=name)`.
@@ -80,7 +80,7 @@ def available_drivers() -> tx.List[Driver]:
 def select_driver(
     metadata: "ArrayMetadata", drivers: tx.Iterable[Driver]
 ) -> Driver:
-    """Return the first driver in *drivers* that can open *metadata*.
+    """Return the first driver in `drivers` that can open `metadata`.
 
     Parameters
     ----------
@@ -93,12 +93,12 @@ def select_driver(
     Returns
     -------
     Driver
-        The first driver among *drivers* that can open *metadata*.
+        The first driver among `drivers` that can open `metadata`.
 
     Raises
     ------
     [UnsupportedZarrOperation][abczarr.errors.UnsupportedZarrOperation]
-        If none of *drivers* can open *metadata*. The message names
+        If none of `drivers` can open `metadata`. The message names
         each candidate driver and the feature it is missing, so the
         failure points at the exact gap rather than at a backend's
         opaque error.
