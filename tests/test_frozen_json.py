@@ -1,13 +1,16 @@
 """The frozen-Json model deep-freezes Json so a frozen metadata object is
 genuinely immutable (and, as a consequence, hashable)."""
 
+# stdlib
+import json
+
 # dependencies
 import pytest
 
 # core
 from abczarr._core import typing as tz
 from abczarr._core.auto.converters import get_converter
-from abczarr._core.frozendict import FrozenDict
+from abczarr._core.frozendict import FrozenDict, unfreeze
 
 # metadata
 from abczarr.metadata.v2.filters.base import Filter
@@ -52,3 +55,33 @@ def test_metadata_with_container_extra_items_stays_hashable() -> None:
     # nested container -- the point of freezing the Json it holds.
     frozen = Filter.from_json({"id": "x", "order": [1, 0], "cfg": {"k": [1]}})
     hash(frozen)
+
+
+# --- unfreeze: the inverse, back to plain built-in types -------------------
+
+
+def test_unfreeze_rebuilds_plain_builtin_types() -> None:
+    frozen = _freeze({"a": [1, {"b": 2}], "s": "x", "n": 5})
+    plain = unfreeze(frozen)
+    assert type(plain) is dict
+    assert type(plain["a"]) is list  # a frozen tuple becomes a list again
+    assert type(plain["a"][1]) is dict  # a nested FrozenDict becomes a dict
+    assert plain == {"a": [1, {"b": 2}], "s": "x", "n": 5}
+
+
+def test_unfreeze_makes_a_frozen_structure_json_serializable() -> None:
+    # The regression: a FrozenDict nested in an attribute payload used to
+    # reach json.dumps and raise. Unfreezing it first is what fixes the write.
+    frozen = _freeze({"ome": {"multiscales": [{"name": "img"}]}})
+    with pytest.raises(TypeError):
+        json.dumps(frozen)
+    assert json.loads(json.dumps(unfreeze(frozen))) == {
+        "ome": {"multiscales": [{"name": "img"}]}
+    }
+
+
+def test_unfreeze_leaves_a_plain_value_unchanged() -> None:
+    plain = {"a": [1, 2], "b": {"c": 3}}
+    assert unfreeze(plain) == plain
+    assert unfreeze(5) == 5
+    assert unfreeze("x") == "x"
