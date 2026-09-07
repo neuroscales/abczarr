@@ -49,6 +49,12 @@ from abczarr._core.asyncutils import run_sync
 from abczarr._core.attributes import NodeAttributes, attribute_writes
 from abczarr.api.config import ArrayConfig, ArrayOptions
 from abczarr.metadata.base import NodeMetadata
+from abczarr.ome.node import (
+    merge_ome,
+    ome_delete_plan,
+    ome_write_plan,
+    read_ome,
+)
 
 # locals
 from .capabilities import Support, SupportsCapabilities
@@ -121,19 +127,18 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
         """This node's OME-Zarr metadata as a typed object -- read only.
 
         Reads stay synchronous, like
-        [attrs][abczarr.abc.asynchronous.AsyncZarrNode.attrs]: the metadata
-        is parsed from the cached attributes, so there is
+        [attrs][abczarr.abc.asynchronous.AsyncZarrNode.attrs]: the
+        metadata is parsed from the cached attributes, so there is
         nothing to await. Returns the right version's
-        [OME][abczarr.ome.base.OME] object, or `None` when the node carries
-        none. Writing cannot be awaited through an assignment, so there is
-        no setter; use
+        [OME][abczarr.ome.base.OME] object, or `None` when the node
+        carries none. Writing cannot be awaited through an assignment, so
+        there is no setter; use
         [set_ome][abczarr.abc.asynchronous.AsyncZarrNode.set_ome],
         [update_ome][abczarr.abc.asynchronous.AsyncZarrNode.update_ome] or
-        [del_ome][abczarr.abc.asynchronous.AsyncZarrNode.del_ome] to persist
-        a change, the same reason the async node writes attributes with
-        `update_attributes` rather than `[]`.
+        [del_ome][abczarr.abc.asynchronous.AsyncZarrNode.del_ome] to
+        persist a change, the same reason the async node writes
+        attributes with `update_attributes` rather than `[]`.
         """
-        from abczarr.ome.node import read_ome
 
         return read_ome(self)
 
@@ -161,7 +166,6 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
             This node, with the metadata visible on
             [ome][abczarr.abc.asynchronous.AsyncZarrNode.ome].
         """
-        from abczarr.ome.node import ome_write_plan
 
         await self._apply_ome_plan(ome_write_plan, value)
         return self
@@ -192,7 +196,6 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
             This node, with the merged metadata visible on
             [ome][abczarr.abc.asynchronous.AsyncZarrNode.ome].
         """
-        from abczarr.ome.node import merge_ome, read_ome
 
         return await self.set_ome(merge_ome(read_ome(self), ome))
 
@@ -210,7 +213,6 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
         AsyncZarrNode
             This node.
         """
-        from abczarr.ome.node import ome_delete_plan
 
         await self._apply_ome_plan(ome_delete_plan)
         return self
