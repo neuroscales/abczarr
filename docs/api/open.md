@@ -1,1 +1,1 @@
-# ::: abczarr.api
+# ::: abczarr.api.entrypoint
