@@ -1,22 +1,21 @@
 """Build a multiscale image pyramid from a base-resolution array.
 
-A multiscale image is a stack of the same image at falling resolutions.
-[downsample_array][abczarr.ome.pyramid.downsample_array] writes one coarser
-copy of an array back into its group.
-[create_pyramid][abczarr.ome.pyramid.create_pyramid] applies that repeatedly
-to build a whole pyramid and records it as OME-Zarr multiscales metadata.
+A multiscale image is a stack of the same image at falling resolutions. The
+base level and its OME metadata are written first, through an
+[ImageConfig][abczarr.ome.config.ImageConfig] or by any other means.
+[create_pyramid][abczarr.ome.pyramid.create_pyramid] then adds the coarser
+levels and extends that metadata to describe them.
 
 Each coarser level is a windowed reduction of the level above it, in the way
 `dask.array.coarsen` reduces every block of voxels to a single value. Each
-axis halves by default. The `factor` argument sets how much each axis
-shrinks, and an axis given a factor of 1 keeps its full resolution, which
-suits a channel or time axis whose values should not be blended together.
+axis halves by default. The `factor` argument sets how much each axis shrinks,
+and an axis given a factor of 1 keeps its full resolution, which suits a
+channel or time axis whose values should not be blended together.
 
-The metadata is produced by an
-[ImageConfig][abczarr.ome.config.ImageConfig], so the coordinate transform on
-each level follows the same factors the data was downsampled by. The pyramid
-lowers to any OME version. A version below 0.6 that cannot represent part of
-the metadata drops that part under the chosen conversion policy.
+The coordinate transform on each new level is read from the base level's
+transform and scaled by the factor, so the metadata continues to place every
+level in the coordinate system the base level was written into. The version of
+the existing metadata is kept.
 """
 
 __all__ = [
@@ -38,7 +37,6 @@ from abczarr._core import typing as tz
 # abc + ome
 from abczarr.abc.sync import ZarrArray, ZarrGroup
 
-from .base import ConversionPolicy
 from .config import ImageConfig
 
 #: How much each axis shrinks per level. One number applies to every axis. A
@@ -51,9 +49,9 @@ FactorSpec = tx.Union[
     tx.Mapping[tx.Optional[tx.Union[int, str]], int],
 ]
 
-#: The `dask.array` reduction each named mode uses. The reductions ignore
-#: NaNs, so a padded or trimmed edge does not poison a coarse voxel.
-_REDUCTIONS = {
+#: The `dask.array` reduction each downsampling method uses. The reductions
+#: ignore NaNs, so a padded or trimmed edge does not poison a coarse voxel.
+_METHODS = {
     "mean": "nanmean",
     "median": "nanmedian",
     "min": "nanmin",
@@ -159,16 +157,16 @@ def downsample_array(
     target: str,
     *,
     factor: FactorSpec = 2,
-    reduction: str = "mean",
+    method: str = "mean",
 ) -> ZarrArray:
     """Write *target* as *source* coarsened by *factor*.
 
     The array named *source* is read from *group* and shrunk one axis at a
-    time by that axis's factor, with a windowed *reduction*. An axis whose
-    factor is 1, or that is already length one, keeps its resolution. An axis
-    whose length is not a multiple of its factor is trimmed to the largest
-    multiple before the reduction. The result is written as a new array named
-    *target* in the same group and returned.
+    time by that axis's factor, with a windowed reduction chosen by *method*.
+    An axis whose factor is 1, or that is already length one, keeps its
+    resolution. An axis whose length is not a multiple of its factor is
+    trimmed to the largest multiple before the reduction. The result is
+    written as a new array named *target* in the same group and returned.
 
     Parameters
     ----------
@@ -182,7 +180,7 @@ def downsample_array(
         How much each axis shrinks. A single `int` (the default, 2) halves
         every axis. A sequence gives one factor per axis. A mapping keys a
         factor by axis index or dimension name and halves the rest.
-    reduction : str, optional
+    method : str, optional
         How to combine each window of voxels: ``"mean"`` (the default),
         ``"median"``, ``"min"``, ``"max"``, or ``"sum"``.
 
@@ -193,16 +191,15 @@ def downsample_array(
     """
     import dask.array as da
 
-    if reduction not in _REDUCTIONS:
+    if method not in _METHODS:
         raise ValueError(
-            f"unknown reduction {reduction!r}; "
-            f"choose from {sorted(_REDUCTIONS)}"
+            f"unknown method {method!r}; choose from {sorted(_METHODS)}"
         )
     src = group[source]
     darr = src.to_dask()
     names = getattr(src.metadata, "dimension_names", None)
     factors = _resolve_factors(factor, darr.ndim, names)
-    reducer = getattr(da, _REDUCTIONS[reduction])
+    reducer = getattr(da, _METHODS[method])
     # An axis with a factor of 1, or already length one, is left uncoarsened.
     coarsen_by = {
         axis: (f if f > 1 and darr.shape[axis] > 1 else 1)
@@ -249,36 +246,29 @@ def create_pyramid(
     *,
     levels: tx.Optional[int] = None,
     factor: FactorSpec = 2,
-    reduction: str = "mean",
-    strategy: tx.Union[str, int] = "window",
-    scale: tx.Any = None,
-    translation: tx.Any = None,
-    axes: tx.Any = None,
-    image_name: tx.Optional[str] = None,
-    version: str = "stable",
-    policy: ConversionPolicy = "warn",
+    method: str = "mean",
     name: tx.Union[str, tx.Callable[[int], str]] = "{level}",
-    write_metadata: bool = True,
 ) -> tx.List[ZarrArray]:
-    """Build a pyramid of downsampled arrays from *source* and record it.
+    """Add downsampled levels below *source* and record them in the metadata.
 
-    Level 0 is the array already named *source*. Each further level is the one
-    above it coarsened by *factor* through
+    Level 0 is the array already named *source*, and its OME metadata is
+    already written on *group*. Each further level is the one above it
+    coarsened by *factor* through
     [downsample_array][abczarr.ome.pyramid.downsample_array]. Building stops
     after *levels* extra levels, or earlier once no axis can shrink further.
     Every level's array is returned, the base first and the coarsest last.
 
-    The pyramid is recorded as OME-Zarr multiscales metadata on *group*
-    through an [ImageConfig][abczarr.ome.config.ImageConfig]. The metadata
-    names each level's array and carries the coordinate transform that places
-    it in a shared coordinate system. Those transforms are built from the same
-    factors the data was downsampled by, so the metadata matches the data.
+    The group's OME metadata is read and extended to name the new levels. Each
+    new level's coordinate transform is the base level's transform scaled by
+    the factor, so every level stays in the coordinate system the base level
+    was written into. The version of the existing metadata is kept.
 
     Parameters
     ----------
     group : ZarrGroup
-        The group that holds *source*. The coarser levels are written into it,
-        and its OME metadata is set to describe the pyramid.
+        The group that holds *source* and its OME metadata. The coarser levels
+        are written into the group, and the metadata is extended to describe
+        them.
     source : str
         The name of the full-resolution array (level 0).
     levels : int, optional
@@ -288,56 +278,36 @@ def create_pyramid(
     factor : int, sequence or mapping, optional
         How much each axis shrinks per level, as in
         [downsample_array][abczarr.ome.pyramid.downsample_array].
-    reduction : str, optional
+    method : str, optional
         The windowed reduction, as in
         [downsample_array][abczarr.ome.pyramid.downsample_array].
-    strategy : {"window", "edge", "center"}, optional
-        How each level's coordinate transform is worked out from the
-        downsampling. The default, ``"window"``, matches the windowed
-        reduction exactly: a coarse voxel sits at the centre of the window it
-        reduced. ``"edge"`` and ``"center"`` describe the level grids from
-        their shapes instead.
-    scale : number, sequence or mapping, optional
-        The physical size of one base-resolution voxel, as
-        [ImageConfig.scale][abczarr.ome.config.ImageConfig]. Defaults to 1.
-    translation : number, sequence or mapping, optional
-        The offset of the base-resolution voxel grid, as
-        [ImageConfig.translation][abczarr.ome.config.ImageConfig]. Defaults
-        to 0.
-    axes : sequence or mapping, optional
-        The axes, as [ImageConfig.axes][abczarr.ome.config.ImageConfig]. The
-        default reads them from the base array's `dimension_names`.
-    image_name : str, optional
-        The multiscale image's name.
-    version : str, optional
-        The OME version to record, as
-        [ImageConfig.ome_version][abczarr.ome.config.ImageConfig]. Defaults to
-        the latest released version.
-    policy : {"warn", "strict", "lossy"}, optional
-        How to treat metadata a version below 0.6 cannot hold.
     name : str or callable, optional
         How to name each coarser level. A format string is given the level
         index as ``level`` and the cumulative shrink as ``scale``, so the
         default ``"{level}"`` names levels ``"1"``, ``"2"``, and so on, and
         ``"{scale}"`` names them by factor. A callable is given the level
         index and returns the name. Level 0 keeps the name *source*.
-    write_metadata : bool, optional
-        Whether to record the pyramid as OME metadata on *group*. Defaults to
-        `True`.
 
     Returns
     -------
     list of ZarrArray
         Every level, the base first and the coarsest last.
+
+    Raises
+    ------
+    ValueError
+        If *group* has no OME metadata to extend.
     """
+    ome = group.ome
+    if ome is None:
+        raise ValueError(
+            "the group has no OME metadata to extend; write the base level's "
+            "metadata first, for example with ImageConfig(...).apply(group)"
+        )
+    multiscale = ome.multiscales[0]
     base = group[source]
     names = getattr(base.metadata, "dimension_names", None)
     factors = _resolve_factors(factor, len(base.shape), names)
-    # Resolve the axes before writing any array, so a base array that cannot
-    # be turned into OME axes fails before the pyramid is half-built.
-    resolved_axes = (
-        _resolve_axes(axes, names, len(base.shape)) if write_metadata else None
-    )
     if levels is None:
         levels = default_levels(base.shape, base.chunks, factors)
 
@@ -352,7 +322,7 @@ def create_pyramid(
                 level=level, scale=_level_scale(factors, level)
             )
         made = downsample_array(
-            group, previous, target, factor=factors, reduction=reduction
+            group, previous, target, factor=factors, method=method
         )
         # Nothing shrank, so a further level would only copy this one.
         if made.shape == pyramid[-1].shape:
@@ -362,76 +332,110 @@ def create_pyramid(
         paths.append(target)
         previous = target
 
-    if write_metadata:
-        _write_multiscales(
-            group,
-            paths,
-            factors,
-            resolved_axes,
-            strategy=strategy,
-            scale=scale,
-            translation=translation,
-            image_name=image_name,
-            version=version,
-            policy=policy,
-        )
+    _extend_metadata(group, ome, multiscale, source, paths, factors)
     return pyramid
 
 
-def _write_multiscales(
+# ----------------------------------------------------------------------
+#   extending the existing metadata
+# ----------------------------------------------------------------------
+
+
+def _extend_metadata(
     group: ZarrGroup,
+    ome: tx.Any,
+    multiscale: tx.Any,
+    source: str,
     paths: tx.Sequence[str],
     factors: tz.Shape,
-    axes: tx.Any,
-    *,
-    strategy: tx.Union[str, int],
-    scale: tx.Any,
-    translation: tx.Any,
-    image_name: tx.Optional[str],
-    version: str,
-    policy: ConversionPolicy,
 ) -> None:
-    """Set *group*'s OME metadata to describe the pyramid at *paths*.
+    """Rewrite *group*'s OME metadata to include the new levels.
 
-    An [ImageConfig][abczarr.ome.config.ImageConfig] is built from the axes,
-    the base voxel geometry, and the downsampling factors, then lowered to the
-    requested version and assigned to the group. The level shapes come from the
-    written arrays, so the metadata reflects the arrays exactly.
+    The axes, the base level's voxel geometry, the image name, and the version
+    are read from the existing metadata. An
+    [ImageConfig][abczarr.ome.config.ImageConfig] rebuilds the multiscale from
+    them with one dataset per level, and the result is assigned back to the
+    group. The base level's dataset is reproduced from its own transform, so
+    only the new levels are added.
     """
+    scale, translation = _base_geometry(multiscale, source)
+    image_name = getattr(multiscale, "name", None)
     config = ImageConfig(
-        axes=axes,
+        axes=_axis_specs(multiscale),
         scale=scale,
         translation=translation,
         factor=tuple(float(f) for f in factors),
-        strategy=strategy,
-        name=image_name,
-        ome_version=version,
+        strategy="window",
+        name=image_name if isinstance(image_name, str) else None,
+        ome_version=ome.version,
     )
     level_shapes = [tuple(group[path].shape) for path in paths]
-    config.apply(
-        group,
-        level_shapes=level_shapes,
-        level_paths=list(paths),
-        policy=policy,
-    )
+    config.apply(group, level_shapes=level_shapes, level_paths=list(paths))
 
 
-def _resolve_axes(
-    axes: tx.Any,
-    names: tx.Optional[tx.Sequence[tx.Optional[str]]],
-    ndim: int,
-) -> tx.Any:
-    """The axes for the [ImageConfig][abczarr.ome.config.ImageConfig].
+def _axis_specs(multiscale: tx.Any) -> tx.List[tx.Dict[str, tx.Any]]:
+    """The axes of *multiscale* as ``{name, type, unit}`` dicts.
 
-    An explicit *axes* argument is used as it is. Otherwise the axes are the
-    base array's dimension names. A base array with no dimension names cannot
-    be turned into OME axes, so the caller is asked for *axes* instead.
+    The stable versions carry the axes on the multiscale. The 0.6 pre-releases
+    carry them on the first coordinate system. Both are read here.
     """
-    if axes is not None:
-        return axes
-    if not names or any(n is None for n in names):
+    axes = getattr(multiscale, "axes", None)
+    if not axes:
+        systems = getattr(multiscale, "coordinateSystems", None)
+        axes = systems[0].axes if systems else None
+    if not axes:
+        raise ValueError("the OME metadata has no axes")
+    specs = []
+    for axis in axes:
+        spec = {"name": axis.name}  # type: tx.Dict[str, tx.Any]
+        atype = getattr(axis, "type", None)
+        unit = getattr(axis, "unit", None)
+        if isinstance(atype, str):
+            spec["type"] = atype
+        if isinstance(unit, str):
+            spec["unit"] = unit
+        specs.append(spec)
+    return specs
+
+
+def _base_geometry(
+    multiscale: tx.Any, source: str
+) -> tx.Tuple[tx.List[float], tx.List[float]]:
+    """The base level's scale and translation, read from its transform.
+
+    The dataset named *source* holds the base level's transform. Its scale is
+    read, and its translation when it has one. A missing translation reads as
+    zero on every axis.
+    """
+    datasets = list(multiscale.datasets)
+    dataset = next((d for d in datasets if d.path == source), datasets[0])
+    scale = None
+    translation = None
+    for transform in _flatten_transforms(dataset.coordinateTransformations):
+        if getattr(transform, "type", None) == "scale":
+            scale = [float(v) for v in transform.scale]
+        elif getattr(transform, "type", None) == "translation":
+            translation = [float(v) for v in transform.translation]
+    if scale is None:
         raise ValueError(
-            "the base array has no dimension names, so the axes cannot be "
-            "inferred; pass axes=... or set dimension_names on the array"
+            f"the base dataset {source!r} has no scale transform to build on"
         )
-    return list(names)
+    if translation is None:
+        translation = [0.0] * len(scale)
+    return scale, translation
+
+
+def _flatten_transforms(
+    transforms: tx.Sequence[tx.Any],
+) -> tx.Iterator[tx.Any]:
+    """Each transform, stepping into a sequence's own transformations.
+
+    The stable versions list the scale and the translation side by side. The
+    0.6 pre-releases wrap them in one sequence. Both are flattened to the
+    individual transforms here.
+    """
+    for transform in transforms:
+        if getattr(transform, "type", None) == "sequence":
+            yield from transform.transformations
+        else:
+            yield transform
