@@ -34,10 +34,6 @@ A backend that is natively async (tensorstore, zarr-python) awaits its own
 futures; one that is not runs its blocking ops in a bounded thread pool.
 `array.supports("async", native=True)` says which you got.
 
-## `abczarr.abc.sync`
+## ::: abczarr.abc.sync
 
-::: abczarr.abc.sync
-
-## `abczarr.abc.asynchronous`
-
-::: abczarr.abc.asynchronous
+## ::: abczarr.abc.asynchronous
