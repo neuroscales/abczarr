@@ -275,3 +275,39 @@ def test_a_per_axis_factor_names_levels_with_x(
     _base_with_ome(group, np.arange(64, dtype="float64").reshape(8, 8))
     create_pyramid(group, "0", levels=1, factor={"x": 1}, name="s{scale}")
     assert "s2x1" in group.keys()
+
+
+def _codec_names(array: object) -> list:
+    return [c.get("name") for c in array.metadata.to_json().get("codecs", [])]
+
+
+def test_a_level_inherits_the_base_array_encoding(
+    tmp_path: pathlib.Path,
+) -> None:
+    group = _group(tmp_path)
+    # a base array with a non-default compressor, fill value, and chunk shape
+    base = group.create_array(
+        "0",
+        shape=(8, 8),
+        dtype="int16",
+        chunks=(4, 4),
+        dimension_names=("y", "x"),
+        compressor="blosc",
+        fill_value=7,
+    )
+    base.store(np.arange(64, dtype="int16").reshape(8, 8))
+    ImageConfig(axes=["y", "x"], scale=[1.0, 1.0]).apply(
+        group, level_paths=["0"], level_shapes=[(8, 8)]
+    )
+    create_pyramid(group, "0", levels=2)
+
+    base_codecs = _codec_names(group["0"])
+    for level in ("1", "2"):
+        made = group[level]
+        # the compressor and any other codecs carry across from the base level
+        assert _codec_names(made) == base_codecs
+        assert "blosc" in _codec_names(made)
+        # the fill value is preserved
+        assert made.metadata.to_json()["fill_value"] == 7
+        # the chunk shape stays the same, so a coarser level holds fewer chunks
+        assert made.chunks == (4, 4)

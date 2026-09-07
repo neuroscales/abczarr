@@ -209,20 +209,38 @@ def downsample_array(
     }
     coarse = da.coarsen(reducer, darr, coarsen_by, trim_excess=True)
     coarse = coarse.astype(darr.dtype)
-    made = group.create_array(
-        target,
-        shape=coarse.shape,
-        dtype=src.dtype,
-        chunks=_fit_chunks(src.chunks, coarse.shape),
-        dimension_names=names,
-    )
+    made = _create_level(group, target, src, coarse.shape, names)
     made.store(coarse)
     return made
 
 
-def _fit_chunks(chunks: tz.ShapeLike, shape: tz.ShapeLike) -> tz.Shape:
-    """Clamp each chunk to the coarser axis it now sits on."""
-    return tuple(min(chunk, size) for chunk, size in zip(chunks, shape))
+def _create_level(
+    group: ZarrGroup,
+    target: str,
+    source: ZarrArray,
+    shape: tz.ShapeLike,
+    names: tx.Optional[tx.Sequence[tx.Optional[str]]],
+) -> ZarrArray:
+    """Create *target* in *group* as a coarser copy of *source*.
+
+    The new level reuses the base array's metadata, so its data type, chunk
+    grid, codecs, compressor, fill value, and every other stored option match
+    the base level. Only the shape and the dimension names change. A backend's
+    array creation expresses fewer options than its metadata can hold, so the
+    level is built from the base metadata directly to carry the base encoding
+    across in full. The chunk and shard shapes are kept as they are, so a
+    coarser level holds fewer chunks of the same size rather than smaller ones.
+    """
+    from ..api.entrypoint import create
+    from ..drivers._metadata import metadata_from_json
+
+    document = dict(source.metadata.to_json())
+    document["shape"] = list(shape)
+    document["attributes"] = {}
+    if names is not None and "dimension_names" in document:
+        document["dimension_names"] = list(names)
+    location = "{}/{}".format(str(group.store_path).rstrip("/"), target)
+    return create(location, metadata_from_json(document))
 
 
 def _level_scale(factors: tz.ShapeLike, level: int) -> tx.Any:
