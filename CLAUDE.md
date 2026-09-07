@@ -23,10 +23,17 @@ conversational filler.
 - Keep to one clear logical relationship per sentence. When a sentence carries
   several distinct ideas, write several sentences. Do not join independent
   ideas with commas, semicolons, em dashes, or parenthetical clauses.
-- Do not open with a fragment. A docstring that begins "Common base for…",
-  "The mirror of…", or "One transform for…" asks the reader to supply the
-  missing subject. Begin with an explicit subject and a verb: "This class is
-  the base class for…", "An `Affine` transform maps…".
+- Every sentence after the summary needs an explicit subject. Do not leave the
+  reader to supply a missing subject in the body of a docstring. Name the
+  subject and use a verb: "This behavior is inherited from `ZarrNode`.", not a
+  bare "Inherited from `ZarrNode`.".
+- The first (summary) sentence is the exception. Its subject is understood to
+  be the object being documented, so a summary written as a noun phrase or a
+  verb-led phrase is correct, and is usually better than one that names the
+  object. Write "A `ZarrGroup` for a backend with no group object of its own."
+  or "Compresses each chunk with bzip2.", not "`PathGroup` is a `ZarrGroup`
+  for…". Do not rewrite a clean subjectless summary so that it names its own
+  class.
 - Vary sentence length. A short sentence often lands well after a longer,
   explanatory one.
 
