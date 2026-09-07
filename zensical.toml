@@ -12,9 +12,9 @@ nav = [
     ]},
     {"abc" = [
       "api/nodes.md",
+      "api/capabilities.md",
       "api/store.md",
       "api/transactions.md",
-      "api/capabilities.md",
     ]},
     {"drivers" = [
       "api/drivers.md",
