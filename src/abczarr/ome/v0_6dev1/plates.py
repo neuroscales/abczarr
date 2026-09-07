@@ -22,7 +22,7 @@ WellPath = tx.Annotated[str, re.compile(r"^[A-Za-z0-9]+/[A-Za-z0-9]+$")]
 
 @autodefine
 class Plate(OMEMetadata):
-    """A `Plate` object describes a high-content screening plate.
+    """Describes a high-content screening plate.
 
     `rows` and `columns` name the plate's grid, such as `"A"`, `"B"`, ...
     and `"1"`, `"2"`, .... `wells` places each well in that grid and points,

@@ -11,8 +11,7 @@ from ..base import OMEMetadata
 
 @autodefine
 class Channel(OMEMetadata):
-    """A `Channel` object specifies how to render one channel of a
-    multi-channel image.
+    """Specifies how to render one channel of a multi-channel image.
 
     `color` is a hex RGB string, such as `"FF0000"` for red. `window` gives
     the intensity range that is mapped onto that color.
@@ -31,8 +30,7 @@ class Channel(OMEMetadata):
 
 @autodefine
 class Omero(OMEMetadata):
-    """An `Omero` object holds rendering settings for an image, one entry per
-    channel.
+    """Holds rendering settings for an image, one entry per channel.
 
     An `Omero` object is attached to an image group, alongside its
     [Multiscale][abczarr.ome.v0_6dev2.images.Multiscale], to suggest how a

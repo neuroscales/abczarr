@@ -13,8 +13,7 @@ from ..base import OMEMetadata
 
 @autodefine
 class Well(OMEMetadata):
-    """A `Well` object lists a well's images: one field of view per acquisition
-    run.
+    """Lists a well's images: one field of view per acquisition run.
 
     A well group holds one subgroup per field of view. `images` lists them,
     each naming its subgroup and, when the plate ran more than one

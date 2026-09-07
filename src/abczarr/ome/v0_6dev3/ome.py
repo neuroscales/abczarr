@@ -30,8 +30,7 @@ from .wells import Well
 @register_subclass(version=VERSION)
 @autodefine
 class OME(OMEBase):
-    """An `OME` object is the version-tagged root of an OME-Zarr group's
-    metadata.
+    """The version-tagged root of an OME-Zarr group's metadata.
 
     Every more specific container, such as
     [OMEImage][abczarr.ome.v0_6dev3.ome.OMEImage] or
@@ -45,8 +44,7 @@ class OME(OMEBase):
 @register_subclass(series=tx.Any)
 @autodefine
 class OMESeries(OME):
-    """An `OMESeries` object marks an OME-Zarr group that collects other groups
-    as a named series.
+    """Marks an OME-Zarr group that collects other groups as a named series.
 
     `series` lists the paths of the member groups, in order, when the group
     states them explicitly.
@@ -58,8 +56,8 @@ class OMESeries(OME):
 @register_subclass(multiscales=tx.Any)
 @autodefine
 class OMEImage(OME):
-    """An `OMEImage` object holds an image group's metadata: its multiscale
-    pyramids and rendering settings.
+    """Holds an image group's metadata: its multiscale pyramids and rendering
+    settings.
 
     `multiscales` lists the group's
     [Multiscale][abczarr.ome.v0_6dev3.images.Multiscale] pyramids. `omero`,
@@ -73,12 +71,12 @@ class OMEImage(OME):
 @register_subclass(image_label=tx.Any)
 @autodefine
 class OMEImageLabel(OMEImage):
-    """An `OMEImageLabel` object marks an image group that is itself a
-    segmentation label image.
+    """Marks an image group that is itself a segmentation label image.
 
-    It extends [OMEImage][abczarr.ome.v0_6dev3.ome.OMEImage] with
-    `image_label`, the [ImageLabel][abczarr.ome.v0_6dev3.labels.ImageLabel]
-    that describes the segments its pixel values name.
+    An `OMEImageLabel` extends [OMEImage][abczarr.ome.v0_6dev3.ome.OMEImage]
+    with `image_label`, the
+    [ImageLabel][abczarr.ome.v0_6dev3.labels.ImageLabel] that describes the
+    segments its pixel values name.
     """
 
     image_label: Required[ImageLabel] = field(json="image-label")
@@ -87,8 +85,8 @@ class OMEImageLabel(OMEImage):
 @register_subclass(labels=tx.Any)
 @autodefine
 class OMELabels(OME):
-    """An `OMELabels` object marks a group that collects the label images
-    derived from an intensity image.
+    """Marks a group that collects the label images derived from an
+    intensity image.
 
     `labels` lists the paths of those label image groups.
     """
@@ -99,8 +97,7 @@ class OMELabels(OME):
 @register_subclass(plate=tx.Any)
 @autodefine
 class OMEPlate(OME):
-    """An `OMEPlate` object holds a high-content screening plate group's
-    metadata.
+    """Holds a high-content screening plate group's metadata.
 
     `plate` is the [Plate][abczarr.ome.v0_6dev3.plates.Plate] that describes
     the plate's rows, columns, and wells.
@@ -112,8 +109,8 @@ class OMEPlate(OME):
 @register_subclass(well=tx.Any)
 @autodefine
 class OMEWell(OME):
-    """An `OMEWell` object holds a well group's metadata: the images acquired
-    at one position of a plate.
+    """Holds a well group's metadata: the images acquired at one position of
+    a plate.
 
     `well` is the [Well][abczarr.ome.v0_6dev3.wells.Well] that lists the
     well's fields of view.
@@ -125,10 +122,10 @@ class OMEWell(OME):
 @register_subclass(scene=tx.Any)
 @autodefine
 class OMEScene(OME):
-    """An `OMEScene` object marks a group whose metadata is a scene.
+    """Marks a group whose metadata is a scene.
 
-    `scene` is the [Scene][abczarr.ome.v0_6dev3.scenes.Scene] that it
-    carries.
+    `scene` is the [Scene][abczarr.ome.v0_6dev3.scenes.Scene] that the
+    group carries.
     """
 
     scene: Required[Scene]
@@ -137,8 +134,7 @@ class OMEScene(OME):
 @register_subclass(bioformats2raw_layout=3)
 @autodefine
 class OMEBioformats2Raw(OME):
-    """An `OMEBioformats2Raw` object is the root group of a
-    Bio-Formats2Raw-layout conversion.
+    """The root group of a Bio-Formats2Raw-layout conversion.
 
     `bioformats2raw_layout` marks the layout version. `plate` is the
     [Plate][abczarr.ome.v0_6dev3.plates.Plate] the converted data belongs

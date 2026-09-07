@@ -14,8 +14,8 @@ UInt8 = tx.Annotated[int, ToInRange(0, 255)]
 
 @autodefine
 class ImageLabel(OMEMetadata):
-    """An `ImageLabel` describes a segmentation label image: an array whose
-    integer values name segments.
+    """Describes a segmentation label image: an array whose integer values
+    name segments.
 
     An `ImageLabel` is attached to a label image group alongside its own
     [Multiscale][abczarr.ome.v0_6dev2.images.Multiscale]. `colors` maps each
