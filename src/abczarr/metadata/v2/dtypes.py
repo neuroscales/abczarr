@@ -15,6 +15,14 @@ from abczarr._core.dtypes import to_zarr2 as dtype_to_zarr2
 
 
 class DType:
+    """A Zarr v2 data type: a numpy dtype string or a structured field list.
+
+    Constructing ``DType(value)`` returns a
+    [`ScalarDType`][abczarr.metadata.v2.dtypes.ScalarDType] for a plain
+    dtype (e.g. ``"<f8"``) or a
+    [`StructDType`][abczarr.metadata.v2.dtypes.StructDType] for a
+    structured one, inferred from *value*.
+    """
 
     def __new__(cls, value: tx.Any) -> tx.Self:
         if cls is DType:
@@ -51,6 +59,11 @@ class DType:
 
 
 class ScalarDType(str, DType):
+    """A v2 scalar data type: a numpy dtype string, e.g. ``"<f8"``.
+
+    Encodes the byte order, kind and item size the way ``.zarray``'s
+    ``dtype`` field does.
+    """
 
     def __new__(cls, value: str) -> tx.Self:
         value = dtype_to_zarr2(asdtype(value))
@@ -64,6 +77,11 @@ def _immutable(self: "StructDType", *args, **kwargs) -> None:
 
 
 class StructDType(list, DType):
+    """A v2 structured data type: an ordered list of ``(name, dtype)`` fields.
+
+    Mirrors numpy's structured dtype list form. Immutable: the list
+    mutation methods raise rather than change the type after construction.
+    """
 
     def __new__(cls, value: tx.Iterable[tx.Tuple[str, str]]) -> tx.Self:
         items = []
@@ -90,6 +108,8 @@ class StructDType(list, DType):
 
 @register_converter(DType)
 class DTypeConverter(Converter[DType, DTYPE_LIKE]):
+    """Converts a dtype-like value (a numpy dtype, string, or field list) to
+    a [`DType`][abczarr.metadata.v2.dtypes.DType]."""
 
     DEFAULT = DType
     FALLBACK = DType

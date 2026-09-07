@@ -50,29 +50,46 @@ DTYPES_EXTENSIONS = (
 
 @autofrozen
 class DTypeExtra(DTypeImpl):
-    ...
+    """A Zarr v3 extension data type: one registered outside the core spec."""
 
 
 @autofrozen
 class StructField(DTypeConfigImpl):
+    """One named field of a struct data type: its name and its data type."""
+
     name: str
     data_type: DType
 
 
 @autofrozen
 class StructConfig(DTypeConfigImpl):
+    """Struct data type parameters: the ordered list of fields."""
+
     fields: tx.Tuple[StructField, ...]
 
 
 @register_subclass(name=re.compile(r"(?:struct|structured)"))
 @autofrozen
 class Struct(DTypeExtra):
+    """A structured data type: a fixed, ordered sequence of named fields.
+
+    Each element is a record combining every field's value, mirroring
+    numpy's structured dtype.
+    """
+
     name: tx.Literal["struct", "structured"]
     configuration: StructConfig
 
 
 @autofrozen
 class NumpyTimeConfig(DTypeConfigImpl):
+    """Datetime/timedelta parameters: the time unit and its scale factor.
+
+    A value counts ``scale_factor`` multiples of ``unit`` (e.g. a
+    ``scale_factor`` of 10 with ``unit`` ``"s"`` counts in tens of
+    seconds), matching numpy's datetime64/timedelta64 resolution.
+    """
+
     unit: tx.Literal[
         "Y", "M", "W", "D", "h", "m", "s",
         "ms", "us", "μs", "ns", "ps", "fs", "as", "generic",
@@ -83,6 +100,12 @@ class NumpyTimeConfig(DTypeConfigImpl):
 @register_subclass(name="numpy.datetime64")
 @autofrozen
 class NumpyDatetime64(DTypeExtra):
+    """A point in time, at the resolution ``configuration`` names.
+
+    Mirrors numpy's ``datetime64``: an integer count of the configured
+    time unit since the Unix epoch.
+    """
+
     name: tx.Literal["numpy.datetime64"]
     configuration: NumpyTimeConfig
 
@@ -90,6 +113,12 @@ class NumpyDatetime64(DTypeExtra):
 @register_subclass(name="numpy.timedelta64")
 @autofrozen
 class NumpyTimedelta64(DTypeExtra):
+    """A duration, at the resolution ``configuration`` names.
+
+    Mirrors numpy's ``timedelta64``: an integer count of the configured
+    time unit.
+    """
+
     name: tx.Literal["numpy.timedelta64"]
     configuration: NumpyTimeConfig
 
@@ -103,12 +132,19 @@ class NumpyTimedelta64(DTypeExtra):
 # https://github.com/zarr-developers/zarr-extensions/tree/main/data-types
 @autofrozen
 class FixedLengthConfig(DTypeConfigImpl):
+    """Fixed-length data type parameters: the element's size in bytes."""
+
     length_bytes: int
 
 
 @register_subclass(name="fixed_length_utf32")
 @autofrozen
 class FixedLengthUtf32(DTypeExtra):
+    """A fixed-length UTF-32 string, mirroring numpy's ``<U{n}`` dtype.
+
+    ``configuration.length_bytes`` is four times the character count.
+    """
+
     name: tx.Literal["fixed_length_utf32"]
     configuration: FixedLengthConfig
 
@@ -116,6 +152,8 @@ class FixedLengthUtf32(DTypeExtra):
 @register_subclass(name="null_terminated_bytes")
 @autofrozen
 class NullTerminatedBytes(DTypeExtra):
+    """A fixed-length byte string, mirroring numpy's ``S{n}`` dtype."""
+
     name: tx.Literal["null_terminated_bytes"]
     configuration: FixedLengthConfig
 

@@ -13,6 +13,13 @@ from abczarr._core.metadata import Metadata
 
 @autofrozen(extra_items=tz.FrozenJson)
 class Filter(Metadata):
+    """A Zarr v2 filter: an ``id`` naming a numcodecs codec, plus its options.
+
+    Filters run before the compressor, in the order they are listed, each
+    transforming an array's data on encode and reversing that transform on
+    decode.
+    """
+
     id: str
 
     def to_version(self, version: tz.ZarrVersion) -> tx.Self:
@@ -47,4 +54,4 @@ class Filter(Metadata):
 
 @autofrozen(extra_items=False)
 class FilterImpl(Filter):
-    ...
+    """Base for a v2 filter whose options are declared, not open-ended."""
