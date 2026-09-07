@@ -373,40 +373,58 @@ def open_group(
 
 @tx.overload
 def create(
+    location: tz.PathLike, config: tx.Optional[ArrayConfig] = ..., *,
+    data: tx.Any, ome: tx.Any = ...,
+    asynchronous: "tx.Literal[False]" = ..., **fields: tx.Any,
+) -> ZarrArray: ...
+@tx.overload
+def create(
+    location: tz.PathLike, config: tx.Optional[ArrayConfig] = ..., *,
+    data: tx.Any, ome: tx.Any = ...,
+    asynchronous: "tx.Literal[True]", **fields: tx.Any,
+) -> tx.Awaitable[AsyncZarrArray]: ...
+@tx.overload
+def create(
     location: tz.PathLike, config: ArrayConfig, *,
+    ome: tx.Any = ...,
     asynchronous: "tx.Literal[False]" = ..., **fields: tx.Any,
 ) -> ZarrArray: ...
 @tx.overload
 def create(
     location: tz.PathLike, config: ArrayConfig, *,
-    asynchronous: "tx.Literal[True]", **fields: tx.Any,
+    ome: tx.Any = ..., asynchronous: "tx.Literal[True]", **fields: tx.Any,
 ) -> tx.Awaitable[AsyncZarrArray]: ...
 @tx.overload
 def create(
     location: tz.PathLike, config: GroupConfig, *,
+    ome: tx.Any = ...,
     asynchronous: "tx.Literal[False]" = ..., **fields: tx.Any,
 ) -> ZarrGroup: ...
 @tx.overload
 def create(
     location: tz.PathLike, config: GroupConfig, *,
-    asynchronous: "tx.Literal[True]", **fields: tx.Any,
+    ome: tx.Any = ..., asynchronous: "tx.Literal[True]", **fields: tx.Any,
 ) -> tx.Awaitable[AsyncZarrGroup]: ...
 @tx.overload
 def create(
     location: tz.PathLike, config: NodeMetadata, *,
+    ome: tx.Any = ...,
     asynchronous: "tx.Literal[False]" = ..., **fields: tx.Any,
 ) -> ZarrNode: ...
 @tx.overload
 def create(
     location: tz.PathLike, config: NodeMetadata, *,
-    asynchronous: "tx.Literal[True]", **fields: tx.Any,
+    ome: tx.Any = ..., asynchronous: "tx.Literal[True]", **fields: tx.Any,
 ) -> tx.Awaitable[AsyncZarrNode]: ...
 
 
 def create(
     location: tz.PathLike,
-    config: tx.Union[ZarrConfig, NodeMetadata],
-    *, asynchronous: bool = False,
+    config: tx.Union[ZarrConfig, NodeMetadata, None] = None,
+    *,
+    data: tx.Any = None,
+    ome: tx.Any = None,
+    asynchronous: bool = False,
     **fields: tx.Any,
 ) -> tx.Union[ZarrNode, tx.Awaitable[AsyncZarrNode]]:
     """Create the array or group *config* describes at *location*.
@@ -423,6 +441,17 @@ def create(
     `overwrite` are the only keywords. For a plain dict, wrap it first with
     `ArrayMetadata.from_json(...)` or `ArrayConfig(**...)`.
 
+    An array is created from existing *data* when *data* is given. The array's
+    shape and dtype default to the data's. A `shape` or `dtype` in *config* or
+    in the keyword arguments takes precedence over the data. The data is
+    written into the new array, and *config* is an
+    [ArrayConfig][abczarr.api.config.ArrayConfig] or is left out.
+
+    OME-Zarr metadata is written on the new node when *ome* is given. An
+    [OME][abczarr.ome.base.OME] object or a plain mapping is written as it is.
+    An [ImageConfig][abczarr.ome.config.ImageConfig] is lowered to base-level
+    metadata first.
+
     With `asynchronous=True` the return value is a **coroutine you await**: the
     backend creates through its own async I/O and resolves to the coroutine
     twin of the node, mirroring async [open][abczarr.api.open].
@@ -430,19 +459,35 @@ def create(
     !!! example
         ```python
         arr = abczarr.create("a.zarr", ArrayConfig(shape=(4, 4), dtype="i1"))
-        arr = await abczarr.create(
-            "a.zarr", ArrayConfig(shape=(4, 4), dtype="i1"), asynchronous=True
-        )
+        arr = abczarr.create("a.zarr", data=np.zeros((4, 4), "i1"))
         ```
     """
+    if data is not None:
+        data = _as_stored(data)
     if asynchronous:
-        return _acreate(location, config, fields)
+        return _acreate(location, config, data, ome, fields)
+    node = _create_node(location, config, data, fields)
+    if data is not None:
+        node.store(data)
+    if ome is not None:
+        _apply_ome(node, ome)
+    return node
+
+
+def _create_node(
+    location: tz.PathLike,
+    config: tx.Union[ZarrConfig, NodeMetadata, None],
+    data: tx.Any,
+    fields: "tx.Dict[str, tx.Any]",
+) -> ZarrNode:
+    """Create the node itself, without storing data or writing OME metadata."""
+    config = _prepare_config(config, data)
     if isinstance(config, ZarrConfig):
         if fields:
             config = evolve(config, **fields)
         if isinstance(config, ArrayConfig):
-            config = config.resolve()
-            metadata = config.to_metadata()
+            config = config.resolve(data)
+            metadata = config.to_metadata()  # type: tx.Any
         else:
             metadata = None
         return _choose_create_driver(config.driver, metadata).create(
@@ -456,30 +501,92 @@ def create(
     raise TypeError(_CREATE_TYPE_ERROR)
 
 
+def _prepare_config(
+    config: tx.Union[ZarrConfig, NodeMetadata, None], data: tx.Any
+) -> tx.Union[ZarrConfig, NodeMetadata]:
+    """The config to create from, an array by default when *data* is given."""
+    if config is None:
+        if data is None:
+            raise TypeError(_CREATE_TYPE_ERROR)
+        return ArrayConfig()
+    if data is not None and isinstance(config, GroupConfig):
+        raise TypeError(
+            "create() with data creates an array; pass an ArrayConfig or omit "
+            "the config"
+        )
+    return config
+
+
+def _as_stored(data: tx.Any) -> tx.Any:
+    """*data* as an array with a shape and a dtype to read and to store.
+
+    An array, whether numpy, Dask, or another Zarr array, is used as it is.
+    Anything else, such as a nested list, is turned into a numpy array first.
+    """
+    has_shape = getattr(data, "shape", None) is not None
+    has_dtype = getattr(data, "dtype", None) is not None
+    if has_shape and has_dtype:
+        return data
+    import numpy as np
+
+    return np.asarray(data)
+
+
+def _apply_ome(node: ZarrNode, ome: tx.Any) -> None:
+    """Write *ome* onto *node*, lowering an ImageConfig to metadata first."""
+    from ..ome.config import ImageConfig
+
+    if isinstance(ome, ImageConfig):
+        ome.apply(node)
+    else:
+        node.ome = ome
+
+
 async def _acreate(
     location: tz.PathLike,
-    config: tx.Union[ZarrConfig, NodeMetadata],
+    config: tx.Union[ZarrConfig, NodeMetadata, None],
+    data: tx.Any,
+    ome: tx.Any,
     fields: "tx.Dict[str, tx.Any]",
 ) -> AsyncZarrNode:
-    """Create *config* at *location* asynchronously, awaiting the backend's
-    native async create -- the async twin of [create][abczarr.api.create]."""
+    """Create asynchronously, the async twin of
+    [create][abczarr.api.create]."""
+    config = _prepare_config(config, data)
     if isinstance(config, ZarrConfig):
         if fields:
             config = evolve(config, **fields)
         if isinstance(config, ArrayConfig):
-            config = config.resolve()
+            config = config.resolve(data)
             metadata = config.to_metadata()  # type: tx.Any
         else:
             metadata = None
         driver = _choose_create_driver(config.driver, metadata)
-        return await driver.create(location, config, asynchronous=True)
-    if isinstance(config, NodeMetadata):
+        node = await driver.create(
+            location, config, asynchronous=True
+        )  # type: tx.Any
+    elif isinstance(config, NodeMetadata):
         overwrite, driver_arg = _metadata_create_keywords(fields)
         driver = _choose_create_driver(driver_arg, config)
-        return await driver.create_from_metadata(
+        node = await driver.create_from_metadata(
             location, config, overwrite=overwrite, asynchronous=True
         )
-    raise TypeError(_CREATE_TYPE_ERROR)
+    else:
+        raise TypeError(_CREATE_TYPE_ERROR)
+    if data is not None:
+        await node.setitem(Ellipsis, data)
+    if ome is not None:
+        await _aapply_ome(node, ome)
+    return node
+
+
+async def _aapply_ome(node: AsyncZarrNode, ome: tx.Any) -> None:
+    """Write *ome* onto an async *node*, lowering an ImageConfig."""
+    from ..ome.config import ImageConfig
+
+    if isinstance(ome, ImageConfig):
+        await node.set_ome(ome.to_ome())
+    else:
+        await node.set_ome(ome)
 
 
 _CREATE_TYPE_ERROR = (
