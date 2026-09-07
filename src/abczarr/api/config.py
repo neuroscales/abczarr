@@ -158,16 +158,19 @@ class ArrayConfig(ZarrConfig):
     ) -> tx.Self:
         """Return a copy with `"auto"` chunking and sharding worked out.
 
-        Takes the shape and dtype from *data* if given, else from *overrides*,
-        else from the config. Raises if neither the config nor the call
-        supplies a shape and a dtype.
+        The shape and dtype come from *overrides* first, then from the config.
+        A missing shape or dtype falls back to *data* when *data* is given, so
+        an override or a config value takes precedence over the data. Raises
+        if none of the three supplies a shape and a dtype.
         """
         shape = overrides.get("shape", self.shape)
         dtype = overrides.get("dtype", self.dtype)
         names = overrides.get("dimension_names", self.dimension_names)
         if data is not None:
-            shape = getattr(data, "shape", shape)
-            dtype = getattr(data, "dtype", dtype)
+            if shape is None:
+                shape = getattr(data, "shape", None)
+            if dtype is None:
+                dtype = getattr(data, "dtype", None)
         if shape is None or dtype is None:
             raise ValueError(
                 "ArrayConfig needs a shape and a dtype to create an array"
