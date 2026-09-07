@@ -250,12 +250,12 @@ class Store(SupportsCapabilities, ABC):
     def delete(self, key: str) -> None:
         """Remove `key`.
 
+        Removing a missing key is not an error.
+
         Parameters
         ----------
         key : str
             The key to remove.
-
-        Removing a missing key is not an error.
         """
         ...
 
@@ -647,12 +647,12 @@ class AsyncStore(SupportsCapabilities, ABC):
     async def delete(self, key: str) -> None:
         """Remove `key`.
 
+        Removing a missing key is not an error.
+
         Parameters
         ----------
         key : str
             The key to remove.
-
-        Removing a missing key is not an error.
         """
         ...
 
