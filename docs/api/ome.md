@@ -1,12 +1,12 @@
 # OME-Zarr metadata
 
-OME-Zarr (the NGFF spec) is a metadata convention for bioimaging data
-stored in Zarr: multiscale image pyramids, high-content screening
-plates, segmentation labels, and rendering settings, all described by
-JSON attached to a Zarr group. abczarr models that metadata as typed
-classes under `abczarr.ome`. There is one package per NGFF version,
-`v0_1` through `v0_5`, plus the 0.6 pre-release previews `v0_6dev1`
-through `v0_6dev4` and `v0_6rc0`.
+OME-Zarr, the NGFF specification, is a metadata convention for
+bioimaging data stored in Zarr. It describes multiscale image
+pyramids, high-content screening plates, segmentation labels, and
+rendering settings, all as JSON attached to a Zarr group. abczarr
+models that metadata as typed classes under `abczarr.ome`. One
+package exists per NGFF version, `v0_1` through `v0_5`, plus the 0.6
+pre-release previews `v0_6dev1` through `v0_6dev4` and `v0_6rc0`.
 
 The examples below target 0.5, the latest stable version. The
 [Reference](#reference) documents every version.
@@ -15,8 +15,8 @@ The examples below target 0.5, the latest stable version. The
 
 A multiscale image is a pyramid of resolution levels, each a Zarr
 array, described by
-[Multiscale][abczarr.ome.v0_5.images.Multiscale]. Build it
-from a plain dict shaped like the JSON the spec defines:
+[Multiscale][abczarr.ome.v0_5.images.Multiscale]. It is built from a
+plain dict shaped like the JSON the spec defines:
 
 ```pycon
 >>> from abczarr.ome import v0_5
@@ -51,17 +51,18 @@ from a plain dict shaped like the JSON the spec defines:
 ```
 
 Each axis in `axes` becomes an
-[Axis][abczarr.ome.v0_5.axes.Axis]. Here that's a
-[SpaceAxis][abczarr.ome.v0_5.axes.SpaceAxis], since each one
+[Axis][abczarr.ome.v0_5.axes.Axis], matched by its `type` field. The
+`y` and `x` axes in this example become
+[SpaceAxis][abczarr.ome.v0_5.axes.SpaceAxis] objects, since each
 carries `type="space"`. Each entry in `datasets` becomes a
-[Dataset][abczarr.ome.v0_5.images.Dataset]. It names an array
+[Dataset][abczarr.ome.v0_5.images.Dataset]. A dataset names an array
 and carries the [Scale][abczarr.ome.v0_5.transformations.Scale]
 that places it in physical space, one value per axis, in that axis's
 unit.
 
-A `Multiscale` describes the pyramid, not the whole group. Wrap it in
-[OMEImage][abczarr.ome.v0_5.ome.OMEImage] to get the metadata
-an image group actually carries, optionally alongside
+A `Multiscale` describes the pyramid, not the whole group. Wrapping
+it in [OMEImage][abczarr.ome.v0_5.ome.OMEImage] produces the
+metadata an image group actually carries, optionally alongside
 [Omero][abczarr.ome.v0_5.omero.Omero] rendering settings:
 
 ```python
@@ -106,7 +107,7 @@ loaded = v0_5.OMEImage.from_json(group.attrs["ome"])
 loaded.multiscales[0].axes[0].name  # "c"
 ```
 
-Earlier NGFF versions (0.4 and before) write the same fields directly
+Earlier NGFF versions, 0.4 and before, write the same fields directly
 at the top level of `attrs` instead of nesting them under `"ome"`:
 `group.attrs.update(image.to_json())`.
 

@@ -1,26 +1,32 @@
-"""The asynchronous Zarr nodes: the coroutine twins of the sync surface.
+"""The asynchronous Zarr node classes: the coroutine twins of the
+synchronous surface.
 
-[AsyncZarrNode][abczarr.abc.asynchronous.AsyncZarrNode] is the coroutine twin
-of [ZarrNode][abczarr.abc.sync.ZarrNode], the common ancestor of the async
-array and group. Its I/O is coroutines; the metadata, attributes, version
-and capability query mirror the sync node and stay synchronous, because they
-never touch the node's data path.
+[AsyncZarrNode][abczarr.abc.asynchronous.AsyncZarrNode] is the
+coroutine twin of [ZarrNode][abczarr.abc.sync.ZarrNode], the base
+class both the async array and the async group inherit from. Its
+data I/O is coroutines. Its metadata, attributes, format version, and
+capability query stay synchronous, because none of them touch the
+node's data path.
 
-Every async node has a synchronous twin over the same backend handle, reached
-with [as_sync][abczarr.abc.asynchronous.AsyncZarrNode.as_sync]; the sync
-node's [as_async][abczarr.abc.sync.ZarrArray.as_async] returns the async one.
-The non-blocking accessors delegate to the sync twin, so the two colors always
-report the same metadata, attributes and backend features.
+Every async node has a synchronous twin over the same backend handle,
+reached with
+[as_sync][abczarr.abc.asynchronous.AsyncZarrNode.as_sync]. A
+synchronous node's own
+[as_async][abczarr.abc.sync.ZarrArray.as_async] returns the async
+twin in the other direction. The non-blocking accessors delegate to
+the synchronous twin, so the two colors always report the same
+metadata, attributes and backend features.
 
-* [AsyncZarrArray][abczarr.abc.asynchronous.AsyncZarrArray] reads and writes
-  through **methods**, not `[]`: `await array.getitem(index)` and
-  `await array.setitem(index, value)`.
-* [AsyncZarrGroup][abczarr.abc.asynchronous.AsyncZarrGroup] reaches a member
-  with `await group.getitem(name)`, iterates member names with `async for`,
-  and creates children with `await`. Its two concrete twins are the native
-  [AsyncPathGroup][abczarr.abc.asynchronous.AsyncPathGroup] and the
-  thread-pool fallback
-  [ThreadedAsyncGroup][abczarr.abc.asynchronous.ThreadedAsyncGroup].
+[AsyncZarrArray][abczarr.abc.asynchronous.AsyncZarrArray] reads and
+writes through methods rather than indexing: `await
+array.getitem(index)` and `await array.setitem(index, value)`.
+[AsyncZarrGroup][abczarr.abc.asynchronous.AsyncZarrGroup] reaches a
+member with `await group.getitem(name)`, iterates member names with
+`async for`, and creates children with `await`. It has two concrete
+implementations: the native
+[AsyncPathGroup][abczarr.abc.asynchronous.AsyncPathGroup], and the
+thread-pool fallback
+[ThreadedAsyncGroup][abczarr.abc.asynchronous.ThreadedAsyncGroup].
 """
 
 __all__ = [
@@ -74,12 +80,15 @@ if tx.TYPE_CHECKING:
 class AsyncZarrNode(SupportsCapabilities, ABC):
     """The coroutine twin of a [ZarrNode][abczarr.abc.sync.ZarrNode].
 
-    Only the I/O differs from the sync node: it is coroutines. The
-    non-blocking accessors -- metadata, attributes, version, location and
-    the capability query -- delegate to the sync twin, so both colors agree.
-    Use [capability][abczarr.abc.capabilities.SupportsCapabilities.capability]
-    or [supports][abczarr.abc.capabilities.SupportsCapabilities.supports] to
-    check whether the async surface is native to the backend or synthesized.
+    Only data I/O differs from the synchronous node: it is coroutines
+    here. The non-blocking accessors, including metadata, attributes,
+    format version, location, and the capability query, delegate to
+    the synchronous twin, so both colors always agree. Use
+    [capability][abczarr.abc.capabilities.SupportsCapabilities.capability]
+    or
+    [supports][abczarr.abc.capabilities.SupportsCapabilities.supports]
+    to check whether the async surface is native to the backend or
+    synthesized in a thread pool.
     """
 
     #: How the async surface is provided: `Support.NATIVE` when the backend
@@ -99,8 +108,12 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
 
     @property
     def native(self) -> tx.Any:
-        """The underlying backend object, or `None` -- the escape hatch for
-        anything the uniform surface does not name."""
+        """The underlying backend object, or `None` when the node has
+        none.
+
+        This property is the escape hatch for anything the uniform
+        node surface does not expose.
+        """
         return self.as_sync().native
 
     @property
@@ -110,32 +123,37 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
 
     @property
     def attrs(self) -> NodeAttributes:
-        """This node's user attributes, as a read-cached mapping.
+        """This node's user attributes, as a read-only, cached
+        mapping.
 
-        Reads are synchronous. They come from cached metadata, so there is
-        nothing to await. Assigning a single key cannot be awaited, so no
-        per-key async setter exists. Use
-        [update_attributes][abczarr.abc.asynchronous.AsyncZarrNode.update_attributes]
-        to persist a change.
+        Reading this mapping is synchronous. The values come from the
+        node's cached metadata, so no I/O is needed and there is
+        nothing to await. Assigning a single key cannot be awaited,
+        so this mapping has no per-key async setter. Persisting a
+        change requires
+        [update_attributes][abczarr.abc.asynchronous.AsyncZarrNode.update_attributes],
+        which writes the whole set of attributes through the node's
+        async persistence path.
         """
         return self.as_sync().attrs
 
     @property
     def ome(self) -> "tx.Optional[OME]":
-        """This node's OME-Zarr metadata as a typed object -- read only.
+        """This node's OME-Zarr metadata as a typed object, read only.
 
-        Reads stay synchronous, like
-        [attrs][abczarr.abc.asynchronous.AsyncZarrNode.attrs]: the
-        metadata is parsed from the cached attributes, so there is
-        nothing to await. Returns the right version's
+        Reading this property is synchronous, like
+        [attrs][abczarr.abc.asynchronous.AsyncZarrNode.attrs]. The
+        metadata is parsed from the node's cached attributes, so no
+        I/O is needed. The property returns the matching version's
         [OME][abczarr.ome.base.OME] object, or `None` when the node
-        carries none. Writing cannot be awaited through an assignment, so
-        there is no setter; use
+        carries no OME metadata. Writing cannot be awaited through a
+        plain assignment, so this property has no setter. Use
         [set_ome][abczarr.abc.asynchronous.AsyncZarrNode.set_ome],
-        [update_ome][abczarr.abc.asynchronous.AsyncZarrNode.update_ome] or
-        [del_ome][abczarr.abc.asynchronous.AsyncZarrNode.del_ome] to
-        persist a change, the same reason the async node writes
-        attributes with `update_attributes` rather than `[]`.
+        [update_ome][abczarr.abc.asynchronous.AsyncZarrNode.update_ome],
+        or [del_ome][abczarr.abc.asynchronous.AsyncZarrNode.del_ome]
+        to persist a change, the same reason the async node writes
+        attributes through `update_attributes` rather than through
+        item assignment.
         """
 
         return read_ome(self)
@@ -145,12 +163,14 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
     ) -> "AsyncZarrNode":
         """Store OME metadata on this node, and persist it.
 
-        The coroutine twin of assigning
-        [ZarrNode.ome][abczarr.abc.sync.ZarrNode.ome]: serialize *value*
-        into the envelope its version calls for (the ``"ome"`` attribute
-        from 0.5 on, the bare attribute keys up to 0.4) and write it through
-        the node's async persistence path, replacing any OME metadata
-        already present and leaving unrelated attributes untouched.
+        This method is the coroutine twin of assigning
+        [ZarrNode.ome][abczarr.abc.sync.ZarrNode.ome]. It serializes
+        *value* into the envelope its version calls for: the
+        ``"ome"`` attribute from version 0.5 on, or the bare
+        top-level attribute keys before 0.5. The serialized metadata
+        is then written through the node's async persistence path.
+        Any OME metadata already present is replaced, and every other
+        attribute is left untouched.
 
         Parameters
         ----------
@@ -171,16 +191,23 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
     async def update_ome(
         self, ome: "tx.Union[OME, tz.JsonDict]"
     ) -> "AsyncZarrNode":
-        """Shallow-merge OME metadata into this node's, and persist it.
+        """Merge OME metadata into this node's existing OME metadata,
+        and persist the result.
 
-        The coroutine twin of
-        [ZarrNode.update_ome][abczarr.abc.sync.ZarrNode.update_ome]: the
-        top-level keys of *ome* replace those on the node's current OME
-        metadata; the rest are kept. When the node has no OME metadata yet
-        and the result still names no version, it defaults to the latest
-        released OME version. The merge is shallow -- for a structured edit,
-        read [ome][abczarr.abc.asynchronous.AsyncZarrNode.ome], change the
-        typed object, and pass it to
+        This method is the coroutine twin of
+        [ZarrNode.update_ome][abczarr.abc.sync.ZarrNode.update_ome].
+        A top-level key present in *ome* replaces the value already
+        stored under that key on the node's current OME metadata. A
+        key the node already carries that *ome* does not name is
+        kept. When the node has no OME metadata yet and the merged
+        result still names no version, the metadata is written with
+        the latest released OME version.
+
+        The merge is shallow. A nested structure, such as a
+        multiscale or a plate definition, is replaced as a whole
+        rather than merged recursively. For a structured edit, read
+        [ome][abczarr.abc.asynchronous.AsyncZarrNode.ome], change the
+        typed object, and pass the result to
         [set_ome][abczarr.abc.asynchronous.AsyncZarrNode.set_ome].
 
         Parameters
@@ -198,13 +225,14 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
         return await self.set_ome(merge_ome(read_ome(self), ome))
 
     async def del_ome(self) -> "AsyncZarrNode":
-        """Remove this node's OME-Zarr metadata, and persist the removal.
+        """Remove this node's OME-Zarr metadata, and persist the
+        removal.
 
-        The coroutine twin of `del node.ome`
-        ([ZarrNode.ome][abczarr.abc.sync.ZarrNode.ome]): drops the OME
-        attribute keys of whichever envelope the node uses, leaving
-        unrelated attributes untouched. A node with no OME metadata is left
-        unchanged.
+        This method is the coroutine twin of `del node.ome` on
+        [ZarrNode.ome][abczarr.abc.sync.ZarrNode.ome]. It drops the
+        OME attribute keys of whichever envelope the node uses. Every
+        other attribute is left untouched. A node that carries no OME
+        metadata is left unchanged.
 
         Returns
         -------
@@ -236,13 +264,15 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
     async def update_attributes(
         self, attributes: tz.JsonDict
     ) -> "AsyncZarrNode":
-        """Add or replace several attributes at once, and persist them.
+        """Add or replace several attributes at once, and persist the
+        change.
 
-        The coroutine twin of
-        [ZarrNode.update_attributes][abczarr.abc.sync.ZarrNode.update_attributes]:
-        the *attributes* are merged into this node's existing attributes and
-        the change is written through the node's async persistence path.
-        Mirrors zarr-python's async `update_attributes`.
+        This method is the coroutine twin of
+        [ZarrNode.update_attributes][abczarr.abc.sync.ZarrNode.update_attributes].
+        The keys in *attributes* are merged into this node's existing
+        attributes. The merged result is written through the node's
+        async persistence path. The behavior mirrors zarr-python's
+        own async `update_attributes`.
 
         !!! example
             ```python
@@ -297,9 +327,10 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
     def capability(self, name: str) -> Support:
         """How this async node provides the capability *name*.
 
-        The answer for `"async"` is this twin's own -- native or
-        synthesized -- and every other name is answered by the sync twin,
-        so the two colors report the same backend features.
+        For `"async"`, the answer is this twin's own: native or
+        synthesized, depending on the backend. For every other name,
+        the answer comes from the synchronous twin, so the two colors
+        always report the same backend features.
         """
         if name == "async":
             return self._async_support
@@ -309,7 +340,8 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
 class AsyncZarrArray(AsyncZarrNode):
     """The coroutine twin of a [ZarrArray][abczarr.abc.sync.ZarrArray].
 
-    Read and write it with `await`:
+    An `AsyncZarrArray` is read and written with `await`, through the
+    `getitem` and `setitem` methods rather than indexing.
 
     !!! example
         ```python
@@ -362,11 +394,13 @@ class AsyncZarrArray(AsyncZarrNode):
 
 
 class ThreadedAsyncArray(AsyncZarrArray):
-    """An [AsyncZarrArray][abczarr.abc.asynchronous.AsyncZarrArray] that runs a
-    sync array's reads and writes in a bounded thread pool.
+    """An [AsyncZarrArray][abczarr.abc.asynchronous.AsyncZarrArray]
+    that runs a synchronous array's reads and writes in a bounded
+    thread pool.
 
-    The default async array for a backend that has no coroutine surface of
-    its own. It reports `"async"` as `Support.SYNTHESIZED`.
+    This class is the default async array for a backend that has no
+    coroutine surface of its own. It reports `"async"` as
+    `Support.SYNTHESIZED`.
     """
 
     async def getitem(self, index: tx.Any) -> npt.ArrayLike:
@@ -378,6 +412,10 @@ class ThreadedAsyncArray(AsyncZarrArray):
 
 class AsyncZarrGroup(AsyncZarrNode):
     """The coroutine twin of a [ZarrGroup][abczarr.abc.sync.ZarrGroup].
+
+    An `AsyncZarrGroup` reaches a member with `await
+    group.getitem(name)`, iterates member names with `async for`,
+    and creates a subgroup or an array with `await`.
 
     !!! example
         ```python
@@ -419,9 +457,9 @@ class AsyncZarrGroup(AsyncZarrNode):
     ) -> AsyncZarrArray:
         """Create a new array named *name* within this group.
 
-        Mirrors
-        [ZarrGroup.create_array][abczarr.abc.sync.ZarrGroup.create_array];
-        see it for the parameters.
+        This method mirrors
+        [ZarrGroup.create_array][abczarr.abc.sync.ZarrGroup.create_array].
+        See that method for the parameters it accepts.
         """
         resolved = _resolve_array_config(
             shape, dtype, config, options, self.zarr_version
@@ -446,17 +484,19 @@ class AsyncZarrGroup(AsyncZarrNode):
 class AsyncPathGroup(AsyncZarrGroup):
     """The async twin of [PathGroup][abczarr.abc.sync.PathGroup].
 
-    Listing and navigating members is genuinely non-blocking. Array
-    children come back in the async color. When the underlying backend
-    is natively async, a child array is that backend's own native
-    async array rather than a synchronous array run in a thread.
-    Creating a subgroup or array still blocks, since writing metadata
-    or building a backend handle is inherently synchronous work.
+    Listing and navigating members is genuinely non-blocking, carried
+    out through an async store rather than a synchronous group run in
+    a thread. Array children come back in the async color. When the
+    underlying backend is itself natively async, a child array is
+    that backend's own native async array, not a synchronous array
+    bridged through a thread. Creating a subgroup or an array still
+    blocks, because writing metadata and building a backend handle
+    are inherently synchronous operations.
 
-    `AsyncPathGroup`'s `"async"` capability is always
+    This group's own `"async"` capability always reports
     `Support.SYNTHESIZED`, even when the underlying store is itself
-    natively async. `NATIVE` is reserved for async support that a
-    backend supplies directly.
+    natively async. `Support.NATIVE` is reserved for async support
+    that a backend provides directly.
     """
 
     # a path group synthesizes group semantics over a store; async is
@@ -553,13 +593,15 @@ class AsyncPathGroup(AsyncZarrGroup):
 
 
 class ThreadedAsyncGroup(AsyncZarrGroup):
-    """An [AsyncZarrGroup][abczarr.abc.asynchronous.AsyncZarrGroup] that runs a
-    sync group's navigation and creation in a bounded thread pool.
+    """An [AsyncZarrGroup][abczarr.abc.asynchronous.AsyncZarrGroup]
+    that runs a synchronous group's navigation and creation in a
+    bounded thread pool.
 
-    The fallback for a group that is neither natively async nor path-based
-    (a path-based backend gets the real
-    [AsyncPathGroup][abczarr.abc.asynchronous.AsyncPathGroup] instead).
-    Members it opens are handed back in the async color.
+    This class is the fallback for a group that is neither natively
+    async nor path-based. A path-based backend gets the native
+    [AsyncPathGroup][abczarr.abc.asynchronous.AsyncPathGroup]
+    instead. Members this group opens are handed back in the async
+    color.
     """
 
     async def getitem(self, key: str) -> AsyncZarrNode:

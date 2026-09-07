@@ -1,9 +1,12 @@
-"""The errors abczarr raises, gathered in one place.
+"""The exceptions abczarr raises.
 
-Each error names what went wrong and, where useful, the store, driver,
-or field involved. The errors are also available directly off the
-package top level, so `abczarr.UnsupportedZarrOperation` and
-`abczarr.errors.UnsupportedZarrOperation` are the same class.
+Each exception carries enough detail to say why an operation failed,
+not only that it did: the driver that lacks a capability, the field
+that has no representation in a target Zarr version, or the schema
+violation a document failed. Every exception defined here is also
+reachable from the top level of the `abczarr` package, so
+`abczarr.UnsupportedZarrOperation` and
+`abczarr.errors.UnsupportedZarrOperation` name the same class.
 """
 
 __all__ = [

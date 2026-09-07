@@ -1,15 +1,17 @@
 """What a driver is.
 
 A [Driver][abczarr.drivers.base.Driver] is the object abczarr opens
-Zarr through -- zarr-python, tensorstore, or another backend. It
-declares what it provides, both coarse capabilities (`"sharding"`,
-`"async"`) and fine-grained feature keys (`"v3:codec:zstd"`),
-through the same
+Zarr through: zarr-python, TensorStore, or another backend. Each
+driver declares what it provides, through the same
 [Support][abczarr.abc.capabilities.Support] model the rest of the
-surface uses, and answers whether it can open a given array.
+surface uses. That declaration covers both coarse capabilities, such
+as `"sharding"` and `"async"`, and fine-grained feature keys, such as
+`"v3:codec:zstd"`. A driver also answers whether it can open a given
+array, by comparing what the array's metadata requires against what
+the driver provides.
 
-Which drivers exist and how one is chosen for an array live in
-[abczarr.api.registry][abczarr.api.registry].
+Which drivers exist, and how one is chosen for an array, is described
+in [abczarr.api.registry][abczarr.api.registry].
 """
 
 __all__ = [
@@ -39,9 +41,9 @@ if tx.TYPE_CHECKING:
 class Verdict:
     """Whether a driver can open an array, and what it lacks if not.
 
-    `bool(verdict)` is `True` when nothing is missing; `missing`
-    lists the feature keys the driver does not provide, and `reason`
-    renders a one-line explanation.
+    `bool(verdict)` is `True` when nothing is missing. `missing`
+    lists the feature keys the driver does not provide. `reason`
+    renders a one-line explanation of the verdict.
     """
 
     def __init__(self, driver: str, missing: tx.Iterable[str]) -> None:
@@ -64,9 +66,9 @@ class Verdict:
 class Driver(SupportsCapabilities):
     """A backend abczarr opens Zarr through.
 
-    A concrete driver declares what it provides -- capabilities and
-    feature keys -- and answers, for a given array's metadata,
-    whether it can open it.
+    A concrete driver declares what it provides, as capabilities and
+    feature keys. Given an array's metadata, it answers whether it
+    can open that array.
     """
 
     #: The driver's registered name (`"zarr-python"`, ...).
@@ -93,14 +95,17 @@ class Driver(SupportsCapabilities):
         """Open *location* and wrap it as a node.
 
         !!! note
-            With `asynchronous=True` the return value is a **coroutine you
-            await**: the metadata read is awaited, so the open does its I/O
-            asynchronously and resolves to the coroutine twin of the node --
-            an [AsyncZarrArray][abczarr.abc.asynchronous.AsyncZarrArray] or
-            [AsyncZarrGroup][abczarr.abc.asynchronous.AsyncZarrGroup]. Whether
-            that surface is native to the backend or synthesized in a thread
-            pool depends on the driver. Without the flag, the node is opened
-            synchronously and returned directly.
+            With `asynchronous=True`, the return value is a coroutine
+            that must be awaited. The metadata read is awaited
+            internally, so the open performs its I/O asynchronously
+            and resolves to the coroutine twin of the node: an
+            [AsyncZarrArray][abczarr.abc.asynchronous.AsyncZarrArray]
+            or an
+            [AsyncZarrGroup][abczarr.abc.asynchronous.AsyncZarrGroup].
+            Whether that surface is native to the backend or
+            synthesized in a thread pool depends on the driver.
+            Without the flag, the node is opened synchronously and
+            returned directly.
 
         Parameters
         ----------
@@ -114,7 +119,7 @@ class Driver(SupportsCapabilities):
         Returns
         -------
         ZarrNode or Awaitable[AsyncZarrNode]
-            The node, or -- when *asynchronous* is true -- a coroutine
+            The node, or, when *asynchronous* is true, a coroutine
             resolving to its async twin.
 
         Raises
@@ -147,16 +152,19 @@ class Driver(SupportsCapabilities):
         self, location: tx.Any, config: "ZarrConfig",
         *, asynchronous: bool = False,
     ) -> "tx.Union[ZarrNode, tx.Awaitable[AsyncZarrNode]]":
-        """Create the node *config* describes at *location* and open it.
+        """Create the node *config* describes at *location*, and open
+        it.
 
-        The default lowers the config to metadata and creates from that. A
-        backend overrides the create it runs to build through its own
-        machinery from the config's coarse fields, so the backend writes its
-        own metadata.
+        By default, *config* is lowered to a metadata document, and
+        the node is created from that document. A backend may
+        override the underlying create it runs to build the node
+        through its own machinery from the config's coarse fields
+        instead, so the backend writes its own metadata.
 
         !!! note
-            With `asynchronous=True` the return value is a coroutine you await,
-            resolving to the async twin of the node, mirroring async
+            With `asynchronous=True`, the return value is a coroutine
+            that must be awaited, resolving to the async twin of the
+            node. This mirrors async
             [open][abczarr.drivers.base.Driver.open].
 
         Parameters
@@ -200,18 +208,23 @@ class Driver(SupportsCapabilities):
         self, location: tx.Any, metadata: "NodeMetadata",
         *, overwrite: bool = False, asynchronous: bool = False,
     ) -> "tx.Union[ZarrNode, tx.Awaitable[AsyncZarrNode]]":
-        """Create a node from an exact *metadata* document and open it.
+        """Create a node from an exact *metadata* document, and open
+        it.
 
-        The escape hatch for a setup the config helpers do not express: hand
-        in an [ArrayMetadata][abczarr.metadata.base.ArrayMetadata] or
-        [GroupMetadata][abczarr.metadata.base.GroupMetadata] and it is written
-        and opened as it is. The default writes the metadata to the store and
-        opens it; a driver may override the create it runs to build through
-        its backend.
+        This method is the escape hatch for a setup the config
+        helpers do not express. An
+        [ArrayMetadata][abczarr.metadata.base.ArrayMetadata] or
+        [GroupMetadata][abczarr.metadata.base.GroupMetadata] document
+        is written and opened exactly as given, with nothing resolved
+        or filled in. By default, the metadata is written to the
+        store and then opened. A driver may override the underlying
+        create it runs to build the node through its own backend
+        instead.
 
         !!! note
-            With `asynchronous=True` the return value is a coroutine you await,
-            resolving to the async twin of the node.
+            With `asynchronous=True`, the return value is a coroutine
+            that must be awaited, resolving to the async twin of the
+            node.
 
         Parameters
         ----------
@@ -274,11 +287,13 @@ class Driver(SupportsCapabilities):
         self, location: tx.Any, *,
         config: "tx.Optional[ZarrConfig]" = None, **fields: tx.Any,
     ) -> "ZarrNode":
-        """Create a new group at *location* and open it.
+        """Create a new group at *location*, and open it.
 
-        Pass a [GroupConfig][abczarr.api.config.GroupConfig] as *config*, or
-        its fields (`zarr_version`, `overwrite`, ...) as keyword arguments,
-        which override the config.
+        A [GroupConfig][abczarr.api.config.GroupConfig] may be passed
+        as *config*. Its individual fields, such as `zarr_version`
+        and `overwrite`, may instead be passed as keyword arguments.
+        A keyword argument overrides the corresponding field of
+        *config*.
         """
         base = config if isinstance(config, GroupConfig) else GroupConfig(
             **dict(config or {})
