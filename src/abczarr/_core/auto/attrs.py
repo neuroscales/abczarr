@@ -506,7 +506,12 @@ def extra_items(
         if extra_items is False:
             f = autofield(tx.Literal[False], repr=False, init=False)
         else:
-            f = autofield(dict_type[str, extra_items])
+            # Keyword-only so the catch-all sorts to the end of __init__.
+            # attrs lists every positional parameter before the keyword-only
+            # ones, so a positional extra_items would otherwise appear ahead
+            # of a class's own keyword-only fields, and a value passed by
+            # position would bind to it rather than to a named field.
+            f = autofield(dict_type[str, extra_items], kw_only=True)
         dummy = make_class("Dummy", {"extra_items": f})
         f = fields(dummy)[0]
         new_fields.append(f)
