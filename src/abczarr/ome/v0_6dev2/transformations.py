@@ -1,5 +1,7 @@
 # Generated from v0_6dev1 by tools/gen_ome_metadata.py -- do not edit
 
+"""Coordinate transformations: how one coordinate system maps to another."""
+
 __all__ = [
     "CoordinateTransformation",
     "Identity",
@@ -31,13 +33,24 @@ Interpolation = tx.Union[tx.Literal["nearest", "linear", "bspline-cubic"], str]
 class CoordinateTransformation(OMEMetadata):
     """Maps coordinates from one coordinate system to another.
 
-    `type` identifies which kind of transformation it is. Constructing a
-    `CoordinateTransformation` with a recognized `type` returns the matching
-    subclass, such as [Scale][abczarr.ome.v0_6dev2.transformations.Scale].
-    `input` and `output` identify the
-    [CoordinateSystem][abczarr.ome.v0_6dev2.systems.CoordinateSystem]s the
-    transformation maps between. `name` is an optional label for the
-    transformation itself.
+    Constructing a `CoordinateTransformation` with a recognized `type`
+    returns the matching subclass, such as
+    [Scale][abczarr.ome.v0_6dev2.transformations.Scale].
+
+    Parameters
+    ----------
+    type : str
+        Which kind of transformation this is.
+    input : JSON value
+        Identifies the
+        [CoordinateSystem][abczarr.ome.v0_6dev2.systems.CoordinateSystem]
+        the transformation maps from. Optional.
+    output : JSON value
+        Identifies the
+        [CoordinateSystem][abczarr.ome.v0_6dev2.systems.CoordinateSystem]
+        the transformation maps to. Optional.
+    name : str
+        A label for the transformation itself. Optional.
     """
 
     type: Required[str] = field(factory=False)
@@ -51,9 +64,8 @@ class CoordinateTransformation(OMEMetadata):
 class Identity(CoordinateTransformation):
     """Leaves coordinates unchanged.
 
-    An `Identity` transformation states that `input` and `output` are the
-    same coordinate system, or that no numeric adjustment is needed
-    between them.
+    States that `input` and `output` are the same coordinate system, or
+    that no numeric adjustment is needed between them.
     """
 
     type: Required[tx.Literal["identity"]]
@@ -64,8 +76,11 @@ class Identity(CoordinateTransformation):
 class MapAxis(CoordinateTransformation):
     """Renames axes without changing any coordinate values.
 
-    `mapAxis` maps each output axis name to the input axis it takes its
-    values from.
+    Parameters
+    ----------
+    mapAxis : dict
+        Maps each output axis name to the input axis it takes its values
+        from.
     """
 
     type: Required[tx.Literal["mapAxis"]]
@@ -77,9 +92,14 @@ class MapAxis(CoordinateTransformation):
 class Translation(CoordinateTransformation):
     """Adds a fixed offset to every coordinate, one value per axis.
 
-    `translation` gives the offset inline, one number per axis. `path` reads
-    the offset instead from an array, for a translation that varies from
-    point to point rather than staying constant.
+    Parameters
+    ----------
+    translation : list of float
+        The offset, given inline, one number per axis. Optional.
+    path : str
+        The path of an array to read the offset from instead, for a
+        translation that varies from point to point rather than staying
+        constant. Optional.
     """
 
     type: Required[tx.Literal["translation"]]
@@ -92,9 +112,14 @@ class Translation(CoordinateTransformation):
 class Scale(CoordinateTransformation):
     """Multiplies every coordinate by a per-axis factor.
 
-    `scale` gives the factor inline, one number per axis. `path` reads the
-    factor instead from an array, for a scale that varies from point to
-    point rather than staying constant.
+    Parameters
+    ----------
+    scale : list of float
+        The factor, given inline, one number per axis. Optional.
+    path : str
+        The path of an array to read the factor from instead, for a scale
+        that varies from point to point rather than staying constant.
+        Optional.
     """
 
     type: Required[tx.Literal["scale"]]
@@ -107,8 +132,12 @@ class Scale(CoordinateTransformation):
 class Affine(CoordinateTransformation):
     """Applies a linear map and a translation, given as a matrix.
 
-    `affine` gives the matrix inline. `path` reads the matrix instead from
-    an array.
+    Parameters
+    ----------
+    affine : JSON value
+        The matrix, given inline. Optional.
+    path : str
+        The path of an array to read the matrix from instead. Optional.
     """
 
     type: Required[tx.Literal["affine"]]
@@ -121,8 +150,12 @@ class Affine(CoordinateTransformation):
 class Rotation(CoordinateTransformation):
     """Rotates coordinates, given as a matrix.
 
-    `rotation` gives the matrix inline. `path` reads the matrix instead from
-    an array.
+    Parameters
+    ----------
+    rotation : JSON value
+        The matrix, given inline. Optional.
+    path : str
+        The path of an array to read the matrix from instead. Optional.
     """
 
     type: Required[tx.Literal["rotation"]]
@@ -135,9 +168,13 @@ class Rotation(CoordinateTransformation):
 class InverseOf(CoordinateTransformation):
     """Applies another transformation in reverse.
 
-    `transformation` is the `CoordinateTransformation` to invert. This
-    transformation's `input` and `output` are that transformation's `output`
-    and `input`, swapped.
+    This transformation's `input` and `output` are that other
+    transformation's `output` and `input`, swapped.
+
+    Parameters
+    ----------
+    transformation : CoordinateTransformation
+        The transformation to invert.
     """
 
     type: Required[tx.Literal["inverseOf"]]
@@ -147,11 +184,17 @@ class InverseOf(CoordinateTransformation):
 @register_subclass(type="bijection")
 @autodefine
 class Bijection(CoordinateTransformation):
-    """Given as an explicit forward and inverse pair.
+    """An explicit forward and inverse pair of transformations.
 
-    `forward` maps `input` to `output`. `inverse` maps `output` back to
-    `input`. This is used when a transformation's inverse cannot be derived
-    automatically from its forward direction.
+    Used when a transformation's inverse cannot be derived automatically
+    from its forward direction.
+
+    Parameters
+    ----------
+    forward : CoordinateTransformation
+        The transformation from `input` to `output`.
+    inverse : CoordinateTransformation
+        The transformation from `output` back to `input`.
     """
 
     type: Required[tx.Literal["bijection"]]
@@ -164,8 +207,13 @@ class Bijection(CoordinateTransformation):
 class Sequence(CoordinateTransformation):
     """Composes several transformations into one, applied in order.
 
-    `transformations` lists them from `input` to `output`. Each
-    transformation's output feeds into the next transformation as its input.
+    Each transformation's output feeds into the next transformation as
+    its input.
+
+    Parameters
+    ----------
+    transformations : list of CoordinateTransformation
+        The transformations to compose, from `input` to `output`.
     """
 
     type: Required[tx.Literal["sequence"]]
@@ -175,11 +223,16 @@ class Sequence(CoordinateTransformation):
 @register_subclass(type="byDimension")
 @autodefine
 class ByDimension(CoordinateTransformation):
-    """Combines several transformations, each acting on a different subset of
-    axes.
+    """Combines several transformations, each acting on a different subset
+    of axes.
 
-    `transformations` lists them. Together they cover every axis between
-    `input` and `output`.
+    Together, the transformations cover every axis between `input` and
+    `output`.
+
+    Parameters
+    ----------
+    transformations : list of CoordinateTransformation
+        The transformations to combine.
     """
 
     type: Required[tx.Literal["byDimension"]]
@@ -191,10 +244,16 @@ class ByDimension(CoordinateTransformation):
 class Displacements(CoordinateTransformation):
     """Defined by a displacement field.
 
-    `path` names an array that gives a displacement vector for each point.
-    That vector is added to the input coordinate to produce the output
-    coordinate. `interpolation` says how to sample the array between its own
-    points.
+    The vector read for each point is added to the input coordinate to
+    produce the output coordinate.
+
+    Parameters
+    ----------
+    path : str
+        The path of an array that gives a displacement vector for each
+        point. Optional.
+    interpolation : str
+        How to sample the array between its own points. Optional.
     """
 
     type: Required[tx.Literal["displacements"]]
@@ -207,9 +266,13 @@ class Displacements(CoordinateTransformation):
 class Coordinates(CoordinateTransformation):
     """Defined by an explicit coordinate lookup.
 
-    `path` names an array that gives the output coordinate for each point
-    directly. `interpolation` says how to sample the array between its own
-    points.
+    Parameters
+    ----------
+    path : str
+        The path of an array that gives the output coordinate for each
+        point directly. Optional.
+    interpolation : str
+        How to sample the array between its own points. Optional.
     """
 
     type: Required[tx.Literal["coordinates"]]

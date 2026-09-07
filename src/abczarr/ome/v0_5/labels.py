@@ -19,17 +19,30 @@ class ImageLabel(OMEMetadata):
     """Metadata for a label image: an array whose integer values name segments.
 
     Attach one of these to a label image group alongside its own
-    [Multiscale][abczarr.ome.v0_5.images.Multiscale]. `colors`
-    maps each integer label value to a display color. `properties`
-    and `source` carry any further attributes for a label value, and
-    where the label image was derived from.
+    [Multiscale][abczarr.ome.v0_5.images.Multiscale].
+
+    Parameters
+    ----------
+    colors : list of Color
+        The display color for each labeled integer value. Recommended.
+    properties : list of Property
+        Further, application-defined attributes for each labeled value.
+        Optional.
+    source : Source
+        Where the label image was derived from. Optional.
     """
 
     @autodefine
     class Color(OMEMetadata):
         """The display color for one label value.
 
-        `rgba` is red, green, blue, and alpha, each `0`-`255`.
+        Parameters
+        ----------
+        label_value : int
+            The integer value this color applies to.
+        rgba : tuple of int
+            The color as red, green, blue, and alpha components, each
+            from `0` to `255`. Optional.
         """
 
         label_value: Required[int] = field(json="label-value")
@@ -39,19 +52,26 @@ class ImageLabel(OMEMetadata):
     class Property(OMEMetadata):
         """Extra, application-defined attributes for one label value.
 
-        Beyond `label_value`, any other key is carried through as
-        extra data. See
-        [OMEMetadata][abczarr.ome.base.OMEMetadata].
+        Any key beyond `label_value` is carried through as extra data.
+        See [OMEMetadata][abczarr.ome.base.OMEMetadata].
+
+        Parameters
+        ----------
+        label_value : int
+            The integer value these properties apply to.
         """
 
         label_value: Required[int] = field(json="label-value")
 
     @autodefine
     class Source(OMEMetadata):
-        """Where a label value came from.
+        """Where a label image was derived from.
 
-        `image` names the intensity image this label was derived
-        from, relative to the label image group.
+        Parameters
+        ----------
+        image : str
+            The path of the intensity image this label was derived from,
+            relative to the label image group. Optional.
         """
 
         image: Optional[str] = None

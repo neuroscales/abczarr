@@ -14,7 +14,7 @@ the two envelopes the spec uses:
   than at the top.
 
 These functions take any node exposing a write-through ``attrs`` mapping
-and an ``update_attributes`` method -- the same surface
+and an ``update_attributes`` method. This is the same surface
 [attrs][abczarr.abc.sync.ZarrNode.attrs] is built on.
 """
 
@@ -63,12 +63,12 @@ _OME_KEYS = (_OME_KEY,) + _CARRIERS
 def read_ome(node: "ZarrNode") -> tx.Optional[OME]:
     """Read a group's OME-Zarr metadata as a typed object.
 
-    Detects which envelope the group uses -- the ``"ome"`` attribute of
-    0.5 and later, or the bare attributes of 0.4 and earlier -- and
-    parses it into the right version's [OME][abczarr.ome.base.OME]
-    subclass. For a bare payload the version is taken from the multiscale
-    (or plate / well) that carries it, and otherwise inferred as the
-    earliest version that fits.
+    Detects which envelope the group uses, the ``"ome"`` attribute of 0.5
+    and later or the bare attributes of 0.4 and earlier, and parses it
+    into the matching version's [OME][abczarr.ome.base.OME] subclass. For
+    a bare payload, the version is read from the multiscale, plate, or
+    well that carries it. When no such field names a version, the
+    earliest version that accepts the payload is used instead.
 
     Parameters
     ----------
@@ -130,11 +130,12 @@ def ome_write_plan(
 ) -> tx.Tuple[tx.Dict[str, tx.Any], tx.List[str]]:
     """Plan the attribute write that stores *ome* over *current*.
 
-    Works out the envelope from *ome*'s version and returns
-    ``(payload, stale)``: the attribute keys to set, and the OME keys
-    already present that the new payload does not write and so must be
-    dropped (the other envelope, or a carrier no longer used). Unrelated
-    attributes are named in neither and stay as they are.
+    Works out the envelope from *ome*'s version and returns ``(payload,
+    stale)``. `payload` holds the attribute keys to set. `stale` lists
+    the OME keys already present in *current* that the new payload does
+    not write, such as the other envelope's key or a carrier no longer
+    used, and that must therefore be dropped. An attribute unrelated to
+    OME metadata is named in neither and is left as it is.
 
     Parameters
     ----------
@@ -173,14 +174,15 @@ def update_ome(
 ) -> None:
     """Shallow-merge OME metadata into a group's, and persist it.
 
-    The mirror of
-    [update_attributes][abczarr.abc.sync.ZarrNode.update_attributes] for
-    OME metadata: the top-level keys of *ome* (``version`` /
-    ``multiscales`` / ``omero`` / ...) replace those on the node's current
-    OME metadata, and any it already has that *ome* does not name are
-    kept. When the node has no OME metadata yet and the merged result
-    still names no version, it defaults to the latest released OME
-    version.
+    This function does for OME metadata what
+    [update_attributes][abczarr.abc.sync.ZarrNode.update_attributes] does
+    for a node's plain attributes. A top-level key of *ome*, such as
+    ``version``, ``multiscales``, or ``omero``, replaces the value
+    already on the node's OME metadata with the same key. A top-level key
+    the node's current metadata already has that *ome* does not name is
+    kept unchanged. When the node has no OME metadata yet and the merged
+    result still names no version, the latest released OME version is
+    used.
 
     The merge is shallow: it replaces whole top-level keys rather than
     descending into a multiscale or a plate. For a structured edit, read
@@ -202,9 +204,9 @@ def merge_ome(
 ) -> tx.Dict[str, tx.Any]:
     """The shallow merge of *incoming* onto *current*, as an inner OME dict.
 
-    Top-level keys of *incoming* replace those of *current*; a version is
-    defaulted to [LATEST_STABLE][abczarr.ome.base.LATEST_STABLE] only when
-    neither side supplies one.
+    A top-level key of *incoming* replaces the value of the same key in
+    *current*. When neither side supplies a version, the result defaults
+    to [LATEST_STABLE][abczarr.ome.base.LATEST_STABLE].
     """
     merged = current.to_json() if current is not None else {}
     if isinstance(incoming, OME):
@@ -238,9 +240,10 @@ def ome_delete_plan(
 ) -> tx.Tuple[tx.Dict[str, tx.Any], tx.List[str]]:
     """Plan the attribute write that clears OME metadata from *current*.
 
-    Returns ``(payload, stale)`` like
-    [ome_write_plan][abczarr.ome.node.ome_write_plan]: nothing to set, and
-    every OME key present in *current* to drop.
+    Returns ``(payload, stale)`` in the same shape as
+    [ome_write_plan][abczarr.ome.node.ome_write_plan]. `payload` is
+    always empty, since nothing is written. `stale` lists every OME key
+    present in *current*, so all of it is dropped.
     """
     return {}, [key for key in _OME_KEYS if key in current]
 
@@ -289,8 +292,9 @@ def _has_carrier(attrs: tx.Mapping[str, tx.Any]) -> bool:
 def _is_wrapped(version: str) -> bool:
     """Whether *version* wraps its metadata under the ``"ome"`` key.
 
-    True from 0.5 on -- the position of ``"0.5"`` in the ordered version
-    chain is the boundary between the bare and wrapped envelopes.
+    This is true from 0.5 on. The position of ``"0.5"`` in the ordered
+    version chain marks the boundary between the bare and wrapped
+    envelopes.
     """
     return (
         version in _MODULES

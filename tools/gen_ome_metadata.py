@@ -270,33 +270,178 @@ _TRANSFORMATIONS_SOURCE = _read_template("stable/v0_4/transformations.py")
 _MULTISCALE_DOC_V0_3 = """\
 A multiscale image pyramid: its axes and resolution levels.
 
-`axes` names and orders the pyramid's dimensions: `t`, `c`, `z`,
-`y`, `x`, in whatever subset and order the image uses. `datasets`
-lists its resolution levels from full resolution down, each a
-[Dataset][abczarr.ome.v0_1.images.Dataset].
+Parameters
+----------
+axes : list of str
+    The pyramid's dimensions, named and ordered as `t`, `c`, `z`,
+    `y`, `x`, in whatever subset and order the image uses.
+datasets : list of Dataset
+    The pyramid's resolution levels, from full resolution down.
+    Each entry is a
+    [Dataset][abczarr.ome.v0_1.images.Dataset].
+name : str
+    A name for the multiscale image. Recommended.
+type : str
+    The method used to generate the lower resolutions, such as
+    ``"gaussian"``. Recommended.
+metadata : Metadata
+    Further, free-form detail about how the lower resolutions were
+    generated. Recommended.
+version : Version
+    The OME-NGFF version the metadata is written against. Required.
 """
 
 _DATASET_DOC_V0_4 = """\
 One resolution level of a multiscale pyramid.
 
-`path` is the name of the Zarr array holding this level, relative
-to the image group. `coordinateTransformations` places it in the
-pyramid's physical space: a
-[Scale][abczarr.ome.v0_1.transformations.Scale], optionally
-followed by a
-[Translation][abczarr.ome.v0_1.transformations.Translation],
-one value per axis.
+Parameters
+----------
+path : str
+    The name of the Zarr array holding this level, relative to the
+    image group.
+coordinateTransformations : tuple of CoordinateTransformation
+    Places this level in the pyramid's physical space: a
+    [Scale][abczarr.ome.v0_1.transformations.Scale], optionally
+    followed by a
+    [Translation][abczarr.ome.v0_1.transformations.Translation],
+    one value per axis.
 """
 
 _MULTISCALE_DOC_V0_4 = """\
 A multiscale image pyramid: its axes and resolution levels.
 
-`axes` names and orders the pyramid's dimensions: `t`, `c`, `z`,
-`y`, `x`, in whatever subset and order the image uses. `datasets`
-lists its resolution levels from full resolution down, each a
-[Dataset][abczarr.ome.v0_1.images.Dataset].
-`coordinateTransformations` here, if given, applies to every
-level before its own.
+Parameters
+----------
+axes : list of Axis
+    The pyramid's dimensions, in the order every array shape and
+    every coordinate transformation the pyramid carries uses. Each
+    entry is an [Axis][abczarr.ome.v0_1.axes.Axis].
+datasets : list of Dataset
+    The pyramid's resolution levels, from full resolution down.
+    Each entry is a
+    [Dataset][abczarr.ome.v0_1.images.Dataset].
+coordinateTransformations : list of CoordinateTransformation
+    Transformations applied to every level, before that level's own
+    transformations run. Optional.
+name : str
+    A name for the multiscale image. Recommended.
+type : str
+    The method used to generate the lower resolutions, such as
+    ``"gaussian"``. Recommended.
+metadata : Metadata
+    Further, free-form detail about how the lower resolutions were
+    generated. Recommended.
+version : Version
+    The OME-NGFF version the metadata is written against. Required.
+"""
+
+_MULTISCALE_DOC_V0_5 = """\
+A multiscale image pyramid: its axes and resolution levels.
+
+Parameters
+----------
+axes : list of Axis
+    The pyramid's dimensions, in the order every array shape and
+    every coordinate transformation the pyramid carries uses. Each
+    entry is an [Axis][abczarr.ome.v0_1.axes.Axis].
+datasets : list of Dataset
+    The pyramid's resolution levels, from full resolution down.
+    Each entry is a
+    [Dataset][abczarr.ome.v0_1.images.Dataset].
+coordinateTransformations : list of CoordinateTransformation
+    Transformations applied to every level, before that level's own
+    transformations run. Optional.
+name : str
+    A name for the multiscale image. Recommended.
+type : str
+    The method used to generate the lower resolutions, such as
+    ``"gaussian"``. Recommended.
+metadata : Metadata
+    Further, free-form detail about how the lower resolutions were
+    generated. Recommended.
+"""
+
+_IMAGELABEL_DOC_V0_5 = """\
+Metadata for a label image: an array whose integer values name segments.
+
+Attach one of these to a label image group alongside its own
+[Multiscale][abczarr.ome.v0_1.images.Multiscale].
+
+Parameters
+----------
+colors : list of Color
+    The display color for each labeled integer value. Recommended.
+properties : list of Property
+    Further, application-defined attributes for each labeled value.
+    Optional.
+source : Source
+    Where the label image was derived from. Optional.
+"""
+
+_OMERO_DOC_V0_5 = """\
+Rendering settings for an image: one entry per channel.
+
+Attach one of these to an image group, alongside its
+[Multiscale][abczarr.ome.v0_1.images.Multiscale], to suggest how a
+viewer should display it.
+
+Parameters
+----------
+channels : list of Channel
+    A [Channel][abczarr.ome.v0_1.omero.Channel] for each channel of
+    the image, in order.
+"""
+
+_PLATE_DOC_V0_5 = """\
+A high-content screening plate.
+
+`rows` and `columns` name the plate's grid, such as `"A"`, `"B"`,
+and so on for rows, and `"1"`, `"2"`, and so on for columns.
+
+Parameters
+----------
+rows : list of Row
+    The plate's rows, in grid order.
+columns : list of Column
+    The plate's columns, in grid order.
+wells : list of Well
+    Every well of the plate, each placed in the grid and pointing at
+    the group holding its images.
+acquisitions : list of Acquisition
+    The imaging runs the wells' images belong to, when the screen
+    ran more than one. Optional.
+name : str
+    A name for the plate. Recommended.
+field_count : int
+    The largest number of fields of view acquired for any well of
+    the plate. Recommended.
+"""
+
+_WELL_DOC_V0_5 = """\
+A well's images: one field of view per acquisition run.
+
+A well group holds one subgroup per field of view.
+
+Parameters
+----------
+images : list of Image
+    The well's fields of view, each naming its subgroup and, when
+    the plate carries more than one, which acquisition it belongs
+    to.
+"""
+
+_OMEIMAGELABEL_DOC_V0_2 = """\
+Metadata for a label image.
+
+A label image is an [OMEImage][abczarr.ome.v0_1.ome.OMEImage] whose
+pixel values name segments.
+
+Parameters
+----------
+image_label : ImageLabel
+    The [ImageLabel][abczarr.ome.v0_1.labels.ImageLabel] metadata
+    describing those segments, including their display colors and
+    any per-label properties.
 """
 
 
@@ -309,6 +454,7 @@ DELTAS_STABLE = {
     "v0_2": [
         SetAnn("ome", ("OMEImageLabel",), "image_label",
                "Required[ImageLabel]"),
+        SetDoc("ome", ("OMEImageLabel",), _OMEIMAGELABEL_DOC_V0_2),
         SetAnn("ome", ("OMEBioformats2Raw",), "plate", "Required[Plate]"),
     ],
     # 0.2 -> 0.3
@@ -361,10 +507,15 @@ DELTAS_STABLE = {
     #     carrier (ome.OME keeps its own -- that is the discriminator).
     "v0_5": [
         DelField("images", ("Multiscale",), "version"),
+        SetDoc("images", ("Multiscale",), _MULTISCALE_DOC_V0_5),
         DelField("labels", ("ImageLabel",), "version"),
+        SetDoc("labels", ("ImageLabel",), _IMAGELABEL_DOC_V0_5),
         DelField("omero", ("Omero",), "version"),
+        SetDoc("omero", ("Omero",), _OMERO_DOC_V0_5),
         DelField("plates", ("Plate",), "version"),
+        SetDoc("plates", ("Plate",), _PLATE_DOC_V0_5),
         DelField("wells", ("Well",), "version"),
+        SetDoc("wells", ("Well",), _WELL_DOC_V0_5),
     ],
 }
 
