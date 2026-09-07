@@ -1,5 +1,6 @@
 __all__ = [
     "base",
+    "config",
     "schemas",
     "v0_1",
     "v0_2",
@@ -15,6 +16,7 @@ __all__ = [
 
 from . import (
     base,
+    config,
     schemas,
     v0_1,
     v0_2,
@@ -29,5 +31,8 @@ from . import (
 )
 from .base import *  # noqa: F403
 from .base import __all__ as __all_base
+from .config import *  # noqa: F403
+from .config import __all__ as __all_config
 
 __all__ += __all_base
+__all__ += __all_config
