@@ -37,8 +37,6 @@ from abczarr._core import typing as tz
 # abc + ome
 from abczarr.abc.sync import ZarrArray, ZarrGroup
 
-from .config import ImageConfig
-
 #: How much each axis shrinks per level. One number applies to every axis. A
 #: sequence gives one factor per axis. A mapping keys a factor by axis index
 #: or dimension name, and a `None` key sets the default for the axes it does
@@ -197,7 +195,11 @@ def downsample_array(
         )
     src = group[source]
     darr = src.to_dask()
-    names = getattr(src.metadata, "dimension_names", None)
+    # A v2 array has no dimension names of its own; the OME metadata names its
+    # axes instead.
+    names = getattr(src.metadata, "dimension_names", None) or _ome_axis_names(
+        group.ome
+    )
     factors = _resolve_factors(factor, darr.ndim, names)
     reducer = getattr(da, _METHODS[method])
     # An axis with a factor of 1, or already length one, is left uncoarsened.
@@ -226,13 +228,15 @@ def _fit_chunks(chunks: tz.ShapeLike, shape: tz.ShapeLike) -> tz.Shape:
 def _level_scale(factors: tz.ShapeLike, level: int) -> tx.Any:
     """The cumulative shrink at *level*, for naming a level by its scale.
 
-    A single number is returned when every shrinking axis uses the same
-    factor. Otherwise one number per axis is returned.
+    A single number is returned when every axis uses the same factor, so
+    ``"s{scale}"`` names a halving pyramid ``s2``, ``s4``, and so on. When the
+    axes shrink by different factors, the per-axis shrink is joined with ``x``,
+    so a ``(2, 2, 2, 1)`` factor names the first level ``s2x2x2x1``.
     """
-    shrinking = {f for f in factors if f > 1}
-    if len(shrinking) == 1:
-        return next(iter(shrinking)) ** level
-    return tuple(f**level for f in factors)
+    values = [f**level for f in factors]
+    if len(set(factors)) == 1:
+        return values[0]
+    return "x".join(str(v) for v in values)
 
 
 # ----------------------------------------------------------------------
@@ -304,9 +308,10 @@ def create_pyramid(
             "the group has no OME metadata to extend; write the base level's "
             "metadata first, for example with ImageConfig(...).apply(group)"
         )
-    multiscale = ome.multiscales[0]
     base = group[source]
-    names = getattr(base.metadata, "dimension_names", None)
+    names = getattr(base.metadata, "dimension_names", None) or _ome_axis_names(
+        ome
+    )
     factors = _resolve_factors(factor, len(base.shape), names)
     if levels is None:
         levels = default_levels(base.shape, base.chunks, factors)
@@ -332,7 +337,7 @@ def create_pyramid(
         paths.append(target)
         previous = target
 
-    _extend_metadata(group, ome, multiscale, source, paths, factors)
+    _extend_metadata(group, ome, source, paths, factors)
     return pyramid
 
 
@@ -344,98 +349,153 @@ def create_pyramid(
 def _extend_metadata(
     group: ZarrGroup,
     ome: tx.Any,
-    multiscale: tx.Any,
     source: str,
     paths: tx.Sequence[str],
     factors: tz.Shape,
 ) -> None:
     """Rewrite *group*'s OME metadata to include the new levels.
 
-    The axes, the base level's voxel geometry, the image name, and the version
-    are read from the existing metadata. An
-    [ImageConfig][abczarr.ome.config.ImageConfig] rebuilds the multiscale from
-    them with one dataset per level, and the result is assigned back to the
-    group. The base level's dataset is reproduced from its own transform, so
-    only the new levels are added.
+    The metadata is read as its JSON document and only the new levels are
+    added, so everything else it carries is kept, whether or not it was written
+    by abczarr's own tooling. Each new level's transform is the base level's
+    scale and translation, scaled by the factor for that level. The version of
+    the document is unchanged.
     """
-    scale, translation = _base_geometry(multiscale, source)
-    image_name = getattr(multiscale, "name", None)
-    config = ImageConfig(
-        axes=_axis_specs(multiscale),
-        scale=scale,
-        translation=translation,
-        factor=tuple(float(f) for f in factors),
-        strategy="window",
-        name=image_name if isinstance(image_name, str) else None,
-        ome_version=ome.version,
+    document = ome.to_json()
+    multiscale = _first_multiscale(document)
+    datasets = multiscale["datasets"]
+    scale, offset, shape = _base_transform(_base_dataset(datasets, source))
+    for level, path in enumerate(paths[1:], start=1):
+        level_scale = [s * f**level for s, f in zip(scale, factors)]
+        level_offset = [
+            o + s * (f**level - 1) / 2
+            for o, s, f in zip(offset, scale, factors)
+        ]
+        datasets.append(_level_dataset(path, level_scale, level_offset, shape))
+    group.ome = document
+
+
+def _first_multiscale(document: tx.Any) -> tx.Any:
+    """The first multiscale in an OME document."""
+    multiscales = document.get("multiscales")
+    if not multiscales:
+        raise ValueError("the OME metadata has no multiscale to extend")
+    return multiscales[0]
+
+
+def _base_dataset(datasets: tx.Sequence[tx.Any], source: str) -> tx.Any:
+    """The dataset for the base level named *source*, or the first one."""
+    for dataset in datasets:
+        if dataset.get("path") == source:
+            return dataset
+    return datasets[0]
+
+
+def _base_transform(
+    dataset: tx.Any,
+) -> tx.Tuple[tx.List[float], tx.List[float], tx.Tuple[bool, tx.Any]]:
+    """The base level's scale and physical offset, and its transform shape.
+
+    The scale and the translation are read from the dataset's transforms. A
+    translation applied before the scale is against the spec but seen in the
+    wild. Its stored values are then in input units, so they are scaled to the
+    physical offset. A transform that carries an input or an output reference
+    marks a 0.6 dataset, and the output reference is kept so that the new
+    levels map into the same coordinate system.
+    """
+    flat, has_refs, output = _flatten_json(
+        dataset["coordinateTransformations"]
     )
-    level_shapes = [tuple(group[path].shape) for path in paths]
-    config.apply(group, level_shapes=level_shapes, level_paths=list(paths))
-
-
-def _axis_specs(multiscale: tx.Any) -> tx.List[tx.Dict[str, tx.Any]]:
-    """The axes of *multiscale* as ``{name, type, unit}`` dicts.
-
-    The stable versions carry the axes on the multiscale. The 0.6 pre-releases
-    carry them on the first coordinate system. Both are read here.
-    """
-    axes = getattr(multiscale, "axes", None)
-    if not axes:
-        systems = getattr(multiscale, "coordinateSystems", None)
-        axes = systems[0].axes if systems else None
-    if not axes:
-        raise ValueError("the OME metadata has no axes")
-    specs = []
-    for axis in axes:
-        spec = {"name": axis.name}  # type: tx.Dict[str, tx.Any]
-        atype = getattr(axis, "type", None)
-        unit = getattr(axis, "unit", None)
-        if isinstance(atype, str):
-            spec["type"] = atype
-        if isinstance(unit, str):
-            spec["unit"] = unit
-        specs.append(spec)
-    return specs
-
-
-def _base_geometry(
-    multiscale: tx.Any, source: str
-) -> tx.Tuple[tx.List[float], tx.List[float]]:
-    """The base level's scale and translation, read from its transform.
-
-    The dataset named *source* holds the base level's transform. Its scale is
-    read, and its translation when it has one. A missing translation reads as
-    zero on every axis.
-    """
-    datasets = list(multiscale.datasets)
-    dataset = next((d for d in datasets if d.path == source), datasets[0])
     scale = None
     translation = None
-    for transform in _flatten_transforms(dataset.coordinateTransformations):
-        if getattr(transform, "type", None) == "scale":
-            scale = [float(v) for v in transform.scale]
-        elif getattr(transform, "type", None) == "translation":
-            translation = [float(v) for v in transform.translation]
+    order = []
+    for transform in flat:
+        kind = transform.get("type")
+        if kind == "scale":
+            scale = [float(v) for v in transform["scale"]]
+            order.append("scale")
+        elif kind == "translation":
+            translation = [float(v) for v in transform["translation"]]
+            order.append("translation")
     if scale is None:
-        raise ValueError(
-            f"the base dataset {source!r} has no scale transform to build on"
-        )
+        raise ValueError("the base dataset has no scale transform to build on")
     if translation is None:
-        translation = [0.0] * len(scale)
-    return scale, translation
+        offset = [0.0] * len(scale)
+    elif order[:2] == ["translation", "scale"]:
+        offset = [s * t for s, t in zip(scale, translation)]
+    else:
+        offset = list(translation)
+    return scale, offset, (has_refs, output)
 
 
-def _flatten_transforms(
+def _flatten_json(
     transforms: tx.Sequence[tx.Any],
-) -> tx.Iterator[tx.Any]:
-    """Each transform, stepping into a sequence's own transformations.
+) -> tx.Tuple[tx.List[tx.Any], bool, tx.Any]:
+    """The individual transforms, and whether they carry system references.
 
-    The stable versions list the scale and the translation side by side. The
-    0.6 pre-releases wrap them in one sequence. Both are flattened to the
-    individual transforms here.
+    A 0.6 dataset wraps its transforms in one sequence and names its input and
+    output coordinate systems. The individual transforms are returned, along
+    with whether such references are present and the output reference to reuse.
     """
+    flat = []
+    has_refs = False
+    output = None
     for transform in transforms:
-        if getattr(transform, "type", None) == "sequence":
-            yield from transform.transformations
+        if transform.get("input") is not None:
+            has_refs = True
+        if transform.get("output") is not None:
+            has_refs = True
+            output = transform["output"]
+        if transform.get("type") == "sequence":
+            flat.extend(transform.get("transformations", []))
         else:
-            yield transform
+            flat.append(transform)
+    return flat, has_refs, output
+
+
+def _level_dataset(
+    path: str,
+    scale: tx.Sequence[float],
+    translation: tx.Sequence[float],
+    shape: tx.Tuple[bool, tx.Any],
+) -> tx.Dict[str, tx.Any]:
+    """A new level's dataset, in the transform shape the base level used."""
+    has_refs, output = shape
+    transforms = [
+        {"type": "scale", "scale": list(scale)}
+    ]  # type: tx.List[tx.Dict[str, tx.Any]]
+    if any(offset != 0 for offset in translation):
+        transforms.append(
+            {"type": "translation", "translation": list(translation)}
+        )
+    if has_refs:
+        sequence = {
+            "type": "sequence",
+            "input": {"path": path},
+            "transformations": transforms,
+        }  # type: tx.Dict[str, tx.Any]
+        if output is not None:
+            sequence["output"] = output
+        return {"path": path, "coordinateTransformations": [sequence]}
+    return {"path": path, "coordinateTransformations": transforms}
+
+
+def _ome_axis_names(ome: tx.Any) -> tx.Optional[tx.Tuple[str, ...]]:
+    """The axis names in a group's OME metadata, or `None` when unavailable.
+
+    A v2 array carries no dimension names of its own. Its axis names are then
+    read from the OME metadata, where the stable versions name the axes on the
+    multiscale and the 0.6 pre-releases name them on the first coordinate
+    system.
+    """
+    if ome is None:
+        return None
+    try:
+        multiscale = ome.multiscales[0]
+        axes = getattr(multiscale, "axes", None)
+        if not axes:
+            systems = getattr(multiscale, "coordinateSystems", None)
+            axes = systems[0].axes if systems else None
+        return tuple(axis.name for axis in axes) if axes else None
+    except (AttributeError, IndexError, TypeError):
+        return None

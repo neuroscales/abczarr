@@ -203,3 +203,75 @@ def test_create_pyramid_names_levels_by_scale(
     create_pyramid(group, "0", levels=2, name="s{scale}")
     assert "s2" in group.keys()
     assert "s4" in group.keys()
+
+
+# --- extending existing metadata robustly ----------------------------------
+
+
+def test_create_pyramid_preserves_the_base_metadata(
+    tmp_path: pathlib.Path,
+) -> None:
+    group = _group(tmp_path)
+    _array(group, np.arange(64, dtype="float64").reshape(8, 8))
+    # metadata not written by our own tooling, carrying a name to preserve
+    group.ome = {
+        "version": "0.5",
+        "multiscales": [
+            {
+                "name": "my-image",
+                "axes": [
+                    {"name": "y", "type": "space"},
+                    {"name": "x", "type": "space"},
+                ],
+                "datasets": [
+                    {
+                        "path": "0",
+                        "coordinateTransformations": [
+                            {"type": "scale", "scale": [1.0, 1.0]}
+                        ],
+                    }
+                ],
+            }
+        ],
+    }
+    create_pyramid(group, "0", levels=1)
+    multiscale = group.ome.multiscales[0]
+    assert multiscale.name == "my-image"
+    assert [d.path for d in multiscale.datasets] == ["0", "1"]
+
+
+def test_create_pyramid_extends_a_0_6_base(tmp_path: pathlib.Path) -> None:
+    group = _group(tmp_path)
+    _array(group, np.arange(64, dtype="float64").reshape(8, 8))
+    ImageConfig(axes=["y", "x"], scale=[1.0, 1.0], ome_version="0.6rc0").apply(
+        group, level_paths=["0"], level_shapes=[(8, 8)]
+    )
+    create_pyramid(group, "0", levels=1)
+    assert group.ome.version == "0.6rc0"
+    assert len(group.ome.multiscales[0].datasets) == 2
+
+
+def test_a_leading_translation_is_read_as_a_scaled_offset() -> None:
+    # against the spec, but seen in the wild: a translation applied before the
+    # scale carries its offset in input units, so it must be scaled. The typed
+    # model rejects this order on load, so the reader is exercised directly.
+    from abczarr.ome.pyramid import _base_transform
+
+    dataset = {
+        "coordinateTransformations": [
+            {"type": "translation", "translation": [1.0, 1.0]},
+            {"type": "scale", "scale": [2.0, 2.0]},
+        ]
+    }
+    scale, offset, shape = _base_transform(dataset)
+    assert scale == [2.0, 2.0]
+    assert offset == [2.0, 2.0]  # scale * translation, not the translation
+
+
+def test_a_per_axis_factor_names_levels_with_x(
+    tmp_path: pathlib.Path,
+) -> None:
+    group = _group(tmp_path)
+    _base_with_ome(group, np.arange(64, dtype="float64").reshape(8, 8))
+    create_pyramid(group, "0", levels=1, factor={"x": 1}, name="s{scale}")
+    assert "s2x1" in group.keys()
