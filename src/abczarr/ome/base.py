@@ -161,7 +161,7 @@ that would need information the source does not carry raises
     >>> untyped.to_version("0.3")
     Traceback (most recent call last):
         ...
-    ValueError: cannot convert Multiscale from OME 0.2 to 0.3: 
+    ValueError: cannot convert Multiscale from OME 0.2 to 0.3:
     the target requires information OME 0.2 does not carry
 
     ```
