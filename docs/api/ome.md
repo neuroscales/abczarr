@@ -172,3 +172,7 @@ version's own classes are documented on its own page, listed under
 **OME** in the navigation.
 
 ::: abczarr.ome.base
+
+::: abczarr.ome.config
+
+::: abczarr.ome.pyramid
