@@ -21,6 +21,7 @@ __all__ = ["OMEMetadata", "OME"]
 
 # stdlib
 import importlib
+import warnings
 from collections import abc
 
 # dependencies
@@ -30,6 +31,23 @@ from abczarr._core.auto.attrs import autodefine, field, fields
 
 # core
 from abczarr._core.metadata import FlexibleMetadata
+from abczarr._core.rfc2119 import MISSING
+from abczarr.errors import UnsupportedConversion
+
+#: How a cross-version conversion treats information the target version
+#: cannot hold.
+#:
+#: * ``"lossy"`` -- drop it silently.
+#: * ``"warn"`` (the default for OME conversions) -- drop it, but emit one
+#:   warning naming what was dropped.
+#: * ``"strict"`` -- raise
+#:   [UnsupportedConversion][abczarr.errors.UnsupportedConversion] instead of
+#:   dropping anything.
+#:
+#: This mirrors the Zarr metadata layer's ``ConversionPolicy``; it is
+#: defined here rather than imported so the OME model does not pull the
+#: Zarr metadata package (and, through it, a backend) in at import time.
+ConversionPolicy = tx.Literal["lossy", "warn", "strict"]
 
 #: OME-NGFF versions, oldest to newest, and the package that holds each.
 _MODULES = {
@@ -45,6 +63,33 @@ _MODULES = {
     "0.6rc0": "v0_6rc0",
 }
 _VERSIONS = list(_MODULES)
+
+
+def _is_stable(version: str) -> bool:
+    """Whether *version* names a released version.
+
+    A released version is written with digits and separators only. A
+    pre-release -- ``dev``, ``rc``, ``alpha``, ``beta`` and the like --
+    carries letters, following PEP 440, so any letter marks it as not yet
+    stable.
+    """
+    return not any(char.isalpha() for char in version)
+
+
+def _version_key(version: str) -> "tx.Tuple[int, ...]":
+    """Order a version by its numeric release segments.
+
+    The segments are compared as integers, so ``0.10`` comes after ``0.9``
+    rather than before it as a string comparison would have it.
+    """
+    return tuple(int(part) for part in version.split("."))
+
+
+#: The newest released (non-preview) OME-NGFF version -- ``"0.5"`` today.
+#: The convenient default when metadata is written without a version.
+LATEST_STABLE = max(
+    (v for v in _VERSIONS if _is_stable(v)), key=_version_key
+)
 
 #: A v0.3 axis is a bare name; v0.4 made it an object carrying a type.
 _AXIS_TYPE = {
@@ -74,7 +119,9 @@ class OMEMetadata(FlexibleMetadata):
     to convert an object built against one NGFF version to another.
     """
 
-    def to_version(self, version: str) -> tx.Self:
+    def to_version(
+        self, version: str, policy: ConversionPolicy = "warn"
+    ) -> tx.Self:
         """Convert this OME metadata to another OME-NGFF version.
 
         Works on any piece of OME metadata, not only the top-level
@@ -85,6 +132,24 @@ class OMEMetadata(FlexibleMetadata):
         both versions carry is passed through unchanged. A field only
         the newer version has gets a reasonable default going forward,
         and is dropped going back.
+
+        Crossing the 0.5 <-> 0.6 boundary reshapes coordinate metadata:
+        0.5's per-multiscale `axes` and per-dataset scale/translation
+        become 0.6's named `coordinateSystems` and general coordinate
+        transformations, and vice versa. Going back to 0.5, a 0.6
+        transformation the stable model cannot express (an affine, a
+        rotation, and so on) is treated according to *policy*.
+
+        Parameters
+        ----------
+        version : str
+            The target OME-NGFF version, such as ``"0.4"`` or
+            ``"0.6rc0"``.
+        policy : ConversionPolicy
+            How to treat information the target version cannot hold:
+            ``"lossy"`` drops it silently, ``"warn"`` (the default)
+            drops it with one warning, and ``"strict"`` raises
+            [UnsupportedConversion][abczarr.errors.UnsupportedConversion].
 
         !!! example
             ```pycon
@@ -116,6 +181,9 @@ class OMEMetadata(FlexibleMetadata):
             If *version* names no known OME-NGFF version, or if
             converting to it would require information this object
             does not carry.
+        UnsupportedConversion
+            If *policy* is ``"strict"`` and a field or transformation
+            cannot be represented in *version*.
         """
         if version not in _MODULES:
             raise ValueError(f"Unknown OME version: {version!r}")
@@ -124,7 +192,7 @@ class OMEMetadata(FlexibleMetadata):
         step = 1 if j >= i else -1
         obj: tx.Any = self
         for k in range(i, j, step):
-            obj = _migrate(obj, _VERSIONS[k], _VERSIONS[k + step])
+            obj = _migrate(obj, _VERSIONS[k], _VERSIONS[k + step], policy)
         return obj
 
 
@@ -170,21 +238,66 @@ def _target_class(cls: type, version: str) -> type:
         ) from e
 
 
-def _migrate(value: tx.Any, from_v: str, to_v: str) -> tx.Any:
+def _report_loss(policy: ConversionPolicy, field: str, version: str) -> None:
+    """Apply a conversion policy to something the target version can't hold.
+
+    Called by a migration for each field or transformation it cannot carry
+    over to OME *version*. Does nothing under ``"lossy"``, emits one warning
+    under ``"warn"``, and raises
+    [UnsupportedConversion][abczarr.errors.UnsupportedConversion] under
+    ``"strict"``.
+
+    Parameters
+    ----------
+    policy : ConversionPolicy
+        How to treat the loss.
+    field : str
+        What cannot be represented -- a field name, or a transformation
+        type such as ``"affine"``.
+    version : str
+        The OME-NGFF version being converted to.
+
+    Raises
+    ------
+    UnsupportedConversion
+        If *policy* is ``"strict"``.
+    """
+    if policy == "lossy":
+        return
+    if policy == "warn":
+        warnings.warn(
+            f"dropping {field!r}: not representable in OME {version}",
+            stacklevel=3,
+        )
+        return
+    if policy == "strict":
+        raise UnsupportedConversion(field, version)
+    raise ValueError(f"unknown conversion policy: {policy!r}")
+
+
+def _migrate(
+    value: tx.Any, from_v: str, to_v: str, policy: ConversionPolicy
+) -> tx.Any:
     if isinstance(value, OMEMetadata):
         migration = _MIGRATIONS.get((from_v, to_v), {}).get(
             type(value).__qualname__
         )
         if migration is not None:
-            return migration(value, to_v)
+            return migration(value, to_v, policy)
         newcls = _target_class(type(value), to_v)
-        return _rebuild(value, newcls, to_v, from_v)
+        return _rebuild(value, newcls, to_v, from_v, policy)
     if isinstance(value, (list, tuple)):
-        return type(value)(_migrate(v, from_v, to_v) for v in value)
+        return type(value)(_migrate(v, from_v, to_v, policy) for v in value)
     return value
 
 
-def _rebuild(source: tx.Any, newcls: type, to_v: str, from_v: str) -> tx.Any:
+def _rebuild(
+    source: tx.Any,
+    newcls: type,
+    to_v: str,
+    from_v: str,
+    policy: ConversionPolicy,
+) -> tx.Any:
     kwargs = {}
     for f in fields(newcls):
         if not f.init:
@@ -192,7 +305,9 @@ def _rebuild(source: tx.Any, newcls: type, to_v: str, from_v: str) -> tx.Any:
         if f.name == "version":
             kwargs["version"] = to_v
         elif hasattr(source, f.name):
-            kwargs[f.name] = _migrate(getattr(source, f.name), from_v, to_v)
+            kwargs[f.name] = _migrate(
+                getattr(source, f.name), from_v, to_v, policy
+            )
     try:
         return newcls(**kwargs)
     except TypeError as e:
@@ -212,7 +327,9 @@ def _rebuild(source: tx.Any, newcls: type, to_v: str, from_v: str) -> tx.Any:
 # ----------------------------------------------------------------------
 
 
-def _multiscale_3_to_4(ms: tx.Any, to_v: str) -> tx.Any:
+def _multiscale_3_to_4(
+    ms: tx.Any, to_v: str, policy: ConversionPolicy
+) -> tx.Any:
     v4 = importlib.import_module(_package(to_v))
     axes = [
         v4.Axis.from_json({"name": a, "type": _AXIS_TYPE.get(a, "space")})
@@ -233,7 +350,9 @@ def _multiscale_3_to_4(ms: tx.Any, to_v: str) -> tx.Any:
     return _carry(ms, v4.Multiscale, to_v, axes=axes, datasets=datasets)
 
 
-def _multiscale_4_to_3(ms: tx.Any, to_v: str) -> tx.Any:
+def _multiscale_4_to_3(
+    ms: tx.Any, to_v: str, policy: ConversionPolicy
+) -> tx.Any:
     v3 = importlib.import_module(_package(to_v))
     axes = [a.name for a in ms.axes]
     datasets = [v3.Dataset.from_json({"path": d.path}) for d in ms.datasets]
@@ -256,9 +375,227 @@ def _carry(
     return newcls(**kwargs)
 
 
+# ----------------------------------------------------------------------
+#   v0.5 <-> v0.6 (RFC-5): axes/scale <-> coordinate systems & transforms
+# ----------------------------------------------------------------------
+#
+# The 0.5 (stable) model puts the axes on the multiscale and a
+# `[Scale]` / `[Scale, Translation]` on each dataset. The 0.6 (RFC-5)
+# model drops `axes`, carries one or more named `coordinateSystems`, and
+# gives each dataset a list of general coordinate transformations. By
+# convention a dataset's transform maps the array's own (intrinsic)
+# system -- referenced by `input={"path": <dataset.path>}` -- onto a
+# named output system, `output={"name": <system>}`.
+#
+# The migration is registered at the 0.5 <-> 0.6.dev1 step. In 0.6.dev1 a
+# transform's `input`/`output` are still free JSON (the typed `Space`
+# object arrives at 0.6.dev4), so they are written here as bare dicts;
+# the per-field converters coerce them to `Space` as the object walks up
+# the dev chain. Going the other way, `_space_to_json` turns a `Space`
+# back into a dict at the 0.6.dev4 -> 0.6.dev3 step, so by 0.6.dev1 the
+# references are dicts again.
+
+
+def _multiscale_5_to_6(
+    ms: tx.Any, to_v: str, policy: ConversionPolicy
+) -> tx.Any:
+    """0.5 -> 0.6.dev1 (lossless).
+
+    Synthesize one output coordinate system from the 0.5 axes, and rewrite
+    each dataset's scale/translation into a 0.6 transform mapping the
+    array's intrinsic system onto that named system.
+    """
+    dev = importlib.import_module(_package(to_v))
+    # The output system's name is the multiscale's own name if it has one,
+    # else a plain default. It is independent of the multiscale `name`
+    # field, which is carried across separately.
+    system_name = ms.name if isinstance(ms.name, str) else "physical"
+
+    doc: tx.Dict[str, tx.Any] = {
+        "coordinateSystems": [
+            {"name": system_name, "axes": [a.to_json() for a in ms.axes]}
+        ],
+        "datasets": [_dataset_5_to_6(d, system_name) for d in ms.datasets],
+    }
+    # A multiscale-level transform applies globally, to no single pair of
+    # systems, so it is carried across without an input/output reference
+    # (both are optional in 0.6); the reverse step reads it back the same
+    # way, keeping the round trip exact.
+    if _is_set(ms.coordinateTransformations):
+        doc["coordinateTransformations"] = [
+            _transform_5_to_6(t) for t in ms.coordinateTransformations
+        ]
+    if isinstance(ms.name, str):
+        doc["name"] = ms.name
+    if isinstance(ms.type, str):
+        doc["type"] = ms.type
+    if _is_set(ms.metadata):
+        doc["metadata"] = ms.metadata.to_json()
+    return dev.images.Multiscale.from_json(doc)
+
+
+def _dataset_5_to_6(d: tx.Any, system_name: str) -> tx.Dict[str, tx.Any]:
+    """One 0.5 dataset -> one 0.6 dataset dict.
+
+    A lone scale becomes a single 0.6 `scale`; a scale followed by a
+    translation becomes a `sequence` of the two, matching the RFC-5 corpus.
+    """
+    refs = {"input": {"path": d.path}, "output": {"name": system_name}}
+    cts = d.coordinateTransformations
+    if len(cts) == 1:
+        transform = dict(_transform_5_to_6(cts[0]), **refs)
+    else:
+        scale, translation = cts
+        transform = {
+            "type": "sequence",
+            "transformations": [
+                _transform_5_to_6(scale),
+                _transform_5_to_6(translation),
+            ],
+            **refs,
+        }
+    return {"path": d.path, "coordinateTransformations": [transform]}
+
+
+def _transform_5_to_6(t: tx.Any) -> tx.Dict[str, tx.Any]:
+    """A 0.5 scale/translation -> the same 0.6 transform, values preserved."""
+    if t.type == "scale":
+        return {"type": "scale", "scale": list(t.scale)}
+    return {"type": "translation", "translation": list(t.translation)}
+
+
+def _multiscale_6_to_5(
+    ms: tx.Any, to_v: str, policy: ConversionPolicy
+) -> tx.Any:
+    """0.6.dev1 -> 0.5 (potentially lossy).
+
+    The datasets' output coordinate system supplies the 0.5 axes. Each
+    dataset's transform list is reduced to the `Scale` (+`Translation`) the
+    stable model allows; anything it cannot express is routed through
+    *policy*.
+    """
+    v5 = importlib.import_module(_package(to_v))
+    system = _output_system(ms)
+    naxes = len(system.axes)
+
+    doc: tx.Dict[str, tx.Any] = {
+        "axes": [a.to_json() for a in system.axes],
+        "datasets": [
+            {
+                "path": d.path,
+                "coordinateTransformations": _reduce_transforms(
+                    d.coordinateTransformations, naxes, to_v, policy
+                ),
+            }
+            for d in ms.datasets
+        ],
+    }
+    if _is_set(ms.coordinateTransformations):
+        doc["coordinateTransformations"] = _reduce_transforms(
+            ms.coordinateTransformations, naxes, to_v, policy
+        )
+    if isinstance(ms.name, str):
+        doc["name"] = ms.name
+    if isinstance(ms.type, str):
+        doc["type"] = ms.type
+    if _is_set(ms.metadata):
+        doc["metadata"] = ms.metadata.to_json()
+    return v5.images.Multiscale.from_json(doc)
+
+
+def _output_system(ms: tx.Any) -> tx.Any:
+    """The coordinate system the datasets map their arrays onto.
+
+    Read from the `output` reference of a dataset's transform; falls back to
+    the multiscale's first coordinate system when no reference names one.
+    """
+    name = None
+    for d in ms.datasets:
+        for t in d.coordinateTransformations:
+            ref = getattr(t, "output", None)
+            if isinstance(ref, abc.Mapping) and "name" in ref:
+                name = ref["name"]
+                break
+        if name is not None:
+            break
+    if name is not None:
+        for system in ms.coordinateSystems:
+            if system.name == name:
+                return system
+    return ms.coordinateSystems[0]
+
+
+def _reduce_transforms(
+    transforms: tx.Iterable,
+    naxes: int,
+    to_v: str,
+    policy: ConversionPolicy,
+) -> tx.List[tx.Dict[str, tx.Any]]:
+    """Reduce 0.6 transforms to the 0.5 `Scale`(+`Translation`) form.
+
+    Composes the scales and translations in the list (flattening a
+    `sequence`) into one diagonal affine ``p -> scale * p + translation``.
+    A transform the stable model cannot express is routed through *policy*
+    and otherwise dropped. A dataset left with no representable scale falls
+    back to an identity scale (all ones).
+    """
+    # (scale, translation) of the running composition, as a function of the
+    # original input coordinates: applying a further `scale` s gives
+    # s * (scale * p + translation); a further `translation` t adds t.
+    scale = [1.0] * naxes
+    translation = [0.0] * naxes
+
+    def apply(t: tx.Any) -> None:
+        ttype = getattr(t, "type", None)
+        if ttype == "sequence":
+            for inner in t.transformations:
+                apply(inner)
+        elif ttype == "identity":
+            pass
+        elif ttype == "scale" and isinstance(getattr(t, "scale", None), list):
+            for i, s in enumerate(t.scale):
+                scale[i] = scale[i] * s
+                translation[i] = translation[i] * s
+        elif ttype == "translation" and isinstance(
+            getattr(t, "translation", None), list
+        ):
+            for i, offset in enumerate(t.translation):
+                translation[i] = translation[i] + offset
+        else:
+            # affine, rotation, mapAxis, a path-referenced scale, ... --
+            # nothing the stable model can carry.
+            _report_loss(policy, ttype or "transformation", to_v)
+
+    for t in transforms:
+        apply(t)
+
+    result = [{"type": "scale", "scale": scale}]
+    if any(offset != 0.0 for offset in translation):
+        result.append({"type": "translation", "translation": translation})
+    return result
+
+
+def _space_to_json(
+    space: tx.Any, to_v: str, policy: ConversionPolicy
+) -> tx.Dict[str, tx.Any]:
+    """Degrade a typed 0.6 `Space` to the bare-JSON reference older 0.6
+    previews carry (the `Space` object was introduced at 0.6.dev4)."""
+    return space.to_json()
+
+
+def _is_set(value: tx.Any) -> bool:
+    """Whether an optional/recommended field carries a real value."""
+    return value is not MISSING and value is not None
+
+
 _MIGRATIONS = {
     ("0.3", "0.4"): {"Multiscale": _multiscale_3_to_4},
     ("0.4", "0.3"): {"Multiscale": _multiscale_4_to_3},
+    ("0.5", "0.6.dev1"): {"Multiscale": _multiscale_5_to_6},
+    ("0.6.dev1", "0.5"): {"Multiscale": _multiscale_6_to_5},
+    # The typed `Space` reference does not exist before 0.6.dev4; turn it
+    # back into a bare-JSON reference when stepping down past that boundary.
+    ("0.6.dev4", "0.6.dev3"): {"Space": _space_to_json},
 }
 
 

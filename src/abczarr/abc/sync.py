@@ -47,6 +47,12 @@ from abczarr.metadata.base import (
     _node_at,
     _node_type_at,
 )
+from abczarr.ome.node import (
+    delete_ome,
+    read_ome,
+    update_ome,
+    write_ome,
+)
 
 # locals -- KNOWN_CAPABILITIES and Support are re-exported for callers that
 # reach them through this module (they are listed in __all__).
@@ -58,6 +64,8 @@ from .capabilities import (  # noqa: F401
 
 if tx.TYPE_CHECKING:
     import dask.array as da
+
+    from abczarr.ome.base import OME
 
     from .asynchronous import (
         AsyncPathGroup,
@@ -131,6 +139,80 @@ class ZarrNode(SupportsCapabilities, ABC):
             ```
         """
         return NodeAttributes(self)
+
+    @property
+    def ome(self) -> "tx.Optional[OME]":
+        """This node's OME-Zarr metadata as a typed object, read-write.
+
+        Reading parses the group's OME-NGFF metadata into the right
+        version's [OME][abczarr.ome.base.OME] object, or returns `None`
+        when the node carries none. Assigning a typed
+        [OME][abczarr.ome.base.OME] object (or a plain JSON-style mapping
+        carrying a ``version``) serializes and persists it, write-through
+        the same way [attrs][abczarr.abc.sync.ZarrNode.attrs] does; `del
+        node.ome` removes it. Both directions handle whichever envelope
+        the version uses -- the ``"ome"`` attribute from 0.5 on, the bare
+        attribute keys up to 0.4 -- and leave unrelated attributes
+        untouched.
+
+        !!! example
+            ```python
+            from abczarr.ome import v0_5
+
+            node.ome = v0_5.OME.from_json(
+                {"version": "0.5", "multiscales": [...]}
+            )
+            image = node.ome           # a typed OME object
+            del node.ome               # clear it
+            ```
+        """
+        return read_ome(self)
+
+    @ome.setter
+    def ome(self, value: "tx.Union[OME, tz.JsonDict]") -> None:
+
+        write_ome(self, value)
+
+    @ome.deleter
+    def ome(self) -> None:
+
+        delete_ome(self)
+
+    def update_ome(self, ome: "tx.Union[OME, tz.JsonDict]") -> "ZarrNode":
+        """Shallow-merge OME metadata into this node's, and persist it.
+
+        The OME counterpart of
+        [update_attributes][abczarr.abc.sync.ZarrNode.update_attributes]:
+        the top-level keys of *ome* replace those of the node's current OME
+        metadata (``version`` / ``multiscales`` / ``omero`` / ...), and any
+        the node already has that *ome* does not name are kept. When the
+        node has no OME metadata yet and the result still names no version,
+        it defaults to the latest released OME version.
+
+        The merge is shallow -- it replaces whole top-level keys, not the
+        contents of a multiscale or plate. For a structured edit, read
+        [ome][abczarr.abc.sync.ZarrNode.ome], change the typed object, and
+        assign it back.
+
+        !!! example
+            ```python
+            node.update_ome({"omero": {"channels": [...]}})
+            ```
+
+        Parameters
+        ----------
+        ome : OME or dict
+            The metadata whose top-level keys are merged in.
+
+        Returns
+        -------
+        ZarrNode
+            This node, with the merged metadata visible on
+            [ome][abczarr.abc.sync.ZarrNode.ome].
+        """
+
+        update_ome(self, ome)
+        return self
 
     def update_attributes(self, attributes: tz.JsonDict) -> "ZarrNode":
         """Add or replace several attributes at once, and persist them.
