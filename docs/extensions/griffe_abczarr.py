@@ -31,6 +31,16 @@ its own, is left without a default, which renders as required. A
 field's annotation and description are read from the matching
 attribute already present in the documentation model (searched up the
 class's MRO), so a type still cross-references the way it does today.
+
+Some modules build their classes at import time by calling a factory
+rather than with a ``class`` statement. The Zarr v3 data type packages
+do this for the core and extended-precision types, one class per type
+name. Static analysis never sees a class built this way, so it is absent
+from the documentation model even though the module exports it. For each
+such class, this extension adds a synthesized class to the model, with
+the base classes it has at runtime, its fixed ``name``, and a synthesized
+``__init__``, and mirrors it into the packages that re-export it, so it
+renders in the API reference like a class written by hand.
 """
 
 from __future__ import annotations
@@ -41,8 +51,11 @@ import inspect
 import attrs
 import typing_extensions as tx
 from griffe import (
+    Alias,
     Attribute,
     Class,
+    Docstring,
+    ExprName,
     Extension,
     Function,
     Module,
@@ -221,6 +234,117 @@ def _set_init(class_: Class) -> bool:
     return True
 
 
+def _name_field(cls: tx.Any) -> tx.Optional[attrs.Attribute]:
+    """The ``name`` field of an attrs class, or `None` when it has none.
+
+    A data type or codec identifies its kind through a ``name`` field
+    fixed to a single value, and a class built dynamically carries the
+    value there.
+    """
+    for field in attrs.fields(cls):
+        if field.name == "name":
+            return field
+    return None
+
+
+def _synthesize_class(module: Module, class_name: str, cls: tx.Any) -> None:
+    """Add a documentation-model class for a dynamically built class.
+
+    The synthesized class is given the base classes it has at runtime, a
+    ``name`` attribute carrying its fixed data-type name, and a
+    synthesized ``__init__``, so it renders in the API reference like a
+    class written with a ``class`` statement.
+    """
+    field = _name_field(cls)
+    klass = Class(class_name, parent=module)
+    if field is not None and field.default is not attrs.NOTHING:
+        klass.docstring = Docstring(
+            f"The `{field.default}` data type.", parent=klass
+        )
+    # A base is stored as a name reference, not a plain string, so the
+    # class's MRO resolves and an inherited field keeps its own type.
+    klass.bases = [
+        ExprName(base.__name__, klass)
+        for base in cls.__bases__
+        if base is not object
+    ]
+    module.set_member(class_name, klass)
+    # The module builds this class after its literal ``__all__``, so its
+    # name is added to the exported set that marks a member public.
+    if module.exports is not None and class_name not in module.exports:
+        module.exports.append(class_name)
+    if field is not None and field.default is not attrs.NOTHING:
+        attribute = Attribute(
+            "name",
+            annotation=f"Literal[{field.default!r}]",
+            value=repr(field.default),
+        )
+        attribute.docstring = Docstring(
+            f'Always `"{field.default}"`.', parent=attribute
+        )
+        klass.set_member("name", attribute)
+    _set_init(klass)
+    _reexport_upwards(module, class_name)
+
+
+def _reexport_upwards(module: Module, class_name: str) -> None:
+    """Mirror a synthesized class into the packages that re-export it.
+
+    A package that does ``from .submodule import *`` carries each of the
+    submodule's public names as an alias. Those aliases are resolved
+    before this extension runs, so a class synthesized afterward is
+    missing from every package above the module that defines it. This
+    walks up from `module` and, through each ancestor package that
+    re-exports it, adds the same alias and marks the name exported.
+    """
+    child = module
+    parent = child.parent
+    while isinstance(parent, Module):
+        target = child.canonical_path + "." + class_name
+        prefix = child.canonical_path + "."
+        reexports = any(
+            member.is_alias
+            and str(getattr(member, "target_path", "")).startswith(prefix)
+            for member in parent.members.values()
+        )
+        if not reexports or class_name in parent.members:
+            return
+        parent.set_member(class_name, Alias(class_name, target, parent=parent))
+        if parent.exports is not None and class_name not in parent.exports:
+            parent.exports.append(class_name)
+        child = parent
+        parent = child.parent
+
+
+def _synthesize_generated_classes(module: Module) -> int:
+    """Add a class to `module` for each one it builds dynamically.
+
+    A few modules create their classes by calling a factory at import
+    time rather than with a ``class`` statement, so static analysis never
+    sees them. Each such class is exported through the module's
+    ``__all__`` and defined on the module, yet is absent from the
+    documentation model. This imports the module and adds one synthesized
+    class for each, returning the number added.
+    """
+    try:
+        runtime = importlib.import_module(module.canonical_path)
+    except Exception:
+        return 0
+    count = 0
+    for name in getattr(runtime, "__all__", ()):
+        if name in module.members:
+            continue
+        obj = getattr(runtime, name, None)
+        if (
+            isinstance(obj, type)
+            and attrs.has(obj)
+            and getattr(obj, "__module__", None) == module.canonical_path
+        ):
+            _synthesize_class(module, name, obj)
+            count += 1
+    return count
+
+
 def _apply_recursively(
     mod_cls: tx.Union[Module, Class], seen: tx.Set[str]
 ) -> int:
@@ -229,8 +353,11 @@ def _apply_recursively(
     if mod_cls.canonical_path in seen:
         return 0
     seen.add(mod_cls.canonical_path)
-    count = _set_init(mod_cls) if isinstance(mod_cls, Class) else 0
-    for member in mod_cls.members.values():
+    if isinstance(mod_cls, Module):
+        count = _synthesize_generated_classes(mod_cls)
+    else:
+        count = _set_init(mod_cls)
+    for member in list(mod_cls.members.values()):
         if not member.is_alias and (member.is_module or member.is_class):
             count += _apply_recursively(member, seen)  # type: ignore[arg-type]
     return count
@@ -242,11 +369,13 @@ class AttrsExtension(Extension):
     Recreates the ``__init__`` signature of a class built by one of
     this project's attrs-based decorators (``define``, ``frozen``,
     ``autodefine``, ``autofrozen``), the way griffe's built-in
-    dataclasses extension does for ``@dataclass``.
+    dataclasses extension does for ``@dataclass``. Also adds a
+    synthesized class for each data type a module builds dynamically at
+    import time, which static analysis cannot see.
     """
 
     def on_package(self, *, pkg: Module, **kwargs: tx.Any) -> None:
-        """Adds a synthesized ``__init__`` to every attrs class in `pkg`.
+        """Augments every attrs class in `pkg`, and adds dynamic ones.
 
         Parameters
         ----------

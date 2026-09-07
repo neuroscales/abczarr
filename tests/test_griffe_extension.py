@@ -113,3 +113,29 @@ def test_a_real_default_is_rendered() -> None:
     defaults = {p.name: p.default for p in init.parameters}
     assert defaults["chunks"] == "'auto'"
     assert defaults["max_chunk_bytes"] == "8388608"
+
+
+def test_a_dynamically_built_dtype_is_synthesized() -> None:
+    # The core and extended-precision v3 data types are built at import time
+    # by a factory, so static analysis cannot see them. The extension adds a
+    # class for each, with its fixed name and a synthesized __init__.
+    extension = _load_extension()
+    package = _package(extension)
+    float32 = package["metadata.v3.dtypes.builtin.Float32"]
+    assert float32.is_public
+    init = float32.members["__init__"]
+    assert init.lineno == 0
+    name = next(p for p in init.parameters if p.name == "name")
+    assert name.annotation == "Literal['float32']"
+    assert name.default == "'float32'"
+
+
+def test_a_dynamically_built_dtype_is_reexported() -> None:
+    # The class is mirrored into the package that re-exports it, so the
+    # package's documentation page renders it.
+    extension = _load_extension()
+    package = _package(extension)
+    dtypes = package["metadata.v3.dtypes"]
+    assert "Float32" in dtypes.members
+    assert dtypes.members["Float32"].is_alias
+    assert "Float32" in (dtypes.exports or [])
