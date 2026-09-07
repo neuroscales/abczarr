@@ -113,6 +113,14 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
         """
         return self.as_sync().attrs
 
+    # TODO(ome-async): the sync node exposes a read/write ``ome`` property
+    # (see ``ZarrNode.ome``). The async twin has no counterpart yet: a read
+    # could stay synchronous like ``attrs``, but persisting needs to be
+    # awaited, so it cannot be a property setter (an assignment is not a
+    # coroutine) -- it wants an ``async def set_ome(...)`` / ``read_ome``
+    # method pair over the shared helpers in ``abczarr.ome.node``. A
+    # follow-up PR.
+
     async def update_attributes(
         self, attributes: tz.JsonDict
     ) -> "AsyncZarrNode":

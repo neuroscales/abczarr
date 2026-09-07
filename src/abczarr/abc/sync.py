@@ -59,6 +59,8 @@ from .capabilities import (  # noqa: F401
 if tx.TYPE_CHECKING:
     import dask.array as da
 
+    from abczarr.ome.base import OME
+
     from .asynchronous import (
         AsyncPathGroup,
         AsyncZarrArray,
@@ -131,6 +133,51 @@ class ZarrNode(SupportsCapabilities, ABC):
             ```
         """
         return NodeAttributes(self)
+
+    @property
+    def ome(self) -> "tx.Optional[OME]":
+        """This node's OME-Zarr metadata as a typed object, read-write.
+
+        Reading returns the group's OME-NGFF metadata parsed into the
+        right version's [OME][abczarr.ome.base.OME] object, or `None`
+        when the node carries none -- reading and writing whichever
+        envelope the version uses (the ``"ome"`` attribute from 0.5 on,
+        the bare attribute keys up to 0.4).
+
+        Assigning a typed [OME][abczarr.ome.base.OME] (or a plain
+        JSON-style mapping carrying a ``version``) serializes and
+        persists it, write-through the same way
+        [attrs][abczarr.abc.sync.ZarrNode.attrs] does; `del node.ome`
+        removes it. Unrelated attributes are left untouched.
+
+        !!! example
+            ```python
+            from abczarr.ome import v0_5
+
+            node.ome = v0_5.OME.from_json(
+                {"version": "0.5", "multiscales": [...]}
+            )
+            image = node.ome           # a typed OME object
+            del node.ome               # clear it
+            ```
+        """
+        # Imported lazily: the OME layer references the node contract, so
+        # importing it at module top would cycle.
+        from abczarr.ome.node import read_ome
+
+        return read_ome(self)
+
+    @ome.setter
+    def ome(self, value: "tx.Union[OME, tz.JsonDict]") -> None:
+        from abczarr.ome.node import write_ome
+
+        write_ome(self, value)
+
+    @ome.deleter
+    def ome(self) -> None:
+        from abczarr.ome.node import delete_ome
+
+        delete_ome(self)
 
     def update_attributes(self, attributes: tz.JsonDict) -> "ZarrNode":
         """Add or replace several attributes at once, and persist them.
