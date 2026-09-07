@@ -14,12 +14,32 @@ from .transformations import CoordinateTransformation
 
 @autodefine
 class Dataset(OMEMetadata):
+    """A `Dataset` represents one resolution level of a multiscale pyramid.
+
+    `path` names the Zarr array that holds this level, relative to the image
+    group. `coordinateTransformations` lists one or more
+    `CoordinateTransformation` objects that map this level's own coordinate
+    system into another coordinate system of the pyramid.
+    """
+
     path: Required[str] = field(factory=False)
     coordinateTransformations: Required[tx.List[CoordinateTransformation]]
 
 
 @autodefine
 class Multiscale(OMEMetadata):
+    """A `Multiscale` describes an image pyramid: its coordinate systems and
+    its resolution levels.
+
+    `coordinateSystems` names every
+    [CoordinateSystem][abczarr.ome.v0_6dev2.systems.CoordinateSystem] that a
+    [Dataset][abczarr.ome.v0_6dev2.images.Dataset] or a transformation in
+    `coordinateTransformations` can refer to. `datasets` lists the pyramid's
+    resolution levels, from full resolution down. When
+    `coordinateTransformations` is given, it applies to every level before
+    that level's own transformations run.
+    """
+
     @autodefine
     class Metadata(OMEMetadata):
         method: Optional[str]

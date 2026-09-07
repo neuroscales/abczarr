@@ -12,4 +12,11 @@ from .transformations import CoordinateTransformation
 
 @autodefine
 class Scene(OMEMetadata):
+    """A `Scene` object is a set of coordinate transformations attached to a
+    group, independent of any single image or pyramid.
+
+    `coordinateTransformations` lists the `CoordinateTransformation` objects
+    it carries.
+    """
+
     coordinateTransformations: Required[tx.List[CoordinateTransformation]]

@@ -28,12 +28,33 @@ Interpolation = tx.Union[tx.Literal["nearest", "linear", "bspline-cubic"], str]
 
 @autodefine
 class Space(OMEMetadata):
+    """A `Space` object identifies a
+    [CoordinateSystem][abczarr.ome.v0_6dev4.systems.CoordinateSystem] that a
+    transformation maps to or from.
+
+    `name` identifies the coordinate system directly. `path` locates it in
+    another group, for a coordinate system defined outside the
+    transformation's own group.
+    """
+
     name: Optional[str]
     path: Optional[str]
 
 
 @autodefine
 class CoordinateTransformation(OMEMetadata):
+    """A `CoordinateTransformation` maps coordinates from one coordinate system
+    to another.
+
+    `type` identifies which kind of transformation it is. Constructing a
+    `CoordinateTransformation` with a recognized `type` returns the matching
+    subclass, such as [Scale][abczarr.ome.v0_6dev4.transformations.Scale].
+    `input` and `output` are each a
+    [Space][abczarr.ome.v0_6dev4.transformations.Space] that identifies the
+    coordinate system the transformation maps between. `name` is an optional
+    label for the transformation itself.
+    """
+
     type: Required[str] = field(factory=False)
     output: Recommended[Space]
     input: Recommended[Space]
@@ -43,12 +64,25 @@ class CoordinateTransformation(OMEMetadata):
 @register_subclass(type="identity")
 @autodefine
 class Identity(CoordinateTransformation):
+    """An `Identity` transformation leaves coordinates unchanged.
+
+    It states that `input` and `output` are the same coordinate system, or
+    that no numeric adjustment is needed between them.
+    """
+
     type: Required[tx.Literal["identity"]]
 
 
 @register_subclass(type="mapAxis")
 @autodefine
 class MapAxis(CoordinateTransformation):
+    """A `MapAxis` transformation permutes axes without changing any coordinate
+    values.
+
+    `mapAxis` lists, one entry per output axis, the index of the input axis
+    whose values that output axis carries.
+    """
+
     type: Required[tx.Literal["mapAxis"]]
     mapAxis: Required[tx.List[int]]
 
@@ -56,6 +90,14 @@ class MapAxis(CoordinateTransformation):
 @register_subclass(type="translation")
 @autodefine
 class Translation(CoordinateTransformation):
+    """A `Translation` transformation adds a fixed offset to every coordinate,
+    one value per axis.
+
+    `translation` gives the offset inline, one number per axis. `path` reads
+    the offset instead from an array, for a translation that varies from
+    point to point rather than staying constant.
+    """
+
     type: Required[tx.Literal["translation"]]
     translation: Optional[tx.List[float]]
     path: Optional[str]
@@ -64,6 +106,14 @@ class Translation(CoordinateTransformation):
 @register_subclass(type="scale")
 @autodefine
 class Scale(CoordinateTransformation):
+    """A `Scale` transformation multiplies every coordinate by a per-axis
+    factor.
+
+    `scale` gives the factor inline, one number per axis. `path` reads the
+    factor instead from an array, for a scale that varies from point to
+    point rather than staying constant.
+    """
+
     type: Required[tx.Literal["scale"]]
     scale: Optional[tx.List[float]]
     path: Optional[str]
@@ -72,6 +122,13 @@ class Scale(CoordinateTransformation):
 @register_subclass(type="affine")
 @autodefine
 class Affine(CoordinateTransformation):
+    """An `Affine` transformation applies a linear map and a translation
+    together, given as a matrix.
+
+    `affine` gives the matrix inline. `path` reads the matrix instead from
+    an array.
+    """
+
     type: Required[tx.Literal["affine"]]
     affine: Optional[tx.List[tx.List[float]]]
     path: Optional[str]
@@ -80,6 +137,12 @@ class Affine(CoordinateTransformation):
 @register_subclass(type="rotation")
 @autodefine
 class Rotation(CoordinateTransformation):
+    """A `Rotation` transformation rotates coordinates, given as a matrix.
+
+    `rotation` gives the matrix inline. `path` reads the matrix instead from
+    an array.
+    """
+
     type: Required[tx.Literal["rotation"]]
     rotation: Optional[tx.List[tx.List[float]]]
     path: Optional[str]
@@ -88,6 +151,13 @@ class Rotation(CoordinateTransformation):
 @register_subclass(type="sequence")
 @autodefine
 class Sequence(CoordinateTransformation):
+    """A `Sequence` transformation composes several transformations into one,
+    applied in order.
+
+    `transformations` lists them from `input` to `output`. Each
+    transformation's output feeds into the next transformation as its input.
+    """
+
     type: Required[tx.Literal["sequence"]]
     transformations: Required[tx.List[CoordinateTransformation]]
 
@@ -95,6 +165,14 @@ class Sequence(CoordinateTransformation):
 @register_subclass(type="displacements")
 @autodefine
 class Displacements(CoordinateTransformation):
+    """A `Displacements` transformation is defined by a displacement field.
+
+    `path` names an array that gives a displacement vector for each point.
+    That vector is added to the input coordinate to produce the output
+    coordinate. `interpolation` says how to sample the array between its own
+    points.
+    """
+
     type: Required[tx.Literal["displacements"]]
     path: Required[str]
     interpolation: Optional[Interpolation]
@@ -103,6 +181,14 @@ class Displacements(CoordinateTransformation):
 @register_subclass(type="coordinates")
 @autodefine
 class Coordinates(CoordinateTransformation):
+    """A `Coordinates` transformation is defined by an explicit coordinate
+    lookup.
+
+    `path` names an array that gives the output coordinate for each point
+    directly. `interpolation` says how to sample the array between its own
+    points.
+    """
+
     type: Required[tx.Literal["coordinates"]]
     path: Required[str]
     interpolation: Optional[Interpolation]
@@ -111,6 +197,14 @@ class Coordinates(CoordinateTransformation):
 @register_subclass(type="bijection")
 @autodefine
 class Bijection(CoordinateTransformation):
+    """A `Bijection` transformation is given as an explicit forward and inverse
+    pair.
+
+    `forward` maps `input` to `output`. `inverse` maps `output` back to
+    `input`. This is used when a transformation's inverse cannot be derived
+    automatically from its forward direction.
+    """
+
     type: Required[tx.Literal["bijection"]]
     forward: Required[CoordinateTransformation]
     inverse: Required[CoordinateTransformation]
@@ -119,6 +213,14 @@ class Bijection(CoordinateTransformation):
 @register_subclass(type="byDimension")
 @autodefine
 class ByDimension(CoordinateTransformation):
+    """A `ByDimension` transformation combines several transformations, each
+    acting on its own subset of axes.
+
+    `transformations` lists them. Each entry's `input_axes` and
+    `output_axes` name, by index, which axes of `input` and `output` its
+    `transformation` maps between.
+    """
+
     @autodefine
     class Transformation(OMEMetadata):
         transformation: Optional[CoordinateTransformation]

@@ -14,6 +14,16 @@ UInt8 = tx.Annotated[int, ToInRange(0, 255)]
 
 @autodefine
 class ImageLabel(OMEMetadata):
+    """An `ImageLabel` describes a segmentation label image: an array whose
+    integer values name segments.
+
+    An `ImageLabel` is attached to a label image group alongside its own
+    [Multiscale][abczarr.ome.v0_6dev2.images.Multiscale]. `colors` maps each
+    integer label value to a display color. `properties` and `source` carry
+    further attributes for a label value, and record where the label image
+    was derived from.
+    """
+
     @autodefine
     class Color(OMEMetadata):
         label_value: Optional[int] = field(json="label-value")
