@@ -66,13 +66,30 @@ _VERSIONS = list(_MODULES)
 
 
 def _is_stable(version: str) -> bool:
-    """Whether *version* is a released version, not a ``dev``/``rc`` one."""
-    return "dev" not in version and "rc" not in version
+    """Whether *version* names a released version.
+
+    A released version is written with digits and separators only. A
+    pre-release -- ``dev``, ``rc``, ``alpha``, ``beta`` and the like --
+    carries letters, following PEP 440, so any letter marks it as not yet
+    stable.
+    """
+    return not any(char.isalpha() for char in version)
+
+
+def _version_key(version: str) -> "tx.Tuple[int, ...]":
+    """Order a version by its numeric release segments.
+
+    The segments are compared as integers, so ``0.10`` comes after ``0.9``
+    rather than before it as a string comparison would have it.
+    """
+    return tuple(int(part) for part in version.split("."))
 
 
 #: The newest released (non-preview) OME-NGFF version -- ``"0.5"`` today.
 #: The convenient default when metadata is written without a version.
-LATEST_STABLE = next(v for v in reversed(_VERSIONS) if _is_stable(v))
+LATEST_STABLE = max(
+    (v for v in _VERSIONS if _is_stable(v)), key=_version_key
+)
 
 #: A v0.3 axis is a bare name; v0.4 made it an object carrying a type.
 _AXIS_TYPE = {

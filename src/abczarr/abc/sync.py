@@ -47,6 +47,12 @@ from abczarr.metadata.base import (
     _node_at,
     _node_type_at,
 )
+from abczarr.ome.node import (
+    delete_ome,
+    read_ome,
+    update_ome,
+    write_ome,
+)
 
 # locals -- KNOWN_CAPABILITIES and Support are re-exported for callers that
 # reach them through this module (they are listed in __all__).
@@ -163,19 +169,16 @@ class ZarrNode(SupportsCapabilities, ABC):
         """
         # Imported lazily: the OME layer references the node contract, so
         # importing it at module top would cycle.
-        from abczarr.ome.node import read_ome
 
         return read_ome(self)
 
     @ome.setter
     def ome(self, value: "tx.Union[OME, tz.JsonDict]") -> None:
-        from abczarr.ome.node import write_ome
 
         write_ome(self, value)
 
     @ome.deleter
     def ome(self) -> None:
-        from abczarr.ome.node import delete_ome
 
         delete_ome(self)
 
@@ -211,7 +214,6 @@ class ZarrNode(SupportsCapabilities, ABC):
             This node, with the merged metadata visible on
             [ome][abczarr.abc.sync.ZarrNode.ome].
         """
-        from abczarr.ome.node import update_ome
 
         update_ome(self, ome)
         return self
