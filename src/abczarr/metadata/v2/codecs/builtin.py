@@ -31,25 +31,6 @@ class BloscCodec(CodecImpl):
     Blosc groups same-typed bytes together before handing them to
     `cname` (one of blosclz, lz4, lz4hc, snappy, zlib or zstd), and
     compresses the result in blocks so multiple threads can be used.
-
-    Attributes
-    ----------
-    id : str
-        Always ``"blosc"``.
-    cname : str
-        The inner compressor Blosc applies.
-    clevel : int
-        The compression level, from 0 to 9.
-    shuffle : int
-        The byte-shuffle filter applied before compression: ``0`` for
-        none, ``1`` for byte shuffle, ``2`` for bit shuffle, or
-        ``-1`` to let Blosc choose automatically.
-    blocksize : int
-        The block size Blosc compresses in, in bytes. ``0`` lets
-        Blosc choose automatically.
-    typesize : int or None
-        The size, in bytes, of the array's element type. Blosc uses
-        this to group same-position bytes together when shuffling.
     """
 
     # type aliases
@@ -59,11 +40,21 @@ class BloscCodec(CodecImpl):
 
     # attributes
     id: tx.Literal["blosc"]
+    """Always ``"blosc"``."""
     cname: CodecName = "lz4"
+    """The inner compressor Blosc applies."""
     clevel: CompressionLevel = 5
+    """The compression level, from 0 to 9."""
     shuffle: Shuffle = 1
+    """The byte-shuffle filter applied before compression: ``0`` for
+    none, ``1`` for byte shuffle, ``2`` for bit shuffle, or ``-1`` to
+    let Blosc choose automatically."""
     blocksize: int = 0
+    """The block size Blosc compresses in, in bytes. ``0`` lets Blosc
+    choose automatically."""
     typesize: tx.Optional[int] = None
+    """The size, in bytes, of the array's element type. Blosc uses this
+    to group same-position bytes together when shuffling."""
 
     def to_version(self, version: tz.ZarrVersion) -> Metadata:
         """Convert this codec to another Zarr version.
@@ -117,13 +108,6 @@ class BloscCodec(CodecImpl):
 class GzipCodec(CodecImpl):
     """Applies DEFLATE compression (gzip) at a configurable compression
     level.
-
-    Attributes
-    ----------
-    id : str
-        Always ``"gzip"``.
-    level : int
-        The compression level, from 0 to 9.
     """
 
     # type aliases
@@ -131,4 +115,6 @@ class GzipCodec(CodecImpl):
 
     # attributes
     id: tx.Literal["gzip"]
+    """Always ``"gzip"``."""
     level: CompressionLevel = 5
+    """The compression level, from 0 to 9."""

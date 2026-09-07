@@ -19,15 +19,11 @@ class Filter(Metadata):
     A filter runs before the compressor, in the order the filters are
     listed. Each filter transforms an array's data on encode and
     reverses that transform on decode.
-
-    Attributes
-    ----------
-    id : str
-        The numcodecs id of the filter, such as ``"delta"`` or
-        ``"quantize"``.
     """
 
     id: str
+    """The numcodecs id of the filter, such as ``"delta"`` or
+    ``"quantize"``."""
 
     def to_version(self, version: tz.ZarrVersion) -> tx.Self:
         """Convert this filter to another Zarr version.

@@ -31,19 +31,14 @@ from .base import CodecOptionsImpl
 @register_subclass(id="bz2")
 @autofrozen
 class Bz2CodecOptions(CodecOptionsImpl):
-    """Options for bzip2 compression.
-
-    Attributes
-    ----------
-    level : int
-        The compression level, from 0 to 9.
-    """
+    """Options for bzip2 compression."""
 
     # type aliases
     CompressionLevel: tx.ClassVar = codecs.Bz2CompressionLevel
 
     # attributes
     level: CompressionLevel
+    """The compression level, from 0 to 9."""
 
     # classvar
     id: tx.ClassVar[tx.Literal["bz2"]] = "bz2"
@@ -58,17 +53,6 @@ class LZMACodecOptions(CodecOptionsImpl):
     `filters` carries the raw `lzma` filter chain for cases that need
     one, such as selecting a custom dictionary size. Most uses only
     need `format`, `check` and `preset`.
-
-    Attributes
-    ----------
-    format : int
-        The LZMA container format to write.
-    check : int
-        The integrity check to embed in the compressed stream.
-    preset : int
-        The compression level, from 0 to 9.
-    filters : tuple of dict
-        The raw `lzma` filter chain, when a custom one is needed.
     """
 
     # type aliases
@@ -78,9 +62,13 @@ class LZMACodecOptions(CodecOptionsImpl):
 
     # attributes
     format: Format
+    """The LZMA container format to write."""
     check: Check
+    """The integrity check to embed in the compressed stream."""
     preset: CompressionLevel
+    """The compression level, from 0 to 9."""
     filters: tx.Tuple[tz.FrozenJsonDict, ...]
+    """The raw `lzma` filter chain, when a custom one is needed."""
 
     # classvar
     id: tx.ClassVar[tx.Literal["lzma"]] = "lzma"
@@ -91,16 +79,12 @@ class LZMACodecOptions(CodecOptionsImpl):
 class LZ4CodecOptions(CodecOptionsImpl):
     """Options for LZ4 compression, which is very fast at the cost of
     a lower compression ratio.
-
-    Attributes
-    ----------
-    acceleration : int
-        A further speed-for-ratio trade-off. A higher value
-        compresses faster and produces a lower ratio.
     """
 
     # attributes
     acceleration: int
+    """A further speed-for-ratio trade-off. A higher value compresses
+    faster and produces a lower ratio."""
 
     # classvar
     id: tx.ClassVar[tx.Literal["lz4"]] = "lz4"
@@ -112,25 +96,6 @@ class PCodecOptions(CodecOptionsImpl):
     """Options for Pcodec (`pco`), a compressor that models each
     chunk's value distribution directly instead of treating the
     chunk as a byte stream.
-
-    Attributes
-    ----------
-    level : int
-        The compression level.
-    mode_spec : str
-        How Pcodec chooses its numerical mode: ``"auto"`` or
-        ``"classic"``.
-    delta_spec : str
-        How Pcodec chooses whether to delta-encode values before
-        modeling them.
-    paging_spec : str
-        How Pcodec splits a chunk into pages for encoding.
-    delta_encoding_order : int
-        The order of delta encoding applied, when `delta_spec`
-        selects one.
-    equal_pages_up_to : int
-        The maximum page size, in elements, when `paging_spec` is
-        ``"equal_pages_up_to"``.
     """
 
     # type aliases
@@ -142,11 +107,21 @@ class PCodecOptions(CodecOptionsImpl):
 
     # attributes
     level: CompressionLevel
+    """The compression level."""
     mode_spec: Mode
+    """How Pcodec chooses its numerical mode: ``"auto"`` or
+    ``"classic"``."""
     delta_spec: Delta
+    """How Pcodec chooses whether to delta-encode values before
+    modeling them."""
     paging_spec: Paging
+    """How Pcodec splits a chunk into pages for encoding."""
     delta_encoding_order: DeltaOrder
+    """The order of delta encoding applied, when `delta_spec` selects
+    one."""
     equal_pages_up_to: int
+    """The maximum page size, in elements, when `paging_spec` is
+    ``"equal_pages_up_to"``."""
 
     # classvar
     id: tx.ClassVar[tx.Literal["pcodec"]] = "pcodec"
@@ -161,21 +136,6 @@ class ZFPYCodecOptions(CodecOptionsImpl):
     `mode` selects which of `tolerance`, `rate` and `precision`
     governs the accuracy/size trade-off. Compression is lossy,
     except in the fixed-accuracy mode with a tolerance of zero.
-
-    Attributes
-    ----------
-    mode : int
-        The accuracy mode ZFP compresses in.
-    tolerance : float
-        The maximum absolute error allowed, in fixed-accuracy mode.
-    rate : int
-        The number of bits per value, in fixed-rate mode.
-    precision : int
-        The number of bits of precision retained, in fixed-precision
-        mode.
-    compression_kwargs : dict
-        Extra keyword arguments forwarded to the underlying `zfpy`
-        call.
     """
 
     # type aliases
@@ -183,10 +143,17 @@ class ZFPYCodecOptions(CodecOptionsImpl):
 
     # attributes
     mode: Mode
+    """The accuracy mode ZFP compresses in."""
     tolerance: float
+    """The maximum absolute error allowed, in fixed-accuracy mode."""
     rate: int
+    """The number of bits per value, in fixed-rate mode."""
     precision: int
+    """The number of bits of precision retained, in fixed-precision
+    mode."""
     compression_kwargs: tz.FrozenJsonDict
+    """Extra keyword arguments forwarded to the underlying `zfpy`
+    call."""
 
     # classvar
     id: tx.ClassVar[tx.Literal["zfpy"]] = "zfpy"
@@ -195,19 +162,14 @@ class ZFPYCodecOptions(CodecOptionsImpl):
 @register_subclass(id="zlib")
 @autofrozen
 class ZlibCodecOptions(CodecOptionsImpl):
-    """Options for DEFLATE compression (zlib).
-
-    Attributes
-    ----------
-    level : int
-        The compression level, from 0 to 9.
-    """
+    """Options for DEFLATE compression (zlib)."""
 
     # type aliases
     CompressionLevel: tx.ClassVar = codecs.ZlibCompressionLevel
 
     # attributes
     level: CompressionLevel
+    """The compression level, from 0 to 9."""
 
     # classvar
     id: tx.ClassVar[tx.Literal["zlib"]] = "zlib"
@@ -216,16 +178,11 @@ class ZlibCodecOptions(CodecOptionsImpl):
 @register_subclass(id="zstd")
 @autofrozen
 class ZstdCodecOptions(CodecOptionsImpl):
-    """Options for Zstandard compression.
-
-    Attributes
-    ----------
-    level : int
-        The compression level.
-    """
+    """Options for Zstandard compression."""
 
     # attributes
     level: int
+    """The compression level."""
 
     # classvar
     id: tx.ClassVar[tx.Literal["zstd"]] = "zstd"

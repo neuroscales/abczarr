@@ -36,15 +36,11 @@ class Codec(Metadata):
     ('gzip', GzipConfig(level=1))
 
     ```
-
-    Attributes
-    ----------
-    id : str
-        The numcodecs id of the codec, such as ``"zlib"`` or
-        ``"blosc"``.
     """
 
     id: str
+    """The numcodecs id of the codec, such as ``"zlib"`` or
+    ``"blosc"``."""
 
     def to_version(self, version: tz.ZarrVersion) -> "Codec":
         """Convert this codec to another Zarr version.

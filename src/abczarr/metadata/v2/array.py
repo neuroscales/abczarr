@@ -81,44 +81,32 @@ class ArrayMetadata(ArrayMetadataV2):
         ['bytes', 'zstd']
 
         ```
-
-    Attributes
-    ----------
-    shape : tuple of int
-        The array's shape, one entry per dimension.
-    chunks : tuple of int
-        The shape of one chunk, one entry per dimension.
-    dtype : DType
-        The array's numpy dtype, encoded as a Zarr v2 dtype string
-        or, for a structured dtype, a field list.
-    compressor : Codec or None
-        The codec applied last on encode and first on decode, or
-        `None` for no compression.
-    fill_value : int, float or None
-        The value an unwritten element of the array reads as.
-    order : str
-        The memory layout of a decoded chunk: ``"C"`` for row-major
-        or ``"F"`` for column-major.
-    filters : tuple of Filter
-        The codecs applied, in order, before `compressor` on encode,
-        and in reverse order after it on decode.
-    dimension_separator : str or None
-        The character joining a chunk index into its store key,
-        ``"."`` or ``"/"``. `None` means the default, ``"."``,
-        applies.
     """
 
     # --- Required ----
     shape: tz.Shape
+    """The array's shape, one entry per dimension."""
     chunks: tz.Shape
+    """The shape of one chunk, one entry per dimension."""
     dtype: DType
+    """The array's numpy dtype, encoded as a Zarr v2 dtype string or,
+    for a structured dtype, a field list."""
     compressor: tx.Optional[Codec]
+    """The codec applied last on encode and first on decode, or `None`
+    for no compression."""
     fill_value: tx.Optional[tz.BuiltinNumber] = field(eq=eq_safenan)
+    """The value an unwritten element of the array reads as."""
     order: tz.MemoryOrder
+    """The memory layout of a decoded chunk: ``"C"`` for row-major or
+    ``"F"`` for column-major."""
     filters: tx.Tuple[Filter, ...] = field(converter=_filters_converter)
+    """The codecs applied, in order, before `compressor` on encode, and
+    in reverse order after it on decode."""
 
     # --- Optional ----
     dimension_separator: tx.Optional[tz.DimensionSeparator]
+    """The character joining a chunk index into its store key, ``"."``
+    or ``"/"``. `None` means the default, ``"."``, applies."""
 
     # --- Serialization ---
 

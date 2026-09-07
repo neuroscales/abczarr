@@ -81,41 +81,31 @@ class ArrayMetadata(ArrayMetadataV1):
         ZlibCodec(id='zlib', level=1)
 
         ```
-
-    Attributes
-    ----------
-    shape : tuple of int
-        The array's shape, one entry per dimension.
-    chunks : tuple of int
-        The shape of one chunk, one entry per dimension.
-    dtype : DType
-        The array's numpy dtype, encoded as a Zarr v1 dtype string.
-    compression : str or None
-        The numcodecs id of the compressor, such as ``"zlib"`` or
-        ``"blosc"``, or `None` for no compression.
-    compression_opts : object, int, str or None
-        The compressor's options. Most codecs take an options object.
-        A codec with a scalar form, such as an integer compression
-        level, may carry that scalar directly instead. `None` when
-        `compression` is `None`.
-    fill_value : int, float or None
-        The value an unwritten element of the array reads as.
-    order : str
-        The memory layout of a decoded chunk: ``"C"`` for row-major
-        or ``"F"`` for column-major.
     """
 
     # --- Required ----
     shape: tz.Shape
+    """The array's shape, one entry per dimension."""
     chunks: tz.Shape
+    """The shape of one chunk, one entry per dimension."""
     dtype: DType
+    """The array's numpy dtype, encoded as a Zarr v1 dtype string."""
     compression: tx.Optional[Codec]
+    """The numcodecs id of the compressor, such as ``"zlib"`` or
+    ``"blosc"``, or `None` for no compression."""
     # numcodecs carries a codec's options as an object, but the authored v1
     # ``array.schema`` also allows the scalar forms (an integer level, or a
     # string) that some codecs use, so accept those alongside the object.
     compression_opts: tx.Optional[tx.Union[CodecOptions, int, str]]
+    """The compressor's options. Most codecs take an options object. A
+    codec with a scalar form, such as an integer compression level, may
+    carry that scalar directly instead. This is `None` when `compression`
+    is `None`."""
     fill_value: tx.Optional[tz.BuiltinNumber] = field(eq=eq_safenan)
+    """The value an unwritten element of the array reads as."""
     order: tz.MemoryOrder
+    """The memory layout of a decoded chunk: ``"C"`` for row-major or
+    ``"F"`` for column-major."""
 
     # --- Conversion ---
 

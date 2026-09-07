@@ -50,15 +50,11 @@ class DTypeBuiltin(DTypeImpl):
 class Raw(DTypeBuiltin):
     """An opaque sequence of bits, with a fixed number of bits per
     element.
-
-    Attributes
-    ----------
-    name : str
-        The bit width, spelled as ``"r"`` followed by the number of
-        bits, such as ``"r8"`` for one byte per element.
     """
 
     name: tx.Annotated[str, ToRegexMatch(RE_RAW)] = "r8"
+    """The bit width, spelled as ``"r"`` followed by the number of
+    bits, such as ``"r8"`` for one byte per element."""
 
 
 __all__ += _make_dtype_classes(

@@ -35,17 +35,12 @@ class BitroundFilter(FilterImpl):
     The rounding is lossy and improves the compressibility of
     floating-point data by discarding low-order precision the data
     does not need.
-
-    Attributes
-    ----------
-    id : str
-        Always ``"bitround"``.
-    keepbits : int
-        The number of mantissa bits kept. The rest are zeroed.
     """
 
     id: tx.Literal["bitround"]
+    """Always ``"bitround"``."""
     keepbits: int = 1
+    """The number of mantissa bits kept. The rest are zeroed."""
 
     def to_version(self, version: tz.ZarrVersion) -> tx.Self:
         """Convert this filter to another Zarr version.
@@ -82,15 +77,10 @@ class BitroundFilter(FilterImpl):
 @register_subclass(id="packbits")
 @autofrozen
 class PackBitsFilter(FilterImpl):
-    """Packs a boolean array down to one bit per element for storage.
-
-    Attributes
-    ----------
-    id : str
-        Always ``"packbits"``.
-    """
+    """Packs a boolean array down to one bit per element for storage."""
 
     id: tx.Literal["packbits"]
+    """Always ``"packbits"``."""
 
     def to_version(self, version: tz.ZarrVersion) -> tx.Self:
         """Convert this filter to another Zarr version.
@@ -135,27 +125,19 @@ class ScaleOffsetFilter(FilterImpl):
     On decode, the scale and offset are reversed to recover an
     approximation of the original value. The transform is lossy and
     useful for storing a bounded floating-point range in fewer bits.
-
-    Attributes
-    ----------
-    id : str
-        Always ``"fixedscaleoffset"``.
-    offset : float
-        The value subtracted before scaling.
-    scale : float
-        The factor the offset value is multiplied by.
-    dtype : numpy.dtype
-        The array's dtype before encoding.
-    astype : numpy.dtype or None
-        The dtype the scaled value is stored as. `None` means the
-        array's own dtype is used.
     """
 
     id: tx.Literal["fixedscaleoffset"]
+    """Always ``"fixedscaleoffset"``."""
     offset: float
+    """The value subtracted before scaling."""
     scale: float
+    """The factor the offset value is multiplied by."""
     dtype: np.dtype
+    """The array's dtype before encoding."""
     astype: tx.Optional[np.dtype]
+    """The dtype the scaled value is stored as. `None` means the
+    array's own dtype is used."""
 
     def to_version(self, version: tz.ZarrVersion) -> tx.Self:
         """Convert this filter to another Zarr version.
@@ -194,22 +176,15 @@ class ScaleOffsetFilter(FilterImpl):
 @register_subclass(id="astype")
 @autofrozen
 class AsTypeFilter(FilterImpl):
-    """Casts an array to `encode_dtype` for storage, and back on decode.
-
-    Attributes
-    ----------
-    id : str
-        Always ``"astype"``.
-    encode_dtype : numpy.dtype
-        The dtype the array is cast to for storage.
-    decode_dtype : numpy.dtype or None
-        The dtype values are cast back to on read. `None` means the
-        array's own dtype is used.
-    """
+    """Casts an array to `encode_dtype` for storage, and back on decode."""
 
     id: tx.Literal["astype"]
+    """Always ``"astype"``."""
     encode_dtype: np.dtype
+    """The dtype the array is cast to for storage."""
     decode_dtype: tx.Optional[np.dtype]
+    """The dtype values are cast back to on read. `None` means the
+    array's own dtype is used."""
 
     def to_version(self, version: tz.ZarrVersion) -> tx.Self:
         """Convert this filter to another Zarr version.
@@ -253,24 +228,17 @@ class CategorizeFilter(FilterImpl):
 
     Turns a categorical array into a compact integer array of category
     indices.
-
-    Attributes
-    ----------
-    id : str
-        Always ``"categorize"``.
-    labels : tuple of str
-        The category labels, in the order their index encodes them.
-    dtype : numpy.dtype
-        The array's dtype before encoding.
-    astype : numpy.dtype or None
-        The dtype the encoded index is stored as. `None` means the
-        array's own dtype is used.
     """
 
     id: tx.Literal["categorize"]
+    """Always ``"categorize"``."""
     labels: tx.Tuple[str, ...]
+    """The category labels, in the order their index encodes them."""
     dtype: np.dtype
+    """The array's dtype before encoding."""
     astype: tx.Optional[np.dtype]
+    """The dtype the encoded index is stored as. `None` means the
+    array's own dtype is used."""
 
     def to_version(self, version: tz.ZarrVersion) -> tx.Self:
         """Convert this filter to another Zarr version.
@@ -332,21 +300,15 @@ class DeltaFilter(FilterImpl):
 
     Improves compressibility of arrays whose values change gradually
     along the last axis, such as a monotonic coordinate.
-
-    Attributes
-    ----------
-    id : str
-        Always ``"delta"``.
-    dtype : numpy.dtype
-        The array's dtype before encoding.
-    astype : numpy.dtype or None
-        The dtype the encoded differences are stored as. `None`
-        means the array's own dtype is used.
     """
 
     id: tx.Literal["delta"]
+    """Always ``"delta"``."""
     dtype: np.dtype
+    """The array's dtype before encoding."""
     astype: tx.Optional[np.dtype]
+    """The dtype the encoded differences are stored as. `None` means
+    the array's own dtype is used."""
 
 
 @register_subclass(id="quantize")
@@ -356,24 +318,17 @@ class QuantizeFilter(FilterImpl):
 
     The rounding is lossy and improves compressibility by discarding
     precision the data does not need.
-
-    Attributes
-    ----------
-    id : str
-        Always ``"quantize"``.
-    digits : int
-        The number of decimal digits values are rounded to.
-    dtype : numpy.dtype
-        The array's dtype before encoding.
-    astype : numpy.dtype or None
-        The dtype the rounded value is stored as. `None` means the
-        array's own dtype is used.
     """
 
     id: tx.Literal["quantize"]
+    """Always ``"quantize"``."""
     digits: int
+    """The number of decimal digits values are rounded to."""
     dtype: np.dtype
+    """The array's dtype before encoding."""
     astype: tx.Optional[np.dtype]
+    """The dtype the rounded value is stored as. `None` means the
+    array's own dtype is used."""
 
 
 @register_subclass(id="shuffle")
@@ -386,15 +341,10 @@ class Shuffle(FilterImpl):
     wide, so that similar bytes sit next to each other. A downstream
     compressor typically compresses this layout better than the
     original interleaving.
-
-    Attributes
-    ----------
-    id : str
-        Always ``"shuffle"``.
-    elementsize : int or None
-        The size, in bytes, of one array element. `None` lets the
-        filter infer the size from the array's dtype.
     """
 
     id: tx.Literal["shuffle"]
+    """Always ``"shuffle"``."""
     elementsize: tx.Optional[int]
+    """The size, in bytes, of one array element. `None` lets the
+    filter infer the size from the array's dtype."""
