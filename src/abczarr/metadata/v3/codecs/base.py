@@ -1,4 +1,5 @@
 __all__ = [
+    "CodecConfig",
     "Codec",
     "ArrayToArrayCodec",
     "ArrayToBytesCodec",

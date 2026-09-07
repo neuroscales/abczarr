@@ -12,10 +12,16 @@ requires a regular chunk grid.
 
 __all__ = [
     "ChunkGrid",
+    "RegularChunkGridConfig",
     "RegularChunkGrid",
+    "RectilinearChunkGridConfig",
     "RectilinearChunkGrid",
+    "ChunkKeyEncodingConfig",
+    "CommonChunkKeyEncodingConfig",
     "ChunkKeyEncoding",
+    "DefaultChunkKeyEncodingConfig",
     "DefaultChunkKeyEncoding",
+    "V2ChunkKeyEncodingConfig",
     "V2ChunkKeyEncoding",
     "ArrayMetadata",
 ]

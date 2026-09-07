@@ -5,7 +5,14 @@ floating-point types, numpy's datetime and timedelta types, and
 fixed-length string and byte types.
 """
 
-__all__ = ["DTypeExtra", "Struct"]
+__all__ = [
+    "DTypeExtra",
+    "StructField",
+    "StructConfig",
+    "Struct",
+    "NumpyTimeConfig",
+    "FixedLengthConfig",
+]
 
 # stdlib
 import re
