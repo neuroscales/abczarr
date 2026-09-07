@@ -217,11 +217,11 @@ _VERSIONS = list(_MODULES)
 
 
 def _is_stable(version: str) -> bool:
-    """Whether *version* names a released version.
+    """Whether `version` names a released version.
 
     A released version is written with digits and separators only. A
     pre-release marker such as ``dev``, ``rc``, ``alpha``, or ``beta``
-    carries letters, following PEP 440. Any letter in *version* therefore
+    carries letters, following PEP 440. Any letter in `version` therefore
     marks it as not yet stable.
     """
     return not any(char.isalpha() for char in version)
@@ -292,7 +292,7 @@ class OMEMetadata(FlexibleMetadata):
         scale and translation become 0.6's named `coordinateSystems` and
         general coordinate transformations. Converting backward, a 0.6
         transformation the stable model cannot express, such as an affine
-        or a rotation, is treated according to *policy*.
+        or a rotation, is treated according to `policy`.
 
         Parameters
         ----------
@@ -332,12 +332,12 @@ class OMEMetadata(FlexibleMetadata):
         Raises
         ------
         ValueError
-            If *version* names no known OME-NGFF version, or if
+            If `version` names no known OME-NGFF version, or if
             converting to it would require information this object
             does not carry.
         UnsupportedConversion
-            If *policy* is ``"strict"`` and a field or transformation
-            cannot be represented in *version*.
+            If `policy` is ``"strict"`` and a field or transformation
+            cannot be represented in `version`.
         """
         if version not in _MODULES:
             raise ValueError(f"Unknown OME version: {version!r}")
@@ -396,7 +396,7 @@ def _report_loss(policy: ConversionPolicy, field: str, version: str) -> None:
     """Apply a conversion policy to something the target version cannot hold.
 
     A migration calls this for each field or transformation it cannot
-    carry over to OME *version*. It does nothing under ``"lossy"``, emits
+    carry over to OME `version`. It does nothing under ``"lossy"``, emits
     one warning under ``"warn"``, and raises
     [UnsupportedConversion][abczarr.errors.UnsupportedConversion] under
     ``"strict"``.
@@ -414,7 +414,7 @@ def _report_loss(policy: ConversionPolicy, field: str, version: str) -> None:
     Raises
     ------
     UnsupportedConversion
-        If *policy* is ``"strict"``.
+        If `policy` is ``"strict"``.
     """
     if policy == "lossy":
         return
@@ -516,8 +516,8 @@ def _multiscale_4_to_3(
 def _carry(
     source: tx.Any, newcls: type, to_v: str, **overrides: tx.Any
 ) -> tx.Any:
-    """Build *newcls*, taking the given fields from *overrides* and the rest
-    (that both versions share) straight from *source*."""
+    """Build `newcls`, taking the given fields from `overrides` and the rest
+    (that both versions share) straight from `source`."""
     kwargs = dict(overrides)
     for f in fields(newcls):
         if not f.init or f.name in kwargs:
@@ -626,7 +626,7 @@ def _multiscale_6_to_5(
     The datasets' output coordinate system supplies the 0.5 axes. Each
     dataset's transform list is reduced to the `Scale` (+`Translation`) the
     stable model allows; anything it cannot express is routed through
-    *policy*.
+    `policy`.
     """
     v5 = importlib.import_module(_package(to_v))
     system = _output_system(ms)
@@ -689,7 +689,7 @@ def _reduce_transforms(
 
     Composes the scales and translations in the list (flattening a
     `sequence`) into one diagonal affine ``p -> scale * p + translation``.
-    A transform the stable model cannot express is routed through *policy*
+    A transform the stable model cannot express is routed through `policy`
     and otherwise dropped. A dataset left with no representable scale falls
     back to an identity scale (all ones).
     """

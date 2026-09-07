@@ -98,7 +98,7 @@ def write_ome(
 ) -> None:
     """Write OME metadata to a group's attributes.
 
-    Stores *ome* in the envelope its version calls for: under the
+    Stores `ome` in the envelope its version calls for: under the
     ``"ome"`` attribute for 0.5 and later, or directly as the top-level
     attribute keys for 0.4 and earlier (where the version stays on the
     multiscale, not at the top). Other, unrelated attributes are left
@@ -128,11 +128,11 @@ def ome_write_plan(
     current: tx.Mapping[str, tx.Any],
     ome: tx.Union[OME, tx.Mapping[str, tx.Any]],
 ) -> tx.Tuple[tx.Dict[str, tx.Any], tx.List[str]]:
-    """Plan the attribute write that stores *ome* over *current*.
+    """Plan the attribute write that stores `ome` over `current`.
 
-    Works out the envelope from *ome*'s version and returns ``(payload,
+    Works out the envelope from `ome`'s version and returns ``(payload,
     stale)``. `payload` holds the attribute keys to set. `stale` lists
-    the OME keys already present in *current* that the new payload does
+    the OME keys already present in `current` that the new payload does
     not write, such as the other envelope's key or a carrier no longer
     used, and that must therefore be dropped. An attribute unrelated to
     OME metadata is named in neither and is left as it is.
@@ -176,10 +176,10 @@ def update_ome(
 
     This function does for OME metadata what
     [update_attributes][abczarr.abc.sync.ZarrNode.update_attributes] does
-    for a node's plain attributes. A top-level key of *ome*, such as
+    for a node's plain attributes. A top-level key of `ome`, such as
     ``version``, ``multiscales``, or ``omero``, replaces the value
     already on the node's OME metadata with the same key. A top-level key
-    the node's current metadata already has that *ome* does not name is
+    the node's current metadata already has that `ome` does not name is
     kept unchanged. When the node has no OME metadata yet and the merged
     result still names no version, the latest released OME version is
     used.
@@ -202,10 +202,10 @@ def merge_ome(
     current: tx.Optional[OME],
     incoming: tx.Union[OME, tx.Mapping[str, tx.Any]],
 ) -> tx.Dict[str, tx.Any]:
-    """The shallow merge of *incoming* onto *current*, as an inner OME dict.
+    """The shallow merge of `incoming` onto `current`, as an inner OME dict.
 
-    A top-level key of *incoming* replaces the value of the same key in
-    *current*. When neither side supplies a version, the result defaults
+    A top-level key of `incoming` replaces the value of the same key in
+    `current`. When neither side supplies a version, the result defaults
     to [LATEST_STABLE][abczarr.ome.base.LATEST_STABLE].
     """
     merged = current.to_json() if current is not None else {}
@@ -238,12 +238,12 @@ def delete_ome(node: "ZarrNode") -> None:
 def ome_delete_plan(
     current: tx.Mapping[str, tx.Any],
 ) -> tx.Tuple[tx.Dict[str, tx.Any], tx.List[str]]:
-    """Plan the attribute write that clears OME metadata from *current*.
+    """Plan the attribute write that clears OME metadata from `current`.
 
     Returns ``(payload, stale)`` in the same shape as
     [ome_write_plan][abczarr.ome.node.ome_write_plan]. `payload` is
     always empty, since nothing is written. `stale` lists every OME key
-    present in *current*, so all of it is dropped.
+    present in `current`, so all of it is dropped.
     """
     return {}, [key for key in _OME_KEYS if key in current]
 
@@ -285,12 +285,12 @@ def ome_version(node: "ZarrNode") -> tx.Optional[str]:
 
 
 def _has_carrier(attrs: tx.Mapping[str, tx.Any]) -> bool:
-    """Whether *attrs* is a bare (<= 0.4) OME payload."""
+    """Whether `attrs` is a bare (<= 0.4) OME payload."""
     return any(key in attrs for key in _CARRIERS)
 
 
 def _is_wrapped(version: str) -> bool:
-    """Whether *version* wraps its metadata under the ``"ome"`` key.
+    """Whether `version` wraps its metadata under the ``"ome"`` key.
 
     This is true from 0.5 on. The position of ``"0.5"`` in the ordered
     version chain marks the boundary between the bare and wrapped
@@ -303,7 +303,7 @@ def _is_wrapped(version: str) -> bool:
 
 
 def _infer_version(payload: tx.Mapping[str, tx.Any]) -> str:
-    """The OME version of a bare (<= 0.4) *payload*.
+    """The OME version of a bare (<= 0.4) `payload`.
 
     Read from the ``version`` inside the multiscale that carries it (or the
     plate / well / image-label), which is where <= 0.4 records it. When no
@@ -330,7 +330,7 @@ def _infer_version(payload: tx.Mapping[str, tx.Any]) -> str:
 
 
 def _earliest_fit(payload: tx.Mapping[str, tx.Any]) -> str:
-    """The earliest bare (<= 0.4) version whose ``OME`` accepts *payload*."""
+    """The earliest bare (<= 0.4) version whose ``OME`` accepts `payload`."""
     for version in ("0.1", "0.2", "0.3", "0.4"):
         candidate = dict(payload)
         candidate["version"] = version
