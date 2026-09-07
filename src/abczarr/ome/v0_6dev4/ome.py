@@ -51,7 +51,7 @@ class OME(OMEBase):
         The OME-NGFF version the metadata is written against.
     """
 
-    version: Required[Version]
+    version: Required[Version] = field(kw_only=True)
 
 
 @register_subclass(series=tx.Any)
