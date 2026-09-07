@@ -49,6 +49,12 @@ from abczarr._core.asyncutils import run_sync
 from abczarr._core.attributes import NodeAttributes, attribute_writes
 from abczarr.api.config import ArrayConfig, ArrayOptions
 from abczarr.metadata.base import NodeMetadata
+from abczarr.ome.node import (
+    merge_ome,
+    ome_delete_plan,
+    ome_write_plan,
+    read_ome,
+)
 
 # locals
 from .capabilities import Support, SupportsCapabilities
@@ -60,6 +66,9 @@ from .sync import (
     ZarrNode,
     _resolve_array_config,
 )
+
+if tx.TYPE_CHECKING:
+    from abczarr.ome.base import OME
 
 
 class AsyncZarrNode(SupportsCapabilities, ABC):
@@ -110,6 +119,119 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
         to persist a change.
         """
         return self.as_sync().attrs
+
+    @property
+    def ome(self) -> "tx.Optional[OME]":
+        """This node's OME-Zarr metadata as a typed object -- read only.
+
+        Reads stay synchronous, like
+        [attrs][abczarr.abc.asynchronous.AsyncZarrNode.attrs]: the
+        metadata is parsed from the cached attributes, so there is
+        nothing to await. Returns the right version's
+        [OME][abczarr.ome.base.OME] object, or `None` when the node
+        carries none. Writing cannot be awaited through an assignment, so
+        there is no setter; use
+        [set_ome][abczarr.abc.asynchronous.AsyncZarrNode.set_ome],
+        [update_ome][abczarr.abc.asynchronous.AsyncZarrNode.update_ome] or
+        [del_ome][abczarr.abc.asynchronous.AsyncZarrNode.del_ome] to
+        persist a change, the same reason the async node writes
+        attributes with `update_attributes` rather than `[]`.
+        """
+
+        return read_ome(self)
+
+    async def set_ome(
+        self, value: "tx.Union[OME, tz.JsonDict]"
+    ) -> "AsyncZarrNode":
+        """Store OME metadata on this node, and persist it.
+
+        The coroutine twin of assigning
+        [ZarrNode.ome][abczarr.abc.sync.ZarrNode.ome]: serialize *value*
+        into the envelope its version calls for (the ``"ome"`` attribute
+        from 0.5 on, the bare attribute keys up to 0.4) and write it through
+        the node's async persistence path, replacing any OME metadata
+        already present and leaving unrelated attributes untouched.
+
+        Parameters
+        ----------
+        value : OME or dict
+            The metadata to store, typed or a plain mapping carrying a
+            ``version``.
+
+        Returns
+        -------
+        AsyncZarrNode
+            This node, with the metadata visible on
+            [ome][abczarr.abc.asynchronous.AsyncZarrNode.ome].
+        """
+
+        await self._apply_ome_plan(ome_write_plan, value)
+        return self
+
+    async def update_ome(
+        self, ome: "tx.Union[OME, tz.JsonDict]"
+    ) -> "AsyncZarrNode":
+        """Shallow-merge OME metadata into this node's, and persist it.
+
+        The coroutine twin of
+        [ZarrNode.update_ome][abczarr.abc.sync.ZarrNode.update_ome]: the
+        top-level keys of *ome* replace those on the node's current OME
+        metadata; the rest are kept. When the node has no OME metadata yet
+        and the result still names no version, it defaults to the latest
+        released OME version. The merge is shallow -- for a structured edit,
+        read [ome][abczarr.abc.asynchronous.AsyncZarrNode.ome], change the
+        typed object, and pass it to
+        [set_ome][abczarr.abc.asynchronous.AsyncZarrNode.set_ome].
+
+        Parameters
+        ----------
+        ome : OME or dict
+            The metadata whose top-level keys are merged in.
+
+        Returns
+        -------
+        AsyncZarrNode
+            This node, with the merged metadata visible on
+            [ome][abczarr.abc.asynchronous.AsyncZarrNode.ome].
+        """
+
+        return await self.set_ome(merge_ome(read_ome(self), ome))
+
+    async def del_ome(self) -> "AsyncZarrNode":
+        """Remove this node's OME-Zarr metadata, and persist the removal.
+
+        The coroutine twin of `del node.ome`
+        ([ZarrNode.ome][abczarr.abc.sync.ZarrNode.ome]): drops the OME
+        attribute keys of whichever envelope the node uses, leaving
+        unrelated attributes untouched. A node with no OME metadata is left
+        unchanged.
+
+        Returns
+        -------
+        AsyncZarrNode
+            This node.
+        """
+
+        await self._apply_ome_plan(ome_delete_plan)
+        return self
+
+    async def _apply_ome_plan(
+        self, plan: tx.Callable, *args: tx.Any
+    ) -> None:
+        """Apply an OME attribute *plan* through this node's async write path.
+
+        *plan* takes the current attributes (plus, for a write, the value to
+        store) and returns ``(payload, stale)``; this persists the full
+        result -- unrelated attributes carried over, stale OME keys dropped
+        -- by awaiting the async metadata write. The one async persistence
+        path that ``set_ome`` and ``del_ome`` share.
+        """
+        sync = self.as_sync()
+        current = dict(sync.metadata.attributes)
+        payload, stale = plan(current, *args)
+        new = {k: v for k, v in current.items() if k not in stale}
+        new.update(payload)
+        await self._awrite_metadata(sync.metadata.update_attributes(new))
 
     async def update_attributes(
         self, attributes: tz.JsonDict
