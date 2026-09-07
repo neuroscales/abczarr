@@ -167,9 +167,6 @@ class ZarrNode(SupportsCapabilities, ABC):
             del node.ome               # clear it
             ```
         """
-        # Imported lazily: the OME layer references the node contract, so
-        # importing it at module top would cycle.
-
         return read_ome(self)
 
     @ome.setter

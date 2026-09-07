@@ -181,9 +181,9 @@ def update_ome(
     metadata. When the node has no OME metadata yet and the merged result
     still names no version, it defaults to the latest released OME version.
 
-    The merge is deliberately shallow -- it replaces whole top-level keys,
-    it does not descend into a multiscale or a plate. For a structured edit,
-    read the typed object, change it (with ``evolve``), and assign it back.
+    The merge is shallow -- it replaces whole top-level keys, it does not
+    descend into a multiscale or a plate. For a structured edit, read the
+    typed object, change it (with ``evolve``), and assign it back.
 
     Parameters
     ----------
