@@ -24,13 +24,17 @@ from .transformations import CoordinateTransformation, Scale, Translation
 class Dataset(OMEMetadata):
     """One resolution level of a multiscale pyramid.
 
-    `path` is the name of the Zarr array holding this level, relative
-    to the image group. `coordinateTransformations` places it in the
-    pyramid's physical space: a
-    [Scale][abczarr.ome.v0_5.transformations.Scale], optionally
-    followed by a
-    [Translation][abczarr.ome.v0_5.transformations.Translation],
-    one value per axis.
+    Parameters
+    ----------
+    path : str
+        The name of the Zarr array holding this level, relative to the
+        image group.
+    coordinateTransformations : tuple of CoordinateTransformation
+        Places this level in the pyramid's physical space: a
+        [Scale][abczarr.ome.v0_5.transformations.Scale], optionally
+        followed by a
+        [Translation][abczarr.ome.v0_5.transformations.Translation],
+        one value per axis.
     """
 
     path: Required[str] = field(factory=False)
@@ -43,22 +47,47 @@ class Dataset(OMEMetadata):
 class Multiscale(OMEMetadata):
     """A multiscale image pyramid: its axes and resolution levels.
 
-    `axes` names and orders the pyramid's dimensions: `t`, `c`, `z`,
-    `y`, `x`, in whatever subset and order the image uses. `datasets`
-    lists its resolution levels from full resolution down, each a
-    [Dataset][abczarr.ome.v0_5.images.Dataset].
-    `coordinateTransformations` here, if given, applies to every
-    level before its own.
+    Parameters
+    ----------
+    axes : list of Axis
+        The pyramid's dimensions, in the order every array shape and
+        every coordinate transformation the pyramid carries uses. Each
+        entry is an [Axis][abczarr.ome.v0_5.axes.Axis].
+    datasets : list of Dataset
+        The pyramid's resolution levels, from full resolution down.
+        Each entry is a
+        [Dataset][abczarr.ome.v0_5.images.Dataset].
+    coordinateTransformations : list of CoordinateTransformation
+        Transformations applied to every level, before that level's own
+        transformations run. Optional.
+    name : str
+        A name for the multiscale image. Recommended.
+    type : str
+        The method used to generate the lower resolutions, such as
+        ``"gaussian"``. Recommended.
+    metadata : Metadata
+        Further, free-form detail about how the lower resolutions were
+        generated. Recommended.
     """
 
     @autodefine
     class Metadata(OMEMetadata):
-        """How the pyramid's lower resolutions were generated.
+        """Free-form detail about how a pyramid's lower resolutions were
+        generated.
 
-        Free-form: `method` names the downsampling function, `args`
-        and `kwargs` are what it was called with. `args` is any JSON
-        value -- the upstream corpus writes it as a bare string as
-        well as a list -- so it is not coerced into a list.
+        Parameters
+        ----------
+        method : str
+            The name of the downsampling function. Optional.
+        version : str
+            The version of the software that ran `method`. Optional.
+        args : JSON value
+            The positional arguments `method` was called with. The
+            upstream corpus writes this as a bare string as well as a
+            list, so it is read as any JSON value rather than coerced
+            into a list. Optional.
+        kwargs : dict
+            The keyword arguments `method` was called with. Optional.
         """
 
         method: Optional[str]

@@ -43,15 +43,23 @@ class Axis(OMEMetadata):
     """One dimension of a
     [Multiscale][abczarr.ome.v0_1.images.Multiscale] pyramid.
 
-    `name` is the axis's label, such as `"x"` or `"channel"`. Its
-    position in a [Multiscale][abczarr.ome.v0_1.images.Multiscale]'s
-    `axes` list is its position in every array shape and every
-    coordinate transformation the pyramid carries. `type` says what
-    kind of axis it is: `"space"`, `"time"`, or `"channel"`. `unit`
-    is its physical unit. Constructing with `type="space"` gives back
-    a [SpaceAxis][abczarr.ome.v0_1.axes.SpaceAxis], and
-    likewise for `"time"` and `"channel"`, each restricting `unit` to
-    the units that type allows.
+    An axis's position in a
+    [Multiscale][abczarr.ome.v0_1.images.Multiscale]'s `axes` list is its
+    position in every array shape and every coordinate transformation the
+    pyramid carries. Constructing an `Axis` with `type="space"` returns a
+    [SpaceAxis][abczarr.ome.v0_1.axes.SpaceAxis], and likewise for
+    `"time"` and `"channel"`, each restricting `unit` to the units that
+    type allows.
+
+    Parameters
+    ----------
+    name : str
+        The axis's label, such as `"x"` or `"channel"`.
+    type : str
+        What kind of axis this is: `"space"`, `"time"`, or `"channel"`.
+        Recommended.
+    unit : str
+        The axis's physical unit. Recommended.
     """
 
     name: Required[str] = field(factory=False)
@@ -61,7 +69,14 @@ class Axis(OMEMetadata):
 
 @register_subclass(type="space")
 class SpaceAxis(Axis):
-    """A spatial axis (`x`, `y`, or `z`), with a length unit."""
+    """A spatial axis: `x`, `y`, or `z`, with a length unit.
+
+    Parameters
+    ----------
+    unit : str
+        The axis's physical length unit, such as `"micrometer"`.
+        Recommended.
+    """
 
     type: Recommended[tx.Literal["space"]]
     unit: Recommended[SpaceUnit]
@@ -69,7 +84,14 @@ class SpaceAxis(Axis):
 
 @register_subclass(type="time")
 class TimeAxis(Axis):
-    """A time axis, with a duration unit."""
+    """A time axis, with a duration unit.
+
+    Parameters
+    ----------
+    unit : str
+        The axis's physical duration unit, such as `"second"`.
+        Recommended.
+    """
 
     type: Recommended[tx.Literal["time"]]
     unit: Recommended[TimeUnit]
@@ -77,7 +99,7 @@ class TimeAxis(Axis):
 
 @register_subclass(type="channel")
 class ChannelAxis(Axis):
-    """A channel axis. It carries no physical unit."""
+    """Indexes an image's channels, carrying no physical unit."""
 
     type: Recommended[tx.Literal["channel"]]
     unit: NotRecommended[Unit]

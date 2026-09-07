@@ -18,19 +18,32 @@ from .version import Version
 class Well(OMEMetadata):
     """A well's images: one field of view per acquisition run.
 
-    A well group holds one subgroup per field of view; `images` lists
-    them, each naming its subgroup and, when the plate carries more
-    than one, which acquisition it belongs to.
+    A well group holds one subgroup per field of view.
+
+    Parameters
+    ----------
+    images : list of Image
+        The well's fields of view, each naming its subgroup and, when the
+        plate ran more than one acquisition, which acquisition it belongs
+        to.
+    version : Version
+        The OME-NGFF version the metadata is written against. Recommended
+        in OME-NGFF 0.1 and 0.2, and required from 0.3 on.
     """
 
     @autodefine
     class Image(OMEMetadata):
         """One field of view within a well.
 
-        `path` is the image's group, relative to the well group.
-        `acquisition` is the id of the
-        [Plate.Acquisition][abczarr.ome.v0_1.plates.Plate.Acquisition]
-        it was captured in, when the plate ran more than one.
+        Parameters
+        ----------
+        path : str
+            The image's group, relative to the well group.
+        acquisition : int
+            The id of the
+            [Plate.Acquisition][abczarr.ome.v0_1.plates.Plate.Acquisition]
+            this field of view was captured in, when the plate ran more
+            than one. Recommended.
         """
 
         path: Required[str] = field(factory=False)

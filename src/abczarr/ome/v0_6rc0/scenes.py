@@ -1,5 +1,7 @@
 # Generated from v0_6dev1 by tools/gen_ome_metadata.py -- do not edit
 
+"""A scene: coordinate transformations attached to a group directly."""
+
 __all__ = ["Scene"]
 import typing_extensions as tx
 
@@ -15,8 +17,10 @@ class Scene(OMEMetadata):
     """A set of coordinate transformations attached to a group, independent
     of any single image or pyramid.
 
-    `coordinateTransformations` lists the `CoordinateTransformation`
-    objects the scene carries.
+    Parameters
+    ----------
+    coordinateTransformations : list of CoordinateTransformation
+        The transformations the scene carries.
     """
 
     coordinateTransformations: Required[tx.List[CoordinateTransformation]]

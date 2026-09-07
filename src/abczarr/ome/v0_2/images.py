@@ -28,8 +28,11 @@ Axis = tx.Union[SpaceAxis, TimeAxis, ChannelAxis]
 class Dataset(OMEMetadata):
     """One resolution level of a multiscale pyramid.
 
-    `path` is the name of the Zarr array holding this level, relative
-    to the image group.
+    Parameters
+    ----------
+    path : str
+        The name of the Zarr array holding this level, relative to the
+        image group.
     """
 
     path: Required[str] = field(factory=False)
@@ -39,19 +42,42 @@ class Dataset(OMEMetadata):
 class Multiscale(OMEMetadata):
     """A multiscale image pyramid: its resolution levels.
 
-    `datasets` lists the pyramid's resolution levels from full
-    resolution down, each a
-    [Dataset][abczarr.ome.v0_2.images.Dataset].
+    Parameters
+    ----------
+    datasets : list of Dataset
+        The pyramid's resolution levels, from full resolution down. Each
+        entry is a [Dataset][abczarr.ome.v0_2.images.Dataset].
+    name : str
+        A name for the multiscale image. Recommended.
+    type : str
+        The method used to generate the lower resolutions, such as
+        ``"gaussian"``. Recommended.
+    metadata : Metadata
+        Further, free-form detail about how the lower resolutions were
+        generated. Recommended.
+    version : Version
+        The OME-NGFF version the metadata is written against.
+        Recommended.
     """
 
     @autodefine
     class Metadata(OMEMetadata):
-        """How the pyramid's lower resolutions were generated.
+        """Free-form detail about how a pyramid's lower resolutions were
+        generated.
 
-        Free-form: `method` names the downsampling function, `args`
-        and `kwargs` are what it was called with. `args` is any JSON
-        value -- the upstream corpus writes it as a bare string as
-        well as a list -- so it is not coerced into a list.
+        Parameters
+        ----------
+        method : str
+            The name of the downsampling function. Optional.
+        version : str
+            The version of the software that ran `method`. Optional.
+        args : JSON value
+            The positional arguments `method` was called with. The
+            upstream corpus writes this as a bare string as well as a
+            list, so it is read as any JSON value rather than coerced
+            into a list. Optional.
+        kwargs : dict
+            The keyword arguments `method` was called with. Optional.
         """
 
         method: Optional[str]
