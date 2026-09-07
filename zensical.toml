@@ -5,27 +5,29 @@ nav = [
   {"Tutorial" = "tutorial.md"},
   {"Reference" = [
     "api/index.md",
-    {"API" = [
+    {"api" = [
       "api/open.md",
       "api/config.md",
+      "api/registry.md",
     ]},
-    {"ABC" = [
+    {"abc" = [
       "api/nodes.md",
       "api/store.md",
       "api/transactions.md",
       "api/capabilities.md",
-      "api/errors.md",
     ]},
-    {"Drivers" = [
+    {"drivers" = [
       "api/drivers.md",
-      "api/registry.md",
       "api/tensorstore.md",
       "api/zarr-python.md",
       "api/zarrista.md",
     ]},
-    {"Metadata" = [
+    "api/errors.md",
+    {"metadata" = [
       "api/metadata.md",
-      {"v1" = "api/metadata-v1.md"},
+      {"v1" = [
+        "api/metadata-v1.md"
+      ]},
       {"v2" = [
         "api/metadata-v2.md",
         "api/metadata-v2-dtypes.md",
@@ -83,6 +85,7 @@ features = [
   "content.code.copy",
   "content.code.select",
   "navigation.indexes",
+  "navigation.prune",
 ]
 
 [[project.theme.palette]]
