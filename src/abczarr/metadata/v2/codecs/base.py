@@ -11,10 +11,11 @@ from abczarr._core.metadata import Metadata
 
 @autofrozen(extra_items=tz.FrozenJson)
 class Codec(Metadata):
-    """A Zarr v2 codec: an ``id`` naming a numcodecs codec, plus its options.
+    """A `Codec` names a numcodecs codec through ``id`` and carries that
+    codec's own parameters.
 
-    A v2 codec's own parameters sit directly alongside ``id`` rather than
-    nested under a separate key.
+    A v2 codec's parameters sit directly alongside ``id``, not nested
+    under a separate key.
     """
 
     id: str
@@ -45,4 +46,5 @@ class Codec(Metadata):
 
 @autofrozen(extra_items=False)
 class CodecImpl(Codec):
-    """Base for a v2 codec whose options are declared, not open-ended."""
+    """This class is the base for a v2 codec whose options are declared,
+    not open-ended."""

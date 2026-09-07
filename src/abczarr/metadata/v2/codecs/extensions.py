@@ -25,7 +25,8 @@ from .base import CodecImpl
 @register_subclass(id="bz2")
 @autofrozen
 class Bz2Codec(CodecImpl):
-    """Bzip2 compression, at a configurable compression level."""
+    """Compresses each chunk with bzip2 at a configurable compression
+    level."""
 
     # type aliases
     CompressionLevel: tx.ClassVar = codecs.Bz2CompressionLevel
@@ -38,10 +39,11 @@ class Bz2Codec(CodecImpl):
 @register_subclass(id="lzma")
 @autofrozen
 class LZMACodec(CodecImpl):
-    """LZMA compression (as used by ``.xz``/``.7z``), via Python's ``lzma``.
+    """Compresses each chunk with LZMA, the compression used by
+    ``.xz``/``.7z`` files, via Python's ``lzma`` module.
 
-    ``filters`` carries the raw ``lzma`` filter chain when one is needed
-    (for example to select a custom dictionary size); most uses only need
+    ``filters`` carries the raw ``lzma`` filter chain for cases that need
+    one, such as selecting a custom dictionary size. Most uses only need
     ``format``, ``check`` and ``preset``.
     """
 
@@ -61,10 +63,11 @@ class LZMACodec(CodecImpl):
 @register_subclass(id="lz4")
 @autofrozen
 class LZ4Codec(CodecImpl):
-    """LZ4 compression: very fast, at the cost of a lower ratio.
+    """Compresses each chunk with LZ4, which is very fast at the cost of
+    a lower compression ratio.
 
-    ``acceleration`` trades ratio for speed further: higher values
-    compress faster and worse.
+    ``acceleration`` trades ratio for speed further. Higher values
+    compress faster and produce a lower ratio.
     """
 
     id: tx.Literal["lz4"]
@@ -74,12 +77,12 @@ class LZ4Codec(CodecImpl):
 @register_subclass(id="pcodec")
 @autofrozen
 class PCodec(CodecImpl):
-    """Pcodec (``pco``): a compressor for numeric arrays.
+    """Compresses numeric arrays with Pcodec (``pco``).
 
-    Models each chunk's distribution directly, optionally after delta
-    encoding, rather than treating it as a byte stream -- it typically
-    beats general-purpose compressors on numeric data while staying
-    lossless.
+    Pcodec models each chunk's value distribution directly, optionally
+    after delta encoding, instead of treating the chunk as a byte
+    stream. Pcodec typically outperforms general-purpose compressors on
+    numeric data while remaining lossless.
     """
 
     # type aliases
@@ -102,10 +105,11 @@ class PCodec(CodecImpl):
 @register_subclass(id="zfpy")
 @autofrozen
 class ZFPYCodec(CodecImpl):
-    """ZFP compression for floating-point arrays, via the ``zfpy`` bindings.
+    """Compresses floating-point arrays with ZFP, via the ``zfpy``
+    bindings.
 
     ``mode`` selects which of ``tolerance``, ``rate`` and ``precision``
-    governs the accuracy/size trade-off; compression is lossy except in
+    governs the accuracy/size trade-off. Compression is lossy, except in
     the fixed-accuracy mode with a tolerance of zero.
     """
 
@@ -124,7 +128,8 @@ class ZFPYCodec(CodecImpl):
 @register_subclass(id="zlib")
 @autofrozen
 class ZlibCodec(CodecImpl):
-    """Zlib compression: DEFLATE, at a configurable compression level."""
+    """Applies DEFLATE compression (zlib) at a configurable compression
+    level."""
 
     # type aliases
     CompressionLevel: tx.ClassVar = codecs.ZlibCompressionLevel
@@ -137,7 +142,8 @@ class ZlibCodec(CodecImpl):
 @register_subclass(id="zstd")
 @autofrozen
 class ZstdCodec(CodecImpl):
-    """Zstandard compression, at a configurable compression level."""
+    """Compresses each chunk with Zstandard at a configurable compression
+    level."""
 
     # attributes
     id: tx.Literal["zstd"]

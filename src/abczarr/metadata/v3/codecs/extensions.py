@@ -38,7 +38,8 @@ from .builtin import BytesCodec, TransposeCodec
 
 @autofrozen
 class BitroundConfig(CodecConfigImpl):
-    """Bitround codec parameters: how many mantissa bits to keep."""
+    """Holds the bitround codec's parameters: how many mantissa bits to
+    keep."""
 
     keepbits: int = 1
 
@@ -48,8 +49,9 @@ class BitroundConfig(CodecConfigImpl):
 class BitroundCodec(ArrayToArrayCodec):
     """Rounds a float's mantissa to ``keepbits`` bits, zeroing the rest.
 
-    A lossy transform that improves the compressibility of floating-point
-    data by discarding low-order precision the data does not need.
+    The rounding is lossy and improves the compressibility of
+    floating-point data by discarding low-order precision the data does
+    not need.
     """
 
     name: tx.Literal["bitround", "numcodecs.bitround"]
@@ -62,11 +64,12 @@ _ScalarMap = tx.Tuple[tx.Tuple[_ScalarMapItem, _ScalarMapItem], ...]
 
 @autofrozen
 class ScalarMap(Metadata):
-    """An explicit value-to-value mapping used by a cast-value codec.
+    """This class represents an explicit value-to-value mapping used by
+    a cast-value codec.
 
-    ``encode`` and ``decode`` each list ``(from, to)`` pairs, mapping
-    individual values that fall outside the ordinary numeric cast --
-    for example a sentinel or a small set of categorical codes.
+    ``encode`` and ``decode`` each list ``(from, to)`` pairs that map
+    individual values falling outside the ordinary numeric cast. An
+    example is a sentinel value or a small set of categorical codes.
     """
 
     encode: _ScalarMap
@@ -75,7 +78,8 @@ class ScalarMap(Metadata):
 
 @autofrozen
 class CastValueConfig(CodecConfigImpl):
-    """Cast-value codec parameters: target type, rounding, value mapping."""
+    """Holds the cast-value codec's parameters: target type, rounding,
+    and value mapping."""
 
     data_type: np.dtype
     rounding: tx.Literal[
@@ -95,7 +99,7 @@ class CastValueCodec(ArrayToArrayCodec):
     """Casts an array's values to ``data_type``, and back on decode.
 
     ``rounding`` and ``out_of_range`` control how a value that does not
-    fit the target type exactly is rounded and clamped or wrapped;
+    fit the target type exactly is rounded and clamped or wrapped.
     ``scalar_map`` maps any values that need an explicit, non-numeric
     mapping instead.
     """
@@ -106,7 +110,8 @@ class CastValueCodec(ArrayToArrayCodec):
 
 @autofrozen
 class ConditionalConfig(CodecConfigImpl):
-    """Conditional codec parameters: the candidate codecs to choose among."""
+    """Holds the conditional codec's parameters: the candidate codecs to
+    choose among."""
 
     codecs: tx.Tuple[Codec, ...]
 
@@ -114,7 +119,8 @@ class ConditionalConfig(CodecConfigImpl):
 @register_subclass(name="conditional")
 @autofrozen
 class ConditionalCodec(Codec):
-    """Selects one of several candidate codecs based on the array applied to.
+    """Selects one of several candidate codecs, based on the array to
+    which it is applied.
 
     Lets a single pipeline entry vary by a property of the array, such
     as its data type, instead of naming one codec unconditionally.
@@ -167,7 +173,8 @@ class N5DefaultCodecList(list):
 
 @autofrozen
 class N5DefaultConfig(CodecConfigImpl):
-    """N5-default codec parameters: its fixed codec chain."""
+    """Holds the n5_default codec's parameters: the fixed chain of
+    codecs it applies."""
 
     codecs: N5DefaultCodecList
 
@@ -175,11 +182,12 @@ class N5DefaultConfig(CodecConfigImpl):
 @register_subclass(name="n5_default")
 @autofrozen
 class N5DefaultCodec(Codec):
-    """The codec chain an N5 array uses by default, for interop with N5.
+    """Applies the codec chain an N5 array uses by default, for interop
+    with N5.
 
-    Fixed to a transpose codec followed by a big-endian bytes codec,
-    with any number of trailing codecs, matching how the N5 format lays
-    out a chunk.
+    The chain is fixed to a transpose codec followed by a big-endian
+    bytes codec, with any number of trailing codecs, matching how the
+    N5 format lays out a chunk.
     """
 
     name: tx.Literal["n5_default"]
@@ -188,7 +196,8 @@ class N5DefaultCodec(Codec):
 
 @autofrozen
 class PackBitsConfig(CodecConfigImpl):
-    """Packbits codec parameters: padding placement and used bit range."""
+    """Holds the packbits codec's parameters: padding placement and the
+    used bit range."""
 
     padding_encoding: tx.Literal["first_byte", "last_byte", "none"] = "none"
     first_bit: tx.Optional[int]
@@ -206,7 +215,8 @@ class PackBitsCodec(ArrayToBytesCodec):
 
 @autofrozen
 class ScaleOffsetConfig(CodecConfigImpl):
-    """Scale-offset codec parameters: the scale and offset to apply."""
+    """Holds the scale-offset codec's parameters: the scale and offset
+    to apply."""
 
     offset: tz.JsonNumber
     scale: tz.JsonNumber
@@ -215,10 +225,11 @@ class ScaleOffsetConfig(CodecConfigImpl):
 @register_subclass(name="scale_offset")
 @autofrozen
 class ScaleOffsetCodec(ArrayToArrayCodec):
-    """Quantizes values as ``(value - offset) * scale``, and reverses it back.
+    """Quantizes values as ``(value - offset) * scale``, and reverses
+    the transform on decode.
 
-    A lossy transform useful for storing a bounded floating-point range
-    in fewer bits.
+    The transform is lossy and useful for storing a bounded
+    floating-point range in fewer bits.
     """
 
     name: tx.Literal["scale_offset"]
@@ -248,7 +259,7 @@ _ReshapeAxis = tx.Union[int, tx.Tuple[int, ...]]
 
 @autofrozen
 class ReshapeConfig(CodecConfigImpl):
-    """Reshape codec parameters: the target shape."""
+    """Holds the reshape codec's parameters: the target shape."""
 
     shape: tx.Tuple[_ReshapeAxis, ...]
 
@@ -258,9 +269,9 @@ class ReshapeConfig(CodecConfigImpl):
 class ReshapeCodec(ArrayToArrayCodec):
     """Reshapes an array to ``shape`` before the rest of the pipeline.
 
-    Reversed on decode, so the array's logical shape is unchanged; an
-    axis size of ``-1`` stands for whatever size makes the reshape fit,
-    and a group of sizes splits that axis into several.
+    The reshape is reversed on decode, so the array's logical shape is
+    unchanged. An axis size of ``-1`` stands for whatever size makes
+    the reshape fit, and a group of sizes splits that axis into several.
     """
 
     name: tx.Literal["reshape"]
@@ -275,13 +286,14 @@ _ZfpMode = tx.Literal[
 
 @autofrozen
 class ZfpConfig(CodecConfigImpl):
-    """ZFP codec parameters: the mode, and that mode's own parameters.
+    """Holds the ZFP codec's parameters: the mode, and that mode's own
+    parameters.
 
-    Only the parameters that belong to ``mode`` apply: ``expert`` takes
-    ``minbits``/``maxbits``/``maxprec``/``minexp``, ``fixed_accuracy``
-    takes ``tolerance``, ``fixed_rate`` takes ``rate``,
-    ``fixed_precision`` takes ``precision``, and ``reversible`` takes
-    none.
+    Only the parameters belonging to ``mode`` apply. ``expert`` takes
+    ``minbits``, ``maxbits``, ``maxprec`` and ``minexp``.
+    ``fixed_accuracy`` takes ``tolerance``. ``fixed_rate`` takes
+    ``rate``. ``fixed_precision`` takes ``precision``. ``reversible``
+    takes none.
     """
 
     # zfp picks a mode, and each mode carries only its own parameters: expert
@@ -302,10 +314,10 @@ class ZfpConfig(CodecConfigImpl):
 @register_subclass(name="zfp")
 @autofrozen
 class ZfpCodec(ArrayToBytesCodec):
-    """ZFP compression for floating-point arrays.
+    """Compresses floating-point arrays with ZFP.
 
-    ``configuration.mode`` selects the accuracy/size trade-off;
-    compression is lossy except in ``reversible`` mode.
+    ``configuration.mode`` selects the accuracy/size trade-off.
+    Compression is lossy, except in ``reversible`` mode.
     """
 
     name: tx.Literal["zfp"]
@@ -314,7 +326,8 @@ class ZfpCodec(ArrayToBytesCodec):
 
 @autofrozen
 class ZstdConfig(CodecConfigImpl):
-    """Zstd codec parameters: compression level and optional checksum."""
+    """Holds the Zstd codec's parameters: compression level and an
+    optional checksum."""
 
     # The v3 zstd codec schema requires `level` (checksum is optional) and
     # declares no defaults, so an implementation picks its own. abczarr
@@ -342,7 +355,8 @@ class ZstdConfig(CodecConfigImpl):
 @register_subclass(name="zstd")
 @autofrozen
 class ZstdCodec(CompressorCodec):
-    """Zstandard compression, at a configurable compression level.
+    """Compresses each chunk with Zstandard at a configurable
+    compression level.
 
     ``configuration.checksum``, when set, appends a checksum of each
     frame for integrity.

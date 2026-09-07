@@ -35,7 +35,8 @@ DTYPES_BUILTIN = (
 
 @autofrozen
 class DTypeBuiltin(DTypeImpl):
-    """A core Zarr v3 data type: one every implementation must support."""
+    """This class is the base for a core Zarr v3 data type, one every
+    implementation must support."""
 
 
 @register_subclass(name=RE_RAW)

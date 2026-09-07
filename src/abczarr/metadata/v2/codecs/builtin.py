@@ -24,11 +24,12 @@ from .base import CodecImpl
 @register_subclass(id="blosc")
 @autofrozen
 class BloscCodec(CodecImpl):
-    """The Blosc meta-compressor: a byte/bit shuffle plus an inner compressor.
+    """Compresses data with Blosc, a meta-compressor that shuffles bytes
+    and then applies an inner compressor.
 
-    Shuffles same-typed bytes together before handing them to ``cname``
-    (one of blosclz, lz4, lz4hc, snappy, zlib or zstd), then compresses in
-    blocks so it can use multiple threads.
+    Blosc groups same-typed bytes together before handing them to
+    ``cname`` (one of blosclz, lz4, lz4hc, snappy, zlib or zstd), and
+    compresses the result in blocks so multiple threads can be used.
     """
 
     # type aliases
@@ -77,7 +78,8 @@ class BloscCodec(CodecImpl):
 @register_subclass(id="gzip")
 @autofrozen
 class GzipCodec(CodecImpl):
-    """Gzip compression: DEFLATE, at a configurable compression level."""
+    """Applies DEFLATE compression (gzip) at a configurable compression
+    level."""
 
     # type aliases
     CompressionLevel: tx.ClassVar = codecs.GzipCompressionLevel

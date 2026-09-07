@@ -32,8 +32,9 @@ from .base import FilterImpl
 class BitroundFilter(FilterImpl):
     """Rounds a float's mantissa to ``keepbits`` bits, zeroing the rest.
 
-    A lossy transform that improves the compressibility of floating-point
-    data by discarding low-order precision the data does not need.
+    The rounding is lossy and improves the compressibility of
+    floating-point data by discarding low-order precision the data does
+    not need.
     """
 
     id: tx.Literal["bitround"]
@@ -79,11 +80,12 @@ class PackBitsFilter(FilterImpl):
 @register_subclass(id="fixedscaleoffset")
 @autofrozen
 class ScaleOffsetFilter(FilterImpl):
-    """Quantizes values as ``(value - offset) * scale``, stored as ``astype``.
+    """Quantizes values as ``(value - offset) * scale`` and stores the
+    result as ``astype``.
 
-    Recovers an approximation of the original value on decode by
-    reversing the scale and offset; a lossy transform useful for storing
-    a bounded floating-point range in fewer bits.
+    On decode, the scale and offset are reversed to recover an
+    approximation of the original value. The transform is lossy and
+    useful for storing a bounded floating-point range in fewer bits.
     """
 
     id: tx.Literal["fixedscaleoffset"]
@@ -113,8 +115,8 @@ class ScaleOffsetFilter(FilterImpl):
 class AsTypeFilter(FilterImpl):
     """Casts an array to ``encode_dtype`` for storage, and back on decode.
 
-    ``decode_dtype``, when given, is the dtype values are cast back to on
-    read; otherwise the array's own dtype is used.
+    ``decode_dtype``, when given, is the dtype values are cast back to
+    on read. Otherwise, the array's own dtype is used.
     """
 
     id: tx.Literal["astype"]
@@ -205,7 +207,7 @@ class DeltaFilter(FilterImpl):
 class QuantizeFilter(FilterImpl):
     """Rounds floating-point values to ``digits`` decimal digits.
 
-    A lossy transform that improves compressibility by discarding
+    The rounding is lossy and improves compressibility by discarding
     precision the data does not need.
     """
 
@@ -218,11 +220,13 @@ class QuantizeFilter(FilterImpl):
 @register_subclass(id="shuffle")
 @autofrozen
 class Shuffle(FilterImpl):
-    """Reorders each element's bytes to group same-significance bytes together.
+    """Reorders each element's bytes to group same-significance bytes
+    together.
 
-    Groups the Nth byte of every element (``elementsize`` bytes wide) so
-    that similar bytes sit next to each other, which a downstream
-    compressor typically compresses better than the original interleaving.
+    Groups the Nth byte of every element, each ``elementsize`` bytes
+    wide, so that similar bytes sit next to each other. A downstream
+    compressor typically compresses this layout better than the
+    original interleaving.
     """
 
     id: tx.Literal["shuffle"]
