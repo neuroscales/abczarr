@@ -26,7 +26,7 @@ def _unwrap_annotated(hint: tx.Any) -> tx.Any:
 
 
 def _permits_absence(hint: tx.Any) -> bool:
-    """Whether *hint* carries a `Requirement` that lets the field be
+    """Whether `hint` carries a `Requirement` that lets the field be
     absent.
 
     A `Recommended`, `Optional`, or other non-`Required` requirement

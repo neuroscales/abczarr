@@ -51,14 +51,14 @@ def broadcast_spec(
     names: tx.Iterable[tx.Optional[str]] = (),
 ) -> tx.Tuple[tx.Union[int, tx.Literal["auto"]], ...]:
     """Spread a chunk-size specification across every dimension of
-    *shape*.
+    `shape`.
 
     A single integer or `"auto"` applies to every dimension. A sequence
-    shorter than *shape* has its last entry repeated to fill the
-    remaining dimensions. One longer than *shape* is truncated. A
-    mapping is read by dimension name, matched against *names*. A
+    shorter than `shape` has its last entry repeated to fill the
+    remaining dimensions. One longer than `shape` is truncated. A
+    mapping is read by dimension name, matched against `names`. A
     dimension with no matching name falls back to the mapping's `None`
-    key, then its `""` key, then its own full size in *shape*.
+    key, then its `""` key, then its own full size in `shape`.
 
     A size of zero means no chunking along that dimension, and
     `"auto"` defers the choice to `auto_chunk` or `auto_shard`.
@@ -70,7 +70,7 @@ def broadcast_spec(
     spec : int, {"auto"}, sequence, or mapping
         The chunk-size specification, in any of the forms above.
     names : sequence of str
-        The name of each dimension, used to resolve *spec* when it is a
+        The name of each dimension, used to resolve `spec` when it is a
         mapping.
 
     Returns
@@ -124,13 +124,13 @@ def auto_chunk(
     names: tx.Iterable[tx.Optional[str]] = (),
 ) -> tz.ShapeLike:
     """Choose a chunk size for each dimension that keeps the estimated
-    on-disk chunk size under *maxsize*.
+    on-disk chunk size under `maxsize`.
 
-    A dimension fixed by *spec* keeps that size. Every dimension left as
+    A dimension fixed by `spec` keeps that size. Every dimension left as
     `"auto"` starts at 1 and doubles in turn, one dimension per
     iteration, until either every dimension reaches the full extent of
-    *shape* or no dimension can grow further without the projected
-    chunk size, divided by *compression_ratio*, exceeding *maxsize*.
+    `shape` or no dimension can grow further without the projected
+    chunk size, divided by `compression_ratio`, exceeding `maxsize`.
 
     Parameters
     ----------
@@ -144,9 +144,9 @@ def auto_chunk(
         The maximum estimated chunk size, in bytes.
     compression_ratio : float
         The estimated compression factor applied to the raw chunk size
-        before it is compared against *maxsize*.
+        before it is compared against `maxsize`.
     names : sequence of str
-        The name of each dimension, used to resolve *spec* when it is a
+        The name of each dimension, used to resolve `spec` when it is a
         mapping.
 
     Returns
@@ -214,15 +214,15 @@ def auto_shard(
     names: tx.Iterable[tx.Optional[str]] = (),
 ) -> ShardsAndChunks:
     """Choose a shard size for each dimension that keeps the estimated
-    on-disk shard size under *maxsize*, then chunk each shard to the
+    on-disk shard size under `maxsize`, then chunk each shard to the
     same byte budget `auto_chunk` applies.
 
     Growing the shard follows the same doubling strategy as `auto_chunk`.
-    A dimension fixed by *shard_spec* keeps that size. One left as
-    `"auto"` starts from *chunk_spec*'s size for that dimension when
+    A dimension fixed by `shard_spec` keeps that size. One left as
+    `"auto"` starts from `chunk_spec`'s size for that dimension when
     that is fixed, or from 1 otherwise, and doubles from there. Once the
     shard shape is settled, `auto_chunk` sizes the chunks within it
-    against *itemsize* directly, so the chunk byte budget reflects the
+    against `itemsize` directly, so the chunk byte budget reflects the
     real data type rather than the estimate `broadcast_spec` alone would
     give. The chunk and shard shapes are then reconciled through
     `fix_shard_chunk`, since a shard has to be an exact multiple of its
@@ -241,13 +241,13 @@ def auto_shard(
     maxsize : int
         The maximum estimated shard size, in bytes. The default of 2 TB
         stays under S3's 5 TB per-object limit even though the estimate
-        is only as good as *compression_ratio*.
+        is only as good as `compression_ratio`.
     compression_ratio : float
         The estimated compression factor applied to the raw shard size
-        before it is compared against *maxsize*.
+        before it is compared against `maxsize`.
     names : sequence of str
-        The name of each dimension, used to resolve *shard_spec* and
-        *chunk_spec* when either is a mapping.
+        The name of each dimension, used to resolve `shard_spec` and
+        `chunk_spec` when either is a mapping.
 
     Returns
     -------
@@ -334,7 +334,7 @@ def fix_shard_chunk(
     chunk: tz.ShapeLike,
     shape: tz.ShapeLike,
 ) -> ShardsAndChunks:
-    """Adjust *chunk* and *shard* so that every shard is a whole number
+    """Adjust `chunk` and `shard` so that every shard is a whole number
     of chunks.
 
     On a dimension where the chunk already spans the entire array, the

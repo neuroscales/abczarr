@@ -30,7 +30,7 @@ def register_subclass(
     """Register a `Metadata` subclass to be returned in place of one of
     its bases, when the base is constructed with matching field values.
 
-    A keyword argument, or an entry in *match*, names one of the
+    A keyword argument, or an entry in `match`, names one of the
     decorated class's own init fields and the value that field must
     equal (or, for a string field, a compiled pattern it must match) for
     that class to be selected. `Metadata.__new__` checks the registered
@@ -138,11 +138,11 @@ class Metadata:
 
     @classmethod
     def _registry(cls) -> dict:
-        """The subclasses registered against *cls*, keyed by their match
+        """The subclasses registered against `cls`, keyed by their match
         conditions.
 
         Only entries whose registered class is actually a subclass of
-        *cls* are included, so a class further up the hierarchy does not
+        `cls` are included, so a class further up the hierarchy does not
         see a sibling's registrations.
         """
         return {
@@ -160,7 +160,7 @@ class Metadata:
         """Get a field's value by name, or an extra item's value by key
         on a subclass that carries `extra_items`.
 
-        Raises `KeyError` when *key* names neither.
+        Raises `KeyError` when `key` names neither.
         """
         if any(f.name == key for f in fields(self)):
             return getattr(self, key)
@@ -200,12 +200,12 @@ class Metadata:
     def from_json(cls, data: tz.JsonDict) -> tx.Self:
         """Build an instance from a JSON document.
 
-        *data* is ordinarily a dict, keyed by each field's JSON key.
+        `data` is ordinarily a dict, keyed by each field's JSON key.
         When it is not a mapping, it is treated as the value of the
         class's first positional field, provided the class has one.
         Otherwise, `TypeError` is raised. The class actually
-        constructed may be a subclass more specific than *cls*, chosen
-        by `register_subclass`'s discriminators. Any key in *data* that
+        constructed may be a subclass more specific than `cls`, chosen
+        by `register_subclass`'s discriminators. Any key in `data` that
         names no field of the chosen class is collected into
         `extra_items`, on a subclass that carries one.
 
@@ -217,13 +217,13 @@ class Metadata:
         Returns
         -------
         Self
-            The constructed instance, of *cls* or one of its registered
+            The constructed instance, of `cls` or one of its registered
             subclasses.
 
         Raises
         ------
         TypeError
-            When *data* is not a mapping and *cls* has no positional
+            When `data` is not a mapping and `cls` has no positional
             field to hold it.
         """
         if not isinstance(data, abc.Mapping):
@@ -319,24 +319,24 @@ def _match_score(
     defaults: tx.Mapping[str, tx.Any],
     subcls: type,
 ) -> tx.Optional[tx.Tuple[int, int, int]]:
-    """Score how well *match* fits the data, or return `None` when it
+    """Score how well `match` fits the data, or return `None` when it
     does not fit at all.
 
-    *data* is the document as written, keyed by its JSON keys.
-    *defaults* holds the fields' defaults, keyed by field name, of the
+    `data` is the document as written, keyed by its JSON keys.
+    `defaults` holds the fields' defaults, keyed by field name, of the
     class `from_json` was originally called on. A discriminator names a
     field by its Python name, and that field's value is read from
-    *data* under the field's JSON key, its ``json=`` alias when it has
+    `data` under the field's JSON key, its ``json=`` alias when it has
     one or its own name otherwise. A ``typing.Any`` discriminator counts
-    only when its key is present in *data* itself, since a
+    only when its key is present in `data` itself, since a
     discriminator that is only ever implied by a default is not a
     discriminator. A literal or regex discriminator is satisfied by the
-    value in *data*, or, when the key is absent there, by the class's
+    value in `data`, or, when the key is absent there, by the class's
     own default. This lets ``ArrayMetadata.from_json`` still resolve an
     array document that omits the ``node_type`` the class already
     fixes.
 
-    A discriminator counts only when it names one of *subcls*'s own
+    A discriminator counts only when it names one of `subcls`'s own
     init fields. A value the class does not carry as a settable field
     is not a shape this function can tell the class apart by. A codec
     whose ``id`` is a class attribute, for instance, is recovered
@@ -365,7 +365,7 @@ def _match_score(
     tuple of (int, int, int) or None
         The match's specificity score, ordered by discriminator count,
         subclass depth, and value-constraint count, or `None` when
-        *match* does not fit *data* at all.
+        `match` does not fit `data` at all.
     """
     init_fields = {f.name: f for f in fields(subcls) if f.init}
     concrete = 0
@@ -394,7 +394,7 @@ def _match_score(
 
 
 def _serialize_dict(x: tx.Mapping) -> tx.Dict[str, tz.Json]:
-    """Serialize each value of the mapping *x* with `_to_json`."""
+    """Serialize each value of the mapping `x` with `_to_json`."""
     if not callable(getattr(x, "items", None)):
         x = dict(**x)
     return {k: _to_json(v) for k, v in x.items()}
@@ -403,7 +403,7 @@ def _serialize_dict(x: tx.Mapping) -> tx.Dict[str, tz.Json]:
 def _serialize_meta(x: "Metadata") -> tx.Dict[str, tz.Json]:
     """Serialize a metadata object's own fields.
 
-    Does not call a `to_json` override on *x* itself. That call is the
+    Does not call a `to_json` override on `x` itself. That call is the
     caller's job. An unset `Recommended`/`Optional` field holds the
     `MISSING` sentinel and is omitted from the result entirely, since
     the sentinel itself is not JSON serializable.
@@ -447,7 +447,7 @@ def _to_json(obj: tx.Any) -> tz.Json:
 
 
 def _is_iterable(obj: tx.Any) -> bool:
-    """Whether *obj* iterates like a list or tuple, rather than a single
+    """Whether `obj` iterates like a list or tuple, rather than a single
     scalar value.
 
     A string, `bytes`, or `bytearray` is excluded even though it is
@@ -458,7 +458,7 @@ def _is_iterable(obj: tx.Any) -> bool:
 
 
 def _is_mapping(obj: tx.Any) -> bool:
-    """Whether *obj* has the `keys` and `__getitem__` methods a mapping
+    """Whether `obj` has the `keys` and `__getitem__` methods a mapping
     provides.
     """
     return (
@@ -468,7 +468,7 @@ def _is_mapping(obj: tx.Any) -> bool:
 
 
 def _is_metadata(obj: tx.Any) -> bool:
-    """Whether *obj* is a `Metadata` instance."""
+    """Whether `obj` is a `Metadata` instance."""
     return isinstance(obj, Metadata)
 
 
@@ -500,7 +500,7 @@ class MetadataConverter(Converter[METADATA, METADATALIKE]):
         Besides the field's own type and a JSON-shaped mapping, a
         `Metadata` type with a positional first field also accepts that
         field's own type directly, matching what `__call__` does with a
-        non-mapping value. *__reentrant* guards against a field type
+        non-mapping value. `__reentrant` guards against a field type
         that refers to itself.
         """
         if self.hint in __reentrant:
@@ -518,7 +518,7 @@ class MetadataConverter(Converter[METADATA, METADATALIKE]):
         return tx.Union[hints]
 
     def __call__(self, value: METADATALIKE) -> METADATA:
-        """Convert *value* to the field's `Metadata` type.
+        """Convert `value` to the field's `Metadata` type.
 
         Parameters
         ----------
@@ -528,9 +528,9 @@ class MetadataConverter(Converter[METADATA, METADATALIKE]):
         Returns
         -------
         Metadata
-            *value* unchanged, when it is already an instance of the
+            `value` unchanged, when it is already an instance of the
             target type. Otherwise, the result of building that type
-            from *value*.
+            from `value`.
         """
         fallback = self.fallback
         if isinstance(fallback, type) and isinstance(value, fallback):

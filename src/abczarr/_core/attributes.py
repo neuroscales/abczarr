@@ -111,12 +111,12 @@ def attribute_writes(
     attributes: tx.Mapping[str, tx.Any],
     existing_document: tx.Optional[tx.Dict[str, tx.Any]] = None,
 ) -> tx.List[tx.Tuple[str, bytes]]:
-    """The store writes that persist *attributes* for a node of *version*.
+    """The store writes that persist `attributes` for a node of `version`.
 
     Returns a list of ``(key, value)`` pairs to write through a
     [Store][abczarr.abc.store.Store] (or its async twin). A Zarr v3 node
     keeps its attributes inside the single ``zarr.json`` document, so the
-    other fields of *existing_document* are preserved and only its
+    other fields of `existing_document` are preserved and only its
     ``attributes`` are replaced. A v2 or v1 node keeps them in a separate
     attributes file, which is rewritten whole.
 
@@ -151,7 +151,7 @@ def attribute_writes(
 
 
 def _dumps(data: tx.Mapping[str, tx.Any]) -> bytes:
-    """Serialize *data* to compact UTF-8 JSON bytes."""
+    """Serialize `data` to compact UTF-8 JSON bytes."""
     return json.dumps(
         data, ensure_ascii=False, separators=(",", ":")
     ).encode("utf-8")

@@ -51,7 +51,7 @@ class RegexMatch(str):
     """A string type hint, subscripted with the pattern a valid value must
     match.
 
-    ``RegexMatch[r"r\\d+"]`` is `Annotated[str, pattern]`, where *pattern*
+    ``RegexMatch[r"r\\d+"]`` is `Annotated[str, pattern]`, where `pattern`
     is a compiled `re.Pattern`. A validator resolved from that hint checks
     a value against the pattern.
     """
@@ -158,9 +158,9 @@ def asdtype(
     Raises
     ------
     [UnsupportedConversion][abczarr.errors.UnsupportedConversion]
-        When *dtype* cannot be resolved to a numpy dtype.
+        When `dtype` cannot be resolved to a numpy dtype.
     TypeError
-        When the resolved dtype fails the *type* or *kind* check.
+        When the resolved dtype fails the `type` or `kind` check.
     """
     # Our DType metadata -> dict
     if hasattr(dtype, "to_json"):

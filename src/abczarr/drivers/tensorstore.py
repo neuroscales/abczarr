@@ -85,7 +85,7 @@ def _parse_feature(key: str) -> tx.Optional[tx.Tuple[str, str, str]]:
 
 
 def _kvstore_spec(location: tx.Any) -> tx.Any:
-    """The TensorStore kvstore spec for *location*.
+    """The TensorStore kvstore spec for `location`.
 
     A kvstore spec, a dict or URL, is used as it is. A local path
     becomes the file kvstore.
@@ -100,7 +100,7 @@ def _looks_like_path(location: tx.Any) -> bool:
 
 
 def _ts_array_driver(version: tx.Any) -> str:
-    """The TensorStore driver name for a Zarr array of *version*.
+    """The TensorStore driver name for a Zarr array of `version`.
 
     TensorStore reads a v3 array through its ``zarr3`` driver and a v2 array
     through its native ``zarr`` driver.
@@ -109,7 +109,7 @@ def _ts_array_driver(version: tx.Any) -> str:
 
 
 def _ts_metadata(metadata: "ArrayMetadata") -> tx.Any:
-    """The metadata document TensorStore's driver accepts for *metadata*.
+    """The metadata document TensorStore's driver accepts for `metadata`.
 
     A v3 array's document is TensorStore's ``zarr.json`` as it is. A v2
     array's ``.zarray`` carries neither ``node_type`` nor the user
@@ -189,7 +189,7 @@ class TensorStoreArray(TensorStoreNode, ZarrArray):
         return self._cached_metadata
 
     def _with_v2_attributes(self, metadata: tx.Any) -> tx.Any:
-        """Merge a v2 array's ``.zattrs`` user attributes into *metadata*."""
+        """Merge a v2 array's ``.zattrs`` user attributes into `metadata`."""
         try:
             raw = PathBasedStore(str(self._store_path)).get(
                 constants.Z2ATTRS_JSON
@@ -272,9 +272,9 @@ class AsyncTensorStoreArray(AsyncZarrArray):
 def _open_ts_array(
     location: tx.Any, mode: str, version: tx.Any = 3
 ) -> TensorStoreArray:
-    """Open the array at *location* through TensorStore and wrap it.
+    """Open the array at `location` through TensorStore and wrap it.
 
-    *version* selects TensorStore's driver: ``zarr3`` for a v3 array,
+    `version` selects TensorStore's driver: ``zarr3`` for a v3 array,
     ``zarr`` for a v2 array.
     """
     spec = {
@@ -290,10 +290,10 @@ def _open_ts_array(
 async def _aopen_ts_array(
     location: tx.Any, mode: str, version: tx.Any = 3
 ) -> "AsyncTensorStoreArray":
-    """Open the array at *location* through TensorStore asynchronously.
+    """Open the array at `location` through TensorStore asynchronously.
 
     Awaits TensorStore's own open future rather than blocking on
-    ``.result()``, then wraps the array as its native async twin. *version*
+    ``.result()``, then wraps the array as its native async twin. `version`
     selects TensorStore's driver, as for the synchronous open.
     """
     spec = {
@@ -309,7 +309,7 @@ async def _aopen_ts_array(
 def _create_ts_array(
     location: tx.Any, metadata: ArrayMetadata, *, overwrite: bool
 ) -> TensorStoreArray:
-    """Create the array *metadata* describes at *location*.
+    """Create the array `metadata` describes at `location`.
 
     TensorStore creates from the metadata document, filling in each codec's
     defaults and validating it, which a bare write of the metadata would not.
@@ -335,7 +335,7 @@ def _create_ts_array(
 async def _acreate_ts_array(
     location: tx.Any, metadata: ArrayMetadata, *, overwrite: bool
 ) -> "AsyncTensorStoreArray":
-    """Create the array *metadata* describes at *location* asynchronously.
+    """Create the array `metadata` describes at `location` asynchronously.
 
     Awaits TensorStore's own create future rather than blocking on
     ``.result()``, then wraps the array as its native async twin. Driver
@@ -505,7 +505,7 @@ def _v3_node(raw: tx.Any) -> tx.Optional[tx.Tuple[str, int]]:
 
 
 def _peek_node(location: tx.Any) -> tx.Optional[tx.Tuple[str, int]]:
-    """The node kind and Zarr version recorded at *location*, or None.
+    """The node kind and Zarr version recorded at `location`, or None.
 
     Detects both a v3 ``zarr.json`` (through its ``node_type`` field) and a v2
     node (through which of ``.zgroup`` and ``.zarray`` is present), so a v2
@@ -537,7 +537,7 @@ def _peek_node(location: tx.Any) -> tx.Optional[tx.Tuple[str, int]]:
 
 
 async def _apeek_node(location: tx.Any) -> tx.Optional[tx.Tuple[str, int]]:
-    """The node kind and Zarr version at *location*, read through an async
+    """The node kind and Zarr version at `location`, read through an async
     store, or None. The async twin of `_peek_node`.
 
     Read through an

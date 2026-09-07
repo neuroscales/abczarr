@@ -1,7 +1,7 @@
 """
 Invariant TypeVars.
 
-An invariant parameter *ignores* the subtype relation of its argument:
+An invariant parameter `ignores` the subtype relation of its argument:
 even though `bool` is a subtype of `int`, `Box[bool]` is neither usable
 where `Box[int]` is expected nor the other way round. This is the only
 sound variance when the parameter appears in both input and output

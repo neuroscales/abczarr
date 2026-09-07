@@ -162,7 +162,7 @@ class ZarristaArray(ZarristaNode, ZarrArray):
 
 
 def _open_zarrista_array(location: tx.Any) -> ZarristaArray:
-    """Open the v3 array at *location* through zarrista and wrap it.
+    """Open the v3 array at `location` through zarrista and wrap it.
 
     The store is pointed at the array's own directory (its ``zarr.json`` at
     the root), so a full path opens a single array.
@@ -238,7 +238,7 @@ def _supports_v3_feature(kind: str, name: str) -> bool:
 
 
 def _peek_node_type(location: tx.Any) -> tx.Optional[str]:
-    """The node type recorded at *location*'s ``zarr.json``, or None."""
+    """The node type recorded at `location`'s ``zarr.json``, or None."""
     if not isinstance(location, str) or "://" in location:
         return None
     try:

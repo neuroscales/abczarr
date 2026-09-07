@@ -55,14 +55,14 @@ _JSON_KEY = "abczarr.json_key"
 
 
 def get_converter(hint: tx.Any) -> tx.Optional[tx.Callable]:
-    """Resolve *hint*'s converter from `bagof.converters`, or `None` when
+    """Resolve `hint`'s converter from `bagof.converters`, or `None` when
     it has none, adapted so `attrs` reports the right `__init__` type.
 
     A bare `bagof.converters` converter's `__call__` is annotated with
     the generic `FROM` type variable, which would make `attrs` type the
     `__init__` parameter as that variable rather than the hints the
     field actually accepts. `wrap_converter` re-annotates it with the
-    converter's own `like()` result and *hint* itself. The returned
+    converter's own `like()` result and `hint` itself. The returned
     callable also passes the `MISSING` sentinel of an unset required
     field through unconverted.
     """
@@ -84,7 +84,7 @@ def get_converter(hint: tx.Any) -> tx.Optional[tx.Callable]:
 
 
 def get_validator(hint: tx.Any) -> tx.Optional[tx.Callable]:
-    """Resolve *hint*'s validator from `bagof.validators`, or `None`
+    """Resolve `hint`'s validator from `bagof.validators`, or `None`
     when it has none, adapted to the three-argument signature `attrs`
     calls a validator with.
 
@@ -118,7 +118,7 @@ def fields(cls_or_instance: tx.Any) -> tx.Any:
 
 
 def _auto(kwargs: dict) -> dict:
-    """Install a `transform_fields` field transformer on *kwargs*, built
+    """Install a `transform_fields` field transformer on `kwargs`, built
     from its `factory`/`converter`/`validator` keywords.
 
     Those three keywords are consumed here and never reach `attrs.define`
@@ -134,7 +134,7 @@ def _auto(kwargs: dict) -> dict:
 
 
 def _extra(kwargs: dict) -> dict:
-    """Install an `extra_items` field transformer on *kwargs*, when its
+    """Install an `extra_items` field transformer on `kwargs`, when its
     `extra_items` keyword is set.
 
     The extra-items field is typed as a `FrozenDict` for a frozen class,
@@ -152,7 +152,7 @@ def _extra(kwargs: dict) -> dict:
 
 
 def _freeze(kwargs: dict) -> dict:
-    """Default *kwargs* to a frozen class with attribute assignment
+    """Default `kwargs` to a frozen class with attribute assignment
     disabled, unless already set.
     """
     kwargs.setdefault("frozen", True)
@@ -161,7 +161,7 @@ def _freeze(kwargs: dict) -> dict:
 
 
 def _fix_order(kwargs: dict) -> dict:
-    """Wrap whatever field transformer *kwargs* already carries with
+    """Wrap whatever field transformer `kwargs` already carries with
     `fix_order`.
     """
     transformer = kwargs.pop("field_transformer", None)
@@ -343,7 +343,7 @@ def field(**kwargs) -> tx.Any:
 
 @wraps(field)
 def factory(factory: tx.Callable[[], tx.Any], **kwargs) -> tx.Any:
-    """Declare a field whose default is built by calling *factory* with
+    """Declare a field whose default is built by calling `factory` with
     no arguments, as `field(factory=factory, **kwargs)` does.
     """
     kwargs.setdefault("factory", factory)
@@ -352,12 +352,12 @@ def factory(factory: tx.Callable[[], tx.Any], **kwargs) -> tx.Any:
 
 @wraps(field)
 def autofield(type: tx.Type, **kwargs) -> tx.Any:
-    """Declare a field typed as *type*, with its converter and default
-    resolved from *type*.
+    """Declare a field typed as `type`, with its converter and default
+    resolved from `type`.
 
     Equivalent to `field(type=type, converter=True, factory=True,
     **kwargs)`. Either step can still be turned off, or replaced with an
-    explicit callable, through the matching keyword in *kwargs*.
+    explicit callable, through the matching keyword in `kwargs`.
     """
     kwargs.setdefault("converter", True)
     kwargs.setdefault("factory", True)
@@ -367,8 +367,8 @@ def autofield(type: tx.Type, **kwargs) -> tx.Any:
 
 @wraps(field)
 def autofactory(type: tx.Type, **kwargs) -> tx.Any:
-    """Declare a field typed as *type*, with its default resolved from
-    *type*.
+    """Declare a field typed as `type`, with its default resolved from
+    `type`.
 
     Equivalent to `field(type=type, factory=True, **kwargs)`.
     """
@@ -379,8 +379,8 @@ def autofactory(type: tx.Type, **kwargs) -> tx.Any:
 
 @wraps(field)
 def autoconvert(type: tx.Type, **kwargs) -> tx.Any:
-    """Declare a field typed as *type*, with its converter resolved from
-    *type*.
+    """Declare a field typed as `type`, with its converter resolved from
+    `type`.
 
     Equivalent to `field(type=type, converter=True, **kwargs)`.
     """
@@ -391,8 +391,8 @@ def autoconvert(type: tx.Type, **kwargs) -> tx.Any:
 
 @wraps(field)
 def autovalidate(type: tx.Type, **kwargs) -> tx.Any:
-    """Declare a field typed as *type*, with its validator resolved from
-    *type*.
+    """Declare a field typed as `type`, with its validator resolved from
+    `type`.
 
     Equivalent to `field(type=type, validator=True, **kwargs)`.
     """
@@ -410,7 +410,7 @@ def transform_fields(
     default, converter, and validator from its type hint.
 
     A field with no type hint is left untouched. Otherwise, the
-    resolution requested by *factory*, *converter*, and *validator* is
+    resolution requested by `factory`, `converter`, and `validator` is
     skipped for a field that already has its own default, converter, or
     validator, so an explicit one set on the field is never overridden.
     A default is resolved through `get_default` first and, when that
@@ -466,12 +466,12 @@ def extra_items(
     """Build an `attrs` field transformer that appends an `extra_items`
     field to the class.
 
-    *extra_items* sets the value type the appended field accepts, so
+    `extra_items` sets the value type the appended field accepts, so
     every unnamed field lands there typed accordingly. `True` accepts
     any value, matching a plain `typing.Any`. `False` instead appends a
     field of type `Literal[False]`, excluded from both `__init__` and
     `repr`, marking the class as accepting no extra items rather than
-    omitting the field altogether. `None` returns *transform_fields*
+    omitting the field altogether. `None` returns `transform_fields`
     unchanged, appending no field at all.
 
     Parameters
@@ -524,7 +524,7 @@ def update(
 
     A keyword argument names a field, with its value a dict of the
     `attrs.Attribute.evolve` keywords to apply to it. A field not named
-    in *kwargs* is left unchanged.
+    in `kwargs` is left unchanged.
 
     Parameters
     ----------

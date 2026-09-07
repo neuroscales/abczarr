@@ -40,8 +40,8 @@ def feature_key(version: str, kind: str, name: str) -> str:
     """Build a fine-grained feature key from its three parts.
 
     ``feature_key("v3", "codec", "zstd")`` returns ``"v3:codec:zstd"``.
-    *version* must be one of :data:`FEATURE_VERSIONS` and *kind* one of
-    :data:`FEATURE_KINDS`. *name* is the codec, chunk grid, or data type
+    `version` must be one of :data:`FEATURE_VERSIONS` and `kind` one of
+    :data:`FEATURE_KINDS`. `name` is the codec, chunk grid, or data type
     name as it appears in the metadata. Validating the two fixed parts
     here turns a typo into an immediate error, instead of a key that
     would otherwise never match anything.

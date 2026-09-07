@@ -93,7 +93,7 @@ def _parse_feature(key: str) -> tx.Optional[tx.Tuple[str, str, str]]:
 
 
 def _resolves(lookup: tx.Callable[[str], object], name: str) -> bool:
-    """Whether *lookup* returns something for *name* rather than raising."""
+    """Whether `lookup` returns something for `name` rather than raising."""
     try:
         lookup(name)
         return True
@@ -117,7 +117,7 @@ def _supports_v3_feature(kind: str, name: str) -> bool:
 
 
 def _has_numcodec(name: str) -> bool:
-    """Whether numcodecs provides the v1/v2 codec or filter *name*.
+    """Whether numcodecs provides the v1/v2 codec or filter `name`.
 
     A name numcodecs does not know raises ``UnknownCodecError`` and
     counts as not provided. A known name that merely needs more
@@ -164,7 +164,7 @@ def _zarr_create_kwargs(config: tx.Any) -> tx.Dict[str, tx.Any]:
 
 
 def _v2_codec_kwargs(config: tx.Any, kwargs: tx.Dict[str, tx.Any]) -> None:
-    """Fill in the Zarr v2 codec and chunk-key keywords on *kwargs*.
+    """Fill in the Zarr v2 codec and chunk-key keywords on `kwargs`.
 
     A Zarr v2 array needs numcodecs-shaped codecs and a ``"v2"``
     chunk-key encoding from zarr-python. It rejects both the v3-style

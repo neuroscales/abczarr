@@ -173,7 +173,7 @@ JsonScalar = tx.Union[int, float, bool, str, None]
 Json = tx.Union[JsonScalar, tx.Mapping[str, "Json"], BuiltinSequence["Json"]]
 JsonDict = tx.Mapping[str, Json]
 
-# The frozen JSON model. Its mapping and sequence are the *immutable*
+# The frozen JSON model. Its mapping and sequence are the `immutable`
 # `FrozenDict` and `tuple`, matching the immutable nature of the frozen
 # attrs classes that hold it -- an extra item, or an `attributes` value, is
 # deep-frozen so the whole object stays genuinely immutable (and, as a

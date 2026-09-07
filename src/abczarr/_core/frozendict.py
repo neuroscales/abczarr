@@ -43,7 +43,7 @@ class FrozenDict(tx.Mapping[KT, VT]):
 
 
 def unfreeze(value: tx.Any) -> tx.Any:
-    """Rebuild *value* from plain built-in types, recursively.
+    """Rebuild `value` from plain built-in types, recursively.
 
     A [FrozenDict][abczarr._core.frozendict.FrozenDict], or any other
     mapping, becomes a plain ``dict``, and each of its values is rebuilt in

@@ -25,9 +25,9 @@ def default_levels(
     """Compute the default number of downsampling levels for a spatial
     pyramid.
 
-    For each axis in *spatial_shape*, except the one named by
-    *no_pyramid_axis*, this counts how many times that axis can be halved
-    down to its own chunk size in *spatial_chunk*, rounded up to the next
+    For each axis in `spatial_shape`, except the one named by
+    `no_pyramid_axis`, this counts how many times that axis can be halved
+    down to its own chunk size in `spatial_chunk`, rounded up to the next
     whole level. The result is the largest of those per-axis counts, so
     every axis reaches at most its own chunk size by the last level. The
     result is never negative.
@@ -62,8 +62,8 @@ def next_level_shape(
 ) -> tz.Shape:
     """Compute the shape of the next coarser pyramid level.
 
-    Each axis in *prev_shape* is halved by integer division, with a
-    minimum of 1, except the axis named by *no_pyramid_axis*, which is
+    Each axis in `prev_shape` is halved by integer division, with a
+    minimum of 1, except the axis named by `no_pyramid_axis`, which is
     carried over unchanged.
 
     Parameters
@@ -76,7 +76,7 @@ def next_level_shape(
     Returns
     -------
     tuple of int
-        The next level's shape, the same length as *prev_shape*.
+        The next level's shape, the same length as `prev_shape`.
     """
     new_shape = []
     for i, length in enumerate(prev_shape):
@@ -95,10 +95,10 @@ def compute_next_level(
 ) -> da.Array:
     """Downsample a dask array by one pyramid level.
 
-    The last *ndim* dimensions of *arr* are the pyramid dimensions. Any
+    The last `ndim` dimensions of `arr` are the pyramid dimensions. Any
     leading dimensions are left untouched. Each pyramid dimension of
     length greater than 1 is downsampled by a factor of two through
-    *window_func*, except the one named by *no_pyramid_axis*, which is
+    `window_func`, except the one named by `no_pyramid_axis`, which is
     left unchanged. The array's dtype is preserved.
 
     Parameters
@@ -120,7 +120,7 @@ def compute_next_level(
     dask.array.Array
         The downsampled array. Its leading dimensions are unchanged.
         Each pyramid dimension of length ``n`` becomes ``ceil(n / 2)``,
-        except the one named by *no_pyramid_axis*, which is unchanged.
+        except the one named by `no_pyramid_axis`, which is unchanged.
     """
     # The pyramid dimensions are the last `ndim` axes of `arr`. Anything
     # before them is a leading, non-pyramid dimension.
