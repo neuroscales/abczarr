@@ -278,8 +278,7 @@ class Driver(SupportsCapabilities):
 
         Pass a [GroupConfig][abczarr.api.config.GroupConfig] as *config*, or
         its fields (`zarr_version`, `overwrite`, ...) as keyword arguments,
-        which
-        override the config.
+        which override the config.
         """
         base = config if isinstance(config, GroupConfig) else GroupConfig(
             **dict(config or {})

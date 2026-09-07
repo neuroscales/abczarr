@@ -11,10 +11,9 @@ version, and the shared vocabulary
 work with a node's metadata without caring which version produced it.
 
 `ArrayMetadata.to_version` converts a node's metadata to another
-format version. Not every
-version can represent everything another one can; how such a
-conversion treats a field it cannot carry over is set by a
-`ConversionPolicy`.
+format version. Not every version can represent everything another
+one can, so how a conversion treats a field it cannot carry over is
+set by a `ConversionPolicy`.
 
 This file contains code from the Zarr project
 https://github.com/zarr-developers/zarr-python
@@ -272,10 +271,10 @@ class GroupMetadata(NodeMetadata):
         version : ZarrVersion
             The target Zarr format version: 1, 2 or 3.
         policy : ConversionPolicy
-            How to treat a field the target version can't hold. Accepted
-            for a signature that matches
-            [ArrayMetadata.to_version][abczarr.metadata.base.ArrayMetadata],
-            but a group has no such field between v2 and v3.
+            How to treat a field the target version can't hold. Kept for a
+            signature matching
+            [ArrayMetadata.to_version][abczarr.metadata.base.ArrayMetadata];
+            a group has no field this affects between v2 and v3.
 
         Returns
         -------

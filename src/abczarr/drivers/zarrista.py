@@ -79,12 +79,10 @@ def _parse_feature(key: str) -> tx.Optional[tx.Tuple[str, str, str]]:
 class ZarristaNode(ZarrNode):
     """Common base for the zarrista array and group adapters.
 
-    It marks a node as one the zarrista driver produced, so
-    [open][abczarr.drivers.zarrista.ZarristaDriver.open] has one return type
-    covering both. zarrista keeps no user attributes of its own, so both
-    nodes read attributes from the cached metadata and persist a write by
-    rewriting the metadata document through the store -- the behaviour
-    inherited from [ZarrNode][abczarr.abc.sync.ZarrNode].
+    zarrista keeps no user attributes of its own, so both nodes read
+    attributes from cached metadata and persist a write by rewriting the
+    metadata document through the store, the behavior inherited from
+    [ZarrNode][abczarr.abc.sync.ZarrNode].
     """
 
 

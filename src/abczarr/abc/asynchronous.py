@@ -103,13 +103,11 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
     def attrs(self) -> NodeAttributes:
         """This node's user attributes, as a read-cached mapping.
 
-        Reads stay synchronous on the async twin -- they come from the cached
-        metadata, so there is nothing to await. Writing a single key cannot be
-        awaited (an assignment expression is not a coroutine), so there is no
-        per-key async setter; use
+        Reads are synchronous -- they come from cached metadata, so there is
+        nothing to await. There is no per-key async setter, since an
+        assignment cannot be awaited; use
         [update_attributes][abczarr.abc.asynchronous.AsyncZarrNode.update_attributes]
-        to persist a change, the same reason the async array writes with
-        `setitem` rather than `[]`.
+        to persist a change.
         """
         return self.as_sync().attrs
 
@@ -326,24 +324,15 @@ class AsyncZarrGroup(AsyncZarrNode):
 class AsyncPathGroup(AsyncZarrGroup):
     """The async twin of [PathGroup][abczarr.abc.sync.PathGroup].
 
-    A backend with no group object of its own -- TensorStore opens arrays
-    only -- gets a real async group here: it does its own I/O through an
-    [AsyncStore][abczarr.abc.store.AsyncStore] over the group's location,
-    listing and navigating members with `await store.list_dir(...)` /
-    `await store.get(...)` rather than threading the sync group. Array
-    children are opened in the async color -- a natively async backend's
-    array comes back as its native async array (whose own `"async"` is
-    `NATIVE`).
+    Listing and navigating members is genuinely non-blocking. Array
+    children come back in the async color -- a natively async backend's
+    array is its own native async array. Creating a subgroup or array
+    still blocks, since writing metadata or building a backend handle is
+    inherently synchronous work.
 
-    Its own `"async"` capability is `Support.SYNTHESIZED`: a path group is
-    abczarr assembling group semantics over a key-value store, not a group
-    a backend provides natively -- so it reports synthesized even when the
-    underlying store awaits a natively async backend. `NATIVE` is reserved
-    for a surface the backend itself supplies.
-
-    Creation still writes through the sync group in a thread pool -- writing
-    metadata or building a backend array blocks, and is not the listing work
-    this group makes asynchronous.
+    Its own `"async"` capability is always `Support.SYNTHESIZED`, even
+    when the underlying store is itself natively async; `NATIVE` is
+    reserved for async support a backend supplies directly.
     """
 
     # a path group synthesizes group semantics over a store; async is

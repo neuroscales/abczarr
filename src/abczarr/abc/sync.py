@@ -523,15 +523,14 @@ class PathGroup(ZarrGroup):
     group is just a directory that carries Zarr group metadata, and
     `PathGroup` provides the whole group surface over it: reading its own
     metadata, listing its members, and navigating into subgroups and
-    arrays -- using nothing but abczarr's own path and metadata layers.
-    It can also create subgroups on its own, since that only means writing
-    group metadata.
+    arrays. It can also create subgroups on its own, since that only means
+    writing group metadata.
 
     A driver subclasses `PathGroup` and overrides `_open_array` (and, to
     support creating arrays too, `_create_array`) to say how a child array
-    is opened and created with its own backend. Subgroups need
-    no override -- they are more `PathGroup`s of the same subclass, so a
-    whole hierarchy is reachable from one opened group.
+    is opened with its own backend. Subgroups need no override -- they are
+    more `PathGroup`s of the same subclass, so a whole hierarchy is
+    reachable from one opened group.
 
     Parameters
     ----------

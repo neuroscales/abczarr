@@ -137,13 +137,10 @@ def _v2_attributes_payload(
 class TensorStoreNode(ZarrNode):
     """Common base for the TensorStore array and group adapters.
 
-    It marks a node as one the TensorStore driver produced, so
-    [open][abczarr.drivers.tensorstore.TensorStoreDriver.open] has one return
-    type covering both. TensorStore keeps no user attributes of its own, so
-    both nodes read attributes from the cached metadata and persist a write by
-    rewriting the metadata document through the store -- the behaviour
-    inherited from [ZarrNode][abczarr.abc.sync.ZarrNode] -- and there is
-    nothing driver-wide to override here.
+    TensorStore keeps no user attributes of its own, so both nodes read
+    attributes from cached metadata and persist a write by rewriting the
+    metadata document through the store, the behavior inherited from
+    [ZarrNode][abczarr.abc.sync.ZarrNode].
     """
 
 
