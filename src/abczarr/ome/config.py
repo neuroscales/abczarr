@@ -2,21 +2,20 @@
 
 An [ImageConfig][abczarr.ome.config.ImageConfig] is to OME-Zarr metadata
 what an [ArrayConfig][abczarr.api.config.ArrayConfig] is to a Zarr array:
-high-level, human-facing attributes that lower to the exact typed metadata
-a group carries. You give it the axes, the voxel size, and how the pyramid
-was built; it resolves those to OME-NGFF multiscales metadata for any
-version you ask for.
+a high-level, human-facing description that lowers to the exact typed
+metadata a group carries. Give it the axes, the voxel geometry, and how
+the pyramid was built, and it produces OME-NGFF multiscales metadata for
+any version you ask for.
 
-Three coordinate spaces line up behind it::
+Three coordinate spaces sit behind it::
 
     voxel (array index) --scale+translation--> intrinsic --transforms--> model
 
-`scale` and `translation` place each resolution level's array indices into a
-single *intrinsic* space shared by every level. `transforms` (and the
-convenience `voxel_to_world`) map that intrinsic space onto a *model* -- a
-world or anatomical frame. The rich 0.6 (RFC-5) model is built internally,
-then converted to the version you request, so one config lowers correctly to
-the stable 0.5 shape or the 0.6 preview alike.
+`scale` and `translation` place each resolution level's array indices
+into a single *intrinsic* space shared by every level. `transforms` (or
+the `voxel_to_world` shortcut) map that intrinsic space onto a *model* --
+a world or anatomical frame. One config lowers to the stable 0.5 shape
+and the 0.6 preview alike.
 """
 
 __all__ = ["ImageConfig", "Transform", "axis"]
@@ -66,10 +65,9 @@ def axis(
     """Build a 0.6 [Axis][abczarr.ome.v0_6rc0.systems.Axis] from a name.
 
     The axis *type* is inferred from *name* when not given: ``x``, ``y``,
-    and ``z`` are space, ``t`` is time, ``c`` is channel, and anything else
-    is space. Constructing with a known type gives back the matching axis
-    subclass (a [SpaceAxis][abczarr.ome.v0_6rc0.systems.SpaceAxis], and so
-    on).
+    and ``z`` are space, ``t`` is time, ``c`` is channel, and anything
+    else is space. A known type gives back the matching axis subclass, a
+    [SpaceAxis][abczarr.ome.v0_6rc0.systems.SpaceAxis] and so on.
 
     Parameters
     ----------
@@ -117,9 +115,9 @@ class Transform:
         [Affine][abczarr.ome.v0_6rc0.transformations.Affine]) or a
         ready-made typed transformation.
     input : {"intrinsic", "voxel"}
-        The system the transform starts from. ``"voxel"`` is reformulated
-        to start from the intrinsic system by composing with the inverse of
-        the voxel-to-intrinsic transform.
+        The system the transform starts from. ``"voxel"`` lets you write
+        the transform in voxel units; it still maps from the intrinsic
+        system once resolved, like every other transform.
     output : str, optional
         The name of the model system the transform maps onto. `None` uses
         the config's `model_name`.
@@ -134,12 +132,10 @@ class Transform:
 class ImageConfig:
     """A high-level description of an OME-Zarr multiscale image.
 
-    Set the axes and the voxel geometry once; lower to typed OME metadata
-    for any version with [to_ome][abczarr.ome.config.ImageConfig.to_ome].
-    The rich 0.6 (RFC-5) model -- named coordinate systems and general
-    transforms -- is built internally and converted down to the requested
-    version, so a single config produces the stable 0.5 shape and the 0.6
-    preview alike.
+    Set the axes and the voxel geometry once, then lower to typed OME
+    metadata for any version with
+    [to_ome][abczarr.ome.config.ImageConfig.to_ome]. The same config
+    produces the stable 0.5 shape and the 0.6 preview alike.
 
     Parameters
     ----------
@@ -166,11 +162,10 @@ class ImageConfig:
         a typed OME transformation, or a
         [Transform][abczarr.ome.config.Transform] wrapper.
     voxel_to_world : array-like or CoordinateTransformation, optional
-        A convenience for the common single voxel-to-world affine. It is
-        decomposed into the voxel-to-intrinsic scale/translation and an
-        intrinsic-to-world transform so the composed voxel-to-world equals
-        this matrix exactly. When `scale` is not given it is derived from
-        this matrix's linear block.
+        A shortcut for images with a single voxel-to-world affine, in
+        place of separate `scale`/`translation` and `transforms`. The
+        composed voxel-to-world transform equals this matrix exactly.
+        When `scale` is not given, it is derived from this matrix.
     name : str, optional
         The multiscale's name.
     ome_version : str
@@ -181,9 +176,9 @@ class ImageConfig:
         The per-axis downsampling factor between levels, same shapes as
         `scale`. Defaults to 2.
     strategy : {"edge", "center", "window"} or int
-        How a level's transform follows from downsampling. ``"edge"`` and
-        ``"center"`` need the level shapes; ``"window"`` (or an int window
-        size) follows from the factors alone.
+        How a level's placement is worked out from the downsampling.
+        ``"edge"`` and ``"center"`` need the level shapes; ``"window"``
+        (or an int window size) needs only the factors.
     """
 
     axes: tx.Sequence[AxisSpec] = field()
@@ -211,10 +206,10 @@ class ImageConfig:
     def resolved_version(self, version: tx.Optional[str] = None) -> str:
         """The concrete OME version this config lowers to.
 
-        Resolves *version* (or, when `None`, `ome_version`): ``"stable"``
-        becomes the latest released version, ``"latest"`` the newest
-        including previews, and anything else is taken as an explicit
-        version.
+        Resolves *version* (or `ome_version`, when *version* is `None`):
+        ``"stable"`` is the latest released version, ``"latest"`` the
+        newest including previews, and anything else is taken as an
+        explicit version.
 
         Parameters
         ----------
@@ -247,10 +242,9 @@ class ImageConfig:
     ) -> OME:
         """Lower this config to typed OME-Zarr metadata.
 
-        Builds the 0.6 (RFC-5) model -- an intrinsic coordinate system, the
-        model system(s), one dataset per resolution level mapping the array
-        onto the intrinsic system, and the intrinsic-to-model transforms --
-        then converts it to the resolved version under *policy*.
+        Produces the intrinsic and model coordinate systems, one dataset
+        per resolution level mapping the array onto the intrinsic system,
+        and the intrinsic-to-model transforms, for the resolved version.
 
         Parameters
         ----------
@@ -258,9 +252,9 @@ class ImageConfig:
             An override for `ome_version` (see
             [resolved_version][abczarr.ome.config.ImageConfig.resolved_version]).
         policy : {"lossy", "warn", "strict"}
-            How to treat information the target version cannot hold, when it
-            is older than 0.6. ``"warn"`` (the default) drops it with one
-            warning; ``"strict"`` raises; ``"lossy"`` drops it silently.
+            How to treat information an older target version cannot hold.
+            ``"warn"`` (the default) drops it with one warning;
+            ``"strict"`` raises; ``"lossy"`` drops it silently.
         level_shapes : sequence of shape, optional
             The array shape of each resolution level, finest first. Required
             by the ``"edge"`` and ``"center"`` strategies for more than one
@@ -326,11 +320,10 @@ class ImageConfig:
     ) -> OME:
         """Set a group's OME metadata from this config.
 
-        A thin wrapper over
-        [to_ome][abczarr.ome.config.ImageConfig.to_ome]: it lowers the
-        config and assigns the result to *group*'s
-        [ome][abczarr.abc.sync.ZarrNode.ome]. Keyword arguments are passed
-        through to `to_ome`.
+        Lowers the config with
+        [to_ome][abczarr.ome.config.ImageConfig.to_ome] and assigns the
+        result to *group*'s [ome][abczarr.abc.sync.ZarrNode.ome]. Keyword
+        arguments are passed through to `to_ome`.
 
         Parameters
         ----------
