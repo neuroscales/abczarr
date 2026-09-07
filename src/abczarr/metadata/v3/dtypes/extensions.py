@@ -11,7 +11,11 @@ __all__ = [
     "StructConfig",
     "Struct",
     "NumpyTimeConfig",
+    "NumpyDatetime64",
+    "NumpyTimedelta64",
     "FixedLengthConfig",
+    "FixedLengthUtf32",
+    "NullTerminatedBytes",
 ]
 
 # stdlib
