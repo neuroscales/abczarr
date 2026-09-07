@@ -1,4 +1,4 @@
-# Nodes
+# nodes
 
 Every object abczarr hands back, an array or a group, is a *node*.
 [ZarrNode][abczarr.abc.sync.ZarrNode] is the common base: it carries
@@ -34,10 +34,6 @@ A backend that is natively async (tensorstore, zarr-python) awaits its own
 futures; one that is not runs its blocking ops in a bounded thread pool.
 `array.supports("async", native=True)` says which you got.
 
-## `abczarr.abc.sync`
+## ::: abczarr.abc.sync
 
-::: abczarr.abc.sync
-
-## `abczarr.abc.asynchronous`
-
-::: abczarr.abc.asynchronous
+## ::: abczarr.abc.asynchronous
