@@ -1,4 +1,6 @@
-"""Hint-driven factories, from :mod:`bagof.factories`."""
+"""Re-exports the hint-driven default factory engine from
+:mod:`bagof.factories`.
+"""
 
 from bagof.factories import *  # noqa: F401,F403
 from bagof.factories import (  # noqa: F401

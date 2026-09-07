@@ -1,3 +1,6 @@
+"""The store keys a Zarr node's metadata and attributes are read from and
+written to, one per format version.
+"""
 
 Z3_JSON = "zarr.json"
 Z2ARRAY_JSON = ".zarray"

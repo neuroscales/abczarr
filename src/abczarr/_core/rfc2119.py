@@ -1,22 +1,26 @@
+"""RFC 2119 requirement levels, usable as type-hint metadata on a metadata
+field.
+"""
+
 import typing_extensions as tx
 
 from .auto.factories import AnnotatedFactory
 
 
 class Requirement:
-    """
-    Base class for RFC 2119 requirement levels.
+    """Base class for an RFC 2119 requirement level.
 
-    It is recommended to use the subclasses Required, Recommended,
-    Optional, Prohibited, and NotRecommended instead of this class directly.
+    One of the five subclasses is used directly, not this base class:
+    `Required`, `Recommended`, `Optional`, `Prohibited`, or
+    `NotRecommended`. Each subclass has exactly one instance, exported
+    as a module-level constant (`MUST`, `SHOULD`, `MAY`, `MUST_NOT`,
+    `SHOULD_NOT`). Subscripting a subclass, as in `Required[int]`,
+    annotates the field's type hint with that subclass's instance,
+    recording the requirement level on the hint.
 
-    Instances of these subclasses are singletons and can be used as type
-    annotations to indicate the requirement level of a field in a metadata
-    class.
-
-    Singletons can also be instantiated from a string value, e.g.
-    `Requirement("MUST")` will return the singleton instance of the
-    Required class.
+    `Requirement("MUST")` returns the `MUST` singleton, and likewise for
+    each RFC 2119 keyword and its aliases (`"SHALL"` and `"REQUIRED"` both
+    return `MUST`).
     """
 
     def __new__(cls, value: tx.Union[str, "Requirement"] = "") -> tx.Self:
@@ -42,12 +46,11 @@ class Requirement:
 
 
 class Required(Requirement):
-    """
-    A field marked as REQUIRED under RFC 2119 MUST be present in the
-    metadata. If it is not present, the metadata is invalid.
+    """RFC 2119 MUST: a field that has to be present for the metadata to
+    be valid.
 
-    Validation tools should issue an error if a REQUIRED field is missing,
-    and they should consider the metadata invalid.
+    Metadata missing a `Required` field is invalid, and a validator
+    should report the field's absence as an error.
     """
 
     _INSTANCE = None
@@ -58,13 +61,12 @@ class Required(Requirement):
 
 
 class Recommended(Requirement):
-    """
-    A field marked as RECOMMENDED under RFC 2119 SHOULD be present in the
-    metadata. If it is not present, the metadata is still valid, but it may
-    be missing important information.
+    """RFC 2119 SHOULD: a field whose absence leaves the metadata valid
+    but incomplete.
 
-    Validation tools may issue a warning if a RECOMMENDED field is missing,
-    but they should not consider the metadata invalid.
+    Metadata missing a `Recommended` field is still valid. A validator
+    may report the absence as a warning, but must not treat it as an
+    error.
     """
 
     _INSTANCE = None
@@ -75,14 +77,11 @@ class Recommended(Requirement):
 
 
 class Optional(Requirement):
-    """
-    A field marked as OPTIONAL under RFC 2119 MAY be present in the
-    metadata. If it is not present, the metadata is still valid, and it may
-    be missing information that is not critical to the interpretation of the
-    metadata.
+    """RFC 2119 MAY: a field whose absence has no bearing on the
+    metadata's validity.
 
-    Validation tools should not issue a warning if an OPTIONAL field is
-    missing, and they should not consider the metadata invalid.
+    Metadata missing an `Optional` field is valid, and a validator
+    should neither warn nor error over its absence.
     """
     _INSTANCE = None
     _STR = "MAY"
@@ -92,12 +91,11 @@ class Optional(Requirement):
 
 
 class Prohibited(Requirement):
-    """
-    A field marked as PROHIBITED under RFC 2119 MUST NOT be present in the
-    metadata. If it is present, the metadata is invalid.
+    """RFC 2119 MUST NOT: a field that has to be absent for the metadata
+    to be valid.
 
-    Validation tools should issue an error if a PROHIBITED field is present,
-    and they should consider the metadata invalid.
+    Metadata carrying a `Prohibited` field is invalid, and a validator
+    should report the field's presence as an error.
     """
     _INSTANCE = None
     _STR = "MUST-NOT"
@@ -107,13 +105,12 @@ class Prohibited(Requirement):
 
 
 class NotRecommended(Requirement):
-    """
-    A field marked as NOT RECOMMENDED under RFC 2119 SHOULD NOT be present in
-    the metadata. If it is present, the metadata is still valid, but it may
-    be present in a way that is not recommended.
+    """RFC 2119 SHOULD NOT: a field whose presence leaves the metadata
+    valid but discouraged.
 
-    Validation tools may issue a warning if a NOT RECOMMENDED field is
-    present, but they should not consider the metadata invalid.
+    Metadata carrying a `NotRecommended` field is still valid. A
+    validator may report the presence as a warning, but must not treat
+    it as an error.
     """
     _INSTANCE = None
     _STR = "SHOULD-NOT"
@@ -123,10 +120,11 @@ class NotRecommended(Requirement):
 
 
 class MissingType:
-    """
-    Special value to indicate that a field is missing.
-    This is used to distinguish between a field that is explicitly set
-    to None and a field that is not present at all.
+    """The sentinel value of a field that is genuinely absent.
+
+    Distinguishes a field with no value at all from one explicitly set
+    to `None`, which is itself a value. The single instance is exported
+    as `MISSING`.
     """
 
     def __new__(cls) -> tx.Self:
@@ -156,16 +154,21 @@ Requirement._INSTANCES = {
 
 
 class RequirementMixin:
+    """Reads the `Requirement` instance a resolver was registered against,
+    caching the result.
+    """
 
     @property
     def requirement(self) -> Requirement:
+        """The `Requirement` instance this resolver was matched against."""
         if getattr(self, "_requirement", None) is None:
             self._requirement = self._get_requirement()
         return self._requirement
 
     def _get_requirement(self) -> Requirement:
-        # A metadata factory receives its metadata (the Requirement) as its
-        # hint; older code passed it among the type args.
+        # The Requirement instance is the resolver's own metadata (`hint`
+        # when the field carries no other type args), or one of the type
+        # args alongside another metadata value.
         if isinstance(self.hint, Requirement):
             return self.hint
         for arg in self.args:
@@ -176,8 +179,12 @@ class RequirementMixin:
 
 @AnnotatedFactory.register_metadata(Requirement)
 class RequirementFactory(RequirementMixin, AnnotatedFactory):
-    """
-    Factory for types annotated with a Requirement instance.
+    """Builds the default value for a field annotated with a `Requirement`.
+
+    A `Required` field has no default to build, since an absent required
+    field makes the metadata invalid rather than merely incomplete.
+    Building one raises `TypeError`. Every other requirement level
+    resolves to `MISSING`, marking the field as absent.
     """
 
     def __call__(self) -> Requirement:

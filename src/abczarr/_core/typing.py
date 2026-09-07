@@ -1,3 +1,9 @@
+"""Shared type aliases used throughout abczarr: numeric and JSON value
+types, shapes and chunk specifications, and the enumerated literals for
+Zarr's own vocabulary (access modes, compressor names, node types, and
+so on).
+"""
+
 __all__ = [
     "T",
     "OneOrIter",
@@ -167,7 +173,7 @@ JsonScalar = tx.Union[int, float, bool, str, None]
 Json = tx.Union[JsonScalar, tx.Mapping[str, "Json"], BuiltinSequence["Json"]]
 JsonDict = tx.Mapping[str, Json]
 
-# The frozen JSON model. Its mapping and sequence are the *immutable*
+# The frozen JSON model. Its mapping and sequence are the `immutable`
 # `FrozenDict` and `tuple`, matching the immutable nature of the frozen
 # attrs classes that hold it -- an extra item, or an `attributes` value, is
 # deep-frozen so the whole object stays genuinely immutable (and, as a
@@ -180,15 +186,14 @@ _FrozenJson = tx.Union[
 
 
 class ToFrozenJson(Converter[_FrozenJson, _FrozenJson]):
-    """Deep-freeze a JSON value into `FrozenDict`/`tuple`.
+    """Rebuilds a JSON-like value into its deeply frozen form.
 
-    Carried in `FrozenJson`'s `Annotated` metadata, so it applies to a
-    frozen-JSON value specifically. It converts the whole value in one
-    recursive pass -- a mapping becomes a `FrozenDict`, a list or tuple a
-    `tuple`, a scalar is returned unchanged -- rather than relying on the
-    frozen-JSON union's branches, which cannot tell a `dict` from a `list`
-    without corrupting one of them. The value is rebuilt directly (nothing
-    is serialized), so it stays deeply immutable, and hashable as a result.
+    Carried in `FrozenJson`'s `Annotated` metadata, so a field typed as
+    `FrozenJson` converts through this class. A mapping becomes a
+    `FrozenDict`, a list or tuple becomes a `tuple`, and every nested
+    value is converted the same way, recursively. A scalar is returned
+    unchanged. Nothing is serialized in the process, so the result stays
+    immutable and hashable all the way down.
     """
 
     def __call__(self, value: _FrozenJson) -> _FrozenJson:
@@ -255,7 +260,14 @@ PyramidMode = tx.Union[KnownPyramidMode, PyramidFunction]
 
 @register_converter(Json)
 class ToJson(Converter[Json, Json]):
-    """A converter for JSON-compatible types."""
+    """Normalizes a value to plain, JSON-compatible built-in types.
+
+    Round-trips the value through `json.dumps` and `json.loads`, so a
+    value that is already JSON-compatible, or close to it (a tuple in
+    place of a list, for example), comes back as the plain `dict`,
+    `list`, `str`, `int`, `float`, `bool`, or `None` JSON itself uses.
+    A value that `json.dumps` cannot serialize raises `TypeError`.
+    """
 
     def __call__(self, value: Json) -> Json:
         return json.loads(json.dumps(value))

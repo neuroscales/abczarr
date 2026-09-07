@@ -1,12 +1,12 @@
-"""Small async helpers: run a blocking call in a bounded pool, and fan a
-batch of coroutines out with a concurrency cap.
+"""Running a blocking call in a bounded thread pool, and fanning a batch
+of coroutines out with a concurrency cap.
 
-abczarr synthesizes the async-from-sync direction only (a synchronous
-backend run in a worker thread). The thread pool here is a dedicated,
-bounded one -- not asyncio's default executor -- so a burst of chunk I/O
-cannot starve the interpreter's shared pool, and the fan-out helper carries
-a default concurrency limit so a wide ``gather`` does not open thousands of
-threads or backend connections at once.
+abczarr synthesizes only the async-from-sync direction: a synchronous
+backend run in a worker thread. The thread pool here is dedicated and
+bounded, kept apart from asyncio's own default executor, so a burst of
+chunk I/O cannot starve the interpreter's shared pool. The fan-out
+helper carries a default concurrency limit, so a wide ``gather`` does
+not open thousands of threads or backend connections at once.
 """
 
 __all__ = [
@@ -54,7 +54,7 @@ def _thread_pool() -> ThreadPoolExecutor:
 async def run_sync(
     func: tx.Callable[..., V], *args: tx.Any, **kwargs: tx.Any
 ) -> V:
-    """Run the blocking *func* in the dedicated thread pool and await it.
+    """Run the blocking `func` in the dedicated thread pool and await it.
 
     A cancelled ``await`` cannot interrupt the running thread, so a write
     already handed to the backend may still land even when the awaiting task
@@ -70,12 +70,13 @@ async def concurrent_map(
     func: tx.Callable[..., tx.Awaitable[V]],
     limit: tx.Optional[int] = DEFAULT_CONCURRENCY,
 ) -> tx.List[V]:
-    """Await *func* over each of *items*, at most *limit* at a time.
+    """Await `func` over each of `items`, at most `limit` at a time.
 
-    Each item is a tuple of positional arguments for *func*. Results come
-    back in the order of *items*. A *limit* of ``None`` runs them all at
-    once (unbounded); the default caps the fan-out so a wide batch does not
-    open more connections or threads than the pool can serve.
+    Each item is a tuple of positional arguments for `func`. Results come
+    back in the order of `items`. A `limit` of ``None`` runs them all at
+    once, unbounded. The default instead caps the fan-out, so a wide
+    batch does not open more connections or threads than the pool can
+    serve.
     """
     if limit is None:
         return await asyncio.gather(*[func(*item) for item in items])
@@ -92,10 +93,11 @@ async def concurrent_map(
 def ensure_coroutine(
     fn: tx.Callable[..., tx.Any]
 ) -> tx.Callable[..., tx.Awaitable[tx.Any]]:
-    """Adapt *fn* to a coroutine function.
+    """Adapt `fn` to a coroutine function.
 
-    A coroutine function is returned unchanged; a plain callable is wrapped
-    so calling it runs it in the thread pool and returns an awaitable.
+    A coroutine function is returned unchanged. A plain callable is
+    wrapped, so calling the result runs `fn` in the thread pool and
+    returns an awaitable.
     """
     if asyncio.iscoroutinefunction(fn):
         return fn

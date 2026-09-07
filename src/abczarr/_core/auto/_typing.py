@@ -1,3 +1,7 @@
+"""Shared type variables and aliases for the class-building machinery in
+`abczarr._core.auto`.
+"""
+
 # stdlib
 import numbers
 from collections import abc

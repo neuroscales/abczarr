@@ -19,7 +19,7 @@ from abczarr._core import typing as tz
 def metadata_from_json(data: tz.JsonDict) -> tx.Any:
     """Build the abczarr metadata for a node from its metadata dict.
 
-    The Zarr format version and node type in *data* choose the class.
+    The Zarr format version and node type in `data` choose the class.
     """
     from abczarr.metadata import base, v1, v2, v3
 
