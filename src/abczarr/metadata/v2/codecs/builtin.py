@@ -1,6 +1,7 @@
-"""
-This module contains the built-in codecs that all zarr implementations
-SHOULD support, according to the specification.
+"""The built-in Zarr v2 codecs every implementation should support.
+
+Corresponds to the compressors the Zarr v2 specification names as
+required: blosc and gzip.
 """
 __all__ = [
     "BloscCodec",
@@ -28,8 +29,27 @@ class BloscCodec(CodecImpl):
     and then applies an inner compressor.
 
     Blosc groups same-typed bytes together before handing them to
-    ``cname`` (one of blosclz, lz4, lz4hc, snappy, zlib or zstd), and
+    `cname` (one of blosclz, lz4, lz4hc, snappy, zlib or zstd), and
     compresses the result in blocks so multiple threads can be used.
+
+    Attributes
+    ----------
+    id : str
+        Always ``"blosc"``.
+    cname : str
+        The inner compressor Blosc applies.
+    clevel : int
+        The compression level, from 0 to 9.
+    shuffle : int
+        The byte-shuffle filter applied before compression: ``0`` for
+        none, ``1`` for byte shuffle, ``2`` for bit shuffle, or
+        ``-1`` to let Blosc choose automatically.
+    blocksize : int
+        The block size Blosc compresses in, in bytes. ``0`` lets
+        Blosc choose automatically.
+    typesize : int or None
+        The size, in bytes, of the array's element type. Blosc uses
+        this to group same-position bytes together when shuffling.
     """
 
     # type aliases
@@ -46,6 +66,23 @@ class BloscCodec(CodecImpl):
     typesize: tx.Optional[int] = None
 
     def to_version(self, version: tz.ZarrVersion) -> Metadata:
+        """Convert this codec to another Zarr version.
+
+        Parameters
+        ----------
+        version : ZarrVersion
+            The target Zarr format version: 1, 2 or 3.
+
+        Returns
+        -------
+        Metadata
+            The equivalent Blosc codec for *version*.
+
+        Raises
+        ------
+        ValueError
+            If *version* is not 1, 2 or 3.
+        """
         if version == 2:
             return self
         if version == 3:
@@ -79,7 +116,15 @@ class BloscCodec(CodecImpl):
 @autofrozen
 class GzipCodec(CodecImpl):
     """Applies DEFLATE compression (gzip) at a configurable compression
-    level."""
+    level.
+
+    Attributes
+    ----------
+    id : str
+        Always ``"gzip"``.
+    level : int
+        The compression level, from 0 to 9.
+    """
 
     # type aliases
     CompressionLevel: tx.ClassVar = codecs.GzipCompressionLevel

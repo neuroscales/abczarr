@@ -1,8 +1,8 @@
 """Type aliases for Zarr v2 codec configurations (numcodecs API).
 
 Names the enumerated fields of the v2 built-in and extension codec
-configs. Previously imported from the removed ``abczarr.schemas.v2``
-TypedDicts; also reused by the v1 extension codecs.
+configs. The v1 extension codecs reuse these aliases as well, since
+v1 and v2 share the same numcodecs option shapes.
 """
 
 __all__ = [

@@ -36,11 +36,36 @@ class Codec(Metadata):
     ('gzip', GzipConfig(level=1))
 
     ```
+
+    Attributes
+    ----------
+    id : str
+        The numcodecs id of the codec, such as ``"zlib"`` or
+        ``"blosc"``.
     """
 
     id: str
 
     def to_version(self, version: tz.ZarrVersion) -> "Codec":
+        """Convert this codec to another Zarr version.
+
+        Parameters
+        ----------
+        version : ZarrVersion
+            The target Zarr format version: 1, 2 or 3.
+
+        Returns
+        -------
+        Codec
+            The equivalent codec for *version*: this object
+            unchanged for version 2, or the corresponding v1 or v3
+            codec object otherwise.
+
+        Raises
+        ------
+        ValueError
+            If *version* is not 1, 2 or 3.
+        """
         if version == 2:
             return self
         if version == 1:
@@ -66,5 +91,5 @@ class Codec(Metadata):
 
 @autofrozen(extra_items=False)
 class CodecImpl(Codec):
-    """This class is the base for a v2 codec whose options are declared,
-    not open-ended."""
+    """This class is the base for a v2 codec whose options are all
+    declared, not open-ended."""

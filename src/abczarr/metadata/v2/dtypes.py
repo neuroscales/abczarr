@@ -15,14 +15,20 @@ from abczarr._core.dtypes import to_zarr2 as dtype_to_zarr2
 
 
 class DType:
-    """A v2 data type is either a numpy dtype string or a structured
+    """A Zarr v2 data type: a numpy dtype string, or a structured
     field list.
 
-    Constructing ``DType(value)`` returns a
-    [`ScalarDType`][abczarr.metadata.v2.dtypes.ScalarDType] for a plain
-    dtype (e.g. ``"<f8"``) or a
-    [`StructDType`][abczarr.metadata.v2.dtypes.StructDType] for a
-    structured one, inferred from *value*.
+    Constructing `DType(value)` returns a
+    [ScalarDType][abczarr.metadata.v2.dtypes.ScalarDType] for a plain
+    dtype, such as ``"<f8"``, or a
+    [StructDType][abczarr.metadata.v2.dtypes.StructDType] for a
+    structured one, whichever *value* describes.
+
+    Parameters
+    ----------
+    value : dtype-like
+        A numpy dtype, a dtype string, or a structured field list, to
+        convert to the matching `DType` subclass.
     """
 
     def __new__(cls, value: tx.Any) -> tx.Self:
@@ -36,6 +42,25 @@ class DType:
         return super().__new__(cls, value)
 
     def to_version(self, version: int) -> tx.Any:
+        """Convert this data type to another Zarr version.
+
+        Parameters
+        ----------
+        version : int
+            The target Zarr format version: 1, 2 or 3.
+
+        Returns
+        -------
+        DType
+            This data type unchanged for version 1 or 2, since v1
+            and v2 share the same dtype model, or the equivalent v3
+            data type for version 3.
+
+        Raises
+        ------
+        ValueError
+            If *version* is not 1, 2 or 3.
+        """
         if version in (1, 2):
             return self
         elif version == 3:
@@ -53,18 +78,21 @@ class DType:
 
     @property
     def numpy(self) -> np.dtype:
-        """
-        Return the corresponding numpy dtype.
-        """
+        """The equivalent `numpy.dtype`."""
         return asdtype(self)
 
 
 class ScalarDType(str, DType):
-    """A v2 scalar data type is a numpy dtype string, for example
+    """A Zarr v2 scalar data type: a numpy dtype string, for example
     ``"<f8"``.
 
     A `ScalarDType` encodes the byte order, kind and item size the way
-    ``.zarray``'s ``dtype`` field does.
+    `.zarray`'s `dtype` field does.
+
+    Parameters
+    ----------
+    value : str
+        A numpy dtype string in Zarr v2's encoding, such as ``"<f8"``.
     """
 
     def __new__(cls, value: str) -> tx.Self:
@@ -75,16 +103,23 @@ class ScalarDType(str, DType):
 
 
 def _immutable(self: "StructDType", *args, **kwargs) -> None:
+    """Refuse to mutate *self*, since a `StructDType` is immutable."""
     raise TypeError(f"{self.__class__.__name__} is immutable")
 
 
 class StructDType(list, DType):
-    """A v2 structured data type is an ordered list of ``(name, dtype)``
-    fields.
+    """A Zarr v2 structured data type: an ordered list of
+    ``(name, dtype)`` fields.
 
     A `StructDType` mirrors numpy's structured dtype list form and is
-    immutable. The list-mutation methods raise instead of changing the
-    value after construction.
+    immutable. Every list-mutation method raises `TypeError` instead
+    of changing the value after construction.
+
+    Parameters
+    ----------
+    value : iterable of tuple
+        The ``(name, dtype)`` pairs the structured type is built
+        from, in field order.
     """
 
     def __new__(cls, value: tx.Iterable[tx.Tuple[str, str]]) -> tx.Self:
@@ -112,8 +147,12 @@ class StructDType(list, DType):
 
 @register_converter(DType)
 class DTypeConverter(Converter[DType, DTYPE_LIKE]):
-    """Converts a dtype-like value (a numpy dtype, string, or field list) to
-    a [`DType`][abczarr.metadata.v2.dtypes.DType]."""
+    """Converts a dtype-like value to a
+    [DType][abczarr.metadata.v2.dtypes.DType].
+
+    Accepts a numpy dtype, a dtype string, or a structured field
+    list.
+    """
 
     DEFAULT = DType
     FALLBACK = DType

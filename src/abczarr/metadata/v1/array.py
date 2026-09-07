@@ -1,11 +1,12 @@
 """Zarr v1 array metadata.
 
 Zarr v1 has no groups, so an array is the only node this format
-defines. Its metadata names a single numcodecs compressor by name and
-carries its options separately, the model v2 also uses -- converting
-to v2 or v3 (see
-[ArrayMetadata.to_version][abczarr.metadata.v1.array.ArrayMetadata.to_version])
-routes through v2's richer representation of the same compressor.
+defines. Its metadata names a single numcodecs compressor and
+carries that compressor's options separately. Zarr v2 uses the same
+model.
+[ArrayMetadata.to_version][abczarr.metadata.v1.array.ArrayMetadata.to_version]
+converts to v2 or v3 by routing through v2's richer representation
+of the same compressor.
 """
 
 __all__ = [
@@ -57,9 +58,9 @@ _SCALAR_NAME_KEY = {
 class ArrayMetadata(ArrayMetadataV1):
     """A Zarr v1 array's metadata: shape, dtype, chunking and codec.
 
-    Corresponds to the contents of `.zarray`. The compressor is
-    named by `compression` (a numcodecs id) with its options in
-    `compression_opts`; a `None` compression means the array is
+    Corresponds to the contents of `.zarray`. `compression` names the
+    compressor, and `compression_opts` carries that compressor's
+    options separately. A `compression` of `None` means the array is
     stored uncompressed.
 
     !!! example
@@ -80,6 +81,28 @@ class ArrayMetadata(ArrayMetadataV1):
         ZlibCodec(id='zlib', level=1)
 
         ```
+
+    Attributes
+    ----------
+    shape : tuple of int
+        The array's shape, one entry per dimension.
+    chunks : tuple of int
+        The shape of one chunk, one entry per dimension.
+    dtype : DType
+        The array's numpy dtype, encoded as a Zarr v1 dtype string.
+    compression : str or None
+        The numcodecs id of the compressor, such as ``"zlib"`` or
+        ``"blosc"``, or `None` for no compression.
+    compression_opts : object, int, str or None
+        The compressor's options. Most codecs take an options object.
+        A codec with a scalar form, such as an integer compression
+        level, may carry that scalar directly instead. `None` when
+        `compression` is `None`.
+    fill_value : int, float or None
+        The value an unwritten element of the array reads as.
+    order : str
+        The memory layout of a decoded chunk: ``"C"`` for row-major
+        or ``"F"`` for column-major.
     """
 
     # --- Required ----
@@ -103,12 +126,12 @@ class ArrayMetadata(ArrayMetadataV1):
     ) -> base.ArrayMetadata:
         """Convert this array's metadata to another Zarr version.
 
-        A v1 array converts to v2 or v3 without loss: v2's compressor
-        model can represent everything v1's compression/
-        compression_opts pair can, and v3's codec pipeline in turn
-        can represent v2's. *policy* is accepted for a consistent
-        signature across versions but is never invoked, since nothing
-        is dropped.
+        A v1 array converts to v2 or v3 without loss. V2's compressor
+        model can represent everything the `compression` and
+        `compression_opts` pair can express, and v3's codec pipeline
+        can in turn represent v2's. *policy* is accepted for a
+        signature consistent with other versions, but it is never
+        invoked here, since nothing is dropped.
 
         Parameters
         ----------
@@ -138,11 +161,14 @@ class ArrayMetadata(ArrayMetadataV1):
         raise ValueError(f"Unsupported version: {version}")
 
     def required_features(self) -> tx.FrozenSet[str]:
-        """The features a driver needs to read or write this array.
+        """Report the features a driver needs to read or write this array.
 
-        A single-element set naming the compressor, e.g.
-        ``{"v1:codec:zlib"}``, or an empty set when the array is
-        stored uncompressed.
+        Returns
+        -------
+        frozenset of str
+            A single-element set naming the compressor, for example
+            ``{"v1:codec:zlib"}``, or an empty set when the array is
+            stored uncompressed.
         """
         if not self.compression:
             return frozenset()

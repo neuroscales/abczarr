@@ -1,8 +1,7 @@
 """Type aliases for Zarr v1 codec configurations (numcodecs API).
 
-Names the enumerated fields of the v1 built-in codec options, plus the
-v1 codec-name literal. Previously imported from the removed
-``abczarr.schemas.v1`` TypedDicts.
+Names the enumerated fields of the v1 built-in codec options, plus
+the v1 codec-name literal.
 """
 
 __all__ = [

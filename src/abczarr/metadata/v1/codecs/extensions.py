@@ -1,3 +1,9 @@
+"""Extension codecs for Zarr v1, beyond the required blosc and gzip.
+
+Each class holds the options of one numcodecs compressor as it is
+carried in a Zarr v1 array's `compression_opts` field.
+"""
+
 __all__ = [
     "Bz2CodecOptions",
     "LZMACodecOptions",
@@ -25,6 +31,14 @@ from .base import CodecOptionsImpl
 @register_subclass(id="bz2")
 @autofrozen
 class Bz2CodecOptions(CodecOptionsImpl):
+    """Options for bzip2 compression.
+
+    Attributes
+    ----------
+    level : int
+        The compression level, from 0 to 9.
+    """
+
     # type aliases
     CompressionLevel: tx.ClassVar = codecs.Bz2CompressionLevel
 
@@ -38,6 +52,25 @@ class Bz2CodecOptions(CodecOptionsImpl):
 @register_subclass(id="lzma")
 @autofrozen
 class LZMACodecOptions(CodecOptionsImpl):
+    """Options for LZMA compression, the compression used by
+    `.xz`/`.7z` files, via Python's `lzma` module.
+
+    `filters` carries the raw `lzma` filter chain for cases that need
+    one, such as selecting a custom dictionary size. Most uses only
+    need `format`, `check` and `preset`.
+
+    Attributes
+    ----------
+    format : int
+        The LZMA container format to write.
+    check : int
+        The integrity check to embed in the compressed stream.
+    preset : int
+        The compression level, from 0 to 9.
+    filters : tuple of dict
+        The raw `lzma` filter chain, when a custom one is needed.
+    """
+
     # type aliases
     Format: tx.ClassVar = codecs.LZMAFormat
     Check: tx.ClassVar = codecs.LZMACheck
@@ -56,6 +89,16 @@ class LZMACodecOptions(CodecOptionsImpl):
 @register_subclass(id="lz4")
 @autofrozen
 class LZ4CodecOptions(CodecOptionsImpl):
+    """Options for LZ4 compression, which is very fast at the cost of
+    a lower compression ratio.
+
+    Attributes
+    ----------
+    acceleration : int
+        A further speed-for-ratio trade-off. A higher value
+        compresses faster and produces a lower ratio.
+    """
+
     # attributes
     acceleration: int
 
@@ -66,6 +109,30 @@ class LZ4CodecOptions(CodecOptionsImpl):
 @register_subclass(id="pcodec")
 @autofrozen
 class PCodecOptions(CodecOptionsImpl):
+    """Options for Pcodec (`pco`), a compressor that models each
+    chunk's value distribution directly instead of treating the
+    chunk as a byte stream.
+
+    Attributes
+    ----------
+    level : int
+        The compression level.
+    mode_spec : str
+        How Pcodec chooses its numerical mode: ``"auto"`` or
+        ``"classic"``.
+    delta_spec : str
+        How Pcodec chooses whether to delta-encode values before
+        modeling them.
+    paging_spec : str
+        How Pcodec splits a chunk into pages for encoding.
+    delta_encoding_order : int
+        The order of delta encoding applied, when `delta_spec`
+        selects one.
+    equal_pages_up_to : int
+        The maximum page size, in elements, when `paging_spec` is
+        ``"equal_pages_up_to"``.
+    """
+
     # type aliases
     CompressionLevel: tx.ClassVar = codecs.PCodecCompressionLevel
     Mode: tx.ClassVar = codecs.PCodecMode
@@ -88,6 +155,29 @@ class PCodecOptions(CodecOptionsImpl):
 @register_subclass(id="zfpy")
 @autofrozen
 class ZFPYCodecOptions(CodecOptionsImpl):
+    """Options for ZFP compression of floating-point arrays, via the
+    `zfpy` bindings.
+
+    `mode` selects which of `tolerance`, `rate` and `precision`
+    governs the accuracy/size trade-off. Compression is lossy,
+    except in the fixed-accuracy mode with a tolerance of zero.
+
+    Attributes
+    ----------
+    mode : int
+        The accuracy mode ZFP compresses in.
+    tolerance : float
+        The maximum absolute error allowed, in fixed-accuracy mode.
+    rate : int
+        The number of bits per value, in fixed-rate mode.
+    precision : int
+        The number of bits of precision retained, in fixed-precision
+        mode.
+    compression_kwargs : dict
+        Extra keyword arguments forwarded to the underlying `zfpy`
+        call.
+    """
+
     # type aliases
     Mode: tx.ClassVar = codecs.ZFPYMode
 
@@ -105,6 +195,14 @@ class ZFPYCodecOptions(CodecOptionsImpl):
 @register_subclass(id="zlib")
 @autofrozen
 class ZlibCodecOptions(CodecOptionsImpl):
+    """Options for DEFLATE compression (zlib).
+
+    Attributes
+    ----------
+    level : int
+        The compression level, from 0 to 9.
+    """
+
     # type aliases
     CompressionLevel: tx.ClassVar = codecs.ZlibCompressionLevel
 
@@ -118,6 +216,14 @@ class ZlibCodecOptions(CodecOptionsImpl):
 @register_subclass(id="zstd")
 @autofrozen
 class ZstdCodecOptions(CodecOptionsImpl):
+    """Options for Zstandard compression.
+
+    Attributes
+    ----------
+    level : int
+        The compression level.
+    """
+
     # attributes
     level: int
 

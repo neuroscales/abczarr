@@ -1,6 +1,7 @@
-"""
-This module contains the built-in codecs that all zarr implementations
-SHOULD support, according to the specification.
+"""The built-in Zarr v1 codecs every implementation should support.
+
+Corresponds to the compressors the Zarr v1 specification names as
+required: blosc and gzip.
 """
 __all__ = [
     "BloscCodecOptions",
@@ -23,6 +24,29 @@ from .base import CodecOptionsImpl
 @register_subclass(id="blosc")
 @autofrozen
 class BloscCodecOptions(CodecOptionsImpl):
+    """Options for Blosc, a meta-compressor that shuffles bytes and
+    then applies an inner compressor.
+
+    Attributes
+    ----------
+    cname : str
+        The inner compressor Blosc applies: one of ``"blosclz"``,
+        ``"lz4"``, ``"lz4hc"``, ``"snappy"``, ``"zlib"`` or
+        ``"zstd"``.
+    clevel : int
+        The compression level, from 0 to 9.
+    shuffle : int
+        The byte-shuffle filter applied before compression: ``0`` for
+        none, ``1`` for byte shuffle, ``2`` for bit shuffle, or
+        ``-1`` to let Blosc choose automatically.
+    blocksize : int
+        The block size Blosc compresses in, in bytes. ``0`` lets
+        Blosc choose automatically.
+    typesize : int or None
+        The size, in bytes, of the array's element type. Blosc uses
+        this to group same-position bytes together when shuffling.
+    """
+
     # type aliases
     CodecName: tx.ClassVar = codecs.BloscCodecName
     CompressionLevel: tx.ClassVar = codecs.BloscCompressionLevel
@@ -42,6 +66,14 @@ class BloscCodecOptions(CodecOptionsImpl):
 @register_subclass(id="gzip")
 @autofrozen
 class GzipCodecOptions(CodecOptionsImpl):
+    """Options for DEFLATE compression (gzip).
+
+    Attributes
+    ----------
+    level : int
+        The compression level, from 0 to 9.
+    """
+
     # type aliases
     CompressionLevel: tx.ClassVar = codecs.GzipCompressionLevel
 

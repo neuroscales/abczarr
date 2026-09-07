@@ -9,8 +9,37 @@ from abczarr.metadata.base import Metadata
 
 @autofrozen(extra_items=tz.FrozenJson)
 class CodecOptions(Metadata):
+    """The options of a Zarr v1 compressor, keyed by numcodecs id.
+
+    A Zarr v1 array names its compressor through the separate
+    `compression` field and carries the compressor's own options as
+    a `CodecOptions` object in `compression_opts`. A built-in
+    compressor, such as blosc or gzip, is represented by one of its
+    declared subclasses. An unrecognized compressor's options are
+    still readable through this class, whose fields are whatever
+    keys the document carries.
+    """
 
     def to_version(self, version: tz.ZarrVersion) -> Metadata:
+        """Convert these codec options to another Zarr version.
+
+        Parameters
+        ----------
+        version : ZarrVersion
+            The target Zarr format version: 1, 2 or 3.
+
+        Returns
+        -------
+        Metadata
+            The equivalent codec for *version*: this object unchanged
+            for version 1, or a v2 or v3 codec object otherwise.
+
+        Raises
+        ------
+        ValueError
+            If *version* is not 1, 2 or 3, or if the compressor's
+            numcodecs id cannot be determined.
+        """
         if version == 1:
             return self
 
@@ -51,4 +80,5 @@ class CodecOptions(Metadata):
 
 @autofrozen(extra_items=False)
 class CodecOptionsImpl(CodecOptions):
-    ...
+    """This class is the base for a v1 codec's options whose fields are
+    all declared, not open-ended."""

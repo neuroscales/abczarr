@@ -26,9 +26,17 @@ class CodecConfigImpl(CodecConfig):
     are all declared."""
 
     def to_json(self) -> tz.JsonDict:
-        # A codec configuration names only the fields the codec has, and the
-        # codec schemas allow no other keys and no nulls. An unset optional
-        # field (None) is therefore omitted rather than written as null.
+        """Serialize this configuration to its JSON representation.
+
+        An unset optional field is omitted from the result rather
+        than written as `null`, since the codec schemas allow no
+        keys beyond the ones the codec declares.
+
+        Returns
+        -------
+        dict
+            The JSON-compatible representation of this configuration.
+        """
         return {
             key: value
             for key, value in super().to_json().items()
@@ -37,12 +45,12 @@ class CodecConfigImpl(CodecConfig):
 
 
 def _v2_id(name: str) -> str:
-    """The numcodecs id a v3 codec *name* maps back to.
+    """Recover the numcodecs id a v3 codec *name* maps back to.
 
     A v2 filter with no dedicated v3 codec is carried in v3 under the
-    numcodecs extension namespace (``"numcodecs.delta"``); stripping that
-    prefix recovers the original numcodecs id (``"delta"``) so a
-    v2 -> v3 -> v2 round trip is lossless.
+    numcodecs extension namespace, for example ``"numcodecs.delta"``.
+    Stripping that prefix recovers the original numcodecs id
+    (``"delta"``), so a v2-to-v3-to-v2 round trip is lossless.
     """
     prefix = "numcodecs."
     if name.startswith(prefix):
@@ -66,20 +74,54 @@ class Codec(Extension):
     [`abczarr.metadata.v2.codecs.base.Codec`][abczarr.metadata.v2.codecs.base.Codec]
     for a worked example comparing the same codec across the v1, v2 and
     v3 metadata models.
+
+    Attributes
+    ----------
+    name : str
+        The name of the codec, such as ``"gzip"`` or ``"bytes"``.
+    configuration : CodecConfig
+        The codec's own parameters.
     """
 
     configuration: CodecConfig
 
     def to_json(self) -> tz.JsonDict:
-        # A codec with no configuration parameters (crc32c, or a bytes codec
-        # for a single-byte dtype) is written as a bare name, not with an
-        # empty configuration object.
+        """Serialize this codec to its JSON representation.
+
+        A codec with no configuration parameters, such as `crc32c`
+        or a bytes codec for a single-byte dtype, is written as a
+        bare name, not with an empty configuration object.
+
+        Returns
+        -------
+        dict
+            The JSON-compatible representation of this codec.
+        """
         obj = super().to_json()
         if obj.get("configuration") == {}:
             obj.pop("configuration")
         return obj
 
     def to_version(self, version: tz.ZarrVersion) -> "Codec":
+        """Convert this codec to another Zarr version.
+
+        Parameters
+        ----------
+        version : ZarrVersion
+            The target Zarr format version: 1, 2 or 3.
+
+        Returns
+        -------
+        Codec
+            The equivalent codec for *version*: this object unchanged
+            for version 3, or the corresponding v1 or v2 codec object
+            otherwise.
+
+        Raises
+        ------
+        ValueError
+            If *version* is not 1, 2 or 3.
+        """
         if version == 3:
             return self
         if version == 1:
