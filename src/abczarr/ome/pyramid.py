@@ -68,7 +68,7 @@ def _axis_index(
     ndim: int,
     names: tx.Optional[tx.Sequence[tx.Optional[str]]],
 ) -> int:
-    """The axis that an index-or-name *key* refers to."""
+    """The axis that an index-or-name `key` refers to."""
     if isinstance(key, int) and not isinstance(key, bool):
         if not -ndim <= key < ndim:
             raise ValueError(f"axis {key} is out of range for {ndim} axes")
@@ -88,10 +88,10 @@ def _resolve_factors(
     ndim: int,
     names: tx.Optional[tx.Sequence[tx.Optional[str]]] = None,
 ) -> tz.Shape:
-    """Turn a *factor* spec into one integer factor per axis.
+    """Turn a `factor` spec into one integer factor per axis.
 
     An `int` applies to every axis. A sequence gives one factor per axis, and
-    its length must be *ndim*. A mapping keys a factor by axis index or
+    its length must be `ndim`. A mapping keys a factor by axis index or
     dimension name. A `None` key in the mapping sets the default for the axes
     it does not mention, and that default is 2 when there is no `None` key.
     """
@@ -157,19 +157,19 @@ def downsample_array(
     factor: FactorSpec = 2,
     method: str = "mean",
 ) -> ZarrArray:
-    """Write *target* as *source* coarsened by *factor*.
+    """Write `target` as `source` coarsened by `factor`.
 
-    The array named *source* is read from *group* and shrunk one axis at a
-    time by that axis's factor, with a windowed reduction chosen by *method*.
+    The array named `source` is read from `group` and shrunk one axis at a
+    time by that axis's factor, with a windowed reduction chosen by `method`.
     An axis whose factor is 1, or that is already length one, keeps its
     resolution. An axis whose length is not a multiple of its factor is
     trimmed to the largest multiple before the reduction. The result is
-    written as a new array named *target* in the same group and returned.
+    written as a new array named `target` in the same group and returned.
 
     Parameters
     ----------
     group : ZarrGroup
-        The group that holds *source* and receives *target*.
+        The group that holds `source` and receives `target`.
     source : str
         The name of the array to downsample.
     target : str
@@ -221,7 +221,7 @@ def _create_level(
     shape: tz.ShapeLike,
     names: tx.Optional[tx.Sequence[tx.Optional[str]]],
 ) -> ZarrArray:
-    """Create *target* in *group* as a coarser copy of *source*.
+    """Create `target` in `group` as a coarser copy of `source`.
 
     The new level reuses the base array's metadata, so its data type, chunk
     grid, codecs, compressor, fill value, and every other stored option match
@@ -244,7 +244,7 @@ def _create_level(
 
 
 def _level_scale(factors: tz.ShapeLike, level: int) -> tx.Any:
-    """The cumulative shrink at *level*, for naming a level by its scale.
+    """The cumulative shrink at `level`, for naming a level by its scale.
 
     A single number is returned when every axis uses the same factor, so
     ``"s{scale}"`` names a halving pyramid ``s2``, ``s4``, and so on. When the
@@ -271,13 +271,13 @@ def create_pyramid(
     method: str = "mean",
     name: tx.Union[str, tx.Callable[[int], str]] = "{level}",
 ) -> tx.List[ZarrArray]:
-    """Add downsampled levels below *source* and record them in the metadata.
+    """Add downsampled levels below `source` and record them in the metadata.
 
-    Level 0 is the array already named *source*, and its OME metadata is
-    already written on *group*. Each further level is the one above it
-    coarsened by *factor* through
+    Level 0 is the array already named `source`, and its OME metadata is
+    already written on `group`. Each further level is the one above it
+    coarsened by `factor` through
     [downsample_array][abczarr.ome.pyramid.downsample_array]. Building stops
-    after *levels* extra levels, or earlier once no axis can shrink further.
+    after `levels` extra levels, or earlier once no axis can shrink further.
     Every level's array is returned, the base first and the coarsest last.
 
     The group's OME metadata is read and extended to name the new levels. Each
@@ -288,7 +288,7 @@ def create_pyramid(
     Parameters
     ----------
     group : ZarrGroup
-        The group that holds *source* and its OME metadata. The coarser levels
+        The group that holds `source` and its OME metadata. The coarser levels
         are written into the group, and the metadata is extended to describe
         them.
     source : str
@@ -308,7 +308,7 @@ def create_pyramid(
         index as ``level`` and the cumulative shrink as ``scale``, so the
         default ``"{level}"`` names levels ``"1"``, ``"2"``, and so on, and
         ``"{scale}"`` names them by factor. A callable is given the level
-        index and returns the name. Level 0 keeps the name *source*.
+        index and returns the name. Level 0 keeps the name `source`.
 
     Returns
     -------
@@ -318,7 +318,7 @@ def create_pyramid(
     Raises
     ------
     ValueError
-        If *group* has no OME metadata to extend.
+        If `group` has no OME metadata to extend.
     """
     ome = group.ome
     if ome is None:
@@ -371,7 +371,7 @@ def _extend_metadata(
     paths: tx.Sequence[str],
     factors: tz.Shape,
 ) -> None:
-    """Rewrite *group*'s OME metadata to include the new levels.
+    """Rewrite `group`'s OME metadata to include the new levels.
 
     The metadata is read as its JSON document and only the new levels are
     added, so everything else it carries is kept, whether or not it was written
@@ -402,7 +402,7 @@ def _first_multiscale(document: tx.Any) -> tx.Any:
 
 
 def _base_dataset(datasets: tx.Sequence[tx.Any], source: str) -> tx.Any:
-    """The dataset for the base level named *source*, or the first one."""
+    """The dataset for the base level named `source`, or the first one."""
     for dataset in datasets:
         if dataset.get("path") == source:
             return dataset
