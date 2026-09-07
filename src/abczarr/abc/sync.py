@@ -179,6 +179,43 @@ class ZarrNode(SupportsCapabilities, ABC):
 
         delete_ome(self)
 
+    def update_ome(self, ome: "tx.Union[OME, tz.JsonDict]") -> "ZarrNode":
+        """Shallow-merge OME metadata into this node's, and persist it.
+
+        The OME counterpart of
+        [update_attributes][abczarr.abc.sync.ZarrNode.update_attributes]:
+        the top-level keys of *ome* replace those of the node's current OME
+        metadata (``version`` / ``multiscales`` / ``omero`` / ...), and any
+        the node already has that *ome* does not name are kept. When the
+        node has no OME metadata yet and the result still names no version,
+        it defaults to the latest released OME version.
+
+        The merge is shallow -- it replaces whole top-level keys, not the
+        contents of a multiscale or plate. For a structured edit, read
+        [ome][abczarr.abc.sync.ZarrNode.ome], change the typed object, and
+        assign it back.
+
+        !!! example
+            ```python
+            node.update_ome({"omero": {"channels": [...]}})
+            ```
+
+        Parameters
+        ----------
+        ome : OME or dict
+            The metadata whose top-level keys are merged in.
+
+        Returns
+        -------
+        ZarrNode
+            This node, with the merged metadata visible on
+            [ome][abczarr.abc.sync.ZarrNode.ome].
+        """
+        from abczarr.ome.node import update_ome
+
+        update_ome(self, ome)
+        return self
+
     def update_attributes(self, attributes: tz.JsonDict) -> "ZarrNode":
         """Add or replace several attributes at once, and persist them.
 

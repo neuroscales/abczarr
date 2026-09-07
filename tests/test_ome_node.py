@@ -8,6 +8,7 @@ and earlier. These tests exercise a round trip through a real local
 group (no backend needed) for each envelope.
 """
 
+import asyncio
 import pathlib
 
 import pytest
@@ -15,6 +16,7 @@ import pytest
 from abczarr.abc.sync import PathGroup
 from abczarr.metadata.base import GroupMetadataV3
 from abczarr.ome import v0_4, v0_5, v0_6rc0
+from abczarr.ome.base import LATEST_STABLE
 
 # --- example metadata, one per envelope ------------------------------------
 
@@ -179,3 +181,115 @@ def test_setting_ome_from_a_plain_dict(tmp_path: pathlib.Path) -> None:
     group = _group(tmp_path)
     group.ome = _OME_05
     assert _reopen(group).ome == v0_5.OME.from_json(_OME_05)
+
+
+# --- update_ome: shallow merge --------------------------------------------
+
+
+def test_update_ome_replaces_only_the_keys_given(
+    tmp_path: pathlib.Path,
+) -> None:
+    group = _group(tmp_path)
+    group.ome = v0_5.OME.from_json(_OME_05)
+    group.update_ome({"omero": {"channels": []}})
+    merged = _reopen(group).ome.to_json()
+    # the key passed is added; the untouched multiscales survive
+    assert "omero" in merged
+    assert merged["multiscales"] == _OME_05["multiscales"]
+    assert merged["version"] == "0.5"
+
+
+def test_update_ome_replaces_a_whole_top_level_key(
+    tmp_path: pathlib.Path,
+) -> None:
+    group = _group(tmp_path)
+    group.ome = v0_5.OME.from_json(_OME_05)
+    replacement = {
+        "multiscales": [
+            {
+                "axes": [{"name": "x", "type": "space"}],
+                "datasets": [{"path": "9", "coordinateTransformations": [
+                    {"type": "scale", "scale": [2.0]}]}],
+            }
+        ]
+    }
+    group.update_ome(replacement)
+    reopened = _reopen(group).ome
+    # the whole multiscales key is replaced, not deep-merged
+    assert reopened.multiscales[0].datasets[0].path == "9"
+
+
+def test_update_ome_defaults_version_when_the_node_had_none(
+    tmp_path: pathlib.Path,
+) -> None:
+    group = _group(tmp_path)
+    group.attrs["unrelated"] = "keep me"
+    group.update_ome(
+        {"multiscales": _OME_05["multiscales"]}  # no version anywhere
+    )
+    reopened = _reopen(group)
+    assert reopened.ome.version == LATEST_STABLE == "0.5"
+    assert reopened.attrs["unrelated"] == "keep me"
+
+
+# --- the async twin: read is a sync property, writes are awaited -----------
+#
+# pytest-asyncio is not a dependency, so each coroutine is driven with
+# ``asyncio.run`` from a plain synchronous test -- the same harness
+# ``tests/test_async_nodes.py`` uses. The async path group runs over a local
+# store, so these need no backend.
+
+
+def _async_group(tmp_path: pathlib.Path) -> object:
+    return _group(tmp_path).as_async()
+
+
+def _async_reopen(node: object) -> object:
+    return PathGroup(node.store_path).as_async()
+
+
+def test_async_ome_read_is_a_synchronous_property() -> None:
+    # mirrors ``attrs``: reading OME on the async node never blocks
+    from abczarr.abc.asynchronous import AsyncZarrNode
+
+    prop = AsyncZarrNode.ome
+    assert isinstance(prop, property)
+    assert not asyncio.iscoroutinefunction(prop.fget)
+
+
+@pytest.mark.parametrize(
+    ("module", "data"),
+    [(v0_4, _OME_04), (v0_5, _OME_05), (v0_6rc0, _OME_06)],
+)
+def test_async_set_ome_roundtrips_through_the_sync_property(
+    tmp_path: pathlib.Path, module: object, data: dict
+) -> None:
+    node = _async_group(tmp_path)
+    ome = module.OME.from_json(data)
+    assert node.ome is None
+    asyncio.run(node.set_ome(ome))
+    assert _async_reopen(node).ome == ome
+
+
+def test_async_update_ome_shallow_merges(tmp_path: pathlib.Path) -> None:
+    node = _async_group(tmp_path)
+    asyncio.run(node.set_ome(v0_5.OME.from_json(_OME_05)))
+    asyncio.run(node.update_ome({"omero": {"channels": []}}))
+    merged = _async_reopen(node).ome.to_json()
+    assert "omero" in merged
+    assert merged["multiscales"] == _OME_05["multiscales"]
+
+
+def test_async_update_ome_defaults_version(tmp_path: pathlib.Path) -> None:
+    node = _async_group(tmp_path)
+    asyncio.run(node.update_ome({"multiscales": _OME_05["multiscales"]}))
+    assert _async_reopen(node).ome.version == LATEST_STABLE
+
+
+def test_async_del_ome_removes_the_metadata(tmp_path: pathlib.Path) -> None:
+    node = _async_group(tmp_path)
+    asyncio.run(node.set_ome(v0_6rc0.OME.from_json(_OME_06)))
+    asyncio.run(node.del_ome())
+    reopened = _async_reopen(node)
+    assert reopened.ome is None
+    assert dict(reopened.attrs) == {}

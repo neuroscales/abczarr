@@ -18,7 +18,13 @@ and an ``update_attributes`` method -- the same surface
 [attrs][abczarr.abc.sync.ZarrNode.attrs] is built on.
 """
 
-__all__ = ["read_ome", "write_ome", "delete_ome", "ome_version"]
+__all__ = [
+    "read_ome",
+    "write_ome",
+    "update_ome",
+    "delete_ome",
+    "ome_version",
+]
 
 # stdlib
 from collections import abc
@@ -27,7 +33,7 @@ from collections import abc
 import typing_extensions as tx
 
 # locals
-from .base import _MODULES, _VERSIONS, OME
+from .base import _MODULES, _VERSIONS, LATEST_STABLE, OME
 
 if tx.TYPE_CHECKING:
     # For annotations only; a runtime import of the node contract would
@@ -49,6 +55,9 @@ _CARRIERS = (
     "bioformats2raw.layout",
     "series",
 )
+
+#: Every attribute key OME metadata can occupy, either envelope.
+_OME_KEYS = (_OME_KEY,) + _CARRIERS
 
 
 def read_ome(node: "ZarrNode") -> tx.Optional[OME]:
@@ -105,27 +114,105 @@ def write_ome(
         of the inner metadata (which must carry a ``version``). Its
         version selects the envelope.
     """
+    payload, stale = ome_write_plan(node.attrs, ome)
+    # Replace the node's OME metadata wholesale: drop any stale OME keys the
+    # new payload does not itself write (the other envelope, a carrier that
+    # is no longer present), while leaving unrelated attributes untouched.
+    attrs = node.attrs
+    for key in stale:
+        del attrs[key]
+    node.update_attributes(payload)
+
+
+def ome_write_plan(
+    current: tx.Mapping[str, tx.Any],
+    ome: tx.Union[OME, tx.Mapping[str, tx.Any]],
+) -> tx.Tuple[tx.Dict[str, tx.Any], tx.List[str]]:
+    """Plan the attribute write that stores *ome* over *current*.
+
+    A pure function shared by the sync and async write paths: it works out
+    the envelope from the version and returns ``(payload, stale)`` -- the
+    attribute keys to set, and the OME keys already present that the new
+    payload does not write and so must be dropped (the other envelope, or a
+    carrier no longer used). Unrelated attributes are named in neither and
+    stay as they are.
+
+    Parameters
+    ----------
+    current : mapping
+        The node's current attributes.
+    ome : OME or mapping
+        The metadata to store; a mapping is parsed to a typed container so
+        its version selects the envelope.
+
+    Returns
+    -------
+    (dict, list of str)
+        The attributes to set, and the OME keys to remove.
+    """
     if not isinstance(ome, OME):
         # A plain mapping is parsed to the typed container first, so its
         # version -- and therefore the right envelope -- is known.
         ome = OME.from_json(ome)
     inner = ome.to_json()
     if _is_wrapped(ome.version):
-        payload = {_OME_KEY: inner}
+        payload = {_OME_KEY: inner}  # type: tx.Dict[str, tx.Any]
     else:
         # The <= 0.4 envelope has no top-level ``version`` -- it lives inside
         # the multiscale (and the plate / well) -- so drop the one the typed
         # container emits before storing the payload's keys directly.
         inner.pop("version", None)
         payload = inner
-    # Replace the node's OME metadata wholesale: drop any stale OME keys the
-    # new payload does not itself write (the other envelope, a carrier that
-    # is no longer present), while leaving unrelated attributes untouched.
-    attrs = node.attrs
-    for key in (_OME_KEY,) + _CARRIERS:
-        if key in attrs and key not in payload:
-            del attrs[key]
-    node.update_attributes(payload)
+    stale = [
+        key for key in _OME_KEYS if key in current and key not in payload
+    ]
+    return payload, stale
+
+
+def update_ome(
+    node: "ZarrNode", ome: tx.Union[OME, tx.Mapping[str, tx.Any]]
+) -> None:
+    """Shallow-merge OME metadata into a group's, and persist it.
+
+    The top-level keys of *ome* replace those on the node's current OME
+    metadata (``version`` / ``multiscales`` / ``omero`` / ...); any the node
+    already has and *ome* does not name are kept. The mirror of
+    [update_attributes][abczarr.abc.sync.ZarrNode.update_attributes] for OME
+    metadata. When the node has no OME metadata yet and the merged result
+    still names no version, it defaults to the latest released OME version.
+
+    The merge is deliberately shallow -- it replaces whole top-level keys,
+    it does not descend into a multiscale or a plate. For a structured edit,
+    read the typed object, change it (with ``evolve``), and assign it back.
+
+    Parameters
+    ----------
+    node : ZarrNode
+        The group to update.
+    ome : OME or mapping
+        The metadata whose top-level keys are merged in.
+    """
+    write_ome(node, merge_ome(read_ome(node), ome))
+
+
+def merge_ome(
+    current: tx.Optional[OME],
+    incoming: tx.Union[OME, tx.Mapping[str, tx.Any]],
+) -> tx.Dict[str, tx.Any]:
+    """The shallow merge of *incoming* onto *current*, as an inner OME dict.
+
+    A pure function shared by the sync and async ``update_ome``. Top-level
+    keys of *incoming* replace those of *current*; a version is defaulted to
+    [LATEST_STABLE][abczarr.ome.base.LATEST_STABLE] only when neither side
+    supplies one.
+    """
+    merged = current.to_json() if current is not None else {}
+    if isinstance(incoming, OME):
+        incoming = incoming.to_json()
+    merged.update(incoming)
+    if not merged.get("version"):
+        merged["version"] = LATEST_STABLE
+    return merged
 
 
 def delete_ome(node: "ZarrNode") -> None:
@@ -140,10 +227,23 @@ def delete_ome(node: "ZarrNode") -> None:
     node : ZarrNode
         The group to clear.
     """
+    _, stale = ome_delete_plan(node.attrs)
     attrs = node.attrs
-    for key in (_OME_KEY,) + _CARRIERS:
-        if key in attrs:
-            del attrs[key]
+    for key in stale:
+        del attrs[key]
+
+
+def ome_delete_plan(
+    current: tx.Mapping[str, tx.Any],
+) -> tx.Tuple[tx.Dict[str, tx.Any], tx.List[str]]:
+    """Plan the attribute write that clears OME metadata from *current*.
+
+    The delete counterpart of
+    [ome_write_plan][abczarr.ome.node.ome_write_plan], with the same
+    ``(payload, stale)`` shape so the two share one async persistence path:
+    nothing to set, every OME key present to drop.
+    """
+    return {}, [key for key in _OME_KEYS if key in current]
 
 
 def ome_version(node: "ZarrNode") -> tx.Optional[str]:

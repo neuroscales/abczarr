@@ -64,6 +64,16 @@ _MODULES = {
 }
 _VERSIONS = list(_MODULES)
 
+
+def _is_stable(version: str) -> bool:
+    """Whether *version* is a released version, not a ``dev``/``rc`` one."""
+    return "dev" not in version and "rc" not in version
+
+
+#: The newest released (non-preview) OME-NGFF version -- ``"0.5"`` today.
+#: The convenient default when metadata is written without a version.
+LATEST_STABLE = next(v for v in reversed(_VERSIONS) if _is_stable(v))
+
 #: A v0.3 axis is a bare name; v0.4 made it an object carrying a type.
 _AXIS_TYPE = {
     "x": "space",
