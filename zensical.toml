@@ -167,7 +167,10 @@ show_category_heading = true
 show_signature_annotations = true
 signature_crossrefs = true
 modernize_annotations = true
-extensions = ["griffe_typing_extensions:TypingExtensionsToTyping"]
+extensions = [
+  "griffe_typing_extensions:TypingExtensionsToTyping",
+  "docs/extensions/griffe_abczarr.py:AttrsExtension",
+]
 
 # ----------------------------------------------------------------------------
 # Markdown extras

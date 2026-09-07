@@ -21,6 +21,9 @@ jobs:
         with:
           python-version: 3.x
       - run: pip install -r docs/requirements.txt
+      # The griffe extension imports the built classes to read their attrs
+      # fields, so the package and its runtime dependencies must be installed.
+      - run: pip install .
     #   - run: python docs/scripts/nb2md.py docs/examples/*.ipynb
       - run: zensical build --clean
       - uses: actions/upload-pages-artifact@v4
