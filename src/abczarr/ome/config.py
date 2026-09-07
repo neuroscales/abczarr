@@ -1,21 +1,21 @@
-"""Describe an OME-Zarr multiscale image to write.
+"""Describes an OME-Zarr multiscale image to write.
 
 An [ImageConfig][abczarr.ome.config.ImageConfig] is to OME-Zarr metadata
 what an [ArrayConfig][abczarr.api.config.ArrayConfig] is to a Zarr array:
 a high-level, human-facing description that lowers to the exact typed
-metadata a group carries. Give it the axes, the voxel geometry, and how
-the pyramid was built, and it produces OME-NGFF multiscales metadata for
-any version you ask for.
+metadata a group carries. It holds the axes, the voxel geometry, and how
+the pyramid was built, and produces OME-NGFF multiscales metadata for
+any requested version.
 
-Three coordinate spaces sit behind it::
+Three coordinate spaces sit behind the config::
 
     voxel (array index) --scale+translation--> intrinsic --transforms--> model
 
 `scale` and `translation` place each resolution level's array indices
-into a single *intrinsic* space shared by every level. `transforms` (or
-the `voxel_to_world` shortcut) map that intrinsic space onto a *model* --
-a world or anatomical frame. One config lowers to the stable 0.5 shape
-and the 0.6 preview alike.
+into a single *intrinsic* space shared by every level. `transforms`
+(or the `voxel_to_world` shortcut) map that intrinsic space onto a
+*model* space, a world or anatomical frame. One config lowers to both
+the stable 0.5 shape and the 0.6 preview.
 """
 
 __all__ = ["ImageConfig", "axis"]
@@ -75,7 +75,7 @@ def axis(
     type: tx.Optional[str] = None,  # noqa: A002 -- matches the OME field name
     unit: tx.Optional[str] = None,
 ) -> Axis:
-    """Build a 0.6 [Axis][abczarr.ome.v0_6rc0.systems.Axis] from a name.
+    """Builds a 0.6 [Axis][abczarr.ome.v0_6rc0.systems.Axis] from a name.
 
     The axis *type* is inferred from *name* when not given: ``x``, ``y``,
     and ``z`` are space, ``t`` is time, ``c`` is channel, and anything
@@ -116,10 +116,10 @@ def axis(
 class ImageConfig:
     """A high-level description of an OME-Zarr multiscale image.
 
-    Set the axes and the voxel geometry once, then lower to typed OME
-    metadata for any version with
-    [to_ome][abczarr.ome.config.ImageConfig.to_ome]. The same config
-    produces the stable 0.5 shape and the 0.6 preview alike.
+    The axes and the voxel geometry are set once. The config then
+    lowers to typed OME metadata for any version through
+    [to_ome][abczarr.ome.config.ImageConfig.to_ome], producing both
+    the stable 0.5 shape and the 0.6 preview.
 
     Parameters
     ----------
@@ -170,8 +170,9 @@ class ImageConfig:
         `scale`. Defaults to 2.
     strategy : {"edge", "center", "window"} or int
         How a level's placement is worked out from the downsampling.
-        ``"edge"`` and ``"center"`` need the level shapes; ``"window"``
-        (or an int window size) needs only the factors.
+        The ``"edge"`` and ``"center"`` strategies need the level
+        shapes. The ``"window"`` strategy, or an int window size,
+        needs only the factors.
     """
 
     axes: Axes = field()
@@ -202,10 +203,11 @@ class ImageConfig:
     def resolved_version(self, version: tx.Optional[str] = None) -> str:
         """The concrete OME version this config lowers to.
 
-        Resolves *version* (or `ome_version`, when *version* is `None`):
-        ``"stable"`` is the latest released version, ``"latest"`` the
-        newest including previews, and anything else is taken as an
-        explicit version.
+        The method resolves *version*, or `ome_version` when
+        *version* is `None`. ``"stable"`` is the latest released
+        version, ``"latest"`` is the newest version including
+        previews, and any other value is taken as an explicit
+        version string.
 
         Parameters
         ----------
@@ -236,11 +238,12 @@ class ImageConfig:
         level_shapes: tx.Optional[tx.Sequence[tx.Sequence[int]]] = None,
         level_paths: tx.Optional[tx.Sequence[str]] = None,
     ) -> OME:
-        """Lower this config to typed OME-Zarr metadata.
+        """Lowers this config to typed OME-Zarr metadata.
 
-        Produces the intrinsic and model coordinate systems, one dataset
-        per resolution level mapping the array onto the intrinsic system,
-        and the intrinsic-to-model transforms, for the resolved version.
+        The result carries the intrinsic and model coordinate
+        systems, one dataset per resolution level mapping the array
+        onto the intrinsic system, and the intrinsic-to-model
+        transforms, all for the resolved version.
 
         Parameters
         ----------
@@ -249,8 +252,9 @@ class ImageConfig:
             [resolved_version][abczarr.ome.config.ImageConfig.resolved_version]).
         policy : {"lossy", "warn", "strict"}
             How to treat information an older target version cannot hold.
-            ``"warn"`` (the default) drops it with one warning;
-            ``"strict"`` raises; ``"lossy"`` drops it silently.
+            ``"warn"`` (the default) drops the information and issues
+            one warning. ``"strict"`` raises an error instead.
+            ``"lossy"`` drops the information silently.
         level_shapes : sequence of shape, optional
             The array shape of each resolution level, finest first. Required
             by the ``"edge"`` and ``"center"`` strategies for more than one
@@ -319,12 +323,13 @@ class ImageConfig:
     def apply(
         self, group: tx.Any, **kwargs: tx.Any
     ) -> OME:
-        """Set a group's OME metadata from this config.
+        """Sets a group's OME metadata from this config.
 
-        Lowers the config with
-        [to_ome][abczarr.ome.config.ImageConfig.to_ome] and assigns the
-        result to *group*'s [ome][abczarr.abc.sync.ZarrNode.ome]. Keyword
-        arguments are passed through to `to_ome`.
+        The metadata is produced by lowering the config with
+        [to_ome][abczarr.ome.config.ImageConfig.to_ome], and the
+        result is assigned to *group*'s
+        [ome][abczarr.abc.sync.ZarrNode.ome]. Keyword arguments are
+        passed through to `to_ome`.
 
         Parameters
         ----------
@@ -352,10 +357,11 @@ class ImageConfig:
         naxes: int,
         scale_given: bool,
     ) -> tx.Tuple[tx.Tuple[float, ...], tx.List[CoordinateTransformation]]:
-        """Resolve `transforms` and `voxel_to_world` to typed transforms.
+        """Resolves `transforms` and `voxel_to_world` to typed transforms.
 
-        Returns the possibly-derived voxel scale and the list of transforms
-        that map the intrinsic system onto a model system.
+        The result is the possibly-derived voxel scale and the list
+        of transforms that map the intrinsic system onto a model
+        system.
         """
         result = []  # type: tx.List[CoordinateTransformation]
         if self.voxel_to_world is not None:
@@ -419,7 +425,7 @@ class ImageConfig:
         translation: tx.Tuple[float, ...],
         naxes: int,
     ) -> CoordinateTransformation:
-        """Turn one transform entry into a typed transform between systems."""
+        """Turns one transform entry into a typed transform between systems."""
         if isinstance(data, CoordinateTransformation):
             return self._typed_transform(
                 data, input_name, output_name, scale, translation, naxes
@@ -445,7 +451,7 @@ class ImageConfig:
         translation: tx.Tuple[float, ...],
         naxes: int,
     ) -> CoordinateTransformation:
-        """Resolve a ready-made 0.6 transform's input and output systems.
+        """Resolves a ready-made 0.6 transform's input and output systems.
 
         A name a mapping key supplies wins. Otherwise the transform's own
         reference is kept, falling back to the intrinsic and model systems.
@@ -478,7 +484,7 @@ class ImageConfig:
         translation: tx.Tuple[float, ...],
         naxes: int,
     ) -> CoordinateTransformation:
-        """Re-express a voxel-input transform as one from the intrinsic system.
+        """Rewrites a voxel-input transform to start from the intrinsic system.
 
         The intrinsic-to-voxel transform is the inverse of the level-0
         voxel-to-intrinsic scale and translation. An inline affine is composed
@@ -637,9 +643,9 @@ def _broadcast(
 def _homogeneous(matrix: "np.ndarray", n: int) -> "np.ndarray":
     """An affine matrix in homogeneous ``(n+1, n+1)`` form.
 
-    Accepts the three spellings a user may write: full homogeneous
-    ``(n+1, n+1)``, linear-plus-translation ``(n, n+1)``, or a bare linear
-    ``(n, n)`` block (no translation).
+    The input may take three spellings: full homogeneous
+    ``(n+1, n+1)``, linear-plus-translation ``(n, n+1)``, or a bare
+    linear ``(n, n)`` block with no translation.
     """
     a = np.asarray(matrix, dtype=float)
     if a.ndim != 2:
@@ -785,9 +791,9 @@ def _level_transform(
 ) -> tx.Tuple[tx.Tuple[float, ...], tx.Tuple[float, ...]]:
     """The voxel-to-intrinsic scale and translation for one level.
 
-    Follows the strategy formulas per axis, from base voxel size ``s0``,
-    base translation ``t0`` and cumulative factor ``F``. An axis not
-    downsampled (factor 1) keeps ``s0``/``t0``.
+    The computation follows the strategy formulas per axis, from base
+    voxel size ``s0``, base translation ``t0``, and cumulative factor
+    ``F``. An axis not downsampled (factor 1) keeps ``s0``/``t0``.
     """
     windowed = isinstance(strategy, int) or strategy == "window"
     out_s = []  # type: tx.List[float]
