@@ -28,17 +28,10 @@ class DType(MustUnderstandExtension):
     is written as a bare name. An extension data type, such as a
     struct or a fixed-bit-width raw type, carries its parameters in
     `configuration`.
-
-    Attributes
-    ----------
-    name : str
-        The name of the data type, such as ``"float32"`` or
-        ``"struct"``.
-    configuration : DTypeConfig
-        The data type's own parameters. Empty for a core data type.
     """
 
     configuration: DTypeConfig
+    """The data type's own parameters. Empty for a core data type."""
 
     def to_json(self) -> tx.Union[str, tz.JsonDict]:
         """Serialize this data type to its JSON representation.

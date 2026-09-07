@@ -37,29 +37,21 @@ from .base import (
 class BloscConfig(CodecConfigImpl):
     """Holds the Blosc codec's parameters: compressor, level, shuffle,
     and block size.
-
-    Attributes
-    ----------
-    cname : str
-        The inner compressor Blosc applies.
-    clevel : int
-        The compression level, from 0 to 9.
-    shuffle : str
-        The byte-shuffle filter applied before compression:
-        ``"noshuffle"``, ``"shuffle"`` or ``"bitshuffle"``.
-    blocksize : int
-        The block size Blosc compresses in, in bytes. ``0`` lets
-        Blosc choose automatically.
-    typesize : int or None
-        The size, in bytes, of the array's element type. Blosc uses
-        this to group same-position bytes together when shuffling.
     """
 
     cname: codecs.BloscCodecName = "lz4"
+    """The inner compressor Blosc applies."""
     clevel: codecs.BloscCompressionLevel = 5
+    """The compression level, from 0 to 9."""
     shuffle: codecs.BloscShuffle = "shuffle"
+    """The byte-shuffle filter applied before compression:
+    ``"noshuffle"``, ``"shuffle"`` or ``"bitshuffle"``."""
     blocksize: int = 0
+    """The block size Blosc compresses in, in bytes. ``0`` lets Blosc
+    choose automatically."""
     typesize: tx.Optional[int] = None
+    """The size, in bytes, of the array's element type. Blosc uses this
+    to group same-position bytes together when shuffling."""
 
     def to_version(self, version: tz.ZarrVersion) -> Metadata:
         """Convert this configuration to another Zarr version's Blosc
@@ -114,17 +106,12 @@ class BloscCodec(CompressorCodec):
     Blosc groups same-typed bytes together before handing them to
     `cname`, then compresses the result in blocks so multiple threads
     can be used.
-
-    Attributes
-    ----------
-    name : str
-        Always ``"blosc"``.
-    configuration : BloscConfig
-        The codec's parameters.
     """
 
     name: tx.Literal["blosc"]
+    """Always ``"blosc"``."""
     configuration: BloscConfig
+    """The codec's parameters."""
 
     def to_version(self, version: tz.ZarrVersion) -> Metadata:
         """Convert this codec to another Zarr version.
@@ -148,16 +135,12 @@ class BloscCodec(CompressorCodec):
 class BytesConfig(CodecConfigImpl):
     """Holds the bytes codec's parameters: the byte order to serialize
     with.
-
-    Attributes
-    ----------
-    endian : str or None
-        The byte order to serialize with, ``"big"`` or ``"little"``,
-        or `None` for a dtype whose byte order does not matter, such
-        as a single-byte type.
     """
 
     endian: tx.Optional[tx.Literal["big", "little"]]
+    """The byte order to serialize with, ``"big"`` or ``"little"``, or
+    `None` for a dtype whose byte order does not matter, such as a
+    single-byte type."""
 
 
 @register_subclass(name="bytes")
@@ -168,17 +151,12 @@ class BytesCodec(ArrayToBytesCodec):
 
     This is the plain array-to-bytes codec. It applies no compression
     and no transform, laying the array's values out contiguously.
-
-    Attributes
-    ----------
-    name : str
-        Always ``"bytes"``.
-    configuration : BytesConfig
-        The codec's parameters.
     """
 
     name: tx.Literal["bytes"]
+    """Always ``"bytes"``."""
     configuration: BytesConfig
+    """The codec's parameters."""
 
 
 @autofrozen
@@ -195,30 +173,20 @@ class CRC32CCodec(BytesToBytesCodec):
     The checksum is verified and stripped on decode, which catches
     corrupted or truncated chunk data. This codec neither compresses
     nor transforms the chunk data itself.
-
-    Attributes
-    ----------
-    name : str
-        Always ``"crc32c"``.
-    configuration : CRC32CConfig
-        The codec's parameters. Always empty.
     """
 
     name: tx.Literal["crc32c"]
+    """Always ``"crc32c"``."""
     configuration: CRC32CConfig
+    """The codec's parameters. Always empty."""
 
 
 @autofrozen
 class GzipConfig(CodecConfigImpl):
-    """Holds the gzip codec's parameters: the compression level.
-
-    Attributes
-    ----------
-    level : int
-        The compression level, from 0 to 9.
-    """
+    """Holds the gzip codec's parameters: the compression level."""
 
     level: codecs.GzipCompressionLevel = 5
+    """The compression level, from 0 to 9."""
 
 
 @register_subclass(name="gzip")
@@ -226,42 +194,30 @@ class GzipConfig(CodecConfigImpl):
 class GzipCodec(CompressorCodec):
     """Applies DEFLATE compression (gzip) at a configurable compression
     level.
-
-    Attributes
-    ----------
-    name : str
-        Always ``"gzip"``.
-    configuration : GzipConfig
-        The codec's parameters.
     """
 
     name: tx.Literal["gzip"]
+    """Always ``"gzip"``."""
     configuration: GzipConfig
+    """The codec's parameters."""
 
 
 @autofrozen
 class ShardingConfig(CodecConfigImpl):
     """Holds the sharding codec's parameters: the inner chunking and its
     two codec chains.
-
-    Attributes
-    ----------
-    chunk_shape : tuple of int
-        The shape of the sub-chunks packed into each shard.
-    codecs : tuple of Codec
-        The codec pipeline that encodes each sub-chunk's data.
-    index_codecs : tuple of Codec
-        The codec pipeline that encodes the index locating each
-        sub-chunk within the shard.
-    index_location : str
-        Where the index is stored within the shard: ``"start"`` or
-        ``"end"``.
     """
 
     chunk_shape: tz.Shape
+    """The shape of the sub-chunks packed into each shard."""
     codecs: tx.Tuple[Codec, ...]
+    """The codec pipeline that encodes each sub-chunk's data."""
     index_codecs: tx.Tuple[Codec, ...]
+    """The codec pipeline that encodes the index locating each
+    sub-chunk within the shard."""
     index_location: tx.Literal["start", "end"] = "end"
+    """Where the index is stored within the shard: ``"start"`` or
+    ``"end"``."""
 
 
 @register_subclass(name="sharding_indexed")
@@ -274,31 +230,22 @@ class ShardingCodec(ArrayToArrayCodec):
     shard alongside an index that maps each sub-chunk to its offset
     and length. Sharding this way reduces the number of files or
     objects a store holds for arrays with many small chunks.
-
-    Attributes
-    ----------
-    name : str
-        Always ``"sharding_indexed"``.
-    configuration : ShardingConfig
-        The codec's parameters.
     """
 
     name: tx.Literal["sharding_indexed"]
+    """Always ``"sharding_indexed"``."""
     configuration: ShardingConfig
+    """The codec's parameters."""
 
 
 @autofrozen
 class TransposeConfig(CodecConfigImpl):
     """Holds the transpose codec's parameters: the permutation of axes
     to apply.
-
-    Attributes
-    ----------
-    order : tuple of int
-        The permutation applied to the array's axes.
     """
 
     order: tx.Tuple[int, ...]
+    """The permutation applied to the array's axes."""
 
 
 @register_subclass(name="transpose")
@@ -310,14 +257,9 @@ class TransposeCodec(ArrayToArrayCodec):
     The permutation is reversed on decode, so the array's logical shape
     is unchanged. It controls the memory layout the later codecs see,
     for example to make an axis contiguous for a compressor.
-
-    Attributes
-    ----------
-    name : str
-        Always ``"transpose"``.
-    configuration : TransposeConfig
-        The codec's parameters.
     """
 
     name: tx.Literal["transpose"]
+    """Always ``"transpose"``."""
     configuration: TransposeConfig
+    """The codec's parameters."""

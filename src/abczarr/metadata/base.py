@@ -134,21 +134,14 @@ class NodeMetadata(Metadata):
     [ArrayMetadata][abczarr.metadata.base.ArrayMetadata], and their
     per-version subclasses are the classes to construct. This class
     holds only what they share.
-
-    Attributes
-    ----------
-    attributes : dict
-        The node's user-defined attributes, stored as arbitrary JSON.
-    zarr_format : int
-        The Zarr format version the metadata is written in: 1, 2 or
-        3.
-    node_type : str
-        Either ``"group"`` or ``"array"``.
     """
 
     attributes: tz.JsonDict
+    """The node's user-defined attributes, stored as arbitrary JSON."""
     zarr_format: tz.ZarrVersion = 3
+    """The Zarr format version the metadata is written in: 1, 2 or 3."""
     node_type: tz.NodeType = "group"
+    """Either ``"group"`` or ``"array"``."""
 
     # Convenience updaters (immutably return new metadata)
     def update_attributes(self, attributes: tz.JsonDict) -> tx.Self:
@@ -292,14 +285,10 @@ class GroupMetadata(NodeMetadata):
     defines, this class adds nothing but its `node_type`. A member
     and its metadata are reached through the store, not through this
     object.
-
-    Attributes
-    ----------
-    node_type : str
-        Always ``"group"``.
     """
 
     node_type: tx.Literal["group"] = "group"
+    """Always ``"group"``."""
 
     def to_version(
         self,
@@ -367,14 +356,10 @@ class ArrayMetadata(NodeMetadata):
     [required_features][abczarr.metadata.base.ArrayMetadata.required_features],
     which reports what a driver needs to support in order to read or
     write the array.
-
-    Attributes
-    ----------
-    node_type : str
-        Always ``"array"``.
     """
 
     node_type: tx.Literal["array"] = "array"
+    """Always ``"array"``."""
 
     def required_features(self) -> tx.FrozenSet[str]:
         """Report the features a driver needs to read or write this array.
@@ -415,14 +400,10 @@ class NodeMetadataV1(NodeMetadata):
     directly, or build one through this class with
     [from_file][abczarr.metadata.base.NodeMetadataV1.from_file] or
     [from_json][abczarr._core.metadata.Metadata.from_json].
-
-    Attributes
-    ----------
-    zarr_format : int
-        Always ``1``.
     """
 
     zarr_format: tx.Literal[1] = 1
+    """Always ``1``."""
 
     @classmethod
     def from_file(cls, root: os.PathLike) -> tx.Self:
@@ -524,14 +505,10 @@ class NodeMetadataV2(NodeMetadata):
     concrete field sets. Called on this class directly,
     [from_file][abczarr.metadata.base.NodeMetadataV2.from_file]
     works out which one applies.
-
-    Attributes
-    ----------
-    zarr_format : int
-        Always ``2``.
     """
 
     zarr_format: tx.Literal[2] = 2
+    """Always ``2``."""
 
     @classmethod
     def from_file(cls, root: os.PathLike) -> tx.Self:
@@ -678,14 +655,10 @@ class NodeMetadataV3(NodeMetadata):
     concrete field sets. A v3 node's type is recorded in its own
     `zarr.json`, so its `node_type` need not be known in advance to
     load it.
-
-    Attributes
-    ----------
-    zarr_format : int
-        Always ``3``.
     """
 
     zarr_format: tx.Literal[3] = 3
+    """Always ``3``."""
 
     @classmethod
     def from_file(cls, root: os.PathLike) -> tx.Self:

@@ -26,25 +26,6 @@ from .base import CodecOptionsImpl
 class BloscCodecOptions(CodecOptionsImpl):
     """Options for Blosc, a meta-compressor that shuffles bytes and
     then applies an inner compressor.
-
-    Attributes
-    ----------
-    cname : str
-        The inner compressor Blosc applies: one of ``"blosclz"``,
-        ``"lz4"``, ``"lz4hc"``, ``"snappy"``, ``"zlib"`` or
-        ``"zstd"``.
-    clevel : int
-        The compression level, from 0 to 9.
-    shuffle : int
-        The byte-shuffle filter applied before compression: ``0`` for
-        none, ``1`` for byte shuffle, ``2`` for bit shuffle, or
-        ``-1`` to let Blosc choose automatically.
-    blocksize : int
-        The block size Blosc compresses in, in bytes. ``0`` lets
-        Blosc choose automatically.
-    typesize : int or None
-        The size, in bytes, of the array's element type. Blosc uses
-        this to group same-position bytes together when shuffling.
     """
 
     # type aliases
@@ -54,10 +35,20 @@ class BloscCodecOptions(CodecOptionsImpl):
 
     # attributes
     cname: CodecName = "lz4"
+    """The inner compressor Blosc applies: one of ``"blosclz"``,
+    ``"lz4"``, ``"lz4hc"``, ``"snappy"``, ``"zlib"`` or ``"zstd"``."""
     clevel: CompressionLevel = 5
+    """The compression level, from 0 to 9."""
     shuffle: Shuffle = 1
+    """The byte-shuffle filter applied before compression: ``0`` for
+    none, ``1`` for byte shuffle, ``2`` for bit shuffle, or ``-1`` to
+    let Blosc choose automatically."""
     blocksize: int = 0
+    """The block size Blosc compresses in, in bytes. ``0`` lets Blosc
+    choose automatically."""
     typesize: tx.Optional[int] = None
+    """The size, in bytes, of the array's element type. Blosc uses this
+    to group same-position bytes together when shuffling."""
 
     # classvar
     id: tx.ClassVar[tx.Literal["blosc"]] = "blosc"
@@ -66,19 +57,14 @@ class BloscCodecOptions(CodecOptionsImpl):
 @register_subclass(id="gzip")
 @autofrozen
 class GzipCodecOptions(CodecOptionsImpl):
-    """Options for DEFLATE compression (gzip).
-
-    Attributes
-    ----------
-    level : int
-        The compression level, from 0 to 9.
-    """
+    """Options for DEFLATE compression (gzip)."""
 
     # type aliases
     CompressionLevel: tx.ClassVar = codecs.GzipCompressionLevel
 
     # attributes
     level: CompressionLevel = 5
+    """The compression level, from 0 to 9."""
 
     # classvar
     id: tx.ClassVar[tx.Literal["gzip"]] = "gzip"

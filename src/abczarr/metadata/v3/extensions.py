@@ -30,21 +30,15 @@ class Extension(Metadata):
 
     Codecs, data types, chunk grids and chunk key encodings are all
     shaped this way.
-
-    Attributes
-    ----------
-    name : str
-        The name identifying which extension applies.
-    configuration : TypedConfig
-        The extension's own parameters.
-    must_understand : bool
-        Whether a reader that does not recognize `name` must refuse
-        to open the array instead of ignoring the extension.
     """
 
     name: str
+    """The name identifying which extension applies."""
     configuration: TypedConfig
+    """The extension's own parameters."""
     must_understand: bool = True
+    """Whether a reader that does not recognize `name` must refuse to
+    open the array instead of ignoring the extension."""
 
     def __init__(self, *args, **kwargs) -> None:
         if len(args) < 2 and "configuration" not in kwargs:
@@ -88,14 +82,10 @@ class MustUnderstandExtension(Extension):
     extension points such as codecs, data types, chunk grids, and chunk
     key encodings, where an unrecognized value would make the array
     unreadable if skipped.
-
-    Attributes
-    ----------
-    must_understand : bool
-        Always `True`.
     """
 
     must_understand: tx.Literal[True] = field(repr=False)
+    """Always `True`."""
 
 
 @autofrozen(extra_items=JSONMetadata)
@@ -104,11 +94,7 @@ class ExtraField(Extension):
     skip if unrecognized.
 
     `must_understand` is pinned to `False`.
-
-    Attributes
-    ----------
-    must_understand : bool
-        Always `False`.
     """
 
     must_understand: tx.Literal[False]
+    """Always `False`."""

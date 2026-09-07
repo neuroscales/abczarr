@@ -60,15 +60,11 @@ class ChunkGrid(MustUnderstandExtension):
 class RegularChunkGridConfig(TypedConfig):
     """Holds the regular chunk grid's parameters: the shared chunk
     shape.
-
-    Attributes
-    ----------
-    chunk_shape : tuple of int
-        The shape of every chunk, one entry per dimension of the
-        array.
     """
 
     chunk_shape: tz.Shape
+    """The shape of every chunk, one entry per dimension of the
+    array."""
 
 
 @register_subclass(name="regular")
@@ -80,34 +76,24 @@ class RegularChunkGrid(ChunkGrid):
     dimension of the array. This is the only chunk grid Zarr v2 and
     v1 can represent, so it is required for conversion to those
     versions.
-
-    Attributes
-    ----------
-    name : str
-        Always ``"regular"``.
-    configuration : RegularChunkGridConfig
-        The chunk grid's parameters.
     """
 
     name: tx.Literal["regular"]
+    """Always ``"regular"``."""
     configuration: RegularChunkGridConfig
+    """The chunk grid's parameters."""
 
 
 @autofrozen(extra_items=False)
 class RectilinearChunkGridConfig(TypedConfig):
     """Holds the rectilinear chunk grid's parameters: the per-axis
     chunk shapes.
-
-    Attributes
-    ----------
-    kind : str
-        Always ``"inline"``.
-    chunk_shapes : tuple of int
-        The chunk shapes along the axis that varies.
     """
 
     kind: tx.Literal["inline"]
+    """Always ``"inline"``."""
     chunk_shapes: tz.Shape
+    """The chunk shapes along the axis that varies."""
 
 
 @register_subclass(name="rectilinear")
@@ -120,17 +106,12 @@ class RectilinearChunkGrid(ChunkGrid):
     which fixes one shape for every chunk, this grid's chunks need
     not all be the same size. It has no representation in Zarr v2 or
     v1.
-
-    Attributes
-    ----------
-    name : str
-        Always ``"rectilinear"``.
-    configuration : RectilinearChunkGridConfig
-        The chunk grid's parameters.
     """
 
     name: tx.Literal["rectilinear"]
+    """Always ``"rectilinear"``."""
     configuration: RectilinearChunkGridConfig
+    """The chunk grid's parameters."""
 
 
 # ----------------------------------------------------------------------
@@ -148,14 +129,10 @@ class ChunkKeyEncodingConfig(TypedConfig):
 class CommonChunkKeyEncodingConfig(ChunkKeyEncodingConfig):
     """Holds the parameter every chunk-key encoding shares: the
     separator joining a chunk index into its key.
-
-    Attributes
-    ----------
-    separator : str
-        The character joining a chunk index into its store key.
     """
 
     separator: tz.DimensionSeparator = "/"
+    """The character joining a chunk index into its store key."""
 
 
 @autofrozen
@@ -169,17 +146,12 @@ class ChunkKeyEncoding(MustUnderstandExtension):
     to keep the key layout Zarr v2 uses. A v2 array converts to
     `V2ChunkKeyEncoding`, and a v3 array must use it to convert back
     to v2 or v1.
-
-    Attributes
-    ----------
-    name : str
-        The name of the encoding, such as ``"default"`` or ``"v2"``.
-    configuration : ChunkKeyEncodingConfig
-        The encoding's own parameters.
     """
 
     name: str
+    """The name of the encoding, such as ``"default"`` or ``"v2"``."""
     configuration: ChunkKeyEncodingConfig
+    """The encoding's own parameters."""
 
     # Construction dispatches to the right subclass by name through the
     # metadata registry (Metadata.__new__), so a "default"/"v2" name yields
@@ -200,17 +172,12 @@ class DefaultChunkKeyEncoding(ChunkKeyEncoding):
 
     A chunk index like `(1, 2)` becomes the key `c/1/2`, joined by
     `configuration.separator` (`/` by default).
-
-    Attributes
-    ----------
-    name : str
-        Always ``"default"``.
-    configuration : DefaultChunkKeyEncodingConfig
-        The encoding's parameters.
     """
 
     name: tx.Literal["default"]
+    """Always ``"default"``."""
     configuration: DefaultChunkKeyEncodingConfig
+    """The encoding's parameters."""
 
 
 @autofrozen(field_transformer=update(separator={"default": "."}))
@@ -229,17 +196,12 @@ class V2ChunkKeyEncoding(ChunkKeyEncoding):
     v3 array must use this encoding to convert to v2 or v1. A v2
     array converts to this encoding, not to
     [the default one][abczarr.metadata.v3.array.DefaultChunkKeyEncoding].
-
-    Attributes
-    ----------
-    name : str
-        Always ``"v2"``.
-    configuration : V2ChunkKeyEncodingConfig
-        The encoding's parameters.
     """
 
     name: tx.Literal["v2"]
+    """Always ``"v2"``."""
     configuration: V2ChunkKeyEncodingConfig
+    """The encoding's parameters."""
 
 
 # ----------------------------------------------------------------------
@@ -289,46 +251,34 @@ class ArrayMetadata(ArrayMetadataV3):
         ['bytes', 'zlib']
 
         ```
-
-    Attributes
-    ----------
-    shape : tuple of int
-        The array's shape, one entry per dimension.
-    data_type : DType
-        The array's Zarr v3 data type.
-    chunk_grid : ChunkGrid
-        How the array is divided into chunks.
-    chunk_key_encoding : ChunkKeyEncoding
-        How a chunk's index maps to its key in the store.
-    fill_value : int, float or None
-        The value an unwritten element of the array reads as. A
-        complex fill value is a two-element ``(real, imag)`` pair.
-    codecs : tuple of Codec
-        The codec pipeline applied to each chunk: zero or more
-        array-to-array codecs, exactly one array-to-bytes codec,
-        then zero or more bytes-to-bytes codecs.
-    attributes : dict
-        The array's user-defined attributes.
-    dimension_names : tuple of str or None
-        An optional name for each dimension of the array. An entry
-        may be `None` when that dimension is unnamed.
-    storage_transformers : tuple of dict
-        Extra transformations a store applies to the array's chunks,
-        beyond the codec pipeline.
     """
 
     # --- Required ----
     shape: tz.Shape
+    """The array's shape, one entry per dimension."""
     data_type: DType
+    """The array's Zarr v3 data type."""
     chunk_grid: ChunkGrid
+    """How the array is divided into chunks."""
     chunk_key_encoding: ChunkKeyEncoding
+    """How a chunk's index maps to its key in the store."""
     fill_value: tx.Optional[_FillValue] = field(eq=eq_safenan)
+    """The value an unwritten element of the array reads as. A complex
+    fill value is a two-element ``(real, imag)`` pair."""
     codecs: tx.Tuple[Codec, ...]
+    """The codec pipeline applied to each chunk: zero or more
+    array-to-array codecs, exactly one array-to-bytes codec, then zero
+    or more bytes-to-bytes codecs."""
 
     # --- Optional ----
     attributes: tz.FrozenJsonDict
+    """The array's user-defined attributes."""
     dimension_names: tx.Optional[_AxisNames]
+    """An optional name for each dimension of the array. An entry may
+    be `None` when that dimension is unnamed."""
     storage_transformers: tx.Tuple[tz.FrozenJsonDict, ...]
+    """Extra transformations a store applies to the array's chunks,
+    beyond the codec pipeline."""
 
     # --- Serialization ---
 

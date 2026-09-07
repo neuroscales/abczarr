@@ -74,16 +74,10 @@ class Codec(Extension):
     [`abczarr.metadata.v2.codecs.base.Codec`][abczarr.metadata.v2.codecs.base.Codec]
     for a worked example comparing the same codec across the v1, v2 and
     v3 metadata models.
-
-    Attributes
-    ----------
-    name : str
-        The name of the codec, such as ``"gzip"`` or ``"bytes"``.
-    configuration : CodecConfig
-        The codec's own parameters.
     """
 
     configuration: CodecConfig
+    """The codec's own parameters."""
 
     def to_json(self) -> tz.JsonDict:
         """Serialize this codec to its JSON representation.
