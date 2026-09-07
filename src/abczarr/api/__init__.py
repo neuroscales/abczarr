@@ -1,21 +1,20 @@
-"""The user-facing API: open and create a Zarr node, and the pieces they
-rest on.
+"""The user-facing API for opening and creating a Zarr node.
 
-- [open][abczarr.api.open] and its array/group variants read a node.
-- [create][abczarr.api.create], [create_array][abczarr.api.create_array] and
-  [create_group][abczarr.api.create_group] make one, from a config or a
-  metadata object.
-- [ArrayConfig][abczarr.api.ArrayConfig] and
-  [GroupConfig][abczarr.api.GroupConfig] describe what to create.
-- [select_driver][abczarr.api.select_driver],
-  [available_drivers][abczarr.api.available_drivers] and
-  [register_driver][abczarr.api.register_driver] choose the backend.
+[open][abczarr.api.open] and its array and group variants read an
+existing node. [create][abczarr.api.create],
+[create_array][abczarr.api.create_array] and
+[create_group][abczarr.api.create_group] make a new one, from a
+config or from a metadata object.
+[ArrayConfig][abczarr.api.ArrayConfig] and
+[GroupConfig][abczarr.api.GroupConfig] describe what to create.
+[select_driver][abczarr.api.select_driver],
+[available_drivers][abczarr.api.available_drivers] and
+[register_driver][abczarr.api.register_driver] choose the backend
+that does the work.
 
-The config names come from a lightweight module; the reader/writer and the
-driver registry are resolved on first use, so importing this package never
-imports a backend and never forms a cycle with the drivers that import the
-config layer. The errors abczarr raises live in
-[abczarr.errors][abczarr.errors] and are re-exported at the package top level.
+Importing this package never imports a backend. The errors abczarr
+raises live in [abczarr.errors][abczarr.errors] and are re-exported at
+the package top level.
 """
 
 import importlib
@@ -70,9 +69,10 @@ if tx.TYPE_CHECKING:
     )
 
 #: Which module each public name is re-exported from. The reader/writer
-#: (`entrypoint`) and the `registry` both import `drivers.base`, and
-#: `drivers.base` imports the config layer from this package -- so they are
-#: resolved lazily to keep that import from cycling back through here.
+#: module (`entrypoint`) and the `registry` module both import
+#: `drivers.base`, and `drivers.base` imports the config layer from this
+#: package. Resolving them lazily keeps that import from cycling back
+#: through here.
 _MODULES = {
     "abczarr.api.entrypoint": {
         "open", "open_array", "open_group",

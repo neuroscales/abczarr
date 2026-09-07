@@ -246,13 +246,17 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
     async def _apply_ome_plan(
         self, plan: tx.Callable, *args: tx.Any
     ) -> None:
-        """Apply an OME attribute *plan* through this node's async write path.
+        """Apply an OME attribute *plan* through this node's async write
+        path.
 
-        *plan* takes the current attributes (plus, for a write, the value to
-        store) and returns ``(payload, stale)``; this persists the full
-        result -- unrelated attributes carried over, stale OME keys dropped
-        -- by awaiting the async metadata write. The one async persistence
-        path that ``set_ome`` and ``del_ome`` share.
+        *plan* takes the current attributes, plus, for a write, the
+        value to store, and returns ``(payload, stale)``. This method
+        persists the full result, with unrelated attributes carried
+        over and stale OME keys dropped, by awaiting the async
+        metadata write. It is the one async persistence path that
+        ``set_ome`` and ``del_ome`` share. *args* carries the extra
+        arguments *plan* itself expects, such as the value being
+        written.
         """
         sync = self.as_sync()
         current = dict(sync.metadata.attributes)
@@ -404,9 +408,12 @@ class ThreadedAsyncArray(AsyncZarrArray):
     """
 
     async def getitem(self, index: tx.Any) -> npt.ArrayLike:
+        """Read data from the array at *index* (a NumPy-style
+        selection)."""
         return await run_sync(self._sync.__getitem__, index)
 
     async def setitem(self, index: tx.Any, value: npt.ArrayLike) -> None:
+        """Write *value* at *index* (a NumPy-style selection)."""
         await run_sync(self._sync.__setitem__, index, value)
 
 
@@ -460,9 +467,34 @@ class AsyncZarrGroup(AsyncZarrNode):
 
         This method mirrors
         [ZarrGroup.create_array][abczarr.abc.sync.ZarrGroup.create_array].
-        See that method for the parameters it accepts. When *data* is given,
-        the data is written into the new array through the backend's native
-        asynchronous write.
+        When *data* is given, the data is written into the new array
+        through the backend's native asynchronous write.
+
+        Parameters
+        ----------
+        name : str
+            The array's name.
+        shape : tuple of int, optional
+            The array's shape. Required unless *data* or *config* supplies
+            one.
+        dtype : numpy dtype, optional
+            The array's data type. Required unless *data* or *config*
+            supplies one.
+        data : array-like, optional
+            Existing data to size the array from and write into it.
+        config : ArrayConfig or mapping, optional
+            A reusable [ArrayConfig][abczarr.api.config.ArrayConfig], or a
+            mapping of the same fields. Individual fields may also be
+            passed as keyword arguments, which override the config.
+        **options
+            Individual [ArrayConfig][abczarr.api.config.ArrayConfig]
+            fields, such as `chunks` or `compressor`. Any field passed
+            here overrides the same field on *config*.
+
+        Returns
+        -------
+        AsyncZarrArray
+            The newly created array.
         """
         if data is not None and (
             getattr(data, "shape", None) is None
@@ -488,7 +520,21 @@ class AsyncZarrGroup(AsyncZarrNode):
     async def create_group(
         self, name: str, overwrite: bool = False
     ) -> "AsyncZarrGroup":
-        """Create or open a subgroup named *name*."""
+        """Create or open a subgroup named *name*.
+
+        Parameters
+        ----------
+        name : str
+            The subgroup's name.
+        overwrite : bool, optional
+            Replace an existing member named *name* instead of
+            raising an error.
+
+        Returns
+        -------
+        AsyncZarrGroup
+            The created or opened subgroup.
+        """
         ...
 
 
@@ -510,8 +556,8 @@ class AsyncPathGroup(AsyncZarrGroup):
     that a backend provides directly.
     """
 
-    # a path group synthesizes group semantics over a store; async is
-    # synthesized even when the store itself awaits natively
+    # A path group synthesizes group semantics over a store. Async is
+    # synthesized here even when the store itself awaits natively.
     _async_support = Support.SYNTHESIZED
 
     def __init__(self, sync: PathGroup) -> None:
@@ -521,14 +567,18 @@ class AsyncPathGroup(AsyncZarrGroup):
     async def _node_at(
         self, prefix: str
     ) -> tx.Optional[tx.Tuple[tz.NodeType, tz.ZarrVersion]]:
-        """The kind and Zarr version of the node at key *prefix* -- `""` for
-        this group itself, a member name for a child -- read through the
-        async store, or `None` when there is no Zarr node there.
+        """The kind and Zarr version of the node at key *prefix*.
 
-        Mirrors [_node_at][abczarr.metadata.base] over the async store: a v3
-        `zarr.json`'s `node_type`, else which v2/v1 metadata file is present.
-        A *prefix* that names a plain file, not a directory (the group's own
-        `zarr.json` shows up in the listing), is simply not a node.
+        *prefix* is `""` for this group itself, or a member name for
+        a child. The result is read through the async store, and is
+        `None` when there is no Zarr node at *prefix*.
+
+        This method mirrors [_node_at][abczarr.metadata.base] over
+        the async store. It reads a v3 `zarr.json`'s `node_type`, or
+        otherwise checks which v2 or v1 metadata file is present. A
+        *prefix* that names a plain file, not a directory, is simply
+        not a node. This case arises because the group's own
+        `zarr.json` shows up in the listing.
         """
         base = (prefix + "/") if prefix else ""
         try:
@@ -549,7 +599,7 @@ class AsyncPathGroup(AsyncZarrGroup):
             if await self._store.exists(base + constants.Z1META_JSON):
                 return "array", 1
         except OSError:
-            # *prefix* is a file, so "<prefix>/<metadata>" is not a directory
+            # *prefix* is a file, so "<prefix>/<metadata>" is not a directory.
             return None
         return None
 
@@ -562,22 +612,27 @@ class AsyncPathGroup(AsyncZarrGroup):
     async def _member(
         self, name: str, version: tz.ZarrVersion
     ) -> tx.Optional[tx.Tuple[tz.NodeType, tz.ZarrVersion]]:
-        """The child *name*'s kind and version when it is a member of this
-        group -- a node written in the group's *version* -- else `None`. A
-        Zarr hierarchy is written in a single version, so a child of another
-        is not a member."""
+        """The child *name*'s kind and version when it is a member of
+        this group, else `None`.
+
+        A member is a node written in the group's *version*. A Zarr
+        hierarchy is written in a single version, so a child written
+        in another version is not a member.
+        """
         detected = await self._node_at(name)
         if detected is None or detected[1] != version:
             return None
         return detected
 
     async def keys(self) -> tx.AsyncIterator[str]:
+        """Async-iterate the names of this group's members."""
         version = await self._version()
         async for name in self._store.list_dir(""):
             if await self._member(name, version) is not None:
                 yield name
 
     async def getitem(self, key: str) -> AsyncZarrNode:
+        """Open the subgroup or array named *key* as an async node."""
         detected = await self._member(key, await self._version())
         if detected is None:
             raise KeyError(key)
@@ -585,8 +640,9 @@ class AsyncPathGroup(AsyncZarrGroup):
         if detected[0] == "group":
             child = type(self._sync)(child_path, self._sync._mode)
             return type(self)(child)
-        # opening the array builds a backend handle (fast); its data I/O is
-        # what the async color makes asynchronous, through as_async()
+        # Opening the array builds a backend handle, which is fast. Its data
+        # I/O is what the async color makes asynchronous, through
+        # as_async().
         array = self._sync._open_array(child_path)
         return array.as_async()
 
@@ -599,6 +655,21 @@ class AsyncPathGroup(AsyncZarrGroup):
     async def create_group(
         self, name: str, overwrite: bool = False
     ) -> "AsyncPathGroup":
+        """Create or open a subgroup named *name*.
+
+        Parameters
+        ----------
+        name : str
+            The subgroup's name.
+        overwrite : bool, optional
+            Replace an existing member named *name* instead of
+            raising an error.
+
+        Returns
+        -------
+        AsyncPathGroup
+            The created or opened subgroup.
+        """
         child = await run_sync(self._sync.create_group, name, overwrite)
         return type(self)(child)
 
@@ -616,10 +687,12 @@ class ThreadedAsyncGroup(AsyncZarrGroup):
     """
 
     async def getitem(self, key: str) -> AsyncZarrNode:
+        """Open the subgroup or array named *key* as an async node."""
         child = await run_sync(self._sync.__getitem__, key)
         return child.as_async()
 
     async def keys(self) -> tx.AsyncIterator[str]:
+        """Async-iterate the names of this group's members."""
         names = await run_sync(lambda: list(self._sync.keys()))
         for name in names:
             yield name
@@ -633,5 +706,20 @@ class ThreadedAsyncGroup(AsyncZarrGroup):
     async def create_group(
         self, name: str, overwrite: bool = False
     ) -> AsyncZarrGroup:
+        """Create or open a subgroup named *name*.
+
+        Parameters
+        ----------
+        name : str
+            The subgroup's name.
+        overwrite : bool, optional
+            Replace an existing member named *name* instead of
+            raising an error.
+
+        Returns
+        -------
+        AsyncZarrGroup
+            The created or opened subgroup.
+        """
         child = await run_sync(self._sync.create_group, name, overwrite)
         return tx.cast(AsyncZarrGroup, child.as_async())

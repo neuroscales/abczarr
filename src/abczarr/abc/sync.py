@@ -57,7 +57,7 @@ from abczarr.ome.node import (
     write_ome,
 )
 
-# locals -- KNOWN_CAPABILITIES and Support are re-exported for callers that
+# locals: KNOWN_CAPABILITIES and Support are re-exported for callers that
 # reach them through this module (they are listed in __all__).
 from .capabilities import (  # noqa: F401
     KNOWN_CAPABILITIES,
@@ -95,21 +95,22 @@ class ZarrNode(SupportsCapabilities, ABC):
     """
 
     def __init__(self, store_path: tz.PathLike) -> None:
-        # Wrap a raw path in a bagof.paths Path -- which itself converts an
-        # os.PathLike (a pathlib.Path, say) -- so it does not reach driver
+        # Wrap a raw path in a bagof.paths Path, which itself converts an
+        # os.PathLike such as a pathlib.Path, so it does not reach driver
         # code raw. An already-wrapped Path (or StorePath) is left as is. A
         # node always has a path, so nothing but a Path is left unwrapped.
         if not isinstance(store_path, Path):
             store_path = Path(store_path)
         self._store_path = store_path
-        # The raw backend object (a zarr.Array, a tensorstore.TensorStore,
-        # ...). A concrete driver sets it; it stays None where a node has no
-        # single backing object (e.g. a group that is only a path).
+        # The raw backend object, such as a zarr.Array or a
+        # tensorstore.TensorStore. A concrete driver sets it. It stays None
+        # where a node has no single backing object, such as a group that
+        # is only a path.
         self._native: tx.Any = None
         # The node's metadata, loaded once and kept in memory. A node that
-        # reads its metadata from a store or a metadata file caches it here
-        # (the I/O is the open); a node backed by a live Zarr object reads
-        # from that object instead and leaves this None.
+        # reads its metadata from a store or a metadata file caches it
+        # here, since the I/O is the open. A node backed by a live Zarr
+        # object reads from that object instead and leaves this None.
         self._cached_metadata: tx.Optional[NodeMetadata] = None
 
     @property
@@ -502,11 +503,12 @@ def _blocks_align_to(
 ) -> bool:
     """Whether Dask blocks fall on whole *unit*-sized chunks.
 
-    *dask_chunks* is a Dask array's `.chunks` (per axis, the block sizes);
-    *unit* is the array's write unit. True when every interior block
-    boundary lands on a multiple of the unit size, so no two blocks ever
-    write the same chunk and a lock is unnecessary. Conservative: anything
-    it cannot prove aligned counts as not aligned.
+    *dask_chunks* is a Dask array's `.chunks`, the block sizes per
+    axis. *unit* is the array's write unit. The result is true when
+    every interior block boundary lands on a multiple of the unit
+    size, so that no two blocks ever write the same chunk and a lock
+    is unnecessary. The check is conservative. Anything it cannot
+    prove aligned counts as not aligned.
     """
     unit = tuple(unit)
     if len(dask_chunks) != len(unit):
@@ -515,8 +517,8 @@ def _blocks_align_to(
         if not size:
             return False
         offset = 0
-        # the final boundary is the array end; a partial last chunk there
-        # is still written by a single block, so it need not align
+        # The final boundary is the array end. A partial last chunk there
+        # is still written by a single block, so it need not align.
         for block in tuple(axis_blocks)[:-1]:
             offset += block
             if offset % size:
@@ -543,12 +545,12 @@ def _resolve_array_config(
     """Build the resolved [ArrayConfig][abczarr.api.config.ArrayConfig] a
     `create_array` call describes.
 
-    A config (an `ArrayConfig` or a mapping of its fields) is the base.
-    *shape*, *dtype* and the per-call *options* are layered on top, and the
-    array takes the group's format version. A *shape* or *dtype* that is left
-    out falls back to *data* when *data* is given, so an explicit value always
-    takes precedence over the data. `"auto"` chunking and sharding are worked
-    out, so a driver receives concrete values.
+    *config*, an `ArrayConfig` or a mapping of its fields, is the base.
+    *shape*, *dtype* and the per-call *options* are layered on top of it, and
+    the array takes the group's format version. A *shape* or *dtype* left out
+    falls back to *data* when *data* is given, so an explicit value always
+    takes precedence over the data. `"auto"` chunking and sharding are
+    resolved here, so a driver receives concrete values.
     """
     base = config if isinstance(config, ArrayConfig) else ArrayConfig(
         **dict(config or {})
@@ -603,6 +605,11 @@ class ZarrGroup(ZarrNode):
         overwrite : bool, optional
             Replace an existing member named *name* instead of
             raising an error.
+
+        Returns
+        -------
+        ZarrGroup
+            The created or opened subgroup.
         """
         ...
 
@@ -638,6 +645,15 @@ class ZarrGroup(ZarrNode):
             A reusable [ArrayConfig][abczarr.api.config.ArrayConfig], or a
             mapping of the same fields. Individual fields may also be passed as
             keyword arguments, which override the config.
+        **options
+            Individual [ArrayConfig][abczarr.api.config.ArrayConfig] fields,
+            such as `chunks` or `compressor`. Any field passed here overrides
+            the same field on *config*.
+
+        Returns
+        -------
+        ZarrArray
+            The newly created array.
         """
         if data is not None and (
             getattr(data, "shape", None) is None
@@ -708,8 +724,9 @@ class PathGroup(ZarrGroup):
 
     @property
     def metadata(self) -> NodeMetadata:
-        # loaded from the store once, then kept in memory (the I/O is the
-        # open); an attribute write updates this cache in place
+        """This group's Zarr metadata."""
+        # Loaded from the store once, then kept in memory, since the I/O is
+        # the open. An attribute write updates this cache in place.
         if self._cached_metadata is None:
             self._cached_metadata = NodeMetadata.from_file(self._store_path)
         return self._cached_metadata
@@ -725,12 +742,13 @@ class PathGroup(ZarrGroup):
     def _member(
         self, store_path: tz.PathLike
     ) -> tx.Optional[tx.Tuple[tz.NodeType, tz.ZarrVersion]]:
-        """The kind and version of *store_path* when it is a member of this
-        group, else None.
+        """The kind and version of *store_path* when it is a member of
+        this group, else `None`.
 
-        A member is a Zarr node written in this group's own format version.
-        A node of a different version is not treated as a child, since a Zarr
-        hierarchy is written in a single version.
+        A member is a Zarr node written in this group's own format
+        version. A node of a different version is not treated as a
+        child, because a Zarr hierarchy is written in a single
+        version.
         """
         detected = _node_at(store_path)
         if detected is None or detected[1] != self.zarr_version:
@@ -774,6 +792,22 @@ class PathGroup(ZarrGroup):
         child.rmdir(recursive=True)
 
     def create_group(self, name: str, overwrite: bool = False) -> tx.Self:
+        """Create a subgroup named *name*, or open it if one already
+        exists.
+
+        Parameters
+        ----------
+        name : str
+            The subgroup's name.
+        overwrite : bool, optional
+            Replace an existing member named *name* instead of
+            raising an error.
+
+        Returns
+        -------
+        PathGroup
+            The created or opened subgroup.
+        """
         child = self._store_path / name
         if _node_type_at(child) is not None and not overwrite:
             raise FileExistsError(
@@ -792,10 +826,11 @@ class PathGroup(ZarrGroup):
     def _create_array(self, name: str, config: ArrayConfig) -> ZarrArray:
         """Create a child array by writing its metadata, then opening it.
 
-        This is the fallback for a backend with no native creation: write the
-        config's metadata to the child directory and open it through
-        `_open_array`. A backend that creates natively (zarr-python,
-        TensorStore) overrides this.
+        This method is the fallback for a backend with no native
+        creation. It writes the config's metadata to the child
+        directory and opens it through `_open_array`. A backend that
+        creates natively, such as zarr-python or TensorStore,
+        overrides this method.
         """
         child = self._store_path / name
         if _node_type_at(child) is not None:
@@ -808,14 +843,15 @@ class PathGroup(ZarrGroup):
 
     # -- backend hook ------------------------------------------------------
     # A driver overrides this to open a child array with its backend. The
-    # rest of the surface -- listing, navigation, subgroups, and writing an
-    # array's metadata -- is backend-independent.
+    # rest of the surface (listing, navigation, subgroups, and writing an
+    # array's metadata) is backend-independent.
 
     def _open_array(self, store_path: tz.PathLike) -> ZarrArray:
         """Open the child array at *store_path*.
 
-        `PathGroup` does not know how to open an array on its own; a driver
-        overrides this method to open one with its own backend.
+        `PathGroup` does not know how to open an array on its own. A
+        driver overrides this method to open one with its own
+        backend.
         """
         raise UnsupportedZarrOperation("open an array")
 
