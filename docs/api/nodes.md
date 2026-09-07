@@ -1,4 +1,4 @@
-# Nodes
+# nodes
 
 Every object abczarr hands back, an array or a group, is a *node*.
 [ZarrNode][abczarr.abc.sync.ZarrNode] is the common base: it carries
