@@ -1,12 +1,13 @@
 """Zarr v3 array metadata.
 
-Zarr v3 describes an array with a chunk grid (how the array is
-divided into chunks), a chunk-key encoding (how a chunk's index maps
-to its key in the store), and an ordered pipeline of codecs applied
-to each chunk. Converting to v2 or v1 (see
-[ArrayMetadata.to_version][abczarr.metadata.v3.array.ArrayMetadata.to_version])
-requires a regular chunk grid, and folds the codec pipeline back into
-v2's compressor, filters and byte-order-bearing dtype.
+Zarr v3 describes an array with three things: a chunk grid, which
+says how the array is divided into chunks, a chunk-key encoding,
+which says how a chunk's index maps to its key in the store, and an
+ordered pipeline of codecs applied to each chunk.
+[ArrayMetadata.to_version][abczarr.metadata.v3.array.ArrayMetadata.to_version]
+converts to v2 or v1 by folding the codec pipeline back into v2's
+compressor, filters and byte-order-bearing dtype. That conversion
+requires a regular chunk grid.
 """
 
 __all__ = [
@@ -57,6 +58,16 @@ class ChunkGrid(MustUnderstandExtension):
 
 @autofrozen(extra_items=False)
 class RegularChunkGridConfig(TypedConfig):
+    """Holds the regular chunk grid's parameters: the shared chunk
+    shape.
+
+    Attributes
+    ----------
+    chunk_shape : tuple of int
+        The shape of every chunk, one entry per dimension of the
+        array.
+    """
+
     chunk_shape: tz.Shape
 
 
@@ -69,6 +80,13 @@ class RegularChunkGrid(ChunkGrid):
     dimension of the array. This is the only chunk grid Zarr v2 and
     v1 can represent, so it is required for conversion to those
     versions.
+
+    Attributes
+    ----------
+    name : str
+        Always ``"regular"``.
+    configuration : RegularChunkGridConfig
+        The chunk grid's parameters.
     """
 
     name: tx.Literal["regular"]
@@ -77,6 +95,17 @@ class RegularChunkGrid(ChunkGrid):
 
 @autofrozen(extra_items=False)
 class RectilinearChunkGridConfig(TypedConfig):
+    """Holds the rectilinear chunk grid's parameters: the per-axis
+    chunk shapes.
+
+    Attributes
+    ----------
+    kind : str
+        Always ``"inline"``.
+    chunk_shapes : tuple of int
+        The chunk shapes along the axis that varies.
+    """
+
     kind: tx.Literal["inline"]
     chunk_shapes: tz.Shape
 
@@ -91,6 +120,13 @@ class RectilinearChunkGrid(ChunkGrid):
     which fixes one shape for every chunk, this grid's chunks need
     not all be the same size. It has no representation in Zarr v2 or
     v1.
+
+    Attributes
+    ----------
+    name : str
+        Always ``"rectilinear"``.
+    configuration : RectilinearChunkGridConfig
+        The chunk grid's parameters.
     """
 
     name: tx.Literal["rectilinear"]
@@ -104,11 +140,21 @@ class RectilinearChunkGrid(ChunkGrid):
 
 @autofrozen(extra_items=tz.FrozenJson)
 class ChunkKeyEncodingConfig(TypedConfig):
-    ...
+    """This class is the base for a chunk-key encoding's own
+    configuration parameters."""
 
 
 @autofrozen(extra_items=False)
 class CommonChunkKeyEncodingConfig(ChunkKeyEncodingConfig):
+    """Holds the parameter every chunk-key encoding shares: the
+    separator joining a chunk index into its key.
+
+    Attributes
+    ----------
+    separator : str
+        The character joining a chunk index into its store key.
+    """
+
     separator: tz.DimensionSeparator = "/"
 
 
@@ -120,9 +166,16 @@ class ChunkKeyEncoding(MustUnderstandExtension):
     [the default encoding][abczarr.metadata.v3.array.DefaultChunkKeyEncoding]
     for v3's own scheme, or
     [V2ChunkKeyEncoding][abczarr.metadata.v3.array.V2ChunkKeyEncoding]
-    to keep the key layout Zarr v2 uses -- the latter is what a v2
-    array converts to, and what a v3 array must use to convert back
+    to keep the key layout Zarr v2 uses. A v2 array converts to
+    `V2ChunkKeyEncoding`, and a v3 array must use it to convert back
     to v2 or v1.
+
+    Attributes
+    ----------
+    name : str
+        The name of the encoding, such as ``"default"`` or ``"v2"``.
+    configuration : ChunkKeyEncodingConfig
+        The encoding's own parameters.
     """
 
     name: str
@@ -136,7 +189,8 @@ class ChunkKeyEncoding(MustUnderstandExtension):
 
 @autofrozen(field_transformer=update(separator={"default": "/"}))
 class DefaultChunkKeyEncodingConfig(CommonChunkKeyEncodingConfig):
-    ...
+    """Holds the default chunk-key encoding's parameters: the
+    separator, defaulting to ``"/"``."""
 
 
 @register_subclass(name="default")
@@ -146,6 +200,13 @@ class DefaultChunkKeyEncoding(ChunkKeyEncoding):
 
     A chunk index like `(1, 2)` becomes the key `c/1/2`, joined by
     `configuration.separator` (`/` by default).
+
+    Attributes
+    ----------
+    name : str
+        Always ``"default"``.
+    configuration : DefaultChunkKeyEncodingConfig
+        The encoding's parameters.
     """
 
     name: tx.Literal["default"]
@@ -154,7 +215,8 @@ class DefaultChunkKeyEncoding(ChunkKeyEncoding):
 
 @autofrozen(field_transformer=update(separator={"default": "."}))
 class V2ChunkKeyEncodingConfig(CommonChunkKeyEncodingConfig):
-    ...
+    """Holds the v2 chunk-key encoding's parameters: the separator,
+    defaulting to ``"."``."""
 
 
 @register_subclass(name="v2")
@@ -163,10 +225,17 @@ class V2ChunkKeyEncoding(ChunkKeyEncoding):
     """Zarr v2's chunk-key layout, usable from a v3 array.
 
     A chunk index like `(1, 2)` becomes the key `1.2`, joined by
-    `configuration.separator` (`.` by default -- v2's own default).
-    A v3 array must use this encoding to convert to v2 or v1, and a
-    v2 array converts to this encoding rather than
+    `configuration.separator` (`.` by default, v2's own default). A
+    v3 array must use this encoding to convert to v2 or v1. A v2
+    array converts to this encoding, not to
     [the default one][abczarr.metadata.v3.array.DefaultChunkKeyEncoding].
+
+    Attributes
+    ----------
+    name : str
+        Always ``"v2"``.
+    configuration : V2ChunkKeyEncodingConfig
+        The encoding's parameters.
     """
 
     name: tx.Literal["v2"]
@@ -220,6 +289,32 @@ class ArrayMetadata(ArrayMetadataV3):
         ['bytes', 'zlib']
 
         ```
+
+    Attributes
+    ----------
+    shape : tuple of int
+        The array's shape, one entry per dimension.
+    data_type : DType
+        The array's Zarr v3 data type.
+    chunk_grid : ChunkGrid
+        How the array is divided into chunks.
+    chunk_key_encoding : ChunkKeyEncoding
+        How a chunk's index maps to its key in the store.
+    fill_value : int, float or None
+        The value an unwritten element of the array reads as. A
+        complex fill value is a two-element ``(real, imag)`` pair.
+    codecs : tuple of Codec
+        The codec pipeline applied to each chunk: zero or more
+        array-to-array codecs, exactly one array-to-bytes codec,
+        then zero or more bytes-to-bytes codecs.
+    attributes : dict
+        The array's user-defined attributes.
+    dimension_names : tuple of str or None
+        An optional name for each dimension of the array. An entry
+        may be `None` when that dimension is unnamed.
+    storage_transformers : tuple of dict
+        Extra transformations a store applies to the array's chunks,
+        beyond the codec pipeline.
     """
 
     # --- Required ----
@@ -238,12 +333,17 @@ class ArrayMetadata(ArrayMetadataV3):
     # --- Serialization ---
 
     def to_json(self) -> tz.JsonDict:
-        """Serialize to ``zarr.json``, omitting the optional fields that carry
-        nothing.
+        """Serialize this metadata to the contents of `zarr.json`.
 
-        Zarr v3 leaves ``dimension_names`` and ``storage_transformers`` out of
-        the document when they are unset, rather than writing ``null`` or an
-        empty list, and a strict reader (TensorStore) requires that.
+        `dimension_names` and `storage_transformers` are omitted from
+        the document when they carry nothing, instead of written as
+        `null` or an empty list, matching how the Zarr v3
+        specification represents an array with neither.
+
+        Returns
+        -------
+        dict
+            The JSON-compatible representation of this metadata.
         """
         data = super().to_json()
         if data.get("dimension_names") is None:
@@ -264,12 +364,12 @@ class ArrayMetadata(ArrayMetadataV3):
         Requires a
         [RegularChunkGrid][abczarr.metadata.v3.array.RegularChunkGrid]
         -- v2 and v1 have no other kind. Sharding is unwrapped into
-        its inner codecs (subject to *policy*, since the sharding
+        its inner codecs (subject to `policy`, since the sharding
         structure itself is then lost), the codec pipeline is split
         back into v2's filters, byte order and compressor around its
         one array-to-bytes codec, and an `order` other than ``"C"``
         or more than one bytes-to-bytes codec is likewise subject to
-        *policy*.
+        `policy`.
 
         Parameters
         ----------
@@ -281,17 +381,17 @@ class ArrayMetadata(ArrayMetadataV3):
         Returns
         -------
         ArrayMetadata
-            Equivalent metadata for *version*. Converting to 3
+            Equivalent metadata for `version`. Converting to 3
             returns this object unchanged.
 
         Raises
         ------
         ValueError
-            If *version* is not 1, 2 or 3, or if `chunk_grid` is not
+            If `version` is not 1, 2 or 3, or if `chunk_grid` is not
             a `RegularChunkGrid`.
         UnsupportedConversion
-            If *policy* is ``"strict"`` and a field cannot be
-            represented in *version*.
+            If `policy` is ``"strict"`` and a field cannot be
+            represented in `version`.
         """
         if version == 1:
             # route through v2 -- v1 and v2 share the numcodecs model
@@ -304,12 +404,15 @@ class ArrayMetadata(ArrayMetadataV3):
             raise ValueError(f"Unsupported version: {version}")
 
     def required_features(self) -> tx.FrozenSet[str]:
-        """The features a driver needs to read or write this array.
+        """Report the features a driver needs to read or write this array.
 
-        One key each for the chunk grid, the chunk-key encoding and
-        the data type, plus one per codec in `codecs` -- including,
-        for a `ShardingCodec`, the codecs nested inside it -- and one
-        per named storage transformer.
+        Returns
+        -------
+        frozenset of str
+            One key each for the chunk grid, the chunk-key encoding
+            and the data type, plus one per codec in `codecs`,
+            including the codecs nested inside a `ShardingCodec`, and
+            one per named storage transformer.
         """
         feats = {
             feature_key("v3", "chunk_grid", self.chunk_grid.name),
@@ -333,8 +436,8 @@ class ArrayMetadata(ArrayMetadataV3):
 
 
 def _collect_codec_features(codec: Codec, feats: tx.Set[str]) -> None:
-    """Add *codec*'s feature key, recursing into a sharding codec's inner and
-    index codecs so a nested codec is named too."""
+    """Add `codec`'s feature key to `feats`, recursing into a sharding
+    codec's inner and index codecs so a nested codec is named too."""
     name = getattr(codec, "name", None)
     if name:
         feats.add(feature_key("v3", "codec", name))
@@ -358,9 +461,8 @@ _VLEN_DTYPE_TO_FILTER = {"string": "vlen-utf8", "bytes": "vlen-bytes"}
 def _pop_next(
     seq: tx.List[tx.Type[Codec]], cls: tx.Type[Codec]
 ) -> tx.Optional[Codec]:
-    """
-    Pop the next codec of the given type from the list, if any.
-    """
+    """Remove and return the first instance of `cls` in `seq`, or `None`
+    if `seq` holds none."""
     for i, c in enumerate(seq):
         if isinstance(c, cls):
             return seq.pop(i)
@@ -368,7 +470,8 @@ def _pop_next(
 
 
 def _is_serializer(codec: Codec) -> bool:
-    """Whether *codec* is the array-to-bytes step of the v3 pipeline."""
+    """Report whether `codec` is the array-to-bytes step of the v3
+    pipeline."""
     return isinstance(codec, BytesCodec) or getattr(codec, "name", None) == (
         "bytes"
     )
@@ -377,14 +480,16 @@ def _is_serializer(codec: Codec) -> bool:
 def _to_v2(
     self: ArrayMetadata, policy: base.ConversionPolicy = "lossy"
 ) -> base.ArrayMetadata:
+    """Convert `self` to a v2 `ArrayMetadata`, applying `policy` to
+    whatever v2 cannot represent."""
     from abczarr.metadata import v2
 
     if self.chunk_grid.name != "regular":
-        # A non-regular grid (e.g. rectilinear) has no v2/v1 form, and --
-        # unlike a dropped field -- leaves no chunk shape to build a valid
-        # array from, so the conversion cannot proceed under any policy. This
-        # is a documented limitation, not a policy-governed loss: it raises a
-        # named error rather than the bare ValueError it used to.
+        # A non-regular grid (such as rectilinear) has no v2/v1 form. Unlike
+        # a dropped field, it leaves no chunk shape to build a valid array
+        # from, so the conversion cannot proceed under any policy. This is a
+        # documented limitation, not a policy-governed loss, so it raises a
+        # named error instead of a bare ValueError.
         raise UnsupportedConversion("chunk_grid", 2)
     chunk_grid = tx.cast(RegularChunkGrid, self.chunk_grid)
     chunk_shape = chunk_grid.configuration.chunk_shape

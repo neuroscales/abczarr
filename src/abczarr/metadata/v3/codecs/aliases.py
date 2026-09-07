@@ -1,7 +1,6 @@
 """Type aliases for Zarr v3 built-in codec configurations.
 
-These name the enumerated fields of the v3 codec configs (blosc, gzip).
-Previously imported from the removed ``abczarr.schemas.v3`` TypedDicts.
+Names the enumerated fields of the v3 codec configs: blosc and gzip.
 """
 
 __all__ = [

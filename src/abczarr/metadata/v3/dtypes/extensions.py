@@ -1,3 +1,10 @@
+"""Extension data types for Zarr v3, beyond the required core set.
+
+Includes structured records, extended-precision and reduced-precision
+floating-point types, numpy's datetime and timedelta types, and
+fixed-length string and byte types.
+"""
+
 __all__ = ["DTypeExtra", "Struct"]
 
 # stdlib
@@ -57,7 +64,15 @@ class DTypeExtra(DTypeImpl):
 @autofrozen
 class StructField(DTypeConfigImpl):
     """Represents one named field of a struct data type: its name and
-    its data type."""
+    its data type.
+
+    Attributes
+    ----------
+    name : str
+        The field's name.
+    data_type : DType
+        The field's data type.
+    """
 
     name: str
     data_type: DType
@@ -66,7 +81,13 @@ class StructField(DTypeConfigImpl):
 @autofrozen
 class StructConfig(DTypeConfigImpl):
     """Holds the struct data type's parameters: the ordered list of
-    fields."""
+    fields.
+
+    Attributes
+    ----------
+    fields : tuple of StructField
+        The struct's fields, in record order.
+    """
 
     fields: tx.Tuple[StructField, ...]
 
@@ -79,6 +100,13 @@ class Struct(DTypeExtra):
 
     Each element is a record combining every field's value, mirroring
     numpy's structured dtype.
+
+    Attributes
+    ----------
+    name : str
+        Either ``"struct"`` or ``"structured"``.
+    configuration : StructConfig
+        The struct's fields.
     """
 
     name: tx.Literal["struct", "structured"]
@@ -90,9 +118,16 @@ class NumpyTimeConfig(DTypeConfigImpl):
     """Holds the datetime/timedelta parameters: the time unit and its
     scale factor.
 
-    A value counts ``scale_factor`` multiples of ``unit`` (e.g. a
-    ``scale_factor`` of 10 with ``unit`` ``"s"`` counts in tens of
-    seconds), matching numpy's datetime64/timedelta64 resolution.
+    A value counts `scale_factor` multiples of `unit`. A
+    `scale_factor` of 10 with `unit` ``"s"`` counts in tens of
+    seconds, matching numpy's datetime64/timedelta64 resolution.
+
+    Attributes
+    ----------
+    unit : str
+        The base time unit, such as ``"s"`` or ``"ns"``.
+    scale_factor : int
+        The number of `unit`s one increment counts.
     """
 
     unit: tx.Literal[
@@ -105,11 +140,18 @@ class NumpyTimeConfig(DTypeConfigImpl):
 @register_subclass(name="numpy.datetime64")
 @autofrozen
 class NumpyDatetime64(DTypeExtra):
-    """Represents a point in time, at the resolution ``configuration``
+    """Represents a point in time, at the resolution `configuration`
     names.
 
-    Mirrors numpy's ``datetime64``: an integer count of the configured
+    Mirrors numpy's `datetime64`: an integer count of the configured
     time unit since the Unix epoch.
+
+    Attributes
+    ----------
+    name : str
+        Always ``"numpy.datetime64"``.
+    configuration : NumpyTimeConfig
+        The time unit and scale factor.
     """
 
     name: tx.Literal["numpy.datetime64"]
@@ -119,10 +161,17 @@ class NumpyDatetime64(DTypeExtra):
 @register_subclass(name="numpy.timedelta64")
 @autofrozen
 class NumpyTimedelta64(DTypeExtra):
-    """Represents a duration, at the resolution ``configuration`` names.
+    """Represents a duration, at the resolution `configuration` names.
 
-    Mirrors numpy's ``timedelta64``: an integer count of the configured
+    Mirrors numpy's `timedelta64`: an integer count of the configured
     time unit.
+
+    Attributes
+    ----------
+    name : str
+        Always ``"numpy.timedelta64"``.
+    configuration : NumpyTimeConfig
+        The time unit and scale factor.
     """
 
     name: tx.Literal["numpy.timedelta64"]
@@ -139,7 +188,13 @@ class NumpyTimedelta64(DTypeExtra):
 @autofrozen
 class FixedLengthConfig(DTypeConfigImpl):
     """Holds the fixed-length data type's parameters: the element's
-    size in bytes."""
+    size in bytes.
+
+    Attributes
+    ----------
+    length_bytes : int
+        The size, in bytes, of one element.
+    """
 
     length_bytes: int
 
@@ -148,9 +203,16 @@ class FixedLengthConfig(DTypeConfigImpl):
 @autofrozen
 class FixedLengthUtf32(DTypeExtra):
     """Represents a fixed-length UTF-32 string, mirroring numpy's
-    ``<U{n}`` dtype.
+    `<U{n}` dtype.
 
-    ``configuration.length_bytes`` is four times the character count.
+    `configuration.length_bytes` is four times the character count.
+
+    Attributes
+    ----------
+    name : str
+        Always ``"fixed_length_utf32"``.
+    configuration : FixedLengthConfig
+        The element's size in bytes.
     """
 
     name: tx.Literal["fixed_length_utf32"]
@@ -161,7 +223,15 @@ class FixedLengthUtf32(DTypeExtra):
 @autofrozen
 class NullTerminatedBytes(DTypeExtra):
     """Represents a fixed-length byte string, mirroring numpy's
-    ``S{n}`` dtype."""
+    `S{n}` dtype.
+
+    Attributes
+    ----------
+    name : str
+        Always ``"null_terminated_bytes"``.
+    configuration : FixedLengthConfig
+        The element's size in bytes.
+    """
 
     name: tx.Literal["null_terminated_bytes"]
     configuration: FixedLengthConfig

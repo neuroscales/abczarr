@@ -25,15 +25,21 @@ class TypedConfig(Metadata):
 
 @autofrozen
 class Extension(Metadata):
-    """An `Extension` represents a Zarr v3 extension point: a named,
-    configurable piece of metadata.
+    """A Zarr v3 extension point: a named, configurable piece of
+    metadata.
 
     Codecs, data types, chunk grids and chunk key encodings are all
-    shaped this way. Each carries a ``name`` identifying which
-    extension applies, its own ``configuration``, and
-    ``must_understand``, which says whether a reader that does not
-    recognize ``name`` must refuse to open the array instead of
-    ignoring the extension.
+    shaped this way.
+
+    Attributes
+    ----------
+    name : str
+        The name identifying which extension applies.
+    configuration : TypedConfig
+        The extension's own parameters.
+    must_understand : bool
+        Whether a reader that does not recognize `name` must refuse
+        to open the array instead of ignoring the extension.
     """
 
     name: str
@@ -52,7 +58,16 @@ class Extension(Metadata):
         self.__attrs_init__(*args, **kwargs)
 
     def to_json(self) -> tz.JsonDict:
-        # A default ``must_understand`` (True) is left implicit in the output.
+        """Serialize this extension to its JSON representation.
+
+        A default `must_understand` of `True` is left implicit in
+        the result instead of written explicitly.
+
+        Returns
+        -------
+        dict
+            The JSON-compatible representation of this extension.
+        """
         obj = super().to_json()
         if obj.get("must_understand", True) is True:
             obj.pop("must_understand")
@@ -69,10 +84,15 @@ class MustUnderstandExtension(Extension):
     """Represents an extension point that a reader may never silently
     ignore.
 
-    ``must_understand`` is pinned to ``True``. The pin applies to
+    `must_understand` is pinned to `True`. The pin applies to
     extension points such as codecs, data types, chunk grids, and chunk
     key encodings, where an unrecognized value would make the array
     unreadable if skipped.
+
+    Attributes
+    ----------
+    must_understand : bool
+        Always `True`.
     """
 
     must_understand: tx.Literal[True] = field(repr=False)
@@ -83,7 +103,12 @@ class ExtraField(Extension):
     """Represents a top-level extension field that a reader may safely
     skip if unrecognized.
 
-    ``must_understand`` is pinned to ``False``.
+    `must_understand` is pinned to `False`.
+
+    Attributes
+    ----------
+    must_understand : bool
+        Always `False`.
     """
 
     must_understand: tx.Literal[False]

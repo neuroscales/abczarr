@@ -1,3 +1,9 @@
+"""The core Zarr v3 data types every implementation must support.
+
+Includes the boolean, integer, floating-point and complex types, and
+the raw fixed-bit-width type.
+"""
+
 __all__ = ["DTypeBuiltin", "Raw"]
 
 # stdlib
@@ -42,9 +48,16 @@ class DTypeBuiltin(DTypeImpl):
 @register_subclass(name=RE_RAW)
 @autofrozen
 class Raw(DTypeBuiltin):
+    """An opaque sequence of bits, with a fixed number of bits per
+    element.
+
+    Attributes
+    ----------
+    name : str
+        The bit width, spelled as ``"r"`` followed by the number of
+        bits, such as ``"r8"`` for one byte per element.
     """
-    Raw data type, with a specified number of bits per element.
-    """
+
     name: tx.Annotated[str, ToRegexMatch(RE_RAW)] = "r8"
 
 
