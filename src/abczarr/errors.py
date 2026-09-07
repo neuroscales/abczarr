@@ -1,8 +1,8 @@
 """The errors abczarr raises, gathered in one place.
 
 Each error names what went wrong and, where useful, the store, driver,
-or field involved. They are also available directly off the package
-top level, so `abczarr.UnsupportedZarrOperation` and
+or field involved. The errors are also available directly off the
+package top level, so `abczarr.UnsupportedZarrOperation` and
 `abczarr.errors.UnsupportedZarrOperation` are the same class.
 """
 

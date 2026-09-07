@@ -4,11 +4,11 @@ OME-Zarr (the NGFF spec) is a metadata convention for bioimaging data
 stored in Zarr: multiscale image pyramids, high-content screening
 plates, segmentation labels, and rendering settings, all described by
 JSON attached to a Zarr group. abczarr models that metadata as typed
-classes under `abczarr.ome`, one package per NGFF version -- `v0_1`
-through `v0_5`, plus the 0.6 pre-release previews `v0_6dev1` through
-`v0_6dev4` and `v0_6rc0`.
+classes under `abczarr.ome`. There is one package per NGFF version,
+`v0_1` through `v0_5`, plus the 0.6 pre-release previews `v0_6dev1`
+through `v0_6dev4` and `v0_6rc0`.
 
-The examples below target 0.5, the latest stable version; the
+The examples below target 0.5, the latest stable version. The
 [Reference](#reference) documents every version.
 
 ## Describing a multiscale image
@@ -143,7 +143,7 @@ True
 ```
 
 Fields both versions share carry over unchanged. Converting forward, a
-field only the newer version has gets a reasonable default: axes, for
+field only the newer version has gets a reasonable default. Axes, for
 example, gained a `type` field in NGFF 0.4, defaulted from the axis's
 name. Converting back, that field is dropped. Converting to a version
 that would need information the source does not carry raises

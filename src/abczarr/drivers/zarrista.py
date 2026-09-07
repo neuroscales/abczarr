@@ -77,11 +77,12 @@ def _parse_feature(key: str) -> tx.Optional[tx.Tuple[str, str, str]]:
 
 
 class ZarristaNode(ZarrNode):
-    """Common base for the zarrista array and group adapters.
+    """`ZarristaNode` is the common base for the zarrista array and group
+    adapters.
 
-    zarrista keeps no user attributes of its own, so both nodes read
+    zarrista keeps no user attributes of its own. Both nodes read
     attributes from cached metadata and persist a write by rewriting the
-    metadata document through the store, the behavior inherited from
+    metadata document through the store. This behavior is inherited from
     [ZarrNode][abczarr.abc.sync.ZarrNode].
     """
 

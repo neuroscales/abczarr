@@ -515,8 +515,8 @@ class ZarrGroup(ZarrNode):
 
 
 class PathGroup(ZarrGroup):
-    """A [ZarrGroup][abczarr.abc.sync.ZarrGroup] for a backend with no
-    group object of its own.
+    """`PathGroup` is a [ZarrGroup][abczarr.abc.sync.ZarrGroup] for a
+    backend with no group object of its own.
 
     Some backends never construct a "group" -- TensorStore opens arrays
     only, and a bare key-value store holds nothing but keys. For those, a
@@ -528,7 +528,7 @@ class PathGroup(ZarrGroup):
 
     A driver subclasses `PathGroup` and overrides `_open_array` (and, to
     support creating arrays too, `_create_array`) to say how a child array
-    is opened with its own backend. Subgroups need no override -- they are
+    is opened with its own backend. Subgroups need no override. They are
     more `PathGroup`s of the same subclass, so a whole hierarchy is
     reachable from one opened group.
 

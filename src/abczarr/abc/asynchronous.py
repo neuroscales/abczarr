@@ -103,9 +103,9 @@ class AsyncZarrNode(SupportsCapabilities, ABC):
     def attrs(self) -> NodeAttributes:
         """This node's user attributes, as a read-cached mapping.
 
-        Reads are synchronous -- they come from cached metadata, so there is
-        nothing to await. There is no per-key async setter, since an
-        assignment cannot be awaited; use
+        Reads are synchronous. They come from cached metadata, so there is
+        nothing to await. Assigning a single key cannot be awaited, so no
+        per-key async setter exists. Use
         [update_attributes][abczarr.abc.asynchronous.AsyncZarrNode.update_attributes]
         to persist a change.
         """
@@ -322,17 +322,20 @@ class AsyncZarrGroup(AsyncZarrNode):
 
 
 class AsyncPathGroup(AsyncZarrGroup):
-    """The async twin of [PathGroup][abczarr.abc.sync.PathGroup].
+    """`AsyncPathGroup` is the async twin of
+    [PathGroup][abczarr.abc.sync.PathGroup].
 
     Listing and navigating members is genuinely non-blocking. Array
-    children come back in the async color -- a natively async backend's
-    array is its own native async array. Creating a subgroup or array
-    still blocks, since writing metadata or building a backend handle is
-    inherently synchronous work.
+    children come back in the async color. When the underlying backend
+    is natively async, a child array is that backend's own native
+    async array rather than a synchronous array run in a thread.
+    Creating a subgroup or array still blocks, since writing metadata
+    or building a backend handle is inherently synchronous work.
 
-    Its own `"async"` capability is always `Support.SYNTHESIZED`, even
-    when the underlying store is itself natively async; `NATIVE` is
-    reserved for async support a backend supplies directly.
+    `AsyncPathGroup`'s `"async"` capability is always
+    `Support.SYNTHESIZED`, even when the underlying store is itself
+    natively async. `NATIVE` is reserved for async support that a
+    backend supplies directly.
     """
 
     # a path group synthesizes group semantics over a store; async is
