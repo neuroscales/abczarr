@@ -1,15 +1,18 @@
-"""The synchronous Zarr nodes: the node base, the array, and the group.
+"""The synchronous Zarr node classes: the shared base, the array, and
+the group.
 
-[ZarrNode][abczarr.abc.sync.ZarrNode] is the common ancestor of
+[ZarrNode][abczarr.abc.sync.ZarrNode] is the base class both
 [ZarrArray][abczarr.abc.sync.ZarrArray] and
-[ZarrGroup][abczarr.abc.sync.ZarrGroup]: metadata, attributes, the
-Zarr format version, and the capability query all live here.
+[ZarrGroup][abczarr.abc.sync.ZarrGroup] inherit from. It defines the
+metadata, the user attributes, the Zarr format version, and the
+capability query that every node shares.
 
-* [ZarrArray][abczarr.abc.sync.ZarrArray] is the n-dimensional node,
-  read and written like a NumPy array.
-* [ZarrGroup][abczarr.abc.sync.ZarrGroup] is the container node, indexed
-  like a mapping; [PathGroup][abczarr.abc.sync.PathGroup] is its
-  implementation for a backend with no group object of its own.
+* [ZarrArray][abczarr.abc.sync.ZarrArray] is the n-dimensional node.
+  It is read and written like a NumPy array.
+* [ZarrGroup][abczarr.abc.sync.ZarrGroup] is the container node. It
+  is indexed like a mapping, with subgroups and arrays as its
+  members. [PathGroup][abczarr.abc.sync.PathGroup] implements a
+  group for a backend that has no group object of its own.
 """
 
 __all__ = [
@@ -75,13 +78,20 @@ if tx.TYPE_CHECKING:
 
 
 class ZarrNode(SupportsCapabilities, ABC):
-    """Base class for any Zarr object: a group or an array.
+    """The base class for a Zarr array or a Zarr group.
 
-    Use
+    A `ZarrNode` carries what every Zarr object shares: its location,
+    its metadata, its user attributes, its OME-Zarr metadata, and its
+    format version.
+    [ZarrArray][abczarr.abc.sync.ZarrArray] and
+    [ZarrGroup][abczarr.abc.sync.ZarrGroup] add the data-specific
+    surface on top of it.
+
+    A node's backend determines which capabilities it has. Use
     [capability][abczarr.abc.capabilities.SupportsCapabilities.capability]
-    or
+    to find out how a given capability is provided, and
     [supports][abczarr.abc.capabilities.SupportsCapabilities.supports]
-    to check what a node's backend can do.
+    to check whether it is provided at all.
     """
 
     def __init__(self, store_path: tz.PathLike) -> None:
@@ -109,11 +119,16 @@ class ZarrNode(SupportsCapabilities, ABC):
 
     @property
     def native(self) -> tx.Any:
-        """The underlying backend object, or `None`.
+        """The underlying backend object, or `None` when the node
+        has none.
 
-        The escape hatch: anything the uniform surface does not name
-        is still reachable through the backend object itself -- a
-        `zarr.Array`, a `tensorstore.TensorStore`, and so on.
+        This property is the escape hatch for anything the uniform
+        node surface does not expose. A `zarr.Array`, a
+        `tensorstore.TensorStore`, or another backend's own object is
+        reachable here, with its full native API. A node backed by
+        nothing but a path, such as a
+        [PathGroup][abczarr.abc.sync.PathGroup], has no such object
+        and returns `None`.
         """
         return self._native
 
@@ -127,10 +142,13 @@ class ZarrNode(SupportsCapabilities, ABC):
     def attrs(self) -> NodeAttributes:
         """This node's user attributes, as a live, write-through mapping.
 
-        Reads are served from this node's metadata, the single source of
-        truth. Mutations persist: `node.attrs["k"] = v` adds or replaces `k`
-        and `del node.attrs["k"]` removes it, both routed through the node's
-        persistence path.
+        Reads come from this node's metadata, which is the single
+        source of truth for what the mapping holds. A write persists
+        immediately: `node.attrs["unit"] = "micrometer"` adds or
+        replaces the key, and `del node.attrs["unit"]` removes it.
+        Both operations are written through the node's own
+        persistence path, so the change reaches the store before the
+        call returns.
 
         !!! example
             ```python
@@ -142,18 +160,24 @@ class ZarrNode(SupportsCapabilities, ABC):
 
     @property
     def ome(self) -> "tx.Optional[OME]":
-        """This node's OME-Zarr metadata as a typed object, read-write.
+        """This node's OME-Zarr metadata as a typed object, read and
+        write.
 
-        Reading parses the group's OME-NGFF metadata into the right
-        version's [OME][abczarr.ome.base.OME] object, or returns `None`
-        when the node carries none. Assigning a typed
-        [OME][abczarr.ome.base.OME] object (or a plain JSON-style mapping
-        carrying a ``version``) serializes and persists it, write-through
-        the same way [attrs][abczarr.abc.sync.ZarrNode.attrs] does; `del
-        node.ome` removes it. Both directions handle whichever envelope
-        the version uses -- the ``"ome"`` attribute from 0.5 on, the bare
-        attribute keys up to 0.4 -- and leave unrelated attributes
-        untouched.
+        Reading parses the node's OME-NGFF metadata and returns the
+        matching version's [OME][abczarr.ome.base.OME] object, or
+        `None` when the node carries no OME metadata. Assigning a
+        value serializes and persists it, write-through in the same
+        way as [attrs][abczarr.abc.sync.ZarrNode.attrs]. The assigned
+        value may be a typed [OME][abczarr.ome.base.OME] object or a
+        plain JSON-style mapping that carries a ``version`` key.
+        Deleting the attribute, with `del node.ome`, removes the
+        metadata.
+
+        Both directions understand every NGFF envelope. From version
+        0.5 on, the metadata is nested under a single ``"ome"``
+        attribute. Before 0.5, its fields are written directly at the
+        top level of the node's attributes. Neither direction touches
+        any attribute that is not part of the OME metadata.
 
         !!! example
             ```python
@@ -179,20 +203,23 @@ class ZarrNode(SupportsCapabilities, ABC):
         delete_ome(self)
 
     def update_ome(self, ome: "tx.Union[OME, tz.JsonDict]") -> "ZarrNode":
-        """Shallow-merge OME metadata into this node's, and persist it.
+        """Merge OME metadata into this node's existing OME metadata,
+        and persist the result.
 
-        The OME counterpart of
-        [update_attributes][abczarr.abc.sync.ZarrNode.update_attributes]:
-        the top-level keys of *ome* replace those of the node's current OME
-        metadata (``version`` / ``multiscales`` / ``omero`` / ...), and any
-        the node already has that *ome* does not name are kept. When the
-        node has no OME metadata yet and the result still names no version,
-        it defaults to the latest released OME version.
+        This method is the OME-metadata counterpart of
+        [update_attributes][abczarr.abc.sync.ZarrNode.update_attributes].
+        A top-level key present in *ome*, such as ``version``,
+        ``multiscales`` or ``omero``, replaces the value already
+        stored under that key. A key the node already carries that
+        *ome* does not name is preserved. When the node has no OME
+        metadata yet and the merged result still names no version,
+        the metadata is written with the latest released OME version.
 
-        The merge is shallow -- it replaces whole top-level keys, not the
-        contents of a multiscale or plate. For a structured edit, read
-        [ome][abczarr.abc.sync.ZarrNode.ome], change the typed object, and
-        assign it back.
+        The merge is shallow. A nested structure, such as a
+        multiscale or a plate definition, is replaced as a whole
+        rather than merged recursively. For a structured edit, read
+        [ome][abczarr.abc.sync.ZarrNode.ome], change the typed object,
+        and assign the result back.
 
         !!! example
             ```python
@@ -215,11 +242,14 @@ class ZarrNode(SupportsCapabilities, ABC):
         return self
 
     def update_attributes(self, attributes: tz.JsonDict) -> "ZarrNode":
-        """Add or replace several attributes at once, and persist them.
+        """Add or replace several attributes at once, and persist the
+        change.
 
-        The *attributes* are merged into this node's existing attributes --
-        an existing key is overwritten, the rest are kept -- and the change is
-        written through the node's persistence path. Mirrors zarr-python's
+        The keys in *attributes* are merged into this node's existing
+        attributes. An existing key is overwritten with the new
+        value, and every other key is kept unchanged. The merged
+        result is written through the node's persistence path before
+        this method returns. The behavior mirrors zarr-python's own
         `update_attributes`.
 
         !!! example
@@ -284,8 +314,9 @@ class ZarrNode(SupportsCapabilities, ABC):
 class ZarrArray(ZarrNode):
     """An n-dimensional Zarr array.
 
-    Read and write it like a NumPy array, with NumPy-style
-    selections:
+    A `ZarrArray` is read and written like a NumPy array. Indexing
+    accepts NumPy-style selections, including integers, slices, and
+    ellipses.
 
     !!! example
         ```python
@@ -317,7 +348,8 @@ class ZarrArray(ZarrNode):
     def chunks(self) -> tz.Shape:
         """The chunk shape of the array.
 
-        Raises when the array's chunk grid is not regular.
+        This property raises when the array's chunk grid is not
+        regular.
         """
         ...
 
@@ -327,7 +359,8 @@ class ZarrArray(ZarrNode):
         """The shard shape of the array, or `None` if it is not
         sharded.
 
-        Raises when the array's shard grid is not regular.
+        This property raises when the array's shard grid is not
+        regular.
         """
         ...
 
@@ -354,10 +387,17 @@ class ZarrArray(ZarrNode):
         dtype : numpy.dtype, optional
             The dtype of the returned array.
         copy : bool, optional
-            NumPy 2's array protocol passes this. Reading the array always
-            materializes a fresh array, so ``copy=False`` (return a view
-            without copying) cannot be honored and is refused; ``copy=True``
-            and ``copy=None`` both return the freshly-read array.
+            Whether to copy the data. NumPy 2's array protocol passes
+            this argument. Reading the array always materializes a
+            fresh array in memory, so a view without copying is never
+            possible. ``copy=False`` is refused for that reason. Both
+            ``copy=True`` and ``copy=None`` return the freshly read
+            array.
+
+        Raises
+        ------
+        ValueError
+            If *copy* is `False`.
         """
         if copy is False:
             raise ValueError(
@@ -367,12 +407,15 @@ class ZarrArray(ZarrNode):
         return np.asarray(self[()], dtype=dtype)
 
     def as_async(self) -> "AsyncZarrArray":
-        """The coroutine twin of this array, over the same backend handle.
+        """The coroutine twin of this array, over the same backend
+        handle.
 
-        The default runs this array's reads and writes in a bounded thread
-        pool and reports `"async"` as `Support.SYNTHESIZED`. A driver whose
-        backend has a native coroutine surface overrides this to return a
-        `Support.NATIVE` twin that awaits the backend's own futures.
+        By default, the returned twin runs this array's reads and
+        writes in a bounded thread pool, and its `"async"` capability
+        reports `Support.SYNTHESIZED`. A driver whose backend has its
+        own coroutine surface returns a `Support.NATIVE` twin instead,
+        one that awaits the backend's own futures directly rather than
+        running in a thread.
 
         !!! example
             ```python
@@ -391,12 +434,17 @@ class ZarrArray(ZarrNode):
         Parameters
         ----------
         chunks : optional
-            The Dask block size. `"shards"` uses the write unit (the shard
-            when sharded, otherwise the chunk); `"chunks"` uses the chunk;
-            or pass an explicit block shape. The default aligns to the write
-            unit, which reads a shard once rather than once per inner chunk.
-            Align to `"chunks"` instead when you mean to read from the array,
-            or to `"shards"` when you mean to write back into it.
+            The Dask block size. Three spellings are accepted.
+            `"shards"` uses the array's write unit: the shard, when
+            the array is sharded, or otherwise the chunk. `"chunks"`
+            uses the chunk shape directly. An explicit block shape may
+            also be passed instead of either name. The default,
+            `"shards"`, aligns the Dask blocks to the write unit, so a
+            shard is read once rather than once per inner chunk.
+            `"chunks"` suits reading the array in smaller pieces.
+            `"shards"` suits writing back into the array, since a
+            write to a whole shard at once avoids a partial rewrite of
+            it.
         """
         import dask.array as da
 
@@ -414,13 +462,14 @@ class ZarrArray(ZarrNode):
     ) -> None:
         """Write *source* into this array, block by block.
 
-        *source* is any array-like with a matching shape. A Dask array
-        is written one block at a time, so a source too large to hold
-        in memory never is; a plain array is written in one go. This is
-        the write counterpart of
-        [to_dask][abczarr.abc.sync.ZarrArray.to_dask], and it works
-        for every backend (unlike `dask.array.to_zarr`, which requires
-        a native `zarr.Array`).
+        *source* is any array-like object whose shape matches this
+        array's. A Dask array is written one block at a time, so a
+        source too large to fit in memory is never fully
+        materialized. A plain array is written in a single write.
+        This method is the write counterpart of
+        [to_dask][abczarr.abc.sync.ZarrArray.to_dask]. It works for
+        every backend, unlike `dask.array.to_zarr`, which requires a
+        native `zarr.Array`.
 
         !!! example
             ```python
@@ -432,11 +481,12 @@ class ZarrArray(ZarrNode):
         source : array-like
             The data to write. Its shape must match this array's.
         lock : bool or str, optional
-            Serialize concurrent block writes. The default, `"auto"`, locks
-            only when the source's blocks do not line up with this array's
-            write unit, since blocks that each fall on whole chunks never
-            write the same chunk at once. Pass `True` or `False` to decide
-            it yourself.
+            Whether to serialize concurrent block writes. The
+            default, `"auto"`, locks only when the source's blocks do
+            not line up with this array's write unit, since blocks
+            that each fall entirely within one chunk never write to
+            the same chunk at the same time. Passing `True` or `False`
+            decides the locking explicitly.
         """
         import dask.array as da
 
@@ -508,7 +558,8 @@ def _resolve_array_config(
 class ZarrGroup(ZarrNode):
     """A Zarr group: a container of arrays and subgroups.
 
-    Index it like a mapping to reach a member by name:
+    A `ZarrGroup` is indexed like a mapping. Each member, whether an
+    array or a subgroup, is reached by its name.
 
     !!! example
         ```python
@@ -535,7 +586,8 @@ class ZarrGroup(ZarrNode):
 
     @abstractmethod
     def create_group(self, name: str, overwrite: bool = False) -> tx.Self:
-        """Create or open a subgroup named *name*.
+        """Create a subgroup named *name*, or open it if one already
+        exists.
 
         Parameters
         ----------
@@ -543,7 +595,7 @@ class ZarrGroup(ZarrNode):
             The subgroup's name.
         overwrite : bool, optional
             Replace an existing member named *name* instead of
-            raising.
+            raising an error.
         """
         ...
 
@@ -583,13 +635,16 @@ class ZarrGroup(ZarrNode):
         ...
 
     def as_async(self) -> "AsyncZarrGroup":
-        """The coroutine twin of this group, over the same backend handle.
+        """The coroutine twin of this group, over the same backend
+        handle.
 
-        The default runs this group's navigation and creation in a bounded
-        thread pool and reports `"async"` as `Support.SYNTHESIZED`. A group
-        that stores its members as directories (a
-        [PathGroup][abczarr.abc.sync.PathGroup]) or a backend with its own
-        async group overrides this to return a `Support.NATIVE` twin.
+        By default, the returned twin runs this group's navigation
+        and creation in a bounded thread pool, and its `"async"`
+        capability reports `Support.SYNTHESIZED`. A group that stores
+        its members as directories, such as a
+        [PathGroup][abczarr.abc.sync.PathGroup], and a backend with
+        its own async group both return a `Support.NATIVE` twin
+        instead.
         """
         from .asynchronous import ThreadedAsyncGroup
 
@@ -597,23 +652,23 @@ class ZarrGroup(ZarrNode):
 
 
 class PathGroup(ZarrGroup):
-    """A [ZarrGroup][abczarr.abc.sync.ZarrGroup] for a backend with no
-    group object of its own.
+    """A group backed by nothing but a key-value store.
 
-    Some backends never construct a "group" -- TensorStore opens arrays
-    only, and a bare key-value store holds nothing but keys. For those, a
-    group is just a directory that carries Zarr group metadata, and
-    `PathGroup` provides the whole group surface over it: reading its own
-    metadata, listing its members, and navigating into subgroups and
-    arrays -- using nothing but abczarr's own path and metadata layers.
-    It can also create subgroups on its own, since that only means writing
+    Some backends do not provide a group object of their own.
+    TensorStore opens only arrays, and a plain key-value store holds
+    only keys. A `PathGroup` supplies the full group surface over such
+    a backend. In that setting, a group is a location that carries
+    Zarr group metadata. The `PathGroup` reads that metadata, lists
+    the group's members, and navigates into its subgroups and arrays.
+    It can also create a subgroup, which requires only writing new
     group metadata.
 
-    A driver subclasses `PathGroup` and overrides `_open_array` (and, to
-    support creating arrays too, `_create_array`) to say how a child array
-    is opened and created with its own backend. Subgroups need
-    no override -- they are more `PathGroup`s of the same subclass, so a
-    whole hierarchy is reachable from one opened group.
+    A backend adapts a `PathGroup` by subclassing it and overriding
+    `_open_array` to open a child array through the backend. A
+    subclass that also creates arrays overrides `_create_array`. A
+    subgroup needs no override, because a subgroup is another
+    `PathGroup` of the same subclass. An entire hierarchy is therefore
+    reachable from a single opened group.
 
     Parameters
     ----------
@@ -659,8 +714,11 @@ class PathGroup(ZarrGroup):
         return detected
 
     def keys(self) -> tx.Iterator[str]:
-        """The names of this group's members (subgroups and arrays), in
-        store order."""
+        """The names of this group's members, in store order.
+
+        A member may be a subgroup or an array. Both kinds are
+        included.
+        """
         if not self._store_path.is_dir():
             return
         for child in self._store_path.iterdir():
@@ -738,12 +796,16 @@ class PathGroup(ZarrGroup):
         raise UnsupportedZarrOperation("open an array")
 
     def as_async(self) -> "AsyncPathGroup":
-        """The coroutine twin of this group: a real async path group.
+        """The coroutine twin of this group: a native async path
+        group.
 
-        Unlike the generic default, this twin does its own listing and
-        navigation through an [AsyncStore][abczarr.abc.store.AsyncStore] over
-        the group's location, and opens its array children in the async
-        color -- so its `"async"` capability is `Support.NATIVE`.
+        The returned
+        [AsyncPathGroup][abczarr.abc.asynchronous.AsyncPathGroup]
+        lists and navigates its members directly through an
+        [AsyncStore][abczarr.abc.store.AsyncStore] over the group's
+        location, rather than running the synchronous listing in a
+        thread. Its array children are opened in the async color as
+        well. Its `"async"` capability reports `Support.NATIVE`.
         """
         from .asynchronous import AsyncPathGroup
 

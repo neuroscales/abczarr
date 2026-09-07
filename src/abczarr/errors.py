@@ -1,11 +1,12 @@
-"""The errors abczarr raises, defined in one place.
+"""The exceptions abczarr raises.
 
-This module is a leaf -- it imports only `typing_extensions` -- so any
-layer (metadata, the abc surface, the drivers, even `_core`) can
-`from abczarr.errors import ...` at module top without a cycle: importing
-this submodule does not re-run the package's own `__init__`. The errors
-are also re-exported off the package top level
-(`abczarr.UnsupportedZarrOperation`).
+Each exception carries enough detail to say why an operation failed,
+not only that it did: the driver that lacks a capability, the field
+that has no representation in a target Zarr version, or the schema
+violation a document failed. Every exception defined here is also
+reachable from the top level of the `abczarr` package, so
+`abczarr.UnsupportedZarrOperation` and
+`abczarr.errors.UnsupportedZarrOperation` name the same class.
 """
 
 __all__ = [

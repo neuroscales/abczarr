@@ -1,13 +1,16 @@
 """The TensorStore backend driver.
 
-Opens a Zarr array through Google's TensorStore -- a fast, C++ backed reader
-and writer -- and wraps it as a [ZarrArray][abczarr.abc.sync.ZarrArray] so it
-reads and writes through the uniform surface. A v3 array goes through
-TensorStore's ``zarr3`` driver and a v2 array through its native ``zarr``
-driver, so both versions read and write. [abczarr.open][abczarr.api.open]
-opens an array through it. TensorStore has no group object, so a group is read
-straight from the store by [PathGroup][abczarr.abc.sync.PathGroup] while its
-arrays are opened through TensorStore.
+This module opens a Zarr array through Google's TensorStore, a fast,
+C++-backed reader and writer, and wraps it as a
+[ZarrArray][abczarr.abc.sync.ZarrArray] so it reads and writes
+through the uniform surface. A v3 array is opened through
+TensorStore's ``zarr3`` driver, and a v2 array through its native
+``zarr`` driver, so both formats read and write.
+[abczarr.open][abczarr.api.open] opens an array through this driver.
+TensorStore has no group object of its own, so a group is read
+straight from the store by
+[PathGroup][abczarr.abc.sync.PathGroup], while each of its arrays is
+opened through TensorStore.
 """
 
 __all__ = [
@@ -135,24 +138,24 @@ def _v2_attributes_payload(
 
 
 class TensorStoreNode(ZarrNode):
-    """Common base for the TensorStore array and group adapters.
+    """The base class shared by the TensorStore array and group
+    adapters.
 
-    It marks a node as one the TensorStore driver produced, so
-    [open][abczarr.drivers.tensorstore.TensorStoreDriver.open] has one return
-    type covering both. TensorStore keeps no user attributes of its own, so
-    both nodes read attributes from the cached metadata and persist a write by
-    rewriting the metadata document through the store -- the behaviour
-    inherited from [ZarrNode][abczarr.abc.sync.ZarrNode] -- and there is
-    nothing driver-wide to override here.
+    TensorStore keeps no user attributes of its own. Both node types
+    read attributes from their cached metadata. A write persists by
+    rewriting the metadata document through the store, the same
+    persistence path [ZarrNode][abczarr.abc.sync.ZarrNode] defines.
     """
 
 
 class TensorStoreArray(TensorStoreNode, ZarrArray):
-    """A [ZarrArray][abczarr.abc.sync.ZarrArray] backed by a TensorStore.
+    """A [ZarrArray][abczarr.abc.sync.ZarrArray] backed by an open
+    TensorStore array.
 
-    Wraps an open ``tensorstore.TensorStore`` so it reads and writes through
-    the uniform surface. TensorStore's richer indexing (its ``oindex`` /
-    ``vindex`` and index transforms) stays reachable through
+    This class wraps a ``tensorstore.TensorStore`` handle so it reads
+    and writes through the uniform surface. TensorStore's richer
+    indexing, including its ``oindex`` and ``vindex`` selectors and
+    its index transforms, stays reachable through
     [native][abczarr.abc.sync.ZarrNode.native].
     """
 
@@ -234,8 +237,11 @@ class TensorStoreArray(TensorStoreNode, ZarrArray):
         self._array[index].write(value).result()
 
     def as_async(self) -> "AsyncTensorStoreArray":
-        """The native coroutine twin: reads and writes await TensorStore's
-        own futures rather than blocking on `.result()`."""
+        """The native coroutine twin of this array.
+
+        Reads and writes await TensorStore's own futures directly,
+        rather than blocking on `.result()`.
+        """
         return AsyncTensorStoreArray(self)
 
 
@@ -243,9 +249,10 @@ class AsyncTensorStoreArray(AsyncZarrArray):
     """The native async twin of a
     [TensorStoreArray][abczarr.drivers.tensorstore.TensorStoreArray].
 
-    Every TensorStore op returns an awaitable future, so `getitem` and
-    `setitem` await it directly -- the fast path, never `.result()`. Its
-    `"async"` capability is `Support.NATIVE`.
+    Every TensorStore operation returns an awaitable future.
+    `getitem` and `setitem` await that future directly, rather than
+    blocking on its result. Its `"async"` capability reports
+    `Support.NATIVE`.
     """
 
     _async_support = Support.NATIVE
@@ -349,14 +356,15 @@ async def _acreate_ts_array(
 
 
 class TensorStoreGroup(TensorStoreNode, PathGroup):
-    """The group returned when the TensorStore driver opens a group.
-
-    TensorStore has no group object of its own, so
-    [PathGroup][abczarr.abc.sync.PathGroup] reads the group itself -- its
-    metadata and the names of its members -- straight from the store, while
-    each child array is opened through TensorStore. Subgroups are more
-    `TensorStoreGroup`s, so a whole hierarchy is reachable from one opened
+    """The group returned when the TensorStore driver opens a Zarr
     group.
+
+    TensorStore has no group object of its own. This class relies on
+    [PathGroup][abczarr.abc.sync.PathGroup] to read the group's own
+    metadata and list the names of its members straight from the
+    store, while each child array is opened through TensorStore. A
+    subgroup is another `TensorStoreGroup`, so an entire hierarchy is
+    reachable from a single opened group.
     """
 
     def _open_array(self, store_path: tz.PathLike) -> TensorStoreArray:
@@ -376,10 +384,12 @@ class TensorStoreGroup(TensorStoreNode, PathGroup):
 class TensorStoreDriver(Driver):
     """The TensorStore backend, as a driver.
 
-    Reports the v3 codecs TensorStore reads and writes, and opens a Zarr
-    array through it -- a v3 array through the ``zarr3`` driver, a v2 array
-    through the native ``zarr`` driver. A group has no TensorStore object of
-    its own, so it is read straight from the store by the path group.
+    This driver reports the v3 codecs TensorStore reads and writes,
+    and opens a Zarr array through TensorStore itself. A v3 array is
+    opened through TensorStore's ``zarr3`` driver, and a v2 array
+    through its native ``zarr`` driver. A group has no TensorStore
+    object of its own, so it is read straight from the store through
+    the path group.
     """
 
     name = "tensorstore"

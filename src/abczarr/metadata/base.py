@@ -1,20 +1,19 @@
 """
 The version-independent metadata model.
 
-Every node in a Zarr hierarchy -- a group or an array -- is described
-by a small JSON document: `zarr.json` in Zarr v3, `.zarray`/`.zgroup`
-plus `.zattrs` in v2, `.zarray`/`.zattrs` in v1. This module defines
-the typed classes that document holds, one hierarchy per format
-version, and the shared vocabulary
-([ArrayMetadata][abczarr.metadata.base.ArrayMetadata],
-[GroupMetadata][abczarr.metadata.base.GroupMetadata]) that lets code
-work with a node's metadata without caring which version produced it.
+Every node in a Zarr hierarchy, a group or an array, is described by
+a small JSON document: `zarr.json` in Zarr v3, `.zarray` or
+`.zgroup` plus `.zattrs` in v2, and `.zarray` plus `.zattrs` in v1.
+This module defines the typed classes that document holds, one set
+per format version, and the shared vocabulary that lets code work
+with a node's metadata without caring which version produced it:
+[ArrayMetadata][abczarr.metadata.base.ArrayMetadata] and
+[GroupMetadata][abczarr.metadata.base.GroupMetadata].
 
 `ArrayMetadata.to_version` converts a node's metadata to another
-format version. Not every
-version can represent everything another one can; how such a
-conversion treats a field it cannot carry over is set by a
-`ConversionPolicy`.
+format version. Not every version can represent everything another
+version can. A `ConversionPolicy` sets how such a conversion treats
+a field it cannot carry over.
 
 This file contains code from the Zarr project
 https://github.com/zarr-developers/zarr-python
@@ -71,9 +70,9 @@ _LOCAL_PROTOCOLS = frozenset({"", "file", "local"})
 
 #: How a conversion treats a field the target version cannot hold.
 #:
-#: * ``"lossy"`` (the default) -- drop the field silently.
-#: * ``"warn"`` -- drop the field, but emit one warning naming it.
-#: * ``"strict"`` -- raise
+#: * ``"lossy"``, the default, drops the field silently.
+#: * ``"warn"`` drops the field and emits one warning naming it.
+#: * ``"strict"`` raises
 #:   [UnsupportedConversion][abczarr.errors.UnsupportedConversion]
 #:   instead of dropping anything.
 ConversionPolicy = tx.Literal["lossy", "warn", "strict"]
@@ -127,11 +126,11 @@ def _report_loss(
 class NodeMetadata(Metadata):
     """The metadata common to every node in a Zarr hierarchy.
 
-    A node is either a group or an array; both carry user attributes
-    and a format version. Use
+    A node is either a group or an array. Both kinds carry user
+    attributes and a format version. Use
     [GroupMetadata][abczarr.metadata.base.GroupMetadata] or
-    [ArrayMetadata][abczarr.metadata.base.ArrayMetadata] -- or one of
-    their per-version subclasses -- rather than this class directly.
+    [ArrayMetadata][abczarr.metadata.base.ArrayMetadata], or one of
+    their per-version subclasses, rather than this class directly.
     """
 
     attributes: tz.JsonDict
@@ -142,8 +141,8 @@ class NodeMetadata(Metadata):
     def update_attributes(self, attributes: tz.JsonDict) -> tx.Self:
         """Return a copy of this metadata with new attributes.
 
-        The rest of the metadata -- shape, dtype, chunking and so on
-        -- is unchanged.
+        Every other field, such as shape, dtype, and chunking, is
+        unchanged.
         """
         return evolve(self, attributes=dict(attributes))
 
@@ -151,10 +150,10 @@ class NodeMetadata(Metadata):
     def from_file(cls, root: os.PathLike) -> tx.Self:
         """Load a node's metadata from its directory.
 
-        Detects the Zarr format version by which metadata file is
-        present under *root* -- `zarr.json` (v3), `.zarray` or
-        `.zgroup` (v2), or `.zarray` (v1) -- and returns metadata of
-        the matching version.
+        The Zarr format version is detected from which metadata file
+        is present under *root*: `zarr.json` for v3, `.zarray` or
+        `.zgroup` for v2, or `.zarray` for v1. The metadata is
+        returned as an instance of the matching version's class.
 
         Raises
         ------
@@ -246,10 +245,11 @@ def _node_at(
 class GroupMetadata(NodeMetadata):
     """A group's metadata: user attributes and a format version.
 
-    A group holds no data of its own, so beyond
-    [NodeMetadata][abczarr.metadata.base.NodeMetadata] it adds
-    nothing but its `node_type`. Members and their metadata are
-    reached through the store, not through this object.
+    A group holds no data of its own, so beyond what
+    [NodeMetadata][abczarr.metadata.base.NodeMetadata] already
+    defines, this class adds nothing but its `node_type`. A member
+    and its metadata are reached through the store, not through this
+    object.
     """
 
     node_type: tx.Literal["group"] = "group"
@@ -261,21 +261,22 @@ class GroupMetadata(NodeMetadata):
     ) -> "GroupMetadata":
         """Convert this group's metadata to another Zarr version.
 
-        A group carries only user attributes and a format version, so a
-        conversion between v2 and v3 re-stamps the format and carries the
-        attributes across unchanged -- nothing is lost, and *policy* is
-        never invoked. Zarr v1 has no group concept, so converting a group
-        to v1 has no representation and raises regardless of *policy*.
+        A group carries only user attributes and a format version.
+        Converting between v2 and v3 re-stamps the format and
+        carries the attributes across unchanged, so nothing is lost
+        and *policy* is never invoked. Zarr v1 has no group concept,
+        so converting a group to v1 raises regardless of *policy*.
 
         Parameters
         ----------
         version : ZarrVersion
             The target Zarr format version: 1, 2 or 3.
         policy : ConversionPolicy
-            How to treat a field the target version can't hold. Accepted
-            for a signature that matches
-            [ArrayMetadata.to_version][abczarr.metadata.base.ArrayMetadata],
-            but a group has no such field between v2 and v3.
+            How to treat a field the target version cannot hold.
+            This parameter exists to match the signature of
+            [ArrayMetadata.to_version][abczarr.metadata.base.ArrayMetadata].
+            No field of a group's metadata is affected by it between
+            v2 and v3.
 
         Returns
         -------
@@ -310,14 +311,15 @@ class GroupMetadata(NodeMetadata):
 class ArrayMetadata(NodeMetadata):
     """An array's metadata: shape, data type, chunking and codecs.
 
-    The exact fields depend on the Zarr format version -- see
+    The exact fields depend on the Zarr format version. See
     [ArrayMetadataV1][abczarr.metadata.base.ArrayMetadataV1],
     [ArrayMetadataV2][abczarr.metadata.base.ArrayMetadataV2] and
-    [ArrayMetadataV3][abczarr.metadata.base.ArrayMetadataV3]. What
-    they share is `to_version`, which converts between versions, and
+    [ArrayMetadataV3][abczarr.metadata.base.ArrayMetadataV3] for the
+    concrete field sets. Every version shares `to_version`, which
+    converts the metadata between versions, and
     [required_features][abczarr.metadata.base.ArrayMetadata.required_features],
-    which reports what a driver needs to support to read or write
-    the array.
+    which reports what a driver needs to support in order to read or
+    write the array.
     """
 
     node_type: tx.Literal["array"] = "array"
@@ -326,15 +328,15 @@ class ArrayMetadata(NodeMetadata):
         """The features a driver needs to read or write this array.
 
         Each feature is a namespaced key built from the array's
-        codecs, chunk grid, chunk-key encoding and data type -- for
-        example ``"v3:codec:zstd"`` or ``"v2:filter:delta"``. A
-        driver compares this set against what it supports to decide
-        whether it can open the array, so an unsupported codec is
-        named up front rather than failing partway through a read.
+        codecs, chunk grid, chunk-key encoding, and data type, such
+        as ``"v3:codec:zstd"`` or ``"v2:filter:delta"``. A driver
+        compares this set against what it supports to decide whether
+        it can open the array, so an unsupported codec is named up
+        front rather than failing partway through a read.
 
-        Every concrete array metadata class overrides this with its
-        own version-specific keys; the base implementation returns an
-        empty set.
+        Every concrete array metadata class overrides this method
+        with its own version-specific keys. The base implementation
+        returns an empty set.
         """
         return frozenset()
 
@@ -351,10 +353,10 @@ class ArrayMetadata(NodeMetadata):
 class NodeMetadataV1(NodeMetadata):
     """A Zarr v1 node's metadata.
 
-    Zarr v1 has no groups, so every node is an array; use
-    [ArrayMetadataV1][abczarr.metadata.base.ArrayMetadataV1], or
-    build one through this class -- see
-    [from_file][abczarr.metadata.base.NodeMetadataV1.from_file] and
+    Zarr v1 has no groups, so every node is an array. Use
+    [ArrayMetadataV1][abczarr.metadata.base.ArrayMetadataV1]
+    directly, or build one through this class with
+    [from_file][abczarr.metadata.base.NodeMetadataV1.from_file] or
     [from_json][abczarr._core.metadata.Metadata.from_json].
     """
 
@@ -364,8 +366,9 @@ class NodeMetadataV1(NodeMetadata):
     def from_file(cls, root: os.PathLike) -> tx.Self:
         """Load a v1 array's metadata from its directory.
 
-        Reads `.zarray` for the array's metadata and `.zattrs` for
-        its user attributes, if present.
+        The array's metadata is read from `.zarray`. Its user
+        attributes are read from `.zattrs`, when that file is
+        present.
         """
         attrs = {}
         zattrs = root / constants.Z1ATTRS_JSON
@@ -391,10 +394,10 @@ class NodeMetadataV1(NodeMetadata):
     def from_json(cls, data: tz.JsonDict) -> tx.Self:
         """Build v1 metadata from a plain JSON-compatible dict.
 
-        *data* is the merged content of `.zarray` and `.zattrs`
-        (under the key `"attributes"`), the same shape
-        [to_json][abczarr._core.metadata.Metadata.to_json] produces.
-        Called on this class directly, it returns
+        *data* is the merged content of `.zarray` and `.zattrs`, with
+        the attributes under the key `"attributes"`. This is the same
+        shape [to_json][abczarr._core.metadata.Metadata.to_json]
+        produces. Called on this class directly, the method returns
         [ArrayMetadataV1][abczarr.metadata.base.ArrayMetadataV1]
         metadata, since Zarr v1 has no groups.
         """
@@ -413,8 +416,9 @@ class ArrayMetadataV1(NodeMetadataV1, ArrayMetadata):
     """The array-specific fields shared by every Zarr v1 array.
 
     See [ArrayMetadata][abczarr.metadata.v1.array.ArrayMetadata] for
-    the concrete class with shape, chunking, data type and codec
-    fields, and its `to_version` for conversion to v2 and v3.
+    the concrete class that adds the shape, chunking, data type and
+    codec fields, and for its `to_version` method, which converts to
+    v2 and v3.
     """
 
 
@@ -432,7 +436,7 @@ class NodeMetadataV2(NodeMetadata):
 
     Use [GroupMetadataV2][abczarr.metadata.base.GroupMetadataV2] or
     [ArrayMetadataV2][abczarr.metadata.base.ArrayMetadataV2] for the
-    concrete field sets; called on this class,
+    concrete field sets. Called on this class directly,
     [from_file][abczarr.metadata.base.NodeMetadataV2.from_file]
     works out which one applies.
     """
@@ -443,11 +447,11 @@ class NodeMetadataV2(NodeMetadata):
     def from_file(cls, root: os.PathLike) -> tx.Self:
         """Load a v2 node's metadata from its directory.
 
-        Reads `.zarray` or `.zgroup` for the node's metadata and
-        `.zattrs` for its user attributes. Called on this class, the
-        node type is detected from which of `.zarray` and `.zgroup`
-        is present; called on a group or array subclass, that file is
-        read directly.
+        The node's metadata is read from `.zarray` or `.zgroup`, and
+        its user attributes from `.zattrs`. Called on this class
+        directly, the node type is detected from which of `.zarray`
+        and `.zgroup` is present. Called on a group or array
+        subclass, that subclass's own file is read directly.
 
         Raises
         ------
@@ -499,9 +503,10 @@ class NodeMetadataV2(NodeMetadata):
     def to_file(self, root: os.PathLike) -> None:
         """Write this metadata to its directory.
 
-        Writes the array/group fields to `.zarray`/`.zgroup` and the
-        user attributes to `.zattrs`, merging into whatever is
-        already there rather than overwriting the whole file.
+        The array or group fields are written to `.zarray` or
+        `.zgroup`, and the user attributes to `.zattrs`. Each file is
+        merged with whatever content is already there, rather than
+        overwritten wholesale.
         """
         new_meta = self.to_json()
         new_attrs = new_meta.pop("attributes", {})
@@ -542,9 +547,9 @@ class ArrayMetadataV2(NodeMetadataV2, ArrayMetadata):
     """The array-specific fields shared by every Zarr v2 array.
 
     See [ArrayMetadata][abczarr.metadata.v2.array.ArrayMetadata] for
-    the concrete class with shape, chunking, data type, compressor
-    and filter fields, and its `to_version` for conversion to v1 and
-    v3.
+    the concrete class that adds the shape, chunking, data type,
+    compressor and filter fields, and for its `to_version` method,
+    which converts to v1 and v3.
     """
 
 
@@ -562,9 +567,9 @@ class NodeMetadataV3(NodeMetadata):
 
     Use [GroupMetadataV3][abczarr.metadata.base.GroupMetadataV3] or
     [ArrayMetadataV3][abczarr.metadata.base.ArrayMetadataV3] for the
-    concrete field sets; a v3 node's type is recorded in its
-    `zarr.json`, so `node_type` need not be known in advance to load
-    it.
+    concrete field sets. A v3 node's type is recorded in its own
+    `zarr.json`, so its `node_type` need not be known in advance to
+    load it.
     """
 
     zarr_format: tx.Literal[3] = 3
@@ -591,8 +596,8 @@ class NodeMetadataV3(NodeMetadata):
     def to_file(self, root: os.PathLike) -> None:
         """Write this metadata to its `zarr.json`.
 
-        Merges into whatever is already at the path rather than
-        overwriting the whole file.
+        The write merges into whatever content is already at the
+        path, rather than overwriting the file wholesale.
         """
         path = root / constants.Z3_JSON
         data = {}
@@ -615,9 +620,9 @@ class ArrayMetadataV3(NodeMetadataV3, ArrayMetadata):
     """The array-specific fields shared by every Zarr v3 array.
 
     See [ArrayMetadata][abczarr.metadata.v3.array.ArrayMetadata] for
-    the concrete class with shape, data type, chunk grid, chunk-key
-    encoding and codec-pipeline fields, and its `to_version` for
-    conversion to v1 and v2.
+    the concrete class that adds the shape, data type, chunk grid,
+    chunk-key encoding and codec-pipeline fields, and for its
+    `to_version` method, which converts to v1 and v2.
     """
 
 

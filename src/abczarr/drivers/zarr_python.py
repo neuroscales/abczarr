@@ -1,13 +1,15 @@
 """The zarr-python backend driver.
 
-Declares what a given install of zarr-python can read and write -- coarse
-capabilities and the individual codecs, chunk grids and chunk-key encodings
-it has -- by asking the installed library, so selection reflects the real
-build rather than a guess. The node adapters wrap a ``zarr.Array`` or
-``zarr.Group`` as a [ZarrArray][abczarr.abc.sync.ZarrArray] /
-[ZarrGroup][abczarr.abc.sync.ZarrGroup] so data is read and written through
-the uniform surface; [abczarr.open][abczarr.api.open] opens a location and
-returns whatever is there.
+This module declares what a given install of zarr-python can read
+and write, by asking the installed library rather than guessing. The
+declaration covers both coarse capabilities and the individual
+codecs, chunk grids, and chunk-key encodings the install actually
+has, so driver selection reflects the real build. The node adapters
+wrap a ``zarr.Array`` or a ``zarr.Group`` as a
+[ZarrArray][abczarr.abc.sync.ZarrArray] or a
+[ZarrGroup][abczarr.abc.sync.ZarrGroup], so data is read and written
+through the uniform surface. [abczarr.open][abczarr.api.open] opens
+a location through this driver and returns whatever is there.
 """
 
 __all__ = [
@@ -187,9 +189,10 @@ def _v2_codec_kwargs(config: tx.Any, kwargs: tx.Dict[str, tx.Any]) -> None:
 class ZarrPythonDriver(Driver):
     """The zarr-python backend, as a driver.
 
-    Reports what the installed zarr-python can do -- its coarse capabilities
-    and, codec by codec, what its registry holds -- so an array is only
-    routed to it when it actually has everything the array needs.
+    This driver reports what the installed zarr-python can do: its
+    coarse capabilities, and, codec by codec, what its own registry
+    holds. An array is routed to this driver only when it actually
+    provides everything the array needs.
     """
 
     name = "zarr-python"
@@ -309,12 +312,14 @@ _NODE_CAPABILITIES = {
 
 
 class ZarrPythonNode(ZarrNode):
-    """Common base for the zarr-python array and group adapters.
+    """The base class shared by the zarr-python array and group
+    adapters.
 
-    Both wrap a live zarr-python object (a ``zarr.Array`` or a ``zarr.Group``)
-    and share the same metadata, attributes and version accessors -- the only
-    difference between the two is the data surface each adds. The wrapped
-    object is reachable as [native][abczarr.abc.sync.ZarrNode.native].
+    Both classes wrap a live zarr-python object, a ``zarr.Array`` or
+    a ``zarr.Group``, and share the same metadata, attributes, and
+    version accessors. The only difference between the two is the
+    data surface each one adds on top. The wrapped object is
+    reachable as [native][abczarr.abc.sync.ZarrNode.native].
     """
 
     _CAPABILITIES = _NODE_CAPABILITIES
@@ -334,18 +339,11 @@ class ZarrPythonNode(ZarrNode):
     # to zarr-python by _write_metadata.
 
     def _write_metadata(self, new_metadata: tx.Any) -> None:
-        """Persist new attributes by delegating to zarr-python.
-
-        zarr-python's own attribute mapping writes the metadata and keeps
-        the object's caches consistent; going through it -- rather than
-        writing the store directly -- means abczarr and zarr-python never
-        disagree about the attributes. `attrs.put` applies the new
-        attributes whole (overwriting all of them), so a removed key is
-        removed. Delegating the wholesale replace to that public method
-        keeps a removed key removed even if a future zarr-python changes
-        how a node's attributes are stored, rather than depending on
-        clearing the metadata object's attribute dict in place here.
-        """
+        """Persist new attributes through zarr-python's own `attrs.put`,
+        which replaces the attribute mapping wholesale, so a removed key
+        stays removed."""
+        # Going through zarr-python's own writer, rather than the store
+        # directly, keeps its caches consistent with what abczarr sees.
         obj = self._obj
         obj.attrs.put(dict(new_metadata.attributes))
         self._native = self._obj = obj
@@ -356,11 +354,12 @@ class ZarrPythonNode(ZarrNode):
 
 
 class ZarrPythonArray(ZarrPythonNode, ZarrArray):
-    """A [ZarrArray][abczarr.abc.sync.ZarrArray] backed by a ``zarr.Array``.
+    """A [ZarrArray][abczarr.abc.sync.ZarrArray] backed by a
+    ``zarr.Array``.
 
-    Wraps an open array so it reads and writes through the uniform surface.
-    The underlying ``zarr.Array`` is reachable as
-    [native][abczarr.abc.sync.ZarrNode.native].
+    This class wraps an open array so it reads and writes through
+    the uniform surface. The underlying ``zarr.Array`` is reachable
+    as [native][abczarr.abc.sync.ZarrNode.native].
     """
 
     @property
@@ -391,15 +390,16 @@ class ZarrPythonArray(ZarrPythonNode, ZarrArray):
         self._obj[index] = value
 
     def as_async(self) -> "AsyncZarrPythonArray":
-        """The native async twin, delegating to zarr-python's own
-        ``AsyncArray``."""
+        """The native async twin of this array, delegating to
+        zarr-python's own ``AsyncArray``."""
         return AsyncZarrPythonArray(self)
 
 
 class ZarrPythonGroup(ZarrPythonNode, ZarrGroup):
-    """A [ZarrGroup][abczarr.abc.sync.ZarrGroup] backed by a ``zarr.Group``.
+    """A [ZarrGroup][abczarr.abc.sync.ZarrGroup] backed by a
+    ``zarr.Group``.
 
-    Indexing returns a wrapped child array or group; the underlying
+    Indexing returns a wrapped child array or group. The underlying
     ``zarr.Group`` is reachable as
     [native][abczarr.abc.sync.ZarrNode.native].
     """
@@ -440,8 +440,8 @@ class ZarrPythonGroup(ZarrPythonNode, ZarrGroup):
         return ZarrPythonArray(array)
 
     def as_async(self) -> "AsyncZarrPythonGroup":
-        """The native async twin, delegating to zarr-python's own
-        ``AsyncGroup``."""
+        """The native async twin of this group, delegating to
+        zarr-python's own ``AsyncGroup``."""
         return AsyncZarrPythonGroup(self)
 
 
@@ -467,9 +467,10 @@ class AsyncZarrPythonArray(AsyncZarrArray):
     """The native async twin of a
     [ZarrPythonArray][abczarr.drivers.zarr_python.ZarrPythonArray].
 
-    Reads and writes delegate straight to zarr-python's ``AsyncArray`` -- the
-    real coroutine implementation the sync ``Array`` itself drives -- so its
-    `"async"` capability is `Support.NATIVE`.
+    Reads and writes delegate straight to zarr-python's
+    ``AsyncArray``, the real coroutine implementation the
+    synchronous ``Array`` itself drives. Its `"async"` capability
+    reports `Support.NATIVE`.
     """
 
     _async_support = Support.NATIVE
@@ -495,9 +496,9 @@ class AsyncZarrPythonGroup(AsyncZarrGroup):
     """The native async twin of a
     [ZarrPythonGroup][abczarr.drivers.zarr_python.ZarrPythonGroup].
 
-    Navigation and creation delegate to zarr-python's ``AsyncGroup``; its
-    `"async"` capability is `Support.NATIVE`. Members come back in the async
-    color.
+    Navigation and creation delegate to zarr-python's ``AsyncGroup``.
+    Its `"async"` capability reports `Support.NATIVE`. Members it
+    opens come back in the async color.
     """
 
     _async_support = Support.NATIVE

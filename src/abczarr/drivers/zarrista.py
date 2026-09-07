@@ -1,12 +1,12 @@
 """The zarrista backend driver.
 
-Opens a Zarr v3 array or group through `zarrista`, a small pure-Python Zarr
-v3 implementation, and wraps it as a
-[ZarrArray][abczarr.abc.sync.ZarrArray] /
-[ZarrGroup][abczarr.abc.sync.ZarrGroup] so it reads and writes through the
-uniform surface. A group is read straight from the store by
-[PathGroup][abczarr.abc.sync.PathGroup] while its arrays are
-opened through zarrista.
+This module opens a Zarr v3 array or group through `zarrista`, a
+small pure-Python Zarr v3 implementation, and wraps it as a
+[ZarrArray][abczarr.abc.sync.ZarrArray] or a
+[ZarrGroup][abczarr.abc.sync.ZarrGroup] so it reads and writes
+through the uniform surface. A group is read straight from the store
+by [PathGroup][abczarr.abc.sync.PathGroup], while each of its arrays
+is opened through zarrista.
 """
 
 __all__ = [
@@ -77,23 +77,23 @@ def _parse_feature(key: str) -> tx.Optional[tx.Tuple[str, str, str]]:
 
 
 class ZarristaNode(ZarrNode):
-    """Common base for the zarrista array and group adapters.
+    """The base class shared by the zarrista array and group
+    adapters.
 
-    It marks a node as one the zarrista driver produced, so
-    [open][abczarr.drivers.zarrista.ZarristaDriver.open] has one return type
-    covering both. zarrista keeps no user attributes of its own, so both
-    nodes read attributes from the cached metadata and persist a write by
-    rewriting the metadata document through the store -- the behaviour
-    inherited from [ZarrNode][abczarr.abc.sync.ZarrNode].
+    zarrista keeps no user attributes of its own. Both node types
+    read attributes from their cached metadata. A write persists by
+    rewriting the metadata document through the store, the same
+    persistence path [ZarrNode][abczarr.abc.sync.ZarrNode] defines.
     """
 
 
 class ZarristaArray(ZarristaNode, ZarrArray):
-    """A [ZarrArray][abczarr.abc.sync.ZarrArray] backed by a zarrista array.
+    """A [ZarrArray][abczarr.abc.sync.ZarrArray] backed by a zarrista
+    array.
 
-    Its shape, dtype and chunking come from the Zarr metadata; reads and
-    writes go through zarrista. The underlying ``zarrista.Array`` is reachable
-    as [native][abczarr.abc.sync.ZarrNode.native].
+    Its shape, dtype and chunking come from the Zarr metadata. Reads
+    and writes go through zarrista. The underlying ``zarrista.Array``
+    is reachable as [native][abczarr.abc.sync.ZarrNode.native].
     """
 
     _CAPABILITIES = {
@@ -173,12 +173,14 @@ def _open_zarrista_array(location: tx.Any) -> ZarristaArray:
 
 
 class ZarristaGroup(ZarristaNode, PathGroup):
-    """The group returned when the zarrista driver opens a group.
+    """The group returned when the zarrista driver opens a Zarr
+    group.
 
-    [PathGroup][abczarr.abc.sync.PathGroup] reads the group and
-    lists its members straight from the store, while each child array is
-    opened through zarrista. Subgroups are more `ZarristaGroup`s, so a whole
-    hierarchy is reachable from one opened group.
+    This class relies on [PathGroup][abczarr.abc.sync.PathGroup] to
+    read the group's own metadata and list the names of its members
+    straight from the store, while each child array is opened
+    through zarrista. A subgroup is another `ZarristaGroup`, so an
+    entire hierarchy is reachable from a single opened group.
     """
 
     def _open_array(self, store_path: tz.PathLike) -> ZarristaArray:
@@ -188,8 +190,8 @@ class ZarristaGroup(ZarristaNode, PathGroup):
 class ZarristaDriver(Driver):
     """The zarrista backend, as a driver.
 
-    Reports the v3 codecs zarrista reads and writes, and opens a v3 array or
-    group through it.
+    This driver reports the v3 codecs zarrista reads and writes, and
+    opens a v3 array or group through zarrista itself.
     """
 
     name = "zarrista"
