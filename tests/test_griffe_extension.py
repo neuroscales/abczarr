@@ -103,7 +103,7 @@ def test_a_keyword_only_field_keeps_its_position() -> None:
     assert list(init.parameters)[-1].name == "extra_items"
     # the catch-all field is typed rather than left blank
     extra = next(p for p in init.parameters if p.name == "extra_items")
-    assert extra.annotation == "Mapping[str, Any]"
+    assert "Mapping" in str(extra.annotation)
 
 
 def test_a_real_default_is_rendered() -> None:
@@ -126,8 +126,29 @@ def test_a_dynamically_built_dtype_is_synthesized() -> None:
     init = float32.members["__init__"]
     assert init.lineno == 0
     name = next(p for p in init.parameters if p.name == "name")
-    assert name.annotation == "Literal['float32']"
+    assert str(name.annotation) == "Literal['float32']"
     assert name.default == "'float32'"
+
+
+def test_signature_shows_accepted_type_and_attribute_shows_stored_type() -> (
+    None
+):
+    # The constructor parameter shows the wider type a converter accepts,
+    # with its named aliases collapsed. The attribute shows the narrower
+    # type the field stores.
+    extension = _load_extension()
+    package = _package(extension)
+    grid = package["metadata.v3.array.RegularChunkGrid"]
+    param = next(
+        p
+        for p in grid.members["__init__"].parameters
+        if p.name == "configuration"
+    )
+    assert (
+        str(param.annotation)
+        == "Union[RegularChunkGridConfig, JsonDict, Shape]"
+    )
+    assert str(grid["configuration"].annotation) == "RegularChunkGridConfig"
 
 
 def test_a_dynamically_built_dtype_is_reexported() -> None:

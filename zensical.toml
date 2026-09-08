@@ -23,6 +23,7 @@ nav = [
       "api/zarrista.md",
     ]},
     "api/errors.md",
+    "api/typing.md",
     {"metadata" = [
       "api/metadata.md",
       {"v1" = [
