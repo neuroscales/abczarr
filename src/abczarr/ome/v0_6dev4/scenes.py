@@ -16,11 +16,7 @@ from .transformations import CoordinateTransformation
 class Scene(OMEMetadata):
     """A set of coordinate transformations attached to a group, independent
     of any single image or pyramid.
-
-    Parameters
-    ----------
-    coordinateTransformations : list of CoordinateTransformation
-        The transformations the scene carries.
     """
 
     coordinateTransformations: Required[tx.List[CoordinateTransformation]]
+    """The transformations the scene carries."""

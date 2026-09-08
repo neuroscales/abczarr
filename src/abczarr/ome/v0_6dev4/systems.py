@@ -95,58 +95,40 @@ class Axis(OMEMetadata):
 
     Constructing an `Axis` with a recognized `type` returns the matching
     subclass, such as [SpaceAxis][abczarr.ome.v0_6dev4.systems.SpaceAxis].
-
-    Parameters
-    ----------
-    name : str
-        The axis's label, such as `"x"` or `"channel"`.
-    type : str
-        What kind of axis this is: `"space"`, `"time"`, `"channel"`,
-        `"array"`, `"displacement"`, or `"coordinate"`. Recommended.
-    discrete : bool
-        Marks an axis whose values are integer indices rather than
-        continuous coordinates. Optional.
-    unit : str
-        The axis's physical unit, when it has one. Recommended.
-    longName : str
-        A human-readable label for the axis, beyond `name`. Optional.
     """
 
     name: Required[str] = field(factory=False)
+    """The axis's label, such as `"x"` or `"channel"`."""
     type: Recommended[tx.Union[AxisType, str]]
+    """What kind of axis this is: `"space"`, `"time"`, `"channel"`,
+    `"array"`, `"displacement"`, or `"coordinate"`. Recommended."""
     discrete: Optional[bool]
+    """Marks an axis whose values are integer indices rather than
+    continuous coordinates. Optional."""
     unit: Recommended[tx.Union[Unit, str]]
+    """The axis's physical unit, when it has one. Recommended."""
     longName: Optional[str]
+    """A human-readable label for the axis, beyond `name`. Optional."""
 
 
 @register_subclass(type="space")
 class SpaceAxis(Axis):
-    """A spatial axis, such as `x`, `y`, or `z`, with a length unit.
-
-    Parameters
-    ----------
-    unit : str
-        The axis's physical length unit, such as `"micrometer"`.
-        Recommended.
-    """
+    """A spatial axis, such as `x`, `y`, or `z`, with a length unit."""
 
     type: Recommended[tx.Literal["space"]]
     unit: Recommended[SpaceUnit]
+    """The axis's physical length unit, such as `"micrometer"`.
+    Recommended."""
 
 
 @register_subclass(type="time")
 class TimeAxis(Axis):
-    """A temporal axis, with a duration unit.
-
-    Parameters
-    ----------
-    unit : str
-        The axis's physical duration unit, such as `"second"`.
-        Recommended.
-    """
+    """A temporal axis, with a duration unit."""
 
     type: Recommended[tx.Literal["time"]]
     unit: Recommended[TimeUnit]
+    """The axis's physical duration unit, such as `"second"`.
+    Recommended."""
 
 
 @register_subclass(type="channel")
@@ -203,16 +185,11 @@ class CoordinateSystem(OMEMetadata):
     by name. A [Dataset][abczarr.ome.v0_6dev4.images.Dataset] or a
     `CoordinateTransformation` names a `CoordinateSystem` by its `name` as
     its input or output.
-
-    Parameters
-    ----------
-    name : str
-        The coordinate system's name.
-    axes : list of Axis
-        The system's [Axis][abczarr.ome.v0_6dev4.systems.Axis] objects, in
-        order. That order is the order every coordinate tuple in this
-        coordinate system uses.
     """
 
     name: Required[str] = field(factory=False)
+    """The coordinate system's name."""
     axes: Required[tx.List[Axis]]
+    """The system's [Axis][abczarr.ome.v0_6dev4.systems.Axis] objects,
+    in order. That order is the order every coordinate tuple in this
+    coordinate system uses."""
