@@ -61,6 +61,8 @@ class ChunkGrid(MustUnderstandExtension):
     for chunks that vary in size along an axis.
     """
 
+    __kw_only_discriminator__ = True
+
 
 @autofrozen(extra_items=False)
 class RegularChunkGridConfig(TypedConfig):
@@ -153,6 +155,8 @@ class ChunkKeyEncoding(MustUnderstandExtension):
     `V2ChunkKeyEncoding`, and a v3 array must use it to convert back
     to v2 or v1.
     """
+
+    __kw_only_discriminator__ = True
 
     name: str
     """The name of the encoding, such as ``"default"`` or ``"v2"``."""

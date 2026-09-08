@@ -401,6 +401,30 @@ def autovalidate(type: tx.Type, **kwargs) -> tx.Any:
     return field(**kwargs)
 
 
+#: A class carrying this attribute set to `True` has its fixed
+#: discriminator made keyword-only, so a bare value passed to its
+#: constructor builds its configuration rather than binding to the
+#: discriminator. Set on an extension family always written as an object.
+_KW_ONLY_DISCRIMINATOR = "__kw_only_discriminator__"
+
+
+def _is_single_value_literal(type_: tx.Any) -> bool:
+    """Whether `type_` is a `Literal` with exactly one permitted value.
+
+    A field typed this way has one valid value, which is also its
+    computed default, so the caller supplies no information by passing
+    it. On a marked class such a field is made keyword-only, so a bare
+    value the caller does pass builds the configuration instead.
+    """
+    try:
+        return (
+            tx.get_origin(type_) is tx.Literal
+            and len(tx.get_args(type_)) == 1
+        )
+    except Exception:
+        return False
+
+
 def transform_fields(
     factory: bool = True,
     converter: bool = True,
@@ -451,6 +475,13 @@ def transform_fields(
 
                 if validator and f.validator is None:
                     f = f.evolve(validator=get_validator(f.type))
+
+                if (
+                    not f.kw_only
+                    and getattr(cls, _KW_ONLY_DISCRIMINATOR, False)
+                    and _is_single_value_literal(f.type)
+                ):
+                    f = f.evolve(kw_only=True)
 
             new_fields.append(f)
         return new_fields
