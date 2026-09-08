@@ -1,4 +1,4 @@
-# Type aliases
+# typing
 
 These aliases name the shapes that recur throughout the metadata API. A
 constructor signature that accepts JSON, or an array shape, is written in
@@ -10,10 +10,17 @@ library and are not part of its public interface. Application code should
 not import them or depend on their definitions, which may change without
 notice.
 
-::: abczarr._core.typing.Json
-
 ::: abczarr._core.typing.JsonScalar
+
+::: abczarr._core.typing.Json
 
 ::: abczarr._core.typing.JsonDict
 
 ::: abczarr._core.typing.Shape
+
+The aliases above are built from these lower-level hints, shown so that
+each alias can be read all the way down.
+
+::: abczarr._core.typing.BuiltinSequence
+
+::: abczarr._core.typing.BuiltinNonNegativeIntegral
