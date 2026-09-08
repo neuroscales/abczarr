@@ -22,30 +22,21 @@ class CoordinateTransformation(OMEMetadata):
     [Translation][abczarr.ome.v0_4.transformations.Translation] directly
     rather than this base class. Constructing a `CoordinateTransformation`
     with `type="scale"` or `type="translation"` returns the matching one.
-
-    Parameters
-    ----------
-    type : str
-        Which kind of transformation this is: `"scale"` or
-        `"translation"`.
     """
 
     type: Required[str] = field(factory=False)
+    """Which kind of transformation this is: `"scale"` or
+    `"translation"`."""
 
 
 @register_subclass(type="translation")
 @autodefine
 class Translation(CoordinateTransformation):
-    """An offset, one value per axis, in the axes' physical units.
-
-    Parameters
-    ----------
-    translation : list of float
-        The offset, one number per axis.
-    """
+    """An offset, one value per axis, in the axes' physical units."""
 
     type: Required[tx.Literal["translation"]]
     translation: Required[tx.List[float]]
+    """The offset, one number per axis."""
 
 
 @register_subclass(type="scale")
@@ -57,12 +48,8 @@ class Scale(CoordinateTransformation):
     array element along each axis. It turns a pixel index into a physical
     unit such as a micrometer, and it makes coarser levels of a pyramid
     line up with the finest one.
-
-    Parameters
-    ----------
-    scale : list of float
-        The scale factor, one number per axis.
     """
 
     type: Required[tx.Literal["scale"]]
     scale: Required[tx.List[float]]
+    """The scale factor, one number per axis."""

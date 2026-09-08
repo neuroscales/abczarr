@@ -24,36 +24,17 @@ class ImageLabel(OMEMetadata):
 
     Attach one of these to a label image group alongside its own
     [Multiscale][abczarr.ome.v0_1.images.Multiscale].
-
-    Parameters
-    ----------
-    colors : list of Color
-        The display color for each labeled integer value. Recommended.
-    properties : list of Property
-        Further, application-defined attributes for each labeled value.
-        Optional.
-    source : Source
-        Where the label image was derived from. Optional.
-    version : Version
-        The OME-NGFF version the metadata is written against. Recommended
-        in OME-NGFF 0.1 and 0.2, and required from 0.3 on.
     """
 
     @autodefine
     class Color(OMEMetadata):
-        """The display color for one label value.
-
-        Parameters
-        ----------
-        label_value : int
-            The integer value this color applies to.
-        rgba : tuple of int
-            The color as red, green, blue, and alpha components, each
-            from `0` to `255`. Optional.
-        """
+        """The display color for one label value."""
 
         label_value: Required[int] = field(json="label-value")
+        """The integer value this color applies to."""
         rgba: Optional[tx.Tuple[UInt8, UInt8, UInt8, UInt8]]
+        """The color as red, green, blue, and alpha components, each
+        from `0` to `255`. Optional."""
 
 
     @autodefine
@@ -62,31 +43,28 @@ class ImageLabel(OMEMetadata):
 
         Any key beyond `label_value` is carried through as extra data.
         See [OMEMetadata][abczarr.ome.base.OMEMetadata].
-
-        Parameters
-        ----------
-        label_value : int
-            The integer value these properties apply to.
         """
 
         label_value: Required[int] = field(json="label-value")
+        """The integer value these properties apply to."""
 
 
     @autodefine
     class Source(OMEMetadata):
-        """Where a label image was derived from.
-
-        Parameters
-        ----------
-        image : str
-            The path of the intensity image this label was derived from,
-            relative to the label image group. Optional.
-        """
+        """Where a label image was derived from."""
 
         image: Optional[str] = None
+        """The path of the intensity image this label was derived from,
+        relative to the label image group. Optional."""
 
 
     colors: Recommended[tx.List[Color]]
+    """The display color for each labeled integer value. Recommended."""
     properties: Optional[tx.List[Property]]
+    """Further, application-defined attributes for each labeled value.
+    Optional."""
     source: Optional[Source]
+    """Where the label image was derived from. Optional."""
     version: Recommended[Version]
+    """The OME-NGFF version the metadata is written against. Recommended
+    in OME-NGFF 0.1 and 0.2, and required from 0.3 on."""

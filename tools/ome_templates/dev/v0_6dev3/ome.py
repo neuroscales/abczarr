@@ -40,29 +40,22 @@ class OME(OMEBase):
     [OMEPlate][abczarr.ome.v0_6dev1.ome.OMEPlate], is an `OME` object that
     carries one further field identifying what kind of group it
     describes.
-
-    Parameters
-    ----------
-    version : Version
-        The OME-NGFF version the metadata is written against.
     """
 
     version: Required[Version] = field(kw_only=True)
+    """The OME-NGFF version the metadata is written against."""
 
 
 @register_subclass(series=tx.Any)
 @autodefine
 class OMESeries(OME):
-    """Marks an OME-Zarr group that collects other groups as a named series.
-
-    Parameters
-    ----------
-    series : list of str
-        The path of each member group, in order, when the group states
-        them explicitly. Optional.
+    """Marks an OME-Zarr group that collects other groups as a named
+    series.
     """
 
     series: tx.Optional[tx.List[str]] = None
+    """The path of each member group, in order, when the group states
+    them explicitly. Optional."""
 
 
 @register_subclass(multiscales=tx.Any)
@@ -70,19 +63,14 @@ class OMESeries(OME):
 class OMEImage(OME):
     """Holds an image group's metadata: its multiscale pyramids and
     rendering settings.
-
-    Parameters
-    ----------
-    multiscales : list of Multiscale
-        The group's
-        [Multiscale][abczarr.ome.v0_6dev1.images.Multiscale] pyramids.
-    omero : Omero
-        Rendering settings suggesting how to render the pyramids.
-        Optional.
     """
 
     multiscales: Required[tx.List[Multiscale]]
+    """The group's
+    [Multiscale][abczarr.ome.v0_6dev1.images.Multiscale] pyramids."""
     omero: Optional[Omero]
+    """Rendering settings suggesting how to render the pyramids.
+    Optional."""
 
 
 @register_subclass(image_label=tx.Any)
@@ -92,15 +80,11 @@ class OMEImageLabel(OMEImage):
 
     Extends [OMEImage][abczarr.ome.v0_6dev1.ome.OMEImage] with the
     metadata describing the segments the image's pixel values name.
-
-    Parameters
-    ----------
-    image_label : ImageLabel
-        The [ImageLabel][abczarr.ome.v0_6dev1.labels.ImageLabel] metadata
-        for the segments.
     """
 
     image_label: Required[ImageLabel] = field(json="image-label")
+    """The [ImageLabel][abczarr.ome.v0_6dev1.labels.ImageLabel] metadata
+    for the segments."""
 
 
 @register_subclass(labels=tx.Any)
@@ -108,29 +92,20 @@ class OMEImageLabel(OMEImage):
 class OMELabels(OME):
     """Marks a group that collects the label images derived from an
     intensity image.
-
-    Parameters
-    ----------
-    labels : list of str
-        The path of each label image group.
     """
 
     labels: Required[tx.List[str]]
+    """The path of each label image group."""
 
 
 @register_subclass(plate=tx.Any)
 @autodefine
 class OMEPlate(OME):
-    """Holds a high-content screening plate group's metadata.
-
-    Parameters
-    ----------
-    plate : Plate
-        The [Plate][abczarr.ome.v0_6dev1.plates.Plate] metadata describing
-        the plate's rows, columns, and wells.
-    """
+    """Holds a high-content screening plate group's metadata."""
 
     plate: Required[Plate]
+    """The [Plate][abczarr.ome.v0_6dev1.plates.Plate] metadata describing
+    the plate's rows, columns, and wells."""
 
 
 @register_subclass(well=tx.Any)
@@ -138,46 +113,31 @@ class OMEPlate(OME):
 class OMEWell(OME):
     """Holds a well group's metadata: the images acquired at one position
     of a plate.
-
-    Parameters
-    ----------
-    well : Well
-        The [Well][abczarr.ome.v0_6dev1.wells.Well] metadata listing the
-        well's fields of view.
     """
 
     well: Required[Well]
+    """The [Well][abczarr.ome.v0_6dev1.wells.Well] metadata listing the
+    well's fields of view."""
 
 
 @register_subclass(scene=tx.Any)
 @autodefine
 class OMEScene(OME):
-    """Marks a group whose metadata is a scene.
-
-    Parameters
-    ----------
-    scene : Scene
-        The [Scene][abczarr.ome.v0_6dev1.scenes.Scene] the group carries.
-    """
+    """Marks a group whose metadata is a scene."""
 
     scene: Required[Scene]
+    """The [Scene][abczarr.ome.v0_6dev1.scenes.Scene] the group carries."""
 
 
 @register_subclass(bioformats2raw_layout=3)
 @autodefine
 class OMEBioformats2Raw(OME):
-    """The root group of a Bio-Formats2Raw-layout conversion.
-
-    Parameters
-    ----------
-    bioformats2raw_layout : int
-        Marks the layout version. Its value is always `3`.
-    plate : Plate
-        The [Plate][abczarr.ome.v0_6dev1.plates.Plate] metadata for the
-        screening plate the converted data belongs to.
-    """
+    """The root group of a Bio-Formats2Raw-layout conversion."""
 
     bioformats2raw_layout: Required[tx.Literal[3]] = field(
         json="bioformats2raw.layout"
     )
+    """Marks the layout version. Its value is always `3`."""
     plate: Required[Plate]
+    """The [Plate][abczarr.ome.v0_6dev1.plates.Plate] metadata for the
+    screening plate the converted data belongs to."""

@@ -60,9 +60,12 @@ Python-3.8-safe syntax as the templates.
 # stdlib
 import argparse
 import ast
+import copy
+import re
 import subprocess
 import sys
 import tempfile
+import textwrap
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -118,7 +121,14 @@ class SetAnn:
 
 
 class AddField:
-    """Insert a new annotation-only field into a class body."""
+    """Insert a new annotation-only field into a class body.
+
+    ``doc``, when given, is written as that field's attribute docstring --
+    a plain string literal placed immediately after it, matching a
+    hand-written field. It is the only place a field introduced partway
+    through a chain gets documented, since a field the template does not
+    carry has no attribute docstring to inherit.
+    """
 
     def __init__(
         self,
@@ -128,10 +138,12 @@ class AddField:
         annotation: str,
         after: Optional[str] = None,
         before: Optional[str] = None,
+        doc: Optional[str] = None,
     ) -> None:
         self.module, self.cls, self.field = module, cls, field
         self.annotation = annotation
         self.after, self.before = after, before
+        self.doc = doc
 
     def apply(self, modules: Modules) -> None:
         node = _class_node(modules[self.module], self.cls)
@@ -143,17 +155,54 @@ class AddField:
         )
         index = self._insert_index(node)
         node.body.insert(index, new)
+        if self.doc is not None:
+            node.body.insert(index + 1, _field_doc_node(self.doc))
 
     def _insert_index(self, node: ast.ClassDef) -> int:
         if self.after is not None:
-            return node.body.index(_field_node(node, self.after)) + 1
+            index = node.body.index(_field_node(node, self.after)) + 1
+            # Land after the ``after`` field's own attribute docstring
+            # too, or the new field would wedge between a field and its
+            # description.
+            if index < len(node.body) and _is_docstring(node.body[index]):
+                index += 1
+            return index
         if self.before is not None:
             return node.body.index(_field_node(node, self.before))
         return len(node.body)
 
 
+class SetFieldDoc:
+    """Replace an existing field's attribute docstring.
+
+    Used when a field's meaning changes at a version without its
+    annotation text changing (a bare ``Axis`` literal becoming a typed
+    ``Axis`` object keeps the same ``List[Axis]`` spelling), so ``SetAnn``
+    has nothing to change but the field's description no longer holds.
+    """
+
+    def __init__(
+        self, module: str, cls: Tuple[str, ...], field: str, doc: str
+    ) -> None:
+        self.module, self.cls, self.field = module, cls, field
+        self.doc = doc
+
+    def apply(self, modules: Modules) -> None:
+        node = _class_node(modules[self.module], self.cls)
+        target = _field_node(node, self.field)
+        index = node.body.index(target)
+        following = node.body[index + 1] if index + 1 < len(
+            node.body
+        ) else None
+        if following is not None and _is_docstring(following):
+            node.body[index + 1] = _field_doc_node(self.doc)
+        else:
+            node.body.insert(index + 1, _field_doc_node(self.doc))
+
+
 class DelField:
-    """Remove a field from a class body."""
+    """Remove a field from a class body, and its attribute docstring with
+    it."""
 
     def __init__(
         self, module: str, cls: Tuple[str, ...], field: str
@@ -162,7 +211,10 @@ class DelField:
 
     def apply(self, modules: Modules) -> None:
         node = _class_node(modules[self.module], self.cls)
-        node.body.remove(_field_node(node, self.field))
+        index = node.body.index(_field_node(node, self.field))
+        node.body.pop(index)
+        if index < len(node.body) and _is_docstring(node.body[index]):
+            node.body.pop(index)
 
 
 class SetDoc:
@@ -262,186 +314,43 @@ _AXES_SOURCE = _read_template("stable/v0_4/axes.py")
 _TRANSFORMATIONS_SOURCE = _read_template("stable/v0_4/transformations.py")
 
 
-# -- Docstrings that grow as fields are added ------------------------------
-# Authored plain (continuation lines flush left); SetDoc re-indents them.
-# Written with the ``v0_1`` cross-reference token, substituted per version,
-# so the transformations links only appear from v0.4 where that module lives.
+# -- Docstrings and field docs that change as fields are added -------------
+# Authored plain (continuation lines flush left); SetDoc/AddField/
+# SetFieldDoc re-indent them. Written with the ``v0_1`` cross-reference
+# token, substituted per version, so the transformations links only appear
+# from v0.4 where that module lives.
+#
+# A class docstring is only ever restated here when the class *summary*
+# itself changes -- a field's own description lives on the field, as an
+# attribute docstring carried forward automatically from the template (or
+# from the ``doc`` an ``AddField``/``SetFieldDoc`` gave it), so a version
+# whose fields change but whose summary does not needs no entry at all.
 
 _MULTISCALE_DOC_V0_3 = """\
 A multiscale image pyramid: its axes and resolution levels.
-
-Parameters
-----------
-axes : list of str
-    The pyramid's dimensions, named and ordered as `t`, `c`, `z`,
-    `y`, `x`, in whatever subset and order the image uses.
-datasets : list of Dataset
-    The pyramid's resolution levels, from full resolution down.
-    Each entry is a
-    [Dataset][abczarr.ome.v0_1.images.Dataset].
-name : str
-    A name for the multiscale image. Recommended.
-type : str
-    The method used to generate the lower resolutions, such as
-    ``"gaussian"``. Recommended.
-metadata : Metadata
-    Further, free-form detail about how the lower resolutions were
-    generated. Recommended.
-version : Version
-    The OME-NGFF version the metadata is written against. Required.
 """
 
-_DATASET_DOC_V0_4 = """\
-One resolution level of a multiscale pyramid.
-
-Parameters
-----------
-path : str
-    The name of the Zarr array holding this level, relative to the
-    image group.
-coordinateTransformations : tuple of CoordinateTransformation
-    Places this level in the pyramid's physical space: a
-    [Scale][abczarr.ome.v0_1.transformations.Scale], optionally
-    followed by a
-    [Translation][abczarr.ome.v0_1.transformations.Translation],
-    one value per axis.
+_AXES_DOC_V0_3 = """\
+The pyramid's dimensions, named and ordered as `t`, `c`, `z`, `y`,
+`x`, in whatever subset and order the image uses.
 """
 
-_MULTISCALE_DOC_V0_4 = """\
-A multiscale image pyramid: its axes and resolution levels.
-
-Parameters
-----------
-axes : list of Axis
-    The pyramid's dimensions, in the order every array shape and
-    every coordinate transformation the pyramid carries uses. Each
-    entry is an [Axis][abczarr.ome.v0_1.axes.Axis].
-datasets : list of Dataset
-    The pyramid's resolution levels, from full resolution down.
-    Each entry is a
-    [Dataset][abczarr.ome.v0_1.images.Dataset].
-coordinateTransformations : list of CoordinateTransformation
-    Transformations applied to every level, before that level's own
-    transformations run. Optional.
-name : str
-    A name for the multiscale image. Recommended.
-type : str
-    The method used to generate the lower resolutions, such as
-    ``"gaussian"``. Recommended.
-metadata : Metadata
-    Further, free-form detail about how the lower resolutions were
-    generated. Recommended.
-version : Version
-    The OME-NGFF version the metadata is written against. Required.
+_AXES_DOC_V0_4 = """\
+The pyramid's dimensions, in the order every array shape and every
+coordinate transformation the pyramid carries uses. Each entry is
+an [Axis][abczarr.ome.v0_1.axes.Axis].
 """
 
-_MULTISCALE_DOC_V0_5 = """\
-A multiscale image pyramid: its axes and resolution levels.
-
-Parameters
-----------
-axes : list of Axis
-    The pyramid's dimensions, in the order every array shape and
-    every coordinate transformation the pyramid carries uses. Each
-    entry is an [Axis][abczarr.ome.v0_1.axes.Axis].
-datasets : list of Dataset
-    The pyramid's resolution levels, from full resolution down.
-    Each entry is a
-    [Dataset][abczarr.ome.v0_1.images.Dataset].
-coordinateTransformations : list of CoordinateTransformation
-    Transformations applied to every level, before that level's own
-    transformations run. Optional.
-name : str
-    A name for the multiscale image. Recommended.
-type : str
-    The method used to generate the lower resolutions, such as
-    ``"gaussian"``. Recommended.
-metadata : Metadata
-    Further, free-form detail about how the lower resolutions were
-    generated. Recommended.
+_DATASET_TRANSFORMATIONS_DOC_V0_4 = """\
+Places this level in the pyramid's physical space: a
+[Scale][abczarr.ome.v0_1.transformations.Scale], optionally followed
+by a [Translation][abczarr.ome.v0_1.transformations.Translation],
+one value per axis.
 """
 
-_IMAGELABEL_DOC_V0_5 = """\
-Metadata for a label image: an array whose integer values name segments.
-
-Attach one of these to a label image group alongside its own
-[Multiscale][abczarr.ome.v0_1.images.Multiscale].
-
-Parameters
-----------
-colors : list of Color
-    The display color for each labeled integer value. Recommended.
-properties : list of Property
-    Further, application-defined attributes for each labeled value.
-    Optional.
-source : Source
-    Where the label image was derived from. Optional.
-"""
-
-_OMERO_DOC_V0_5 = """\
-Rendering settings for an image: one entry per channel.
-
-Attach one of these to an image group, alongside its
-[Multiscale][abczarr.ome.v0_1.images.Multiscale], to suggest how a
-viewer should display it.
-
-Parameters
-----------
-channels : list of Channel
-    A [Channel][abczarr.ome.v0_1.omero.Channel] for each channel of
-    the image, in order.
-"""
-
-_PLATE_DOC_V0_5 = """\
-A high-content screening plate.
-
-`rows` and `columns` name the plate's grid, such as `"A"`, `"B"`,
-and so on for rows, and `"1"`, `"2"`, and so on for columns.
-
-Parameters
-----------
-rows : list of Row
-    The plate's rows, in grid order.
-columns : list of Column
-    The plate's columns, in grid order.
-wells : list of Well
-    Every well of the plate, each placed in the grid and pointing at
-    the group holding its images.
-acquisitions : list of Acquisition
-    The imaging runs the wells' images belong to, when the screen
-    ran more than one. Optional.
-name : str
-    A name for the plate. Recommended.
-field_count : int
-    The largest number of fields of view acquired for any well of
-    the plate. Recommended.
-"""
-
-_WELL_DOC_V0_5 = """\
-A well's images: one field of view per acquisition run.
-
-A well group holds one subgroup per field of view.
-
-Parameters
-----------
-images : list of Image
-    The well's fields of view, each naming its subgroup and, when
-    the plate carries more than one, which acquisition it belongs
-    to.
-"""
-
-_OMEIMAGELABEL_DOC_V0_2 = """\
-Metadata for a label image.
-
-A label image is an [OMEImage][abczarr.ome.v0_1.ome.OMEImage] whose
-pixel values name segments.
-
-Parameters
-----------
-image_label : ImageLabel
-    The [ImageLabel][abczarr.ome.v0_1.labels.ImageLabel] metadata
-    describing those segments, including their display colors and
-    any per-label properties.
+_MULTISCALE_TRANSFORMATIONS_DOC_V0_4 = """\
+Transformations applied to every level, before that level's own
+transformations run. Optional.
 """
 
 
@@ -451,10 +360,11 @@ DELTAS_STABLE = {
     # 0.1 -> 0.2
     #   * OMEImageLabel.image_label: List[ImageLabel] -> a single ImageLabel
     #   * OMEBioformats2Raw.plate: Optional -> Required
+    # Neither change touches OMEImageLabel's summary or its image_label
+    # field's own description, so no SetDoc is needed here.
     "v0_2": [
         SetAnn("ome", ("OMEImageLabel",), "image_label",
                "Required[ImageLabel]"),
-        SetDoc("ome", ("OMEImageLabel",), _OMEIMAGELABEL_DOC_V0_2),
         SetAnn("ome", ("OMEBioformats2Raw",), "plate", "Required[Plate]"),
     ],
     # 0.2 -> 0.3
@@ -462,7 +372,8 @@ DELTAS_STABLE = {
     #   * version promoted Recommended -> Required in every carrier
     "v0_3": [
         AddField("images", ("Multiscale",), "axes",
-                 "Required[tx.List[Axis]]", before="datasets"),
+                 "Required[tx.List[Axis]]", before="datasets",
+                 doc=_AXES_DOC_V0_3),
         SetDoc("images", ("Multiscale",), _MULTISCALE_DOC_V0_3),
         SetAnn("images", ("Multiscale",), "version", "Required[Version]"),
         SetAnn("labels", ("ImageLabel",), "version", "Required[Version]"),
@@ -473,8 +384,12 @@ DELTAS_STABLE = {
     # 0.3 -> 0.4
     #   * new modules axes.py and transformations.py
     #   * Multiscale.axes becomes a typed List[Axis] (the module-level
-    #     bare-string alias is dropped and Axis is imported instead)
+    #     bare-string alias is dropped and Axis is imported instead) --
+    #     the annotation text is unchanged, so SetFieldDoc updates the
+    #     field's description on its own
     #   * per-dataset and per-multiscale coordinateTransformations added
+    # Dataset's and Multiscale's own summaries are unchanged from v0.3,
+    # so neither gets a SetDoc here.
     "v0_4": [
         AddModule("axes", _AXES_SOURCE),
         AddModule("transformations", _TRANSFORMATIONS_SOURCE),
@@ -488,34 +403,30 @@ DELTAS_STABLE = {
         DelAssign("images", "TimeAxis"),
         DelAssign("images", "ChannelAxis"),
         DelAssign("images", "Axis"),
+        SetFieldDoc("images", ("Multiscale",), "axes", _AXES_DOC_V0_4),
         AddField(
             "images", ("Dataset",), "coordinateTransformations",
             "Required[tx.Union[tx.Tuple[Scale],"
             " tx.Tuple[Scale, Translation]]]",
-            after="path",
+            after="path", doc=_DATASET_TRANSFORMATIONS_DOC_V0_4,
         ),
-        SetDoc("images", ("Dataset",), _DATASET_DOC_V0_4),
         AddField(
             "images", ("Multiscale",), "coordinateTransformations",
             "Optional[tx.List[CoordinateTransformation]]",
-            after="datasets",
+            after="datasets", doc=_MULTISCALE_TRANSFORMATIONS_DOC_V0_4,
         ),
-        SetDoc("images", ("Multiscale",), _MULTISCALE_DOC_V0_4),
     ],
     # 0.4 -> 0.5
     #   * the per-object `version` field is dropped everywhere it was a
     #     carrier (ome.OME keeps its own -- that is the discriminator).
+    # Dropping `version` changes no other field's description and no
+    # class's summary, so none of the five carriers needs a SetDoc here.
     "v0_5": [
         DelField("images", ("Multiscale",), "version"),
-        SetDoc("images", ("Multiscale",), _MULTISCALE_DOC_V0_5),
         DelField("labels", ("ImageLabel",), "version"),
-        SetDoc("labels", ("ImageLabel",), _IMAGELABEL_DOC_V0_5),
         DelField("omero", ("Omero",), "version"),
-        SetDoc("omero", ("Omero",), _OMERO_DOC_V0_5),
         DelField("plates", ("Plate",), "version"),
-        SetDoc("plates", ("Plate",), _PLATE_DOC_V0_5),
         DelField("wells", ("Well",), "version"),
-        SetDoc("wells", ("Well",), _WELL_DOC_V0_5),
     ],
 }
 
@@ -722,6 +633,84 @@ def _is_docstring(node: ast.stmt) -> bool:
     )
 
 
+def _field_doc_node(doc: str) -> ast.Expr:
+    """An attribute-docstring statement: a plain string literal, written
+    immediately after a field, the same shape as a hand-written one."""
+    return ast.Expr(value=ast.Constant(value=doc.strip("\n")))
+
+
+# --------------------------------------------------------------------------
+#   Rendering an attribute docstring
+# --------------------------------------------------------------------------
+#
+# ``ast.unparse`` only writes a string constant as a real triple-quoted
+# literal when it sits in an actual docstring position (the first
+# statement of a module, class or function body). A field's attribute
+# docstring sits after the field instead, so ``ast.unparse`` would
+# otherwise write it as a single- or double-quoted literal -- correct
+# Python, but not the triple-quoted style every hand-written field
+# docstring in this codebase uses, and for a multi-line one, flattened
+# onto one physical line with its newlines escaped, long enough to trip
+# the line-length lint. Each such string is swapped for a unique
+# placeholder before unparsing and the placeholder's line is rewritten
+# back into a properly indented triple-quoted literal afterwards.
+
+_ATTR_DOC_PLACEHOLDER = "__abczarr_attr_doc_{}__"
+_ATTR_DOC_LINE_RE = re.compile(
+    r"^([ \t]*)(['\"])" + re.escape("__abczarr_attr_doc_")
+    + r"(\d+)__\2$",
+    re.MULTILINE,
+)
+
+
+def _protect_attr_docstrings(module: ast.Module) -> Dict[str, str]:
+    """Replace every attribute docstring's text with a unique
+    placeholder, returning ``{placeholder: original text}``. A module's
+    or class's own leading docstring is left alone -- ``ast.unparse``
+    already renders that one correctly."""
+    protected: Dict[str, str] = {}
+
+    def walk(body: List[ast.stmt]) -> None:
+        for i, node in enumerate(body):
+            if (
+                i > 0
+                and isinstance(node, ast.Expr)
+                and isinstance(node.value, ast.Constant)
+                and isinstance(node.value.value, str)
+            ):
+                key = _ATTR_DOC_PLACEHOLDER.format(len(protected))
+                protected[key] = node.value.value
+                node.value = ast.Constant(value=key)
+            if isinstance(node, ast.ClassDef):
+                walk(node.body)
+
+    walk(module.body)
+    return protected
+
+
+def _restore_attr_docstrings(text: str, protected: Dict[str, str]) -> str:
+    if not protected:
+        return text
+
+    def repl(match: "re.Match[str]") -> str:
+        indent, num = match.group(1), match.group(3)
+        doc = protected[_ATTR_DOC_PLACEHOLDER.format(num)]
+        first, *rest = doc.split("\n")
+        # A field carried over from a hand-written template already has
+        # its continuation lines indented to the depth they sat at in
+        # that source file; a doc authored flush left for this tool has
+        # none. ``dedent`` strips whichever is there so the line is
+        # re-indented to a single depth -- the one it actually sits at
+        # here -- rather than stacking the two.
+        rest = textwrap.dedent("\n".join(rest)).split("\n") if rest else rest
+        rendered = [first] + [
+            (indent + line if line else "") for line in rest
+        ]
+        return indent + '"""' + "\n".join(rendered) + '"""'
+
+    return _ATTR_DOC_LINE_RE.sub(repl, text)
+
+
 # ==========================================================================
 #
 #                              GENERATION
@@ -776,7 +765,10 @@ def _substitute_version(chain: Chain, source: str, version: str) -> str:
 def _module_source(
     chain: Chain, node: ast.Module, version: str, header: str
 ) -> str:
-    body = _substitute_version(chain, ast.unparse(node), version)
+    node = copy.deepcopy(node)
+    protected = _protect_attr_docstrings(node)
+    body = _restore_attr_docstrings(ast.unparse(node), protected)
+    body = _substitute_version(chain, body, version)
     return header + "\n" + body + "\n"
 
 

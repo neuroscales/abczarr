@@ -50,51 +50,35 @@ class Axis(OMEMetadata):
     [SpaceAxis][abczarr.ome.v0_1.axes.SpaceAxis], and likewise for
     `"time"` and `"channel"`, each restricting `unit` to the units that
     type allows.
-
-    Parameters
-    ----------
-    name : str
-        The axis's label, such as `"x"` or `"channel"`.
-    type : str
-        What kind of axis this is: `"space"`, `"time"`, or `"channel"`.
-        Recommended.
-    unit : str
-        The axis's physical unit. Recommended.
     """
 
     name: Required[str] = field(factory=False)
+    """The axis's label, such as `"x"` or `"channel"`."""
     type: Recommended[tx.Union[AxisType, str]]
+    """What kind of axis this is: `"space"`, `"time"`, or `"channel"`.
+    Recommended."""
     unit: Recommended[tx.Union[Unit, str]]
+    """The axis's physical unit. Recommended."""
 
 
 @register_subclass(type="space")
 class SpaceAxis(Axis):
-    """A spatial axis: `x`, `y`, or `z`, with a length unit.
-
-    Parameters
-    ----------
-    unit : str
-        The axis's physical length unit, such as `"micrometer"`.
-        Recommended.
-    """
+    """A spatial axis: `x`, `y`, or `z`, with a length unit."""
 
     type: Recommended[tx.Literal["space"]]
     unit: Recommended[SpaceUnit]
+    """The axis's physical length unit, such as `"micrometer"`.
+    Recommended."""
 
 
 @register_subclass(type="time")
 class TimeAxis(Axis):
-    """A time axis, with a duration unit.
-
-    Parameters
-    ----------
-    unit : str
-        The axis's physical duration unit, such as `"second"`.
-        Recommended.
-    """
+    """A time axis, with a duration unit."""
 
     type: Recommended[tx.Literal["time"]]
     unit: Recommended[TimeUnit]
+    """The axis's physical duration unit, such as `"second"`.
+    Recommended."""
 
 
 @register_subclass(type="channel")
