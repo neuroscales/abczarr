@@ -84,7 +84,7 @@ class RegularChunkGrid(ChunkGrid):
     versions.
     """
 
-    name: tx.Literal["regular"]
+    name: tx.Literal["regular"] = field(kw_only=True)
     """Always ``"regular"``."""
     configuration: RegularChunkGridConfig
     """The chunk grid's parameters."""
@@ -114,7 +114,7 @@ class RectilinearChunkGrid(ChunkGrid):
     v1.
     """
 
-    name: tx.Literal["rectilinear"]
+    name: tx.Literal["rectilinear"] = field(kw_only=True)
     """Always ``"rectilinear"``."""
     configuration: RectilinearChunkGridConfig
     """The chunk grid's parameters."""
@@ -180,7 +180,7 @@ class DefaultChunkKeyEncoding(ChunkKeyEncoding):
     `configuration.separator` (`/` by default).
     """
 
-    name: tx.Literal["default"]
+    name: tx.Literal["default"] = field(kw_only=True)
     """Always ``"default"``."""
     configuration: DefaultChunkKeyEncodingConfig
     """The encoding's parameters."""
@@ -204,7 +204,7 @@ class V2ChunkKeyEncoding(ChunkKeyEncoding):
     [the default one][abczarr.metadata.v3.array.DefaultChunkKeyEncoding].
     """
 
-    name: tx.Literal["v2"]
+    name: tx.Literal["v2"] = field(kw_only=True)
     """Always ``"v2"``."""
     configuration: V2ChunkKeyEncodingConfig
     """The encoding's parameters."""

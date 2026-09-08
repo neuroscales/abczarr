@@ -311,3 +311,43 @@ def test_getitem_raises_keyerror_for_absent_key_without_extra_items() -> None:
     assert codec["name"] == "bytes"
     with pytest.raises(KeyError):
         codec["not_a_field"]
+
+
+def test_chunk_grid_and_encoding_take_a_positional_configuration() -> None:
+    # A chunk grid and a chunk key encoding are always written as an object,
+    # never a bare name, so their fixed name is keyword-only and a bare value
+    # builds the configuration.
+    import inspect
+
+    grid = v3.RegularChunkGrid((2, 2))
+    assert grid.configuration.chunk_shape == (2, 2)
+    assert grid.name == "regular"
+
+    encoding = v3.DefaultChunkKeyEncoding(".")
+    assert encoding.configuration.separator == "."
+    assert encoding.name == "default"
+
+    kinds = {
+        name: p.kind
+        for name, p in inspect.signature(
+            v3.DefaultChunkKeyEncoding.__init__
+        ).parameters.items()
+    }
+    assert kinds["configuration"] == inspect.Parameter.POSITIONAL_OR_KEYWORD
+    assert kinds["name"] == inspect.Parameter.KEYWORD_ONLY
+
+
+def test_the_polymorphic_bases_keep_name_positional() -> None:
+    # A base dispatches to its concrete subclass by name, so its own name
+    # stays the leading positional. Codecs and data types are built from a
+    # bare name, so theirs does too.
+    import inspect
+
+    def leading(cls: type) -> str:
+        params = list(inspect.signature(cls.__init__).parameters)
+        return params[1]  # after self
+
+    assert leading(v3.ChunkKeyEncoding) == "name"
+    assert leading(v3.ChunkGrid) == "name"
+    assert leading(v3.BloscCodec) == "name"
+    assert v3.BloscCodec("blosc").name == "blosc"
