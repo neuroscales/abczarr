@@ -170,8 +170,12 @@ NonNegativeIntegral = tx.Annotated[
 JsonNumber = tx.Union[int, float]
 JsonNumberLike = tx.Union[int, float, bool]
 JsonScalar = tx.Union[int, float, bool, str, None]
+"""A JSON scalar: a number, a boolean, a string, or null."""
 Json = tx.Union[JsonScalar, tx.Mapping[str, "Json"], BuiltinSequence["Json"]]
+"""Any JSON value. A scalar, a mapping of string keys to JSON values, or
+a sequence of JSON values."""
 JsonDict = tx.Mapping[str, Json]
+"""A JSON object: a mapping of string keys to JSON values."""
 
 # The frozen JSON model. Its mapping and sequence are the `immutable`
 # `FrozenDict` and `tuple`, matching the immutable nature of the frozen
@@ -216,6 +220,8 @@ MutableJsonDict = tx.MutableMapping[str, MutableJson]
 
 # Shapes
 Shape = tx.Tuple[BuiltinNonNegativeIntegral, ...]
+"""An array or chunk shape: a tuple of non-negative integers, one per
+dimension."""
 ShapeIsh = tx.Sequence[BuiltinNonNegativeIntegral]
 ShapeLike = tx.Iterable[NonNegativeIntegral]
 ChunksLike = tx.Union[ShapeLike, tx.Iterable[tx.Iterable[NonNegativeIntegral]]]

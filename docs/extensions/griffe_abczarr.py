@@ -45,8 +45,10 @@ renders in the API reference like a class written by hand.
 
 from __future__ import annotations
 
+import functools
 import importlib
 import inspect
+import typing as _t
 
 import attrs
 import typing_extensions as tx
@@ -55,7 +57,10 @@ from griffe import (
     Attribute,
     Class,
     Docstring,
+    ExprConstant,
     ExprName,
+    ExprSubscript,
+    ExprTuple,
     Extension,
     Function,
     Module,
@@ -154,6 +159,125 @@ def _default_text(field: attrs.Attribute) -> tx.Optional[str]:
         return None
 
 
+# The documentation module the named type aliases are defined in, used as
+# the scope a rendered alias name resolves against, so it cross-references
+# the type-aliases reference page. Set when the package is loaded.
+_ALIAS_SCOPE: tx.Optional[Module] = None
+
+
+_BUILTIN_GENERIC_NAMES = {
+    tuple: "Tuple",
+    list: "List",
+    dict: "Dict",
+    set: "Set",
+    frozenset: "FrozenSet",
+    type: "Type",
+}
+
+
+@functools.lru_cache(maxsize=1)
+def _type_aliases() -> tx.Tuple[tx.Tuple[tx.Any, str], ...]:
+    """The project's named type aliases, each resolved value with its name.
+
+    Ordered most specific first, so a composite alias such as `JsonDict`
+    is matched before the smaller aliases it is built from.
+    """
+    from abczarr._core import typing as tz
+
+    names = (
+        "JsonDict",
+        "Json",
+        "JsonScalar",
+        "MutableJsonDict",
+        "MutableJson",
+        "FrozenJson",
+        "Shape",
+        "ShapeIsh",
+        "ShapeLike",
+    )
+    pairs = []
+    for name in names:
+        value = getattr(tz, name, None)
+        if value is not None:
+            pairs.append((value, name))
+    return tuple(pairs)
+
+
+def _subscript(name: str, elements: list, parent: Class) -> ExprSubscript:
+    """A ``name[...]`` griffe expression whose slice cross-references."""
+    if len(elements) == 1:
+        slice_: tx.Any = elements[0]
+    else:
+        slice_ = ExprTuple(elements, implicit=True)
+    return ExprSubscript(ExprName(name, parent), slice_)
+
+
+def _like_annotation(annotation: tx.Any, parent: Class) -> tx.Any:
+    """The type a constructor parameter accepts, as a griffe expression.
+
+    A field accepts more than the type it stores. A converter resolved
+    from the field's type coerces a mapping, a scalar, or a short-hand
+    spelling into that type, and the constructor's signature carries the
+    wider accepted type. This builds that accepted type as an expression
+    whose names cross-reference: a named alias such as `Json` or `Shape`
+    is shown by its name rather than expanded to its full definition, an
+    `Annotated` type is shown without its metadata, and a union with
+    `None` is shown as `Optional`.
+    """
+    try:
+        return _like_expr(annotation, parent)
+    except Exception:
+        # A type this renderer does not handle falls back to its plain
+        # text, so an unusual annotation never breaks the build.
+        return str(annotation).replace("typing.", "")
+
+
+def _like_expr(annotation: tx.Any, parent: Class) -> tx.Any:
+    for value, name in _type_aliases():
+        try:
+            if annotation == value:
+                return ExprName(name, _ALIAS_SCOPE or parent)
+        except Exception:
+            pass
+    if annotation is type(None):
+        return ExprName("None", parent)
+    if annotation is Ellipsis:
+        return ExprConstant("...")
+    if hasattr(annotation, "__metadata__"):
+        return _like_expr(annotation.__origin__, parent)
+    origin = tx.get_origin(annotation)
+    args = tx.get_args(annotation)
+    if origin is None:
+        if hasattr(annotation, "__forward_arg__"):
+            return ExprName(annotation.__forward_arg__, parent)
+        return ExprName(
+            getattr(annotation, "__name__", None)
+            or str(annotation).replace("typing.", ""),
+            parent,
+        )
+    if origin is _t.Literal:
+        return _subscript(
+            "Literal", [ExprConstant(repr(a)) for a in args], parent
+        )
+    if origin is _t.Union:
+        present = [
+            _like_expr(a, parent) for a in args if a is not type(None)
+        ]
+        if len(present) == len(args):
+            return _subscript("Union", present, parent)
+        if len(present) == 1:
+            return _subscript("Optional", present, parent)
+        return _subscript(
+            "Optional", [_subscript("Union", present, parent)], parent
+        )
+    name = (
+        _BUILTIN_GENERIC_NAMES.get(origin)
+        or getattr(origin, "__name__", None)
+        or str(origin).replace("typing.", "")
+    )
+    return _subscript(name, [_like_expr(a, parent) for a in args], parent)
+
+
 def _build_init(class_: Class, cls: tx.Any) -> Function:
     """A synthesized ``__init__`` for the attrs class `cls`.
 
@@ -161,9 +285,11 @@ def _build_init(class_: Class, cls: tx.Any) -> Function:
     kind are read from the real signature of the class's constructor, so
     a keyword-only field that attrs moves after the positional ones is
     placed correctly. Each parameter's default is resolved from the
-    matching attrs field, and its annotation and description are read
-    from the documented attribute of the same name, including one
-    inherited from a base built by the same decorators.
+    matching attrs field, its annotation is the type the constructor
+    accepts, and its description is read from the documented attribute of
+    the same name, including one inherited from a base built by the same
+    decorators. The type a field stores, which is narrower than the type
+    its constructor accepts, is shown in the attributes section instead.
     """
     fields = {
         field.alias or field.name: field
@@ -180,7 +306,12 @@ def _build_init(class_: Class, cls: tx.Any) -> Function:
             continue
         field = fields.get(name)
         attribute = _find_attribute(class_, field.name) if field else None
-        if attribute is not None:
+        # The signature shows the type the parameter accepts (the wider
+        # pre-conversion type from the real constructor). The stored type
+        # a field keeps is shown in the attributes section instead.
+        if param.annotation is not inspect.Parameter.empty:
+            annotation = _like_annotation(param.annotation, class_)
+        elif attribute is not None:
             annotation = attribute.annotation
         elif field is not None:
             annotation = _EXTRA_ITEMS_ANNOTATION
@@ -384,6 +515,11 @@ class AttrsExtension(Extension):
         """
         if pkg.name != "abczarr":
             return
+        global _ALIAS_SCOPE
+        try:
+            _ALIAS_SCOPE = pkg["_core.typing"]
+        except (KeyError, ValueError):
+            _ALIAS_SCOPE = None
         if _apply_recursively(pkg, set()) == 0:
             logger.warning(
                 "griffe_abczarr augmented no classes; the abczarr package "
