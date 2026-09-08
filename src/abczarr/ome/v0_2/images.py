@@ -67,5 +67,4 @@ class Multiscale(OMEMetadata):
     """Further, free-form detail about how the lower resolutions were
     generated. Recommended."""
     version: Recommended[Version]
-    """The OME-NGFF version the metadata is written against.
-    Recommended."""
+    """The OME-NGFF version the metadata is written against."""
