@@ -109,6 +109,7 @@ from .typevars.inv import T  # noqa: F401  (re-exported for back-compat)
 OneOrIter = tx.Union[T, tx.Iterable[T]]
 OneOrSeq = tx.Union[T, tx.Sequence[T]]
 BuiltinSequence = tx.Union[tx.Tuple[T, ...], tx.List[T]]
+"""A built-in sequence of one element type: a tuple or a list."""
 
 # Values
 _BuiltinIntegralNumber = int
@@ -137,6 +138,7 @@ BuiltinNonPositiveIntegral = tx.Annotated[
     BuiltinIntegral, ToNonPositive(compose=True)]
 BuiltinNonNegativeIntegral = tx.Annotated[
     BuiltinIntegral, ToNonNegative(compose=True)]
+"""A built-in integer constrained to be zero or greater."""
 
 _BytesLike = tx.Union[bytes, bytearray, memoryview]
 _StringLike = tx.Union[str, _BytesLike]
