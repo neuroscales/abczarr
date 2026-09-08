@@ -203,13 +203,31 @@ def _type_aliases() -> tx.Tuple[tx.Tuple[tx.Any, str], ...]:
     return tuple(pairs)
 
 
-def _subscript(name: str, elements: list, parent: Class) -> ExprSubscript:
+def _is_typing(obj: tx.Any) -> bool:
+    """Whether a runtime type or generic origin belongs to ``typing``."""
+    return obj in _BUILTIN_GENERIC_NAMES or getattr(
+        obj, "__module__", None
+    ) in ("typing", "typing_extensions")
+
+
+def _name(name: str, parent: Class, obj: tx.Any = None) -> ExprName:
+    """A name expression. One that stands for a ``typing`` object resolves
+    to ``typing.<name>``, so it cross-references and modernizes like an
+    annotation written in source; any other resolves in `parent`'s scope."""
+    if obj is not None and _is_typing(obj):
+        return ExprName(name, parent=ExprName("typing"))
+    return ExprName(name, parent)
+
+
+def _subscript(
+    name: str, elements: list, parent: Class, obj: tx.Any = None
+) -> ExprSubscript:
     """A ``name[...]`` griffe expression whose slice cross-references."""
     if len(elements) == 1:
         slice_: tx.Any = elements[0]
     else:
         slice_ = ExprTuple(elements, implicit=True)
-    return ExprSubscript(ExprName(name, parent), slice_)
+    return ExprSubscript(_name(name, parent, obj), slice_)
 
 
 def _like_annotation(annotation: tx.Any, parent: Class) -> tx.Any:
@@ -250,32 +268,38 @@ def _like_expr(annotation: tx.Any, parent: Class) -> tx.Any:
     if origin is None:
         if hasattr(annotation, "__forward_arg__"):
             return ExprName(annotation.__forward_arg__, parent)
-        return ExprName(
+        return _name(
             getattr(annotation, "__name__", None)
             or str(annotation).replace("typing.", ""),
             parent,
+            annotation,
         )
     if origin is _t.Literal:
         return _subscript(
-            "Literal", [ExprConstant(repr(a)) for a in args], parent
+            "Literal", [ExprConstant(repr(a)) for a in args], parent, origin
         )
     if origin is _t.Union:
         present = [
             _like_expr(a, parent) for a in args if a is not type(None)
         ]
         if len(present) == len(args):
-            return _subscript("Union", present, parent)
+            return _subscript("Union", present, parent, origin)
         if len(present) == 1:
-            return _subscript("Optional", present, parent)
+            return _subscript("Optional", present, parent, origin)
         return _subscript(
-            "Optional", [_subscript("Union", present, parent)], parent
+            "Optional",
+            [_subscript("Union", present, parent, origin)],
+            parent,
+            origin,
         )
     name = (
         _BUILTIN_GENERIC_NAMES.get(origin)
         or getattr(origin, "__name__", None)
         or str(origin).replace("typing.", "")
     )
-    return _subscript(name, [_like_expr(a, parent) for a in args], parent)
+    return _subscript(
+        name, [_like_expr(a, parent) for a in args], parent, origin
+    )
 
 
 def _build_init(class_: Class, cls: tx.Any) -> Function:
