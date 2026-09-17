@@ -49,10 +49,19 @@ from abczarr.drivers.base import Driver
 try:
     import numcodecs
     import zarr
-    import zarr.registry as _registry
 except ImportError:  # pragma: no cover - exercised only without zarr
     numcodecs = None
     zarr = None
+
+# The registry submodule lives only in zarr-python 3.x. A 2.x install has
+# zarr but not this submodule, so it is imported separately, which leaves
+# ``zarr`` bound when the driver runs against zarr 2.
+if zarr is not None:
+    try:
+        import zarr.registry as _registry
+    except ImportError:  # pragma: no cover - only on zarr 2.x
+        _registry = None
+else:  # pragma: no cover - only without zarr
     _registry = None
 
 
@@ -68,6 +77,87 @@ _V3_CAPABILITIES = {
     "deletes": Support.NATIVE,
     "partial_read": Support.NATIVE,
 }
+
+
+#: Coarse capabilities a zarr-python 2.x install provides. Zarr 2 has no
+#: sharding and no native async, and writes only the v2 codec model.
+_V2_CAPABILITIES = {
+    "async": Support.SYNTHESIZED,
+    "consolidated_metadata": Support.NATIVE,
+    "codecs_v2": Support.NATIVE,
+    "listing": Support.NATIVE,
+    "writes": Support.NATIVE,
+    "deletes": Support.NATIVE,
+    "partial_read": Support.NATIVE,
+}
+
+
+def _node_location(obj: tx.Any) -> str:
+    """A location string identifying `obj`, for a zarr 3 or a zarr 2 node.
+
+    A zarr 3 node carries a ``store_path``. A zarr 2 node does not, so the
+    location is rebuilt from the store's root, when it has one, and the
+    node's own path within the store.
+    """
+    store_path = getattr(obj, "store_path", None)
+    if store_path is not None:
+        return str(store_path)
+    path = getattr(obj, "path", "") or ""
+    store = getattr(obj, "store", None)
+    root = getattr(store, "path", None) or getattr(store, "dir_path", None)
+    if root:
+        root = str(root).rstrip("/")
+        return root + "/" + path if path else root
+    return path or str(store)
+
+
+def _v2_metadata_document(obj: tx.Any) -> tx.Dict[str, tx.Any]:
+    """The v2 metadata dict for a zarr 2 array or group.
+
+    The result is shaped like the document
+    [metadata_from_json][abczarr.drivers._metadata.metadata_from_json]
+    reads. The stored ``.zarray`` or ``.zgroup`` supplies the format
+    fields, and the node's attributes are added under ``attributes``.
+    """
+    import json
+
+    store = obj.store
+    prefix = (obj.path + "/") if obj.path else ""
+    key = prefix + (".zarray" if isinstance(obj, zarr.Array) else ".zgroup")
+    document = dict(json.loads(store[key]))
+    document["attributes"] = dict(obj.attrs)
+    return document
+
+
+def _zarr2_create_kwargs(config: tx.Any) -> tx.Dict[str, tx.Any]:
+    """Map a resolved [ArrayConfig][abczarr.api.config.ArrayConfig] to the
+    keywords zarr 2's array creation takes.
+
+    A zarr 2 install writes only the v2 format, so the config is lowered
+    through the v2 metadata layer. That layer maps each codec to its
+    numcodecs id, and the resulting specs are built into the numcodecs
+    ``compressor`` and ``filters`` zarr 2 expects.
+    """
+    from abczarr._core.attrs import evolve
+
+    if config.zarr_version != 2:
+        config = evolve(config, zarr_version=2)
+    document = config.to_metadata().to_json()
+    compressor = document.get("compressor")
+    filters = document.get("filters")
+    separator = document.get("dimension_separator") or "."
+    kwargs = {
+        "chunks": config.chunks,
+        "fill_value": config.resolved_fill_value(),
+        "order": config.order,
+        "dimension_separator": separator,
+        "compressor": (
+            numcodecs.get_codec(compressor) if compressor else None
+        ),
+    }  # type: tx.Dict[str, tx.Any]
+    if filters:
+        kwargs["filters"] = [numcodecs.get_codec(f) for f in filters]
+    return kwargs
 
 
 def _installed_major() -> int:
@@ -205,11 +295,13 @@ class ZarrPythonDriver(Driver):
 
     @property
     def available(self) -> bool:
-        return self._major >= 3
+        return self._major >= 2
 
     def _open_sync(
         self, location: tx.Any, mode: str
     ) -> "ZarrPythonNode":
+        # zarr 2 and zarr 3 both dispatch open on the same call and return a
+        # Group or an Array, so one path opens either version.
         node = zarr.open(location, mode=mode)
         if isinstance(node, zarr.Group):
             return ZarrPythonGroup(node)
@@ -218,6 +310,10 @@ class ZarrPythonDriver(Driver):
     async def _open_async(
         self, location: tx.Any, mode: str
     ) -> AsyncZarrNode:
+        if self._major < 3:
+            # zarr 2 has no native async surface. The base thread-bridges the
+            # synchronous open and returns the synthesized async twin.
+            return await super()._open_async(location, mode)
         # delegate to zarr-python's own async open (a coroutine); its metadata
         # read is awaited, and the AsyncArray/AsyncGroup it returns is wrapped
         # as the native async twin
@@ -229,6 +325,8 @@ class ZarrPythonDriver(Driver):
     def _create_sync(
         self, location: tx.Any, config: tx.Any
     ) -> "ZarrPythonNode":
+        if self._major < 3:
+            return self._create_sync_v2(location, config)
         if isinstance(config, ArrayConfig):
             array = zarr.create_array(
                 store=str(location),
@@ -246,9 +344,35 @@ class ZarrPythonDriver(Driver):
         )
         return ZarrPythonGroup(group)
 
+    def _create_sync_v2(
+        self, location: tx.Any, config: tx.Any
+    ) -> "ZarrPythonNode":
+        """Create a node through zarr 2's own array and group API.
+
+        zarr 2 has no ``create_array`` and takes no ``zarr_format``. An
+        array is created with ``open_array`` and a group with
+        ``open_group``, and a v2 array is always written.
+        """
+        mode = "w" if config.overwrite else "w-"
+        if isinstance(config, ArrayConfig):
+            array = zarr.open_array(
+                str(location),
+                mode=mode,
+                shape=config.shape,
+                dtype=config.dtype,
+                **_zarr2_create_kwargs(config),
+            )
+            return ZarrPythonArray(array)
+        group = zarr.open_group(str(location), mode=mode)
+        return ZarrPythonGroup(group)
+
     async def _create_async(
         self, location: tx.Any, config: tx.Any
     ) -> AsyncZarrNode:
+        if self._major < 3:
+            # zarr 2 has no native async create; the base thread-bridges the
+            # synchronous create and returns the synthesized async twin.
+            return await super()._create_async(location, config)
         # delegate to zarr-python's own async create (a coroutine), so it
         # writes its own metadata and its caches stay consistent; the
         # AsyncArray/AsyncGroup it returns is wrapped as the native async twin
@@ -272,12 +396,11 @@ class ZarrPythonDriver(Driver):
         return _wrap_async(group).as_async()
 
     def capability(self, capability: str) -> Support:
-        if self._major < 3:
-            # zarr 2.x uses a different library API; its support lands with
-            # the version adapter.
+        if self._major < 2:
             return Support.NONE
-        if capability in _V3_CAPABILITIES:
-            return _V3_CAPABILITIES[capability]
+        coarse = _V3_CAPABILITIES if self._major >= 3 else _V2_CAPABILITIES
+        if capability in coarse:
+            return coarse[capability]
         parsed = _parse_feature(capability)
         if parsed is None:
             return Support.NONE
@@ -289,10 +412,12 @@ class ZarrPythonDriver(Driver):
         """Whether the installed zarr provides one codec / grid / etc.
 
         zarr-python 3.x reads and writes both the v3 codec pipeline (through
-        its own registry) and the v2 numcodecs model (through numcodecs).
+        its own registry) and the v2 numcodecs model (through numcodecs). A
+        2.x install has no v3 registry and provides only the v2 numcodecs
+        model.
         """
         if version == "v3":
-            found = _supports_v3_feature(kind, name)
+            found = self._major >= 3 and _supports_v3_feature(kind, name)
         elif version in ("v1", "v2"):
             # v1 and v2 name a numcodecs compressor or filter
             found = kind in ("codec", "filter") and _has_numcodec(name)
@@ -313,6 +438,13 @@ _NODE_CAPABILITIES = {
     "consolidated_metadata": Support.NATIVE,
 }
 
+#: Node capabilities a zarr-python 2.x array or group provides. Zarr 2 has
+#: no sharding, no v3 codecs, and only a synthesized async surface.
+_NODE_CAPABILITIES_V2 = {
+    "async": Support.SYNTHESIZED,
+    "consolidated_metadata": Support.NATIVE,
+}
+
 
 class ZarrPythonNode(ZarrNode):
     """The base class shared by the zarr-python array and group
@@ -328,14 +460,25 @@ class ZarrPythonNode(ZarrNode):
     _CAPABILITIES = _NODE_CAPABILITIES
 
     def __init__(self, obj: tx.Any) -> None:
-        super().__init__(str(obj.store_path))
+        super().__init__(_node_location(obj))
         self._obj = obj
         self._native = obj
+
+    def capability(self, name: str) -> Support:
+        # A zarr 2 node reports a smaller capability set: no sharding, no v3
+        # codecs, and a synthesized async surface rather than a native one.
+        if self.zarr_version >= 3:
+            return _NODE_CAPABILITIES.get(name, Support.NONE)
+        return _NODE_CAPABILITIES_V2.get(name, Support.NONE)
 
     @property
     def metadata(self) -> tx.Any:
         # read live from the wrapped zarr object, which keeps its own cache
-        return metadata_from_json(self._obj.metadata.to_dict())
+        obj = self._obj
+        if getattr(obj, "metadata", None) is not None:
+            return metadata_from_json(obj.metadata.to_dict())
+        # zarr 2 objects carry no ``metadata``; rebuild it from the store.
+        return metadata_from_json(_v2_metadata_document(obj))
 
     # attrs and update_attributes are inherited from ZarrNode: reads come from
     # the metadata above (zarr-python's live cache), and a write is delegated
@@ -353,7 +496,10 @@ class ZarrPythonNode(ZarrNode):
 
     @property
     def zarr_version(self) -> tz.ZarrVersion:
-        return self._obj.metadata.zarr_format
+        metadata = getattr(self._obj, "metadata", None)
+        if metadata is not None:
+            return metadata.zarr_format
+        return 2
 
 
 class ZarrPythonArray(ZarrPythonNode, ZarrArray):
@@ -392,10 +538,16 @@ class ZarrPythonArray(ZarrPythonNode, ZarrArray):
     def __setitem__(self, index: tx.Any, value: npt.ArrayLike) -> None:
         self._obj[index] = value
 
-    def as_async(self) -> "AsyncZarrPythonArray":
-        """The native async twin of this array, delegating to
-        zarr-python's own ``AsyncArray``."""
-        return AsyncZarrPythonArray(self)
+    def as_async(self) -> "AsyncZarrArray":
+        """The async twin of this array.
+
+        A zarr 3 array delegates to zarr-python's own ``AsyncArray``, a
+        native coroutine surface. A zarr 2 array has no such surface, so
+        the synthesized thread-pool twin from the base class is used.
+        """
+        if self.zarr_version >= 3:
+            return AsyncZarrPythonArray(self)
+        return super().as_async()
 
 
 class ZarrPythonGroup(ZarrPythonNode, ZarrGroup):
@@ -436,16 +588,31 @@ class ZarrPythonGroup(ZarrPythonNode, ZarrGroup):
         self, name: str, config: tx.Any
     ) -> ZarrPythonArray:
         # delegate to zarr-python, so it writes its own metadata
+        if self.zarr_version < 3:
+            # zarr 2 groups create members with create_dataset and take
+            # numcodecs-shaped codecs.
+            array = self._obj.create_dataset(
+                name, shape=config.shape, dtype=config.dtype,
+                overwrite=config.overwrite,
+                **_zarr2_create_kwargs(config),
+            )
+            return ZarrPythonArray(array)
         array = self._obj.create_array(
             name, shape=config.shape, dtype=config.dtype,
             **_zarr_create_kwargs(config),
         )
         return ZarrPythonArray(array)
 
-    def as_async(self) -> "AsyncZarrPythonGroup":
-        """The native async twin of this group, delegating to
-        zarr-python's own ``AsyncGroup``."""
-        return AsyncZarrPythonGroup(self)
+    def as_async(self) -> "AsyncZarrGroup":
+        """The async twin of this group.
+
+        A zarr 3 group delegates to zarr-python's own ``AsyncGroup``, a
+        native coroutine surface. A zarr 2 group has no such surface, so
+        the synthesized thread-pool twin from the base class is used.
+        """
+        if self.zarr_version >= 3:
+            return AsyncZarrPythonGroup(self)
+        return super().as_async()
 
 
 # ----------------------------------------------------------------------
