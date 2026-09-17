@@ -65,15 +65,29 @@ def _base_with_ome(
     return arr
 
 
+def _flatten_transforms(transforms: object) -> object:
+    """Yield each transform, descending into a 0.6 ``sequence``.
+
+    From 0.6 a dataset that carries both a scale and a translation composes
+    them into a single ``sequence`` transform. Earlier versions list the two
+    side by side. Flattening reads either shape the same way.
+    """
+    for t in transforms:
+        if t.type == "sequence":
+            yield from _flatten_transforms(t.transformations)
+        else:
+            yield t
+
+
 def _dataset_scale(dataset: object) -> object:
-    for t in dataset.coordinateTransformations:
+    for t in _flatten_transforms(dataset.coordinateTransformations):
         if t.type == "scale":
             return t.scale
     return None
 
 
 def _dataset_translation(dataset: object) -> object:
-    for t in dataset.coordinateTransformations:
+    for t in _flatten_transforms(dataset.coordinateTransformations):
         if t.type == "translation":
             return t.translation
     return None
