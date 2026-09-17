@@ -11,6 +11,9 @@ import pytest
 
 zarr = pytest.importorskip("zarr")
 
+from zarr.storage import MemoryStore  # noqa: E402
+
+from abczarr.abc.asynchronous import AsyncZarrGroup  # noqa: E402
 from abczarr.abc.sync import ZarrArray, ZarrGroup  # noqa: E402
 from abczarr.drivers.zarr_python import (  # noqa: E402
     ZarrPythonArray,
@@ -166,3 +169,71 @@ def test_removing_one_attr_keeps_the_others(tmp_path: pathlib.Path) -> None:
     reopened = _open(root, "r")["img"]
     assert "scale" not in reopened.attrs
     assert reopened.attrs["unit"] == "um"
+
+
+class _ForeignPath:
+    """A minimal ``os.PathLike`` that is not a ``pathlib.Path``.
+
+    A path wrapper such as ``bagof.paths.Path`` or a cloud ``UPath`` is an
+    ``os.PathLike`` without being a ``pathlib.Path``, which is exactly what
+    zarr-python's ``open`` rejects. This stand-in reproduces that shape
+    without depending on either library.
+    """
+
+    def __init__(self, value: str) -> None:
+        self._value = value
+
+    def __fspath__(self) -> str:
+        return self._value
+
+    def __str__(self) -> str:
+        return self._value
+
+
+def test_open_accepts_a_non_pathlib_path_wrapper(
+    tmp_path: pathlib.Path,
+) -> None:
+    # zarr-python's open rejects a path object that is not a str, a
+    # pathlib.Path, or one of its own stores. The driver lowers such an
+    # object to a string first, so opening through a path wrapper works.
+    root = _store(tmp_path)
+    node = ZarrPythonDriver().open(_ForeignPath(root), mode="r")
+    assert isinstance(node, ZarrPythonGroup)
+    assert set(node.keys()) == {"img", "sub"}
+
+
+def test_open_async_accepts_a_non_pathlib_path_wrapper(
+    tmp_path: pathlib.Path,
+) -> None:
+    import asyncio
+
+    root = _store(tmp_path)
+
+    async def run() -> object:
+        return await ZarrPythonDriver().open(
+            _ForeignPath(root), mode="r", asynchronous=True
+        )
+
+    node = asyncio.run(run())
+    assert isinstance(node, AsyncZarrGroup)
+
+
+def test_as_store_like_only_lowers_unknown_path_objects(
+    tmp_path: pathlib.Path,
+) -> None:
+    from abczarr.drivers.zarr_python import _as_store_like
+
+    # A string is returned unchanged, keeping any scheme intact so
+    # zarr-python can still recognize an fsspec URL.
+    assert _as_store_like("s3://bucket/x.zarr") == "s3://bucket/x.zarr"
+    # A pathlib.Path is returned unchanged; zarr-python accepts it directly.
+    path = pathlib.Path(str(tmp_path / "x.zarr"))
+    assert _as_store_like(path) is path
+    # A foreign path object is lowered to its string form.
+    assert (
+        _as_store_like(_ForeignPath("s3://bucket/x.zarr"))
+        == "s3://bucket/x.zarr"
+    )
+    # A store object zarr-python already understands is passed through.
+    store = MemoryStore()
+    assert _as_store_like(store) is store
