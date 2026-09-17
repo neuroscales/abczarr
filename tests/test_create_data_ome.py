@@ -97,8 +97,8 @@ def test_create_group_writes_ome_from_an_image_config(
         str(tmp_path / "g.zarr"), abczarr.GroupConfig(), ome=ome
     )
     assert group.ome is not None
-    assert group.ome.version == "0.5"
-    axes = [a.name for a in group.ome.multiscales[0].axes]
+    assert group.ome.version == "0.6"
+    axes = [a.name for a in group.ome.multiscales[0].coordinateSystems[0].axes]
     assert axes == ["y", "x"]
 
 
@@ -150,7 +150,7 @@ def test_async_create_writes_ome(tmp_path: pathlib.Path) -> None:
 
     group = asyncio.run(go())
     assert group.ome is not None
-    assert group.ome.version == "0.5"
+    assert group.ome.version == "0.6"
 
 
 # --- group.create_array from data ------------------------------------------

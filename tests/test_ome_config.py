@@ -266,18 +266,18 @@ def test_stable_resolves_to_the_latest_released_version() -> None:
     assert ImageConfig(axes=["x"]).resolved_version() == LATEST_STABLE
 
 
-def test_latest_resolves_to_the_newest_preview() -> None:
-    assert ImageConfig(axes=["x"]).resolved_version("latest") == "0.6rc0"
+def test_latest_resolves_to_the_newest_version() -> None:
+    assert ImageConfig(axes=["x"]).resolved_version("latest") == "0.6"
 
 
-def test_default_lowering_is_the_stable_05_shape() -> None:
+def test_default_lowering_is_the_stable_06_shape() -> None:
     cfg = ImageConfig(axes=["y", "x"], scale=[2.0, 2.0])
     ome = cfg.to_ome(level_shapes=[[8, 8]])
-    assert ome.version == "0.5"
-    # 0.5 keeps the per-level scale on the dataset and the axes on the
-    # multiscale
+    assert ome.version == "0.6"
+    # 0.6 carries the axes on named coordinate systems and the per-level
+    # scale on the dataset
     ms = ome.multiscales[0]
-    assert [a.name for a in ms.axes] == ["y", "x"]
+    assert [a.name for a in ms.coordinateSystems[0].axes] == ["y", "x"]
     assert ms.datasets[0].coordinateTransformations[0].scale == [2.0, 2.0]
 
 
@@ -294,7 +294,7 @@ def _rich_config() -> ImageConfig:
 def test_rich_affine_is_dropped_with_one_warning_going_to_05() -> None:
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        _rich_config().to_ome(level_shapes=[[8, 8]])
+        _rich_config().to_ome(version="0.5", level_shapes=[[8, 8]])
     assert len(caught) == 1
     assert "affine" in str(caught[0].message)
 
@@ -308,7 +308,9 @@ def test_rich_affine_is_preserved_at_06() -> None:
 
 def test_rich_affine_raises_going_to_05_under_strict() -> None:
     with pytest.raises(UnsupportedConversion):
-        _rich_config().to_ome(policy="strict", level_shapes=[[8, 8]])
+        _rich_config().to_ome(
+            version="0.5", policy="strict", level_shapes=[[8, 8]]
+        )
 
 
 # --- voxel_to_world decomposition ------------------------------------------

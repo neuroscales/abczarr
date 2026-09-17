@@ -22,6 +22,13 @@ Copied from the OME `ngff` specification repository
 | `v0_6dev3`  | tag `0.6.dev3` | `schemas/` |
 | `v0_6dev4`  | tag `0.6.dev4` | `schemas/` |
 | `v0_6rc0`   | tag `0.6rc0`   | `schemas/` |
+| `v0_6`      | tag `0.6`      | `schemas/` |
+
+The 0.6 development moved the specification content to a separate repository,
+[`ome/ngff-spec`](https://github.com/ome/ngff-spec). The `v0_6` files are
+copied from that repository at tag `0.6`. Its `0.6rc0` tag is byte-for-byte
+identical to the `v0_6rc0` files vendored here, so the pre-release rows above
+match either source.
 
 The directory names mirror the `abczarr.ome.<version>` metadata packages; each
 file's `$id` carries the official version segment (`.../0.6.dev1/schemas/...`).

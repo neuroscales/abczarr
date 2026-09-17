@@ -75,6 +75,7 @@ _SEGMENT = {
     "v0_6dev3": "0.6.dev3",
     "v0_6dev4": "0.6.dev4",
     "v0_6rc0": "0.6rc0",
+    "v0_6": "0.6",
 }
 
 #: the versions this module can validate, in the `abczarr` spelling.

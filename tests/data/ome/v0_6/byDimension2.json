@@ -1,0 +1,46 @@
+{
+  "coordinateSystems": [
+    {
+      "name": "in",
+      "axes": [
+        { "name": "l", "type": "space" },
+        { "name": "j", "type": "space" },
+        { "name": "k", "type": "space" },
+        { "name": "i", "type": "space" }
+      ]
+    },
+    {
+      "name": "out",
+      "axes": [
+        { "name": "z", "type": "space" },
+        { "name": "y", "type": "space" },
+        { "name": "x", "type": "space" }
+      ]
+    }
+  ],
+  "coordinateTransformations": [
+    {
+      "type": "byDimension",
+      "input": {"name": "in"},
+      "output": {"name": "out"},
+      "transformations": [
+        {
+          "transformation": {
+            "type": "translation",
+            "translation": [ 0.5, 1.5 ]
+          },
+          "inputAxes": [ 3, 2 ],
+          "outputAxes": [ 1, 2 ]
+        },
+        {
+          "transformation": {
+            "type": "scale",
+            "scale": [ 2 ]
+          },
+          "inputAxes": [ 1 ],
+          "outputAxes": [ 0 ]
+        }
+      ]
+    }
+  ]
+}

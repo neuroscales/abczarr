@@ -212,6 +212,7 @@ _MODULES = {
     "0.6.dev3": "v0_6dev3",
     "0.6.dev4": "v0_6dev4",
     "0.6rc0": "v0_6rc0",
+    "0.6": "v0_6",
 }
 _VERSIONS = list(_MODULES)
 
@@ -236,7 +237,7 @@ def _version_key(version: str) -> "tx.Tuple[int, ...]":
     return tuple(int(part) for part in version.split("."))
 
 
-#: The newest released, non-preview OME-NGFF version. This is ``"0.5"``
+#: The newest released, non-preview OME-NGFF version. This is ``"0.6"``
 #: today, and the default version used when metadata is written without
 #: one.
 LATEST_STABLE = max(

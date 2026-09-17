@@ -1,10 +1,10 @@
-"""OME-Zarr NGFF 0.6 pre-release metadata parses and round-trips.
+"""OME-Zarr NGFF 0.6 metadata parses and round-trips.
 
-Each 0.6 development version (``0.6.dev1`` .. ``0.6.dev4`` and ``0.6rc0``)
-ships realistic example instances in the ``ngff-spec`` repository. These
-tests parse those instances through the matching ``abczarr`` metadata model
-and assert that the object serializes back to an equal object -- the proof
-that data written against any 0.6 pre-release is read correctly.
+Each 0.6 version (``0.6.dev1`` .. ``0.6.dev4``, ``0.6rc0`` and the ``0.6``
+release) ships realistic example instances in the ``ngff-spec`` repository.
+These tests parse those instances through the matching ``abczarr`` metadata
+model and assert that the object serializes back to an equal object -- the
+proof that data written against any 0.6 version is read correctly.
 
 The example instances are vendored under ``tests/data/ome/<version>/`` with
 their JSONC comments stripped. A ``bioformats2raw.layout`` document -- whose
@@ -33,6 +33,7 @@ VERSIONS = {
     "v0_6dev3": "0.6.dev3",
     "v0_6dev4": "0.6.dev4",
     "v0_6rc0": "0.6rc0",
+    "v0_6": "0.6",
 }
 
 # Standalone coordinate-transformation instances (``coordinateSystems`` +
@@ -57,6 +58,12 @@ XFORMS = {
         "byDimensionXarray", "coordinates1d", "displacement1d",
     ],
     "v0_6rc0": [
+        "affine2d2d", "affine2d3d", "identity", "scale", "translation",
+        "rotation", "sequence", "bijection", "mapAxis1", "byDimension1",
+        "byDimension2", "byDimensionXarray", "projectAxis", "projectAxis2",
+    ],
+    # The 0.6 release ships the same instances as 0.6rc0.
+    "v0_6": [
         "affine2d2d", "affine2d3d", "identity", "scale", "translation",
         "rotation", "sequence", "bijection", "mapAxis1", "byDimension1",
         "byDimension2", "byDimensionXarray", "projectAxis", "projectAxis2",
@@ -183,7 +190,7 @@ _TOP_LEVEL_DOCS = [
     ("well_2fields", "OMEWell"),
     ("series-2", "OMESeries"),
 ]
-_SCENE_VERSIONS = {"v0_6dev3", "v0_6dev4", "v0_6rc0"}
+_SCENE_VERSIONS = {"v0_6dev3", "v0_6dev4", "v0_6rc0", "v0_6"}
 
 
 def _top_level_params() -> object:

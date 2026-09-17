@@ -10,8 +10,8 @@ it by applying a small, explicit *forward delta table*.
 There are two chains:
 
 * the **stable** chain -- ``v0_1`` (template) generating ``v0_2``..``v0_5``;
-* the **0.6 pre-release** chain -- ``v0_6dev1`` (template) generating
-  ``v0_6dev2``, ``v0_6dev3``, ``v0_6dev4`` and ``v0_6rc0``.
+* the **0.6** chain -- ``v0_6dev1`` (template) generating ``v0_6dev2``,
+  ``v0_6dev3``, ``v0_6dev4``, ``v0_6rc0`` and the ``v0_6`` release.
 
 Why codegen rather than sharing classes at runtime:
 
@@ -454,6 +454,9 @@ DELTAS_STABLE = {
 #                 name string becomes a ``Space`` object.
 #   dev4 -> rc0   ``projectAxis`` is added and byDimension's inner axis keys
 #                 are re-spelled (``input_axes`` -> ``inputAxes``).
+#   rc0  -> 0.6   the release. Identical class surface (the schema changes
+#                 between them are version-string, description-text and
+#                 ``$ref``-spelling only), so nothing but the version string.
 
 DELTAS_DEV = {
     # dev1 -> dev2: version string only.
@@ -481,6 +484,11 @@ DELTAS_DEV = {
             _read_template("dev/v0_6rc0/transformations.py"),
         ),
     ],
+    # rc0 -> 0.6 (release): the class surface is unchanged. The only
+    # schema differences are the version string, two description-text
+    # edits, a $ref spelled absolute rather than relative, and a typo
+    # fix -- none of which touch the metadata model.
+    "v0_6": [],
 }
 
 
@@ -549,13 +557,14 @@ STABLE = Chain(
 
 DEV = Chain(
     template="v0_6dev1",
-    generated=["v0_6dev2", "v0_6dev3", "v0_6dev4", "v0_6rc0"],
+    generated=["v0_6dev2", "v0_6dev3", "v0_6dev4", "v0_6rc0", "v0_6"],
     version_string={
         "v0_6dev1": "0.6.dev1",
         "v0_6dev2": "0.6.dev2",
         "v0_6dev3": "0.6.dev3",
         "v0_6dev4": "0.6.dev4",
         "v0_6rc0": "0.6rc0",
+        "v0_6": "0.6",
     },
     base_modules=[
         "images", "labels", "ome", "omero", "plates", "systems",
