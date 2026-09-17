@@ -34,22 +34,35 @@ class Plate(OMEMetadata):
         """One imaging run over some or all of the plate's wells."""
 
         id: Required[NonNegativeInt] = field(factory=False)
-        """A non-negative integer identifying the acquisition. A
+        """
+        A non-negative integer identifying the acquisition. A
         [Well.Image][abczarr.ome.v0_2.wells.Well.Image] refers to this
-        run by this value."""
+        run by this value.
+        """
+
         name: Recommended[str]
         """A name for the acquisition. Recommended."""
+
         maximumfieldcount: Recommended[NonNegativeInt]
-        """The largest number of fields of view acquired for any well
-        in this run. Recommended."""
+        """
+        The largest number of fields of view acquired for any well
+        in this run. Recommended.
+        """
+
         description: Optional[str]
         """A description of the acquisition. Optional."""
+
         starttime: Optional[int]
-        """The time the acquisition started, in Unix epoch
-        milliseconds. Optional."""
+        """
+        The time the acquisition started, in Unix epoch
+        milliseconds. Optional.
+        """
+
         endtime: Optional[int]
-        """The time the acquisition ended, in Unix epoch milliseconds.
-        Optional."""
+        """
+        The time the acquisition ended, in Unix epoch milliseconds.
+        Optional.
+        """
 
     @autodefine
     class Column(OMEMetadata):
@@ -70,28 +83,46 @@ class Plate(OMEMetadata):
         """One well's position in the plate, and the group holding it."""
 
         path: Required[WellPath] = field(factory=False)
-        """The well's group, relative to the plate group, spelled as
-        ``"<row>/<column>"``."""
+        """
+        The well's group, relative to the plate group, spelled as
+        ``"<row>/<column>"``.
+        """
+
         rowIndex: Required[NonNegativeInt]
         """The well's row, as an index into `Plate.rows`."""
+
         columnIndex: Required[NonNegativeInt]
         """The well's column, as an index into `Plate.columns`."""
 
     acquisitions: Optional[tx.List[Acquisition]]
-    """The imaging runs the wells' images belong to, when the screen
-    ran more than one. Optional."""
+    """
+    The imaging runs the wells' images belong to, when the screen
+    ran more than one. Optional.
+    """
+
     columns: Required[tx.List[Column]]
     """The plate's columns, in grid order."""
+
     field_count: Recommended[NonNegativeInt]
-    """The largest number of fields of view acquired for any well of
-    the plate. Recommended."""
+    """
+    The largest number of fields of view acquired for any well of
+    the plate. Recommended.
+    """
+
     name: Recommended[str]
     """A name for the plate. Recommended."""
+
     rows: Required[tx.List[Row]]
     """The plate's rows, in grid order."""
+
     wells: Required[tx.List[Well]]
-    """Every well of the plate, each placed in the grid and pointing at
-    the group holding its images."""
+    """
+    Every well of the plate, each placed in the grid and pointing at
+    the group holding its images.
+    """
+
     version: Recommended[Version]
-    """The OME-NGFF version the metadata is written against. Recommended
-    in OME-NGFF 0.1 and 0.2, and required from 0.3 on."""
+    """
+    The OME-NGFF version the metadata is written against. Recommended
+    in OME-NGFF 0.1 and 0.2, and required from 0.3 on.
+    """

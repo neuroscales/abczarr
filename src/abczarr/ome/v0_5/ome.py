@@ -54,9 +54,11 @@ class OMESeries(OME):
     """Metadata for a bioformats2raw dataset's set of image series."""
 
     series: tx.Optional[tx.List[str]] = None
-    """The path of each series' subgroup, in the same order as the
+    """
+    The path of each series' subgroup, in the same order as the
     corresponding series in the accompanying OME-XML document.
-    Optional."""
+    Optional.
+    """
 
 
 @register_subclass(multiscales=tx.Any)
@@ -69,13 +71,18 @@ class OMEImage(OME):
     """
 
     multiscales: Required[tx.List[Multiscale]]
-    """The group's resolution pyramids, each a
+    """
+    The group's resolution pyramids, each a
     [Multiscale][abczarr.ome.v0_5.images.Multiscale] object. An image
-    almost always has exactly one."""
+    almost always has exactly one.
+    """
+
     omero: Optional[Omero]
-    """Rendering settings suggesting how a viewer should display the
+    """
+    Rendering settings suggesting how a viewer should display the
     image's channels. See [Omero][abczarr.ome.v0_5.omero.Omero] for the
-    fields it carries. Optional."""
+    fields it carries. Optional.
+    """
 
 
 @register_subclass(image_label=tx.Any)
@@ -88,9 +95,11 @@ class OMEImageLabel(OMEImage):
     """
 
     image_label: Required[ImageLabel] = field(json="image-label")
-    """The [ImageLabel][abczarr.ome.v0_5.labels.ImageLabel] metadata
+    """
+    The [ImageLabel][abczarr.ome.v0_5.labels.ImageLabel] metadata
     describing those segments, including their display colors and any
-    per-label properties."""
+    per-label properties.
+    """
 
 
 @register_subclass(labels=tx.Any)
@@ -99,9 +108,11 @@ class OMELabels(OME):
     """Metadata for a group that collects a set of label images."""
 
     labels: Required[tx.List[str]]
-    """The path of each subgroup that holds a label image. Each such
+    """
+    The path of each subgroup that holds a label image. Each such
     subgroup is in turn represented by an
-    [OMEImageLabel][abczarr.ome.v0_5.ome.OMEImageLabel] object."""
+    [OMEImageLabel][abczarr.ome.v0_5.ome.OMEImageLabel] object.
+    """
 
 
 @register_subclass(plate=tx.Any)
@@ -110,8 +121,10 @@ class OMEPlate(OME):
     """Metadata for a high-content screening plate group."""
 
     plate: Required[Plate]
-    """The [Plate][abczarr.ome.v0_5.plates.Plate] metadata describing
-    the plate's rows, columns, wells, and imaging runs."""
+    """
+    The [Plate][abczarr.ome.v0_5.plates.Plate] metadata describing
+    the plate's rows, columns, wells, and imaging runs.
+    """
 
 
 @register_subclass(well=tx.Any)
@@ -123,9 +136,11 @@ class OMEWell(OME):
     """
 
     well: Required[Well]
-    """The [Well][abczarr.ome.v0_5.wells.Well] metadata describing the
+    """
+    The [Well][abczarr.ome.v0_5.wells.Well] metadata describing the
     group's fields of view. For each field of view, that metadata also
-    names the acquisition run it belongs to."""
+    names the acquisition run it belongs to.
+    """
 
 
 @register_subclass(bioformats2raw_layout=3)
@@ -136,9 +151,14 @@ class OMEBioformats2Raw(OME):
     bioformats2raw_layout: Required[tx.Literal[3]] = field(
         json="bioformats2raw.layout"
     )
-    """Marks the group as following the bioformats2raw layout. Its
-    value is always `3`."""
+    """
+    Marks the group as following the bioformats2raw layout. Its
+    value is always `3`.
+    """
+
     plate: Required[Plate]
-    """The [Plate][abczarr.ome.v0_5.plates.Plate] metadata, present when
+    """
+    The [Plate][abczarr.ome.v0_5.plates.Plate] metadata, present when
     the converted dataset describes a screening plate. This field is
-    optional in OME-NGFF 0.1, and required from 0.2 on."""
+    optional in OME-NGFF 0.1, and required from 0.2 on.
+    """

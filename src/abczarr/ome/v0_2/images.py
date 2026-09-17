@@ -29,8 +29,10 @@ class Dataset(OMEMetadata):
     """One resolution level of a multiscale pyramid."""
 
     path: Required[str] = field(factory=False)
-    """The name of the Zarr array holding this level, relative to the
-    image group."""
+    """
+    The name of the Zarr array holding this level, relative to the
+    image group.
+    """
 
 
 @autodefine
@@ -45,26 +47,41 @@ class Multiscale(OMEMetadata):
 
         method: Optional[str]
         """The name of the downsampling function. Optional."""
+
         version: Optional[str]
         """The version of the software that ran `method`. Optional."""
+
         args: Optional[tz.Json]
-        """The positional arguments `method` was called with. The
+        """
+        The positional arguments `method` was called with. The
         upstream corpus writes this as a bare string as well as a list,
         so it is read as any JSON value rather than coerced into a
-        list. Optional."""
+        list. Optional.
+        """
+
         kwargs: Optional[tx.Dict[str, tz.Json]]
         """The keyword arguments `method` was called with. Optional."""
 
     datasets: Required[tx.List[Dataset]]
-    """The pyramid's resolution levels, from full resolution down. Each
-    entry is a [Dataset][abczarr.ome.v0_2.images.Dataset]."""
+    """
+    The pyramid's resolution levels, from full resolution down. Each
+    entry is a [Dataset][abczarr.ome.v0_2.images.Dataset].
+    """
+
     name: Recommended[str]
     """A name for the multiscale image. Recommended."""
+
     type: Recommended[str]
-    """The method used to generate the lower resolutions, such as
-    ``"gaussian"``. Recommended."""
+    """
+    The method used to generate the lower resolutions, such as
+    ``"gaussian"``. Recommended.
+    """
+
     metadata: Recommended[Metadata]
-    """Further, free-form detail about how the lower resolutions were
-    generated. Recommended."""
+    """
+    Further, free-form detail about how the lower resolutions were
+    generated. Recommended.
+    """
+
     version: Recommended[Version]
     """The OME-NGFF version the metadata is written against."""

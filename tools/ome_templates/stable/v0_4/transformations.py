@@ -31,8 +31,10 @@ class CoordinateTransformation(OMEMetadata):
     """
 
     type: Required[str] = field(factory=False)
-    """Which kind of transformation this is: `"scale"` or
-    `"translation"`."""
+    """
+    Which kind of transformation this is: `"scale"` or
+    `"translation"`.
+    """
 
 
 @register_subclass(type="translation")
