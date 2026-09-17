@@ -112,6 +112,11 @@ class ZarrNode(SupportsCapabilities, ABC):
         # here, since the I/O is the open. A node backed by a live Zarr
         # object reads from that object instead and leaves this None.
         self._cached_metadata: tx.Optional[NodeMetadata] = None
+        # The parsed OME metadata, memoized against the attribute payload it
+        # was parsed from. read_ome recomputes the key from the live
+        # attributes on every read and re-parses when it changes, so the
+        # memoized object is never stale. Parsing OME is the cost this saves.
+        self._ome_cache: tx.Optional[tx.Tuple[str, tx.Any]] = None
 
     @property
     def store_path(self) -> os.PathLike:
