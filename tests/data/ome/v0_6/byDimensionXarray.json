@@ -1,0 +1,43 @@
+{
+  "coordinateSystems": [
+    {
+      "name": "physical",
+      "axes": [
+        { "name": "x", "type": "space", "unit": "micrometer" },
+        { "name": "y", "type": "space", "unit": "micrometer" }
+      ]
+    },
+    {
+      "name": "array",
+      "axes": [
+        { "name": "dim_0", "type": "space" },
+        { "name": "dim_1", "type": "space" }
+      ]
+    }
+  ],
+  "coordinateTransformations": [
+    {
+      "type": "byDimension",
+      "input": {"name": "array"},
+      "output": {"name": "physical"},
+      "transformations": [
+        {
+          "transformation": {
+            "type": "coordinates",
+            "path": "xCoordinates"
+          },
+          "inputAxes": [ 0 ],
+          "outputAxes": [ 0 ]
+        },
+        {
+          "transformation": {
+            "type": "coordinates",
+            "path": "yCoordinates"
+          },
+          "inputAxes": [ 1 ],
+          "outputAxes": [ 1 ]
+        }
+      ]
+    }
+  ]
+}

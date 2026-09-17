@@ -1,9 +1,9 @@
 # Vendored OME-NGFF example instances
 
 These JSON files are the **official OME-NGFF example instances**, vendored
-under one directory per version (`v0_6dev1` .. `v0_6rc0`) so the metadata
-models and the official-schema validators can be exercised offline, with no
-network access.
+under one directory per version (`v0_6dev1` .. `v0_6rc0`, and the `v0_6`
+release) so the metadata models and the official-schema validators can be
+exercised offline, with no network access.
 
 ## Provenance
 
@@ -59,4 +59,14 @@ A few instances use a coordinate-systems shape that a later tag replaced:
   coordinate system; the `0.6rc0` copy uses the list form.
 
 The corresponding `0.6rc0` instances all conform and are validated in
-`test_ome_schema.py::test_06rc0_ome`.
+`test_ome_schema.py::test_release_ome`.
+
+## The `v0_6` release corpus
+
+The metadata model did not change between `0.6rc0` and the `0.6` release. The
+`v0_6` instances are therefore the `v0_6rc0` ones with the `version` string
+bumped from `"0.6rc0"` to `"0.6"`. One example, `affine2d2d_with_channel.json`,
+also re-types its discrete axis from `space` to `channel`, matching the
+upstream `0.6` example. The released `_version.schema` accepts both `"0.6"` and
+`"0.6rc0"`, so every conforming `v0_6rc0` instance conforms as `v0_6` too; both
+corpora are validated together by `test_ome_schema.py::test_release_*`.

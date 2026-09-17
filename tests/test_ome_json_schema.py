@@ -236,7 +236,7 @@ def test_documents_excludes_internal_version_helper() -> None:
     # `_version` is an internal enum schema referenced by `$ref`, not a
     # validatable document, so it must not appear in the listing (nor,
     # therefore, in get_validator's "available:" error message).
-    for version in ("0.5", "0.6rc0", "0.6.dev1"):
+    for version in ("0.5", "0.6", "0.6rc0", "0.6.dev1"):
         docs = schemas.documents(version)
         assert "_version" not in docs
         assert not any(d.startswith("_") for d in docs)

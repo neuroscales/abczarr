@@ -225,10 +225,10 @@ def test_update_ome_defaults_version_when_the_node_had_none(
     group = _group(tmp_path)
     group.attrs["unrelated"] = "keep me"
     group.update_ome(
-        {"multiscales": _OME_05["multiscales"]}  # no version anywhere
+        {"multiscales": _OME_06["multiscales"]}  # no version anywhere
     )
     reopened = _reopen(group)
-    assert reopened.ome.version == LATEST_STABLE == "0.5"
+    assert reopened.ome.version == LATEST_STABLE == "0.6"
     assert reopened.attrs["unrelated"] == "keep me"
 
 
@@ -282,7 +282,7 @@ def test_async_update_ome_shallow_merges(tmp_path: pathlib.Path) -> None:
 
 def test_async_update_ome_defaults_version(tmp_path: pathlib.Path) -> None:
     node = _async_group(tmp_path)
-    asyncio.run(node.update_ome({"multiscales": _OME_05["multiscales"]}))
+    asyncio.run(node.update_ome({"multiscales": _OME_06["multiscales"]}))
     assert _async_reopen(node).ome.version == LATEST_STABLE
 
 

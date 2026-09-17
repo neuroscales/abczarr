@@ -4,9 +4,10 @@ These were previously checked against hand-written TypedDict schemas; they
 now validate against the vendored official NGFF schemas through
 ``abczarr.ome.schemas`` (see ``test_ome_json_schema.py`` for the surface).
 
-The ``0.6rc0`` corpus is validated below (``test_06rc0_*``). The conforming
-whole-document instances of the ``0.6.dev1`` .. ``0.6.dev4`` pre-release
-corpus are validated by ``test_ome_document_validates``; the transitional
+The released ``0.6`` corpus and its ``0.6rc0`` candidate are validated below
+(``test_release_*``). The conforming whole-document instances of the
+``0.6.dev1`` .. ``0.6.dev4`` pre-release corpus are validated by
+``test_ome_document_validates``; the transitional
 instances that do not conform to their own tag's schema are listed -- with a
 reason apiece -- in ``_NONCONFORMING`` and asserted to be genuinely rejected
 by ``test_known_nonconforming_document_is_rejected``. All of these files are
@@ -26,7 +27,23 @@ from abczarr.ome import schemas
 TESTDIR = Path(__file__).parent
 
 
-@pytest.mark.parametrize("example", [
+#: The released 0.6 corpus and its release candidate. Both are held to their
+#: own tag's official schema. The 0.6 instances are the vendored 0.6rc0 ones
+#: with the version string bumped and one example's discrete axis re-typed to
+#: ``channel``, matching the upstream 0.6 examples (see
+#: ``tests/data/ome/README.md``); the metadata model is unchanged between the
+#: two, so the same corpus conforms to each.
+_RELEASE_CORPUS = [
+    pytest.param("v0_6rc0", "0.6rc0", id="v0_6rc0"),
+    pytest.param("v0_6", "0.6", id="v0_6"),
+]
+
+#: The standalone coordinate systems + transformations instances, validated in
+#: context as a scene body. ``projectAxis`` / ``projectAxis2`` use a
+#: transitional axes-as-mapping coordinate system that the official schema does
+#: not accept, so (like the other transitional instances) they are not
+#: exercised here.
+_XFORM_EXAMPLES = [
     "affine2d2d_with_channel",
     "affine2d2d",
     "affine2d3d",
@@ -36,27 +53,17 @@ TESTDIR = Path(__file__).parent
     "byDimensionXarray",
     "identity",
     "mapAxis1",
-    # projectAxis / projectAxis2 use a transitional axes-as-mapping
-    # coordinate system that the official 0.6rc0 schema does not accept
-    # (like the other transitional instances, they are not exercised here).
     "rotation",
     "scale",
     "scale_with_discrete",
     "sequence",
     "translation",
-    "xarrayLike"
-])
-def test_06rc0_xforms(
-    example: str,
-    validate_systems_and_transforms: "tx.Callable[[dict, str], None]",
-) -> None:
-    path = TESTDIR / "data" / "ome" / "v0_6rc0" / f"{example}.json"
-    with path.open("r") as f:
-        data = json.load(f)
-    validate_systems_and_transforms(data, "0.6rc0")  # should not raise
+    "xarrayLike",
+]
 
-
-@pytest.mark.parametrize("example", [
+#: The whole-document instances, validated against the top-level ``ome_zarr``
+#: schema.
+_OME_EXAMPLES = [
     "colors_properties",
     "multiscales_example",
     "multiscales_example_relative",
@@ -70,9 +77,27 @@ def test_06rc0_xforms(
     "series-2",
     "well_2fields",
     "well_4fields",
-])
-def test_06rc0_ome(example: str) -> None:
-    path = TESTDIR / "data" / "ome" / "v0_6rc0" / f"{example}.json"
+]
+
+
+@pytest.mark.parametrize(("version_dir", "official"), _RELEASE_CORPUS)
+@pytest.mark.parametrize("example", _XFORM_EXAMPLES)
+def test_release_xforms(
+    example: str,
+    version_dir: str,
+    official: str,
+    validate_systems_and_transforms: "tx.Callable[[dict, str], None]",
+) -> None:
+    path = TESTDIR / "data" / "ome" / version_dir / f"{example}.json"
+    with path.open("r") as f:
+        data = json.load(f)
+    validate_systems_and_transforms(data, official)  # should not raise
+
+
+@pytest.mark.parametrize(("version_dir", "official"), _RELEASE_CORPUS)
+@pytest.mark.parametrize("example", _OME_EXAMPLES)
+def test_release_ome(example: str, version_dir: str, official: str) -> None:
+    path = TESTDIR / "data" / "ome" / version_dir / f"{example}.json"
     with path.open("r") as f:
         data = json.load(f)
     if "attributes" in data:
@@ -81,12 +106,12 @@ def test_06rc0_ome(example: str) -> None:
         data = data["attributes"]
     # ``ome_zarr`` is the top-level schema: any OME-Zarr attributes document
     # (image, plate, well, scene, series, ...).
-    schemas.validate(data, "0.6rc0", "ome_zarr")  # should not raise
+    schemas.validate(data, official, "ome_zarr")  # should not raise
 
 
 # --------------------------------------------------------------------------
 # The pre-release corpus (0.6.dev1 .. 0.6.dev4): whole OME documents held to
-# their own tag's official ``ome_zarr`` schema, mirroring ``test_06rc0_ome``.
+# their own tag's official ``ome_zarr`` schema, mirroring ``test_release_ome``.
 #
 # Only the CONFORMING instances are asserted to validate; the transitional
 # instances that predate a later cleanup are excluded by ``_NONCONFORMING``,
@@ -183,7 +208,7 @@ def _load_attributes(version_dir: str, name: str) -> dict:
 
     Some vendored files are a whole ``zarr.json`` (a top-level
     ``attributes`` key); some are the attributes document itself. This
-    mirrors the extraction in ``test_06rc0_ome``.
+    mirrors the extraction in ``test_release_ome``.
     """
     path = TESTDIR / "data" / "ome" / version_dir / (name + ".json")
     with path.open("r") as f:
