@@ -1,8 +1,14 @@
 """An axis of a multiscale pyramid: its name, type, and unit."""
 
 __all__ = [
-    "Axis", "SpaceAxis", "TimeAxis", "ChannelAxis",
-    "AxisType", "SpaceUnit", "TimeUnit", "Unit",
+    "Axis",
+    "SpaceAxis",
+    "TimeAxis",
+    "ChannelAxis",
+    "AxisType",
+    "SpaceUnit",
+    "TimeUnit",
+    "Unit",
 ]
 
 # dependencies
@@ -20,19 +26,58 @@ from ..base import OMEMetadata
 AxisType = tx.Literal["space", "time", "channel"]
 
 SpaceUnit = tx.Literal[
-    'angstrom', 'attometer', 'centimeter', 'decimeter', 'exameter',
-    'femtometer', 'foot', 'gigameter', 'hectometer', 'inch', 'kilometer',
-    'megameter', 'meter', 'micrometer', 'mile', 'millimeter', 'nanometer',
-    'parsec', 'petameter', 'picometer', 'terameter', 'yard', 'yoctometer',
-    'yottameter', 'zeptometer', 'zettameter'
+    "angstrom",
+    "attometer",
+    "centimeter",
+    "decimeter",
+    "exameter",
+    "femtometer",
+    "foot",
+    "gigameter",
+    "hectometer",
+    "inch",
+    "kilometer",
+    "megameter",
+    "meter",
+    "micrometer",
+    "mile",
+    "millimeter",
+    "nanometer",
+    "parsec",
+    "petameter",
+    "picometer",
+    "terameter",
+    "yard",
+    "yoctometer",
+    "yottameter",
+    "zeptometer",
+    "zettameter",
 ]
 
 TimeUnit = tx.Literal[
-    'attosecond', 'centisecond', 'day', 'decisecond', 'exasecond',
-    'femtosecond', 'gigasecond', 'hectosecond', 'hour', 'kilosecond',
-    'megasecond', 'microsecond', 'millisecond', 'minute', 'nanosecond',
-    'petasecond', 'picosecond', 'second', 'terasecond', 'yoctosecond',
-    'yottasecond', 'zeptosecond', 'zettasecond'
+    "attosecond",
+    "centisecond",
+    "day",
+    "decisecond",
+    "exasecond",
+    "femtosecond",
+    "gigasecond",
+    "hectosecond",
+    "hour",
+    "kilosecond",
+    "megasecond",
+    "microsecond",
+    "millisecond",
+    "minute",
+    "nanosecond",
+    "petasecond",
+    "picosecond",
+    "second",
+    "terasecond",
+    "yoctosecond",
+    "yottasecond",
+    "zeptosecond",
+    "zettasecond",
 ]
 
 Unit = tx.Union[SpaceUnit, TimeUnit]
@@ -54,9 +99,13 @@ class Axis(OMEMetadata):
 
     name: Required[str] = field(factory=False)
     """The axis's label, such as `"x"` or `"channel"`."""
+
     type: Recommended[tx.Union[AxisType, str]]
-    """What kind of axis this is: `"space"`, `"time"`, or `"channel"`.
-    Recommended."""
+    """
+    What kind of axis this is: `"space"`, `"time"`, or `"channel"`.
+    Recommended.
+    """
+
     unit: Recommended[tx.Union[Unit, str]]
     """The axis's physical unit. Recommended."""
 
@@ -67,8 +116,10 @@ class SpaceAxis(Axis):
 
     type: Recommended[tx.Literal["space"]]
     unit: Recommended[SpaceUnit]
-    """The axis's physical length unit, such as `"micrometer"`.
-    Recommended."""
+    """
+    The axis's physical length unit, such as `"micrometer"`.
+    Recommended.
+    """
 
 
 @register_subclass(type="time")
@@ -77,8 +128,10 @@ class TimeAxis(Axis):
 
     type: Recommended[tx.Literal["time"]]
     unit: Recommended[TimeUnit]
-    """The axis's physical duration unit, such as `"second"`.
-    Recommended."""
+    """
+    The axis's physical duration unit, such as `"second"`.
+    Recommended.
+    """
 
 
 @register_subclass(type="channel")

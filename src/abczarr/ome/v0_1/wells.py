@@ -27,17 +27,24 @@ class Well(OMEMetadata):
 
         path: Required[str] = field(factory=False)
         """The image's group, relative to the well group."""
+
         acquisition: Recommended[int]
-        """The id of the
+        """
+        The id of the
         [Plate.Acquisition][abczarr.ome.v0_1.plates.Plate.Acquisition]
         this field of view was captured in, when the plate ran more
-        than one. Recommended."""
-
+        than one. Recommended.
+        """
 
     images: Required[tx.List[Image]]
-    """The well's fields of view, each naming its subgroup and, when
+    """
+    The well's fields of view, each naming its subgroup and, when
     the plate ran more than one acquisition, which acquisition it
-    belongs to."""
+    belongs to.
+    """
+
     version: Recommended[Version]
-    """The OME-NGFF version the metadata is written against. Recommended
-    in OME-NGFF 0.1 and 0.2, and required from 0.3 on."""
+    """
+    The OME-NGFF version the metadata is written against. Recommended
+    in OME-NGFF 0.1 and 0.2, and required from 0.3 on.
+    """
