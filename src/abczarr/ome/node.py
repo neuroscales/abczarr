@@ -80,7 +80,19 @@ def read_ome(node: "ZarrNode") -> tx.Optional[OME]:
     OME or None
         The typed metadata, or `None` if the group carries none.
     """
-    attrs = node.attrs
+    attrs = dict(node.attrs)
+    key = _ome_cache_key(attrs)
+    cached = getattr(node, "_ome_cache", None)
+    if cached is not None and cached[0] == key:
+        return cached[1]
+    parsed = _ome_from_attrs(attrs)
+    node._ome_cache = (key, parsed)
+    return parsed
+
+
+def _ome_from_attrs(attrs: tx.Mapping[str, tx.Any]) -> tx.Optional[OME]:
+    """Parse a plain attributes mapping into a typed OME object, or `None`
+    when the mapping carries no OME metadata."""
     if _OME_KEY in attrs:
         inner = attrs[_OME_KEY]
         if isinstance(inner, abc.Mapping):
@@ -91,6 +103,23 @@ def read_ome(node: "ZarrNode") -> tx.Optional[OME]:
         payload["version"] = _infer_version(payload)
         return OME.from_json(payload)
     return None
+
+
+def _ome_cache_key(attrs: tx.Mapping[str, tx.Any]) -> str:
+    """A stable, cheap key over just the OME-relevant attributes.
+
+    The parsed OME object is memoized against this key on the node, so a
+    change to any OME attribute forces a fresh parse while a change to an
+    unrelated attribute does not. The key is recomputed from the live
+    attributes on every read, so the memoized object never goes stale: a
+    read reuses the parse only when the OME payload is byte-for-byte the one
+    it was parsed from, whether the attributes changed through abczarr or
+    directly through the backend.
+    """
+    import json
+
+    relevant = {key: attrs[key] for key in _OME_KEYS if key in attrs}
+    return json.dumps(relevant, sort_keys=True, default=str)
 
 
 def write_ome(
