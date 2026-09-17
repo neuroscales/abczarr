@@ -58,8 +58,10 @@ class OMESeries(OME):
     """
 
     series: tx.Optional[tx.List[str]] = None
-    """The path of each member group, in order, when the group states
-    them explicitly. Optional."""
+    """
+    The path of each member group, in order, when the group states
+    them explicitly. Optional.
+    """
 
 
 @register_subclass(multiscales=tx.Any)
@@ -70,11 +72,16 @@ class OMEImage(OME):
     """
 
     multiscales: Required[tx.List[Multiscale]]
-    """The group's
-    [Multiscale][abczarr.ome.v0_6.images.Multiscale] pyramids."""
+    """
+    The group's
+    [Multiscale][abczarr.ome.v0_6.images.Multiscale] pyramids.
+    """
+
     omero: Optional[Omero]
-    """Rendering settings suggesting how to render the pyramids.
-    Optional."""
+    """
+    Rendering settings suggesting how to render the pyramids.
+    Optional.
+    """
 
 
 @register_subclass(image_label=tx.Any)
@@ -87,8 +94,10 @@ class OMEImageLabel(OMEImage):
     """
 
     image_label: Required[ImageLabel] = field(json="image-label")
-    """The [ImageLabel][abczarr.ome.v0_6.labels.ImageLabel] metadata
-    for the segments."""
+    """
+    The [ImageLabel][abczarr.ome.v0_6.labels.ImageLabel] metadata
+    for the segments.
+    """
 
 
 @register_subclass(labels=tx.Any)
@@ -108,8 +117,10 @@ class OMEPlate(OME):
     """Holds a high-content screening plate group's metadata."""
 
     plate: Required[Plate]
-    """The [Plate][abczarr.ome.v0_6.plates.Plate] metadata describing
-    the plate's rows, columns, and wells."""
+    """
+    The [Plate][abczarr.ome.v0_6.plates.Plate] metadata describing
+    the plate's rows, columns, and wells.
+    """
 
 
 @register_subclass(well=tx.Any)
@@ -120,8 +131,10 @@ class OMEWell(OME):
     """
 
     well: Required[Well]
-    """The [Well][abczarr.ome.v0_6.wells.Well] metadata listing the
-    well's fields of view."""
+    """
+    The [Well][abczarr.ome.v0_6.wells.Well] metadata listing the
+    well's fields of view.
+    """
 
 
 @register_subclass(scene=tx.Any)
@@ -142,6 +155,9 @@ class OMEBioformats2Raw(OME):
         json="bioformats2raw.layout"
     )
     """Marks the layout version. Its value is always `3`."""
+
     plate: Required[Plate]
-    """The [Plate][abczarr.ome.v0_6.plates.Plate] metadata for the
-    screening plate the converted data belongs to."""
+    """
+    The [Plate][abczarr.ome.v0_6.plates.Plate] metadata for the
+    screening plate the converted data belongs to.
+    """

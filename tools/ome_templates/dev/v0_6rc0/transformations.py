@@ -41,9 +41,12 @@ class Space(OMEMetadata):
 
     name: Optional[str]
     """Identifies the coordinate system directly. Optional."""
+
     path: Optional[str]
-    """Locates the coordinate system in another group, for one defined
-    outside the transformation's own group. Optional."""
+    """
+    Locates the coordinate system in another group, for one defined
+    outside the transformation's own group. Optional.
+    """
 
 
 @autodefine
@@ -57,14 +60,21 @@ class CoordinateTransformation(OMEMetadata):
 
     type: Required[str] = field(factory=False)
     """Which kind of transformation this is."""
+
     output: Recommended[Space]
-    """The [Space][abczarr.ome.v0_6dev1.transformations.Space]
+    """
+    The [Space][abczarr.ome.v0_6dev1.transformations.Space]
     identifying the coordinate system the transformation maps to.
-    Recommended."""
+    Recommended.
+    """
+
     input: Recommended[Space]
-    """The [Space][abczarr.ome.v0_6dev1.transformations.Space]
+    """
+    The [Space][abczarr.ome.v0_6dev1.transformations.Space]
     identifying the coordinate system the transformation maps from.
-    Recommended."""
+    Recommended.
+    """
+
     name: Optional[str]
     """A label for the transformation itself. Optional."""
 
@@ -88,8 +98,10 @@ class MapAxis(CoordinateTransformation):
 
     type: Required[tx.Literal["mapAxis"]]
     mapAxis: Required[tx.List[int]]
-    """One entry per output axis, giving the index of the input axis
-    whose values that output axis carries."""
+    """
+    One entry per output axis, giving the index of the input axis
+    whose values that output axis carries.
+    """
 
 
 @register_subclass(type="projectAxis")
@@ -100,6 +112,7 @@ class ProjectAxis(CoordinateTransformation):
     type: Required[tx.Literal["projectAxis"]]
     createdOutputs: Optional[tx.List[int]]
     """The indices of the output axes that are newly added. Optional."""
+
     droppedInputs: Optional[tx.List[int]]
     """The indices of the input axes that are removed. Optional."""
 
@@ -112,10 +125,13 @@ class Translation(CoordinateTransformation):
     type: Required[tx.Literal["translation"]]
     translation: Optional[tx.List[float]]
     """The offset, given inline, one number per axis. Optional."""
+
     path: Optional[str]
-    """The path of an array to read the offset from instead, for a
+    """
+    The path of an array to read the offset from instead, for a
     translation that varies from point to point rather than staying
-    constant. Optional."""
+    constant. Optional.
+    """
 
 
 @register_subclass(type="scale")
@@ -126,10 +142,13 @@ class Scale(CoordinateTransformation):
     type: Required[tx.Literal["scale"]]
     scale: Optional[tx.List[float]]
     """The factor, given inline, one number per axis. Optional."""
+
     path: Optional[str]
-    """The path of an array to read the factor from instead, for a
+    """
+    The path of an array to read the factor from instead, for a
     scale that varies from point to point rather than staying
-    constant. Optional."""
+    constant. Optional.
+    """
 
 
 @register_subclass(type="affine")
@@ -140,6 +159,7 @@ class Affine(CoordinateTransformation):
     type: Required[tx.Literal["affine"]]
     affine: Optional[tx.List[tx.List[float]]]
     """The matrix, given inline. Optional."""
+
     path: Optional[str]
     """The path of an array to read the matrix from instead. Optional."""
 
@@ -152,6 +172,7 @@ class Rotation(CoordinateTransformation):
     type: Required[tx.Literal["rotation"]]
     rotation: Optional[tx.List[tx.List[float]]]
     """The matrix, given inline. Optional."""
+
     path: Optional[str]
     """The path of an array to read the matrix from instead. Optional."""
 
@@ -181,8 +202,11 @@ class Displacements(CoordinateTransformation):
 
     type: Required[tx.Literal["displacements"]]
     path: Required[str]
-    """The path of an array that gives a displacement vector for each
-    point."""
+    """
+    The path of an array that gives a displacement vector for each
+    point.
+    """
+
     interpolation: Optional[Interpolation]
     """How to sample the array between its own points. Optional."""
 
@@ -194,8 +218,11 @@ class Coordinates(CoordinateTransformation):
 
     type: Required[tx.Literal["coordinates"]]
     path: Required[str]
-    """The path of an array that gives the output coordinate for each
-    point directly."""
+    """
+    The path of an array that gives the output coordinate for each
+    point directly.
+    """
+
     interpolation: Optional[Interpolation]
     """How to sample the array between its own points. Optional."""
 
@@ -212,6 +239,7 @@ class Bijection(CoordinateTransformation):
     type: Required[tx.Literal["bijection"]]
     forward: Required[CoordinateTransformation]
     """The transformation from `input` to `output`."""
+
     inverse: Required[CoordinateTransformation]
     """The transformation from `output` back to `input`."""
 
@@ -235,14 +263,20 @@ class ByDimension(CoordinateTransformation):
 
         transformation: Optional[CoordinateTransformation]
         """The transformation to apply. Optional."""
+
         inputAxes: Optional[tx.List[int]]
-        """The indices, into the enclosing `ByDimension`'s `input`
+        """
+        The indices, into the enclosing `ByDimension`'s `input`
         coordinate system, of the axes `transformation` reads from.
-        Optional."""
+        Optional.
+        """
+
         outputAxes: Optional[tx.List[int]]
-        """The indices, into the enclosing `ByDimension`'s `output`
+        """
+        The indices, into the enclosing `ByDimension`'s `output`
         coordinate system, of the axes `transformation` writes to.
-        Optional."""
+        Optional.
+        """
 
     type: Required[tx.Literal["byDimension"]]
     transformations: Required[tx.List[Transformation]]

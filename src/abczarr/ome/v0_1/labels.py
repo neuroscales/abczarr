@@ -32,10 +32,12 @@ class ImageLabel(OMEMetadata):
 
         label_value: Required[int] = field(json="label-value")
         """The integer value this color applies to."""
-        rgba: Optional[tx.Tuple[UInt8, UInt8, UInt8, UInt8]]
-        """The color as red, green, blue, and alpha components, each
-        from `0` to `255`. Optional."""
 
+        rgba: Optional[tx.Tuple[UInt8, UInt8, UInt8, UInt8]]
+        """
+        The color as red, green, blue, and alpha components, each
+        from `0` to `255`. Optional.
+        """
 
     @autodefine
     class Property(OMEMetadata):
@@ -48,23 +50,30 @@ class ImageLabel(OMEMetadata):
         label_value: Required[int] = field(json="label-value")
         """The integer value these properties apply to."""
 
-
     @autodefine
     class Source(OMEMetadata):
         """Where a label image was derived from."""
 
         image: Optional[str] = None
-        """The path of the intensity image this label was derived from,
-        relative to the label image group. Optional."""
-
+        """
+        The path of the intensity image this label was derived from,
+        relative to the label image group. Optional.
+        """
 
     colors: Recommended[tx.List[Color]]
     """The display color for each labeled integer value. Recommended."""
+
     properties: Optional[tx.List[Property]]
-    """Further, application-defined attributes for each labeled value.
-    Optional."""
+    """
+    Further, application-defined attributes for each labeled value.
+    Optional.
+    """
+
     source: Optional[Source]
     """Where the label image was derived from. Optional."""
+
     version: Recommended[Version]
-    """The OME-NGFF version the metadata is written against. Recommended
-    in OME-NGFF 0.1 and 0.2, and required from 0.3 on."""
+    """
+    The OME-NGFF version the metadata is written against. Recommended
+    in OME-NGFF 0.1 and 0.2, and required from 0.3 on.
+    """

@@ -24,13 +24,18 @@ class Well(OMEMetadata):
 
         path: Required[str] = field(factory=False)
         """The image's group, relative to the well group."""
+
         acquisition: Recommended[int]
-        """The id of the
+        """
+        The id of the
         [Plate.Acquisition][abczarr.ome.v0_6dev3.plates.Plate.Acquisition]
         this field of view was captured in, when the plate ran more
-        than one acquisition. Recommended."""
+        than one acquisition. Recommended.
+        """
 
     images: Required[tx.List[Image]]
-    """The well's fields of view, each naming its subgroup and, when
+    """
+    The well's fields of view, each naming its subgroup and, when
     the plate ran more than one acquisition, which acquisition it
-    belongs to."""
+    belongs to.
+    """

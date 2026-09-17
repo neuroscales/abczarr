@@ -22,18 +22,28 @@ class Channel(OMEMetadata):
 
         min: Required[float]
         """The lowest value the channel's data can take."""
+
         max: Required[float]
         """The highest value the channel's data can take."""
+
         start: Required[float]
-        """The value a viewer should render at zero intensity. This may
-        narrow the range `min` and `max` bound."""
+        """
+        The value a viewer should render at zero intensity. This may
+        narrow the range `min` and `max` bound.
+        """
+
         end: Required[float]
-        """The value a viewer should render at full intensity. This may
-        narrow the range `min` and `max` bound."""
+        """
+        The value a viewer should render at full intensity. This may
+        narrow the range `min` and `max` bound.
+        """
 
     color: Required[str]
-    """The channel's display color, as a hex RGB string such as
-    `"FF0000"` for red."""
+    """
+    The channel's display color, as a hex RGB string such as
+    `"FF0000"` for red.
+    """
+
     window: Required[Window]
     """The intensity range mapped onto that color."""
 
@@ -48,8 +58,13 @@ class Omero(OMEMetadata):
     """
 
     channels: Required[tx.List[Channel]]
-    """A [Channel][abczarr.ome.v0_4.omero.Channel] for each channel of
-    the image, in the image's channel order."""
+    """
+    A [Channel][abczarr.ome.v0_4.omero.Channel] for each channel of
+    the image, in the image's channel order.
+    """
+
     version: Required[Version]
-    """The OME-NGFF version the metadata is written against. Recommended
-    in OME-NGFF 0.1 and 0.2, and required from 0.3 on."""
+    """
+    The OME-NGFF version the metadata is written against. Recommended
+    in OME-NGFF 0.1 and 0.2, and required from 0.3 on.
+    """

@@ -99,14 +99,22 @@ class Axis(OMEMetadata):
 
     name: Required[str] = field(factory=False)
     """The axis's label, such as `"x"` or `"channel"`."""
+
     type: Recommended[tx.Union[AxisType, str]]
-    """What kind of axis this is: `"space"`, `"time"`, `"channel"`,
-    `"array"`, `"displacement"`, or `"coordinate"`. Recommended."""
+    """
+    What kind of axis this is: `"space"`, `"time"`, `"channel"`,
+    `"array"`, `"displacement"`, or `"coordinate"`. Recommended.
+    """
+
     discrete: Optional[bool]
-    """Marks an axis whose values are integer indices rather than
-    continuous coordinates. Optional."""
+    """
+    Marks an axis whose values are integer indices rather than
+    continuous coordinates. Optional.
+    """
+
     unit: Recommended[tx.Union[Unit, str]]
     """The axis's physical unit, when it has one. Recommended."""
+
     longName: Optional[str]
     """A human-readable label for the axis, beyond `name`. Optional."""
 
@@ -117,8 +125,10 @@ class SpaceAxis(Axis):
 
     type: Recommended[tx.Literal["space"]]
     unit: Recommended[SpaceUnit]
-    """The axis's physical length unit, such as `"micrometer"`.
-    Recommended."""
+    """
+    The axis's physical length unit, such as `"micrometer"`.
+    Recommended.
+    """
 
 
 @register_subclass(type="time")
@@ -127,8 +137,10 @@ class TimeAxis(Axis):
 
     type: Recommended[tx.Literal["time"]]
     unit: Recommended[TimeUnit]
-    """The axis's physical duration unit, such as `"second"`.
-    Recommended."""
+    """
+    The axis's physical duration unit, such as `"second"`.
+    Recommended.
+    """
 
 
 @register_subclass(type="channel")
@@ -189,7 +201,10 @@ class CoordinateSystem(OMEMetadata):
 
     name: Required[str] = field(factory=False)
     """The coordinate system's name."""
+
     axes: Required[tx.List[Axis]]
-    """The system's [Axis][abczarr.ome.v0_6dev3.systems.Axis] objects,
+    """
+    The system's [Axis][abczarr.ome.v0_6dev3.systems.Axis] objects,
     in order. That order is the order every coordinate tuple in this
-    coordinate system uses."""
+    coordinate system uses.
+    """

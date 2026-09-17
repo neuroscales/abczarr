@@ -22,6 +22,7 @@ __all__ = [
 ]
 
 # stdlib
+import pathlib
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _dist_version
 
@@ -53,16 +54,51 @@ except ImportError:  # pragma: no cover - exercised only without zarr
     numcodecs = None
     zarr = None
 
-# The registry submodule lives only in zarr-python 3.x. A 2.x install has
-# zarr but not this submodule, so it is imported separately, which leaves
-# ``zarr`` bound when the driver runs against zarr 2.
+# These submodules live only in zarr-python 3.x. A 2.x install has zarr but
+# not them, so they are imported separately, which leaves ``zarr`` bound when
+# the driver runs against zarr 2.
 if zarr is not None:
     try:
+        import zarr.abc.store as _zarr_abc_store
         import zarr.registry as _registry
+        import zarr.storage as _zarr_storage
     except ImportError:  # pragma: no cover - only on zarr 2.x
+        _zarr_abc_store = None
         _registry = None
+        _zarr_storage = None
 else:  # pragma: no cover - only without zarr
+    _zarr_abc_store = None
     _registry = None
+    _zarr_storage = None
+
+#: The store objects zarr-python's own open accepts unchanged, so a caller
+#: that passes one is never lowered to a string. Empty on a zarr 2.x install,
+#: which lacks these store types, and when zarr is not installed.
+_ZARR_STORE_TYPES = (
+    (_zarr_abc_store.Store, _zarr_storage.StorePath)
+    if _zarr_abc_store is not None
+    else ()
+)  # type: tx.Tuple[type, ...]
+
+
+def _as_store_like(location: tx.Any) -> tx.Any:
+    """Return `location` in a form zarr-python's ``open`` accepts.
+
+    zarr-python accepts a string, a ``pathlib.Path``, a plain ``dict``, or
+    one of its own store objects. It rejects any other path object, such as
+    a ``bagof.paths.Path`` or a cloud ``UPath``, even one that describes a
+    location it could otherwise open. A path object of that kind is lowered
+    to a string with ``str``. zarr-python accepts the string, and reads a
+    scheme such as ``"s3://"`` from it, so a remote location survives the
+    conversion. ``str`` is used rather than ``os.fspath``, since a path
+    library refuses ``os.fspath`` for a non-local path. A store object
+    zarr-python already understands is returned unchanged.
+    """
+    if isinstance(location, (str, dict, pathlib.Path)):
+        return location
+    if _ZARR_STORE_TYPES and isinstance(location, _ZARR_STORE_TYPES):
+        return location
+    return str(location)
 
 
 #: Coarse capabilities a zarr-python 3.x install provides.
@@ -302,7 +338,7 @@ class ZarrPythonDriver(Driver):
     ) -> "ZarrPythonNode":
         # zarr 2 and zarr 3 both dispatch open on the same call and return a
         # Group or an Array, so one path opens either version.
-        node = zarr.open(location, mode=mode)
+        node = zarr.open(_as_store_like(location), mode=mode)
         if isinstance(node, zarr.Group):
             return ZarrPythonGroup(node)
         return ZarrPythonArray(node)
@@ -319,7 +355,7 @@ class ZarrPythonDriver(Driver):
         # as the native async twin
         import zarr.api.asynchronous as async_api
 
-        node = await async_api.open(store=location, mode=mode)
+        node = await async_api.open(store=_as_store_like(location), mode=mode)
         return _wrap_async(node).as_async()
 
     def _create_sync(
@@ -329,7 +365,7 @@ class ZarrPythonDriver(Driver):
             return self._create_sync_v2(location, config)
         if isinstance(config, ArrayConfig):
             array = zarr.create_array(
-                store=str(location),
+                store=_as_store_like(location),
                 shape=config.shape,
                 dtype=config.dtype,
                 overwrite=config.overwrite,
@@ -338,7 +374,7 @@ class ZarrPythonDriver(Driver):
             )
             return ZarrPythonArray(array)
         group = zarr.open_group(
-            str(location),
+            _as_store_like(location),
             mode="w" if config.overwrite else "w-",
             zarr_format=config.zarr_version,
         )
@@ -354,16 +390,17 @@ class ZarrPythonDriver(Driver):
         ``open_group``, and a v2 array is always written.
         """
         mode = "w" if config.overwrite else "w-"
+        location = _as_store_like(location)
         if isinstance(config, ArrayConfig):
             array = zarr.open_array(
-                str(location),
+                location,
                 mode=mode,
                 shape=config.shape,
                 dtype=config.dtype,
                 **_zarr2_create_kwargs(config),
             )
             return ZarrPythonArray(array)
-        group = zarr.open_group(str(location), mode=mode)
+        group = zarr.open_group(location, mode=mode)
         return ZarrPythonGroup(group)
 
     async def _create_async(
@@ -380,7 +417,7 @@ class ZarrPythonDriver(Driver):
 
         if isinstance(config, ArrayConfig):
             array = await async_api.create_array(
-                store=str(location),
+                store=_as_store_like(location),
                 shape=config.shape,
                 dtype=config.dtype,
                 overwrite=config.overwrite,
@@ -389,7 +426,7 @@ class ZarrPythonDriver(Driver):
             )
             return _wrap_async(array).as_async()
         group = await async_api.open_group(
-            store=str(location),
+            store=_as_store_like(location),
             mode="w" if config.overwrite else "w-",
             zarr_format=config.zarr_version,
         )

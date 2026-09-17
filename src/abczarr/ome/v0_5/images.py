@@ -25,15 +25,20 @@ class Dataset(OMEMetadata):
     """One resolution level of a multiscale pyramid."""
 
     path: Required[str] = field(factory=False)
-    """The name of the Zarr array holding this level, relative to the
-    image group."""
+    """
+    The name of the Zarr array holding this level, relative to the
+    image group.
+    """
+
     coordinateTransformations: Required[
         tx.Union[tx.Tuple[Scale], tx.Tuple[Scale, Translation]]
     ]
-    """Places this level in the pyramid's physical space: a
+    """
+    Places this level in the pyramid's physical space: a
     [Scale][abczarr.ome.v0_5.transformations.Scale], optionally followed
     by a [Translation][abczarr.ome.v0_5.transformations.Translation],
-    one value per axis."""
+    one value per axis.
+    """
 
 
 @autodefine
@@ -48,31 +53,53 @@ class Multiscale(OMEMetadata):
 
         method: Optional[str]
         """The name of the downsampling function. Optional."""
+
         version: Optional[str]
         """The version of the software that ran `method`. Optional."""
+
         args: Optional[tz.Json]
-        """The positional arguments `method` was called with. The
+        """
+        The positional arguments `method` was called with. The
         upstream corpus writes this as a bare string as well as a list,
         so it is read as any JSON value rather than coerced into a
-        list. Optional."""
+        list. Optional.
+        """
+
         kwargs: Optional[tx.Dict[str, tz.Json]]
         """The keyword arguments `method` was called with. Optional."""
 
     axes: Required[tx.List[Axis]]
-    """The pyramid's dimensions, in the order every array shape and every
+    """
+    The pyramid's dimensions, in the order every array shape and every
     coordinate transformation the pyramid carries uses. Each entry is
-    an [Axis][abczarr.ome.v0_5.axes.Axis]."""
+    an [Axis][abczarr.ome.v0_5.axes.Axis].
+    """
+
     datasets: Required[tx.List[Dataset]]
-    """The pyramid's resolution levels, from full resolution down. Each
-    entry is a [Dataset][abczarr.ome.v0_5.images.Dataset]."""
+    """
+    The pyramid's resolution levels, from full resolution down. Each
+    entry is a [Dataset][abczarr.ome.v0_5.images.Dataset].
+    """
+
     coordinateTransformations: Optional[tx.List[CoordinateTransformation]]
-    """Transformations applied to every level, before that level's own
-    transformations run. Optional."""
+    """
+    Transformations applied to every level, after that level's own
+    transformations have run. A level's own transformations map that level
+    into the coordinate space the pyramid shares. These transformations
+    then apply within that shared space. Optional.
+    """
+
     name: Recommended[str]
     """A name for the multiscale image. Recommended."""
+
     type: Recommended[str]
-    """The method used to generate the lower resolutions, such as
-    ``"gaussian"``. Recommended."""
+    """
+    The method used to generate the lower resolutions, such as
+    ``"gaussian"``. Recommended.
+    """
+
     metadata: Recommended[Metadata]
-    """Further, free-form detail about how the lower resolutions were
-    generated. Recommended."""
+    """
+    Further, free-form detail about how the lower resolutions were
+    generated. Recommended.
+    """

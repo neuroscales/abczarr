@@ -26,11 +26,16 @@ class Dataset(OMEMetadata):
     """One resolution level of a multiscale pyramid."""
 
     path: Required[str] = field(factory=False)
-    """The name of the Zarr array holding this level, relative to the
-    image group."""
+    """
+    The name of the Zarr array holding this level, relative to the
+    image group.
+    """
+
     coordinateTransformations: Required[tx.List[CoordinateTransformation]]
-    """One or more transformations that map this level's own coordinate
-    system into another coordinate system of the pyramid."""
+    """
+    One or more transformations that map this level's own coordinate
+    system into another coordinate system of the pyramid.
+    """
 
 
 @autodefine
@@ -45,28 +50,48 @@ class Multiscale(OMEMetadata):
 
         method: Optional[str]
         """The name of the downsampling function. Optional."""
+
         version: Optional[str]
         """The version of the software that ran `method`. Optional."""
+
         args: Optional[tz.Json]
         """The positional arguments `method` was called with. Optional."""
+
         kwargs: Optional[tx.Dict[str, tz.Json]]
         """The keyword arguments `method` was called with. Optional."""
 
     coordinateSystems: Required[tx.List[CoordinateSystem]]
-    """Every
+    """
+    Every
     [CoordinateSystem][abczarr.ome.v0_6dev3.systems.CoordinateSystem]
     that a [Dataset][abczarr.ome.v0_6dev3.images.Dataset] or a
-    transformation in `coordinateTransformations` can refer to."""
+    transformation in `coordinateTransformations` can refer to.
+    """
+
     datasets: Required[tx.List[Dataset]]
     """The pyramid's resolution levels, from full resolution down."""
+
     coordinateTransformations: Recommended[tx.List[CoordinateTransformation]]
-    """Transformations applied to every level, before that level's own
-    transformations run. Recommended."""
+    """
+    Transformations applied to every level, after that level's own
+    transformations have run. A level's own transformations map that
+    level from its own coordinate system into a coordinate system the
+    pyramid shares. These transformations then map that shared
+    coordinate system into the pyramid's world coordinate system.
+    Recommended.
+    """
+
     name: Recommended[str]
     """A name for the multiscale image. Recommended."""
+
     type: Recommended[str]
-    """The method used to generate the lower resolutions, such as
-    ``"gaussian"``. Recommended."""
+    """
+    The method used to generate the lower resolutions, such as
+    ``"gaussian"``. Recommended.
+    """
+
     metadata: Recommended[Metadata]
-    """Further, free-form detail about how the lower resolutions were
-    generated. Recommended."""
+    """
+    Further, free-form detail about how the lower resolutions were
+    generated. Recommended.
+    """

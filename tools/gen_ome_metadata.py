@@ -349,8 +349,10 @@ one value per axis.
 """
 
 _MULTISCALE_TRANSFORMATIONS_DOC_V0_4 = """\
-Transformations applied to every level, before that level's own
-transformations run. Optional.
+Transformations applied to every level, after that level's own
+transformations have run. A level's own transformations map that level
+into the coordinate space the pyramid shares. These transformations
+then apply within that shared space. Optional.
 """
 
 
@@ -704,20 +706,52 @@ def _restore_attr_docstrings(text: str, protected: Dict[str, str]) -> str:
     def repl(match: "re.Match[str]") -> str:
         indent, num = match.group(1), match.group(3)
         doc = protected[_ATTR_DOC_PLACEHOLDER.format(num)]
-        first, *rest = doc.split("\n")
-        # A field carried over from a hand-written template already has
-        # its continuation lines indented to the depth they sat at in
-        # that source file; a doc authored flush left for this tool has
-        # none. ``dedent`` strips whichever is there so the line is
-        # re-indented to a single depth -- the one it actually sits at
-        # here -- rather than stacking the two.
-        rest = textwrap.dedent("\n".join(rest)).split("\n") if rest else rest
-        rendered = [first] + [
-            (indent + line if line else "") for line in rest
-        ]
-        return indent + '"""' + "\n".join(rendered) + '"""'
+        first, rest = _logical_doc_lines(doc)
+        if not rest:
+            # A one-line docstring keeps its text between the quotes, on
+            # one physical line.
+            literal = indent + '"""' + first + '"""'
+        else:
+            # A multi-line docstring puts the opening and closing quotes
+            # each on their own line, with the text indented between them.
+            body = [indent + first] + [
+                (indent + line if line else "") for line in rest
+            ]
+            literal = (
+                indent + '"""\n' + "\n".join(body) + "\n" + indent + '"""'
+            )
+        # A blank line follows every attribute docstring, so the next field
+        # reads clear of the description above it. ``ruff format`` removes the
+        # blank again where it would fall at the very end of a class body.
+        return literal + "\n"
 
     return _ATTR_DOC_LINE_RE.sub(repl, text)
+
+
+def _logical_doc_lines(doc: str) -> "Tuple[str, List[str]]":
+    """The docstring's content as ``(first_line, continuation_lines)``.
+
+    Any surrounding blank lines and the field-level indentation are stripped
+    away, so a doc carried from a hand-written template (its quotes on their
+    own lines, every content line indented) and a doc authored flush left in
+    this tool's delta table render identically. ``dedent`` removes whatever
+    common indent the continuation lines carry, and each line is re-indented
+    to the depth it sits at in the output.
+    """
+    lines = doc.split("\n")
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    while lines and not lines[-1].strip():
+        lines.pop()
+    if not lines:
+        return "", []
+    first = lines[0].strip()
+    rest = (
+        textwrap.dedent("\n".join(lines[1:])).split("\n")
+        if len(lines) > 1
+        else []
+    )
+    return first, rest
 
 
 # ==========================================================================
