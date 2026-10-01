@@ -4,15 +4,12 @@ A 0.6 preview carrying the reworked coordinate-systems model; the model may stil
 
 ## Changes from NGFF 0.6.dev2
 
-- The transformation model is reworked.
-  [MapAxis][abczarr.ome.v0_6dev3.transformations.MapAxis]'s
-  `mapAxis` becomes an index list (`List[int]`) instead of a
-  name-to-name mapping.
+- Each child of a
   [ByDimension][abczarr.ome.v0_6dev3.transformations.ByDimension]
-  now wraps each per-dimension entry in a nested `Transformation`
-  (carrying `transformation`, `input_axes` and `output_axes`) rather
-  than a flat transformation list. The `inverseOf` transformation is
-  dropped.
+  is wrapped in an object that carries `transformation`, `input_axes`
+  and `output_axes`. The `input_axes` and `output_axes` fields hold
+  axis indices. In 0.6.dev2, these fields held axis names.
+- The `inverseOf` transformation is removed.
 - Scenes are introduced. A new `scenes` module adds
   [Scene][abczarr.ome.v0_6dev3.scenes.Scene], and a new
   top-level [OMEScene][abczarr.ome.v0_6dev3.ome.OMEScene]

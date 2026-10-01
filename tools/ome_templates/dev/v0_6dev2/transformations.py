@@ -1,5 +1,3 @@
-# Generated from v0_6dev1 by tools/gen_ome_metadata.py -- do not edit
-
 """Coordinate transformations: how one coordinate system maps to another."""
 
 __all__ = [
@@ -10,21 +8,27 @@ __all__ = [
     "Scale",
     "Affine",
     "Rotation",
+    "InverseOf",
+    "Bijection",
     "Sequence",
+    "ByDimension",
     "Displacements",
     "Coordinates",
-    "Bijection",
-    "ByDimension",
 ]
+
+# dependencies
 import typing_extensions as tx
 
+# core
 from abczarr._core import typing as tz
 from abczarr._core.auto.attrs import autodefine, field
 from abczarr._core.metadata import register_subclass
 from abczarr._core.rfc2119 import Optional, Required
 
+# locals
 from ..base import OMEMetadata
 
+# typing
 Interpolation = tx.Union[tx.Literal["nearest", "linear", "bspline-cubic"], str]
 
 
@@ -34,7 +38,7 @@ class CoordinateTransformation(OMEMetadata):
 
     Constructing a `CoordinateTransformation` with a recognized `type`
     returns the matching subclass, such as
-    [Scale][abczarr.ome.v0_6dev3.transformations.Scale].
+    [Scale][abczarr.ome.v0_6dev1.transformations.Scale].
     """
 
     type: Required[str] = field(factory=False)
@@ -43,19 +47,37 @@ class CoordinateTransformation(OMEMetadata):
     input: Optional[tz.Json]
     """
     Identifies the
-    [CoordinateSystem][abczarr.ome.v0_6dev3.systems.CoordinateSystem]
+    [CoordinateSystem][abczarr.ome.v0_6dev1.systems.CoordinateSystem]
     the transformation maps from. Optional.
     """
 
     output: Optional[tz.Json]
     """
     Identifies the
-    [CoordinateSystem][abczarr.ome.v0_6dev3.systems.CoordinateSystem]
+    [CoordinateSystem][abczarr.ome.v0_6dev1.systems.CoordinateSystem]
     the transformation maps to. Optional.
     """
 
     name: Optional[str]
     """A label for the transformation itself. Optional."""
+
+    input_axes: Optional[tx.List[str]]
+    """
+    The names of the axes this transformation reads from. This field is
+    set only on a transformation listed in a
+    [ByDimension][abczarr.ome.v0_6dev1.transformations.ByDimension]. Each
+    name refers to an axis of the `input` coordinate system of that
+    `ByDimension`. Optional.
+    """
+
+    output_axes: Optional[tx.List[str]]
+    """
+    The names of the axes this transformation writes to. This field is
+    set only on a transformation listed in a
+    [ByDimension][abczarr.ome.v0_6dev1.transformations.ByDimension]. Each
+    name refers to an axis of the `output` coordinate system of that
+    `ByDimension`. Optional.
+    """
 
 
 @register_subclass(type="identity")
@@ -79,7 +101,8 @@ class MapAxis(CoordinateTransformation):
     mapAxis: Required[tx.List[int]]
     """
     One entry per output axis, giving the index of the input axis
-    whose values that output axis carries.
+    whose values that output axis carries. The entries form a
+    permutation of the input axis indices.
     """
 
 
@@ -143,6 +166,37 @@ class Rotation(CoordinateTransformation):
     """The path of an array to read the matrix from instead. Optional."""
 
 
+@register_subclass(type="inverseOf")
+@autodefine
+class InverseOf(CoordinateTransformation):
+    """Applies another transformation in reverse.
+
+    This transformation's `input` and `output` are that other
+    transformation's `output` and `input`, swapped.
+    """
+
+    type: Required[tx.Literal["inverseOf"]]
+    transformation: Required[CoordinateTransformation]
+    """The transformation to invert."""
+
+
+@register_subclass(type="bijection")
+@autodefine
+class Bijection(CoordinateTransformation):
+    """An explicit forward and inverse pair of transformations.
+
+    Used when a transformation's inverse cannot be derived automatically
+    from its forward direction.
+    """
+
+    type: Required[tx.Literal["bijection"]]
+    forward: Required[CoordinateTransformation]
+    """The transformation from `input` to `output`."""
+
+    inverse: Required[CoordinateTransformation]
+    """The transformation from `output` back to `input`."""
+
+
 @register_subclass(type="sequence")
 @autodefine
 class Sequence(CoordinateTransformation):
@@ -155,6 +209,23 @@ class Sequence(CoordinateTransformation):
     type: Required[tx.Literal["sequence"]]
     transformations: Required[tx.List[CoordinateTransformation]]
     """The transformations to compose, from `input` to `output`."""
+
+
+@register_subclass(type="byDimension")
+@autodefine
+class ByDimension(CoordinateTransformation):
+    """Combines several transformations, each acting on its own subset of
+    axes.
+
+    Each transformation in `transformations` names the axes it reads and
+    writes in its own `input_axes` and `output_axes` fields. Together, the
+    transformations write every axis of the `output` coordinate system
+    exactly once.
+    """
+
+    type: Required[tx.Literal["byDimension"]]
+    transformations: Required[tx.List[CoordinateTransformation]]
+    """The transformations to combine."""
 
 
 @register_subclass(type="displacements")
@@ -191,59 +262,3 @@ class Coordinates(CoordinateTransformation):
 
     interpolation: Optional[Interpolation]
     """How to sample the array between its own points. Optional."""
-
-
-@register_subclass(type="bijection")
-@autodefine
-class Bijection(CoordinateTransformation):
-    """An explicit forward and inverse pair of transformations.
-
-    Used when a transformation's inverse cannot be derived automatically
-    from its forward direction.
-    """
-
-    type: Required[tx.Literal["bijection"]]
-    forward: Required[CoordinateTransformation]
-    """The transformation from `input` to `output`."""
-
-    inverse: Required[CoordinateTransformation]
-    """The transformation from `output` back to `input`."""
-
-
-@register_subclass(type="byDimension")
-@autodefine
-class ByDimension(CoordinateTransformation):
-    """Combines several transformations, each acting on its own subset of
-    axes.
-
-    Together, the entries in `transformations` write every axis of the
-    `output` coordinate system exactly once.
-    """
-
-    @autodefine
-    class Transformation(OMEMetadata):
-        """One transformation of a
-        [ByDimension][abczarr.ome.v0_6dev3.transformations.ByDimension],
-        and the axes it applies to.
-        """
-
-        transformation: Optional[CoordinateTransformation]
-        """The transformation to apply. Optional."""
-
-        input_axes: Optional[tx.List[int]]
-        """
-        The indices, into the enclosing `ByDimension`'s `input`
-        coordinate system, of the axes `transformation` reads from.
-        Optional.
-        """
-
-        output_axes: Optional[tx.List[int]]
-        """
-        The indices, into the enclosing `ByDimension`'s `output`
-        coordinate system, of the axes `transformation` writes to.
-        Optional.
-        """
-
-    type: Required[tx.Literal["byDimension"]]
-    transformations: Required[tx.List[Transformation]]
-    """The transformations to combine."""

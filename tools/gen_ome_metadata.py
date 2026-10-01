@@ -446,12 +446,14 @@ DELTAS_STABLE = {
 # change across the 0.6 line; they come straight from the ``v0_6dev1``
 # template.
 #
-#   dev1 -> dev2  nothing but the version string (identical class surface;
-#                 the schema differences between them are pure JSON-schema
-#                 constraints, invisible at the metadata layer).
-#   dev2 -> dev3  the transformation model is rewritten (index-list mapAxis,
-#                 wrapped byDimension, inverseOf dropped); ``ome`` gains an
-#                 ``OMEScene`` carrier; a new ``scenes`` module appears.
+#   dev1 -> dev2  ``mapAxis`` becomes an index list (a permutation) rather
+#                 than a name-to-name mapping, and a byDimension child names
+#                 its axes in ``input_axes``/``output_axes`` rather than in
+#                 ``input``/``output``.
+#   dev2 -> dev3  the transformation model is rewritten (wrapped byDimension
+#                 children addressing axes by index, inverseOf dropped);
+#                 ``ome`` gains an ``OMEScene`` carrier; a new ``scenes``
+#                 module appears.
 #   dev3 -> dev4  the transform input/output overhaul: a coordinate-system
 #                 name string becomes a ``Space`` object.
 #   dev4 -> rc0   ``projectAxis`` is added and byDimension's inner axis keys
@@ -461,8 +463,13 @@ DELTAS_STABLE = {
 #                 ``$ref``-spelling only), so nothing but the version string.
 
 DELTAS_DEV = {
-    # dev1 -> dev2: version string only.
-    "v0_6dev2": [],
+    # dev1 -> dev2
+    "v0_6dev2": [
+        AddModule(
+            "transformations",
+            _read_template("dev/v0_6dev2/transformations.py"),
+        ),
+    ],
     # dev2 -> dev3
     "v0_6dev3": [
         AddModule(

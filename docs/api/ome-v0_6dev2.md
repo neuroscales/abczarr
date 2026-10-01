@@ -1,13 +1,19 @@
 # OME-Zarr metadata — NGFF 0.6.dev2
 
-An early 0.6 preview, identical in shape to 0.6.dev1; the model may still change.
+An early 0.6 preview. The model may still change.
 
 ## Changes from NGFF 0.6.dev1
 
-- No changes at the metadata layer. dev1 to dev2 advances only the
-  version string; the class surface is identical. The differences
-  between the two are JSON-schema constraints that do not surface as
-  typed fields here.
+- [MapAxis][abczarr.ome.v0_6dev2.transformations.MapAxis] addresses
+  axes by index. Its `mapAxis` field is a list of integers, and entry
+  `k` gives the input axis that feeds output axis `k`. The list must be
+  a permutation. In 0.6.dev1, `mapAxis` mapped output axis names to
+  input axis names.
+- Each child of a
+  [ByDimension][abczarr.ome.v0_6dev2.transformations.ByDimension]
+  names its axes in `input_axes` and `output_axes`. These fields still
+  hold axis names. In 0.6.dev1, the same fields were called `input` and
+  `output`.
 
 ## `abczarr.ome.v0_6dev2.ome`
 

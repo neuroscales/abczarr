@@ -236,8 +236,8 @@ class ByDimension(CoordinateTransformation):
     """Combines several transformations, each acting on its own subset of
     axes.
 
-    Together, the entries in `transformations` cover every axis between
-    `input` and `output`.
+    Together, the entries in `transformations` write every axis of the
+    `output` coordinate system exactly once.
     """
 
     @autodefine
