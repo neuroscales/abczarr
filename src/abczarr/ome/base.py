@@ -170,6 +170,7 @@ that would need information the source does not carry raises
 __all__ = ["OMEMetadata", "OME"]
 
 # stdlib
+import contextvars
 import importlib
 import warnings
 from collections import abc
@@ -183,6 +184,9 @@ from abczarr._core.auto.attrs import autodefine, field, fields
 from abczarr._core.metadata import FlexibleMetadata
 from abczarr._core.rfc2119 import MISSING
 from abczarr.errors import UnsupportedConversion
+
+# locals
+from . import _transforms06
 
 #: How a cross-version conversion treats information the target version
 #: cannot hold.
@@ -295,6 +299,20 @@ class OMEMetadata(FlexibleMetadata):
         transformation the stable model cannot express, such as an affine
         or a rotation, is treated according to `policy`.
 
+        Between the 0.6 previews, a `mapAxis` or `byDimension`
+        transformation switches between addressing axes by name and
+        addressing them by index. That translation reads the axes of the
+        coordinate systems the transformation refers to. A transformation
+        that refers to a coordinate system by name therefore converts as
+        part of the multiscale that declares the coordinate system, not on
+        its own. Later versions have no `mapAxis` counterpart for a
+        0.6.dev1 `mapAxis` that drops or repeats an input axis. Such a
+        `mapAxis` becomes an equivalent `affine` that selects the same
+        input coordinates. A `projectAxis`, which first appears in 0.6rc0,
+        becomes an equivalent `affine` in earlier versions in the same way.
+        Neither `affine` turns back into the original transformation when
+        converted again.
+
         Parameters
         ----------
         version : str
@@ -335,7 +353,12 @@ class OMEMetadata(FlexibleMetadata):
         ValueError
             If `version` names no known OME-NGFF version, or if
             converting to it would require information this object
-            does not carry.
+            does not carry. Within the 0.6 previews, this includes the
+            axes of a coordinate system that is not declared alongside the
+            transformation. A `byDimension` whose transformations do not
+            write every output axis exactly once also raises this error.
+            So does a `mapAxis` or `byDimension` that refers to an axis its
+            coordinate system does not have.
         UnsupportedConversion
             If `policy` is ``"strict"`` and a field or transformation
             cannot be represented in `version`.
@@ -434,11 +457,13 @@ def _migrate(
     value: tx.Any, from_v: str, to_v: str, policy: ConversionPolicy
 ) -> tx.Any:
     if isinstance(value, OMEMetadata):
-        migration = _MIGRATIONS.get((from_v, to_v), {}).get(
-            type(value).__qualname__
-        )
-        if migration is not None:
-            return migration(value, to_v, policy)
+        # A migration registered for a base class (such as every 0.6
+        # CoordinateTransformation) applies to all of its subclasses.
+        table = _MIGRATIONS.get((from_v, to_v), {})
+        for klass in type(value).__mro__:
+            migration = table.get(klass.__qualname__)
+            if migration is not None:
+                return migration(value, to_v, policy)
         newcls = _target_class(type(value), to_v)
         return _rebuild(value, newcls, to_v, from_v, policy)
     if isinstance(value, (list, tuple)):
@@ -453,16 +478,27 @@ def _rebuild(
     from_v: str,
     policy: ConversionPolicy,
 ) -> tx.Any:
-    kwargs = {}
-    for f in fields(newcls):
-        if not f.init:
-            continue
-        if f.name == "version":
-            kwargs["version"] = to_v
-        elif hasattr(source, f.name):
-            kwargs[f.name] = _migrate(
-                getattr(source, f.name), from_v, to_v, policy
-            )
+    # An object that declares coordinate systems (a 0.6 multiscale) makes
+    # their axes available to the transformations nested inside it, which
+    # need them to translate between axis names and axis indices.
+    systems = getattr(source, "coordinateSystems", None)
+    token = None
+    if isinstance(systems, list):
+        token = _SYSTEMS.set({**_systems_in_scope(), **_axis_names(systems)})
+    try:
+        kwargs = {}
+        for f in fields(newcls):
+            if not f.init:
+                continue
+            if f.name == "version":
+                kwargs["version"] = to_v
+            elif hasattr(source, f.name):
+                kwargs[f.name] = _migrate(
+                    getattr(source, f.name), from_v, to_v, policy
+                )
+    finally:
+        if token is not None:
+            _SYSTEMS.reset(token)
     try:
         return newcls(**kwargs)
     except TypeError as e:
@@ -743,6 +779,76 @@ def _is_set(value: tx.Any) -> bool:
     return value is not MISSING and value is not None
 
 
+# ----------------------------------------------------------------------
+#   within 0.6: axis addressing of mapAxis / byDimension / projectAxis
+# ----------------------------------------------------------------------
+#
+# The 0.6 previews disagree on how a transformation addresses single axes
+# (by name or by index) and on which transformation types exist. The JSON-
+# level rewrite lives in `_transforms06`; here it is hooked into the
+# migration table for every step of the 0.6 chain. Translating names to
+# indices needs the axes of the coordinate systems the transformation
+# refers to. `_rebuild` publishes those in `_SYSTEMS` while it converts an
+# object that declares them, so a transformation converted as part of its
+# multiscale finds them.
+
+#: Coordinate-system name -> axis names, for the systems in scope of the
+#: object being converted.
+_SYSTEMS: "contextvars.ContextVar[tx.Optional[tx.Mapping]]" = (
+    contextvars.ContextVar("abczarr_ome_coordinate_systems", default=None)
+)
+
+
+def _systems_in_scope() -> tx.Mapping[str, tx.List[str]]:
+    return _SYSTEMS.get() or {}
+
+
+def _axis_names(systems: tx.Iterable) -> tx.Dict[str, tx.List[str]]:
+    """Map each named coordinate system in `systems` to its axis names."""
+    result = {}
+    for system in systems:
+        name = getattr(system, "name", None)
+        axes = getattr(system, "axes", None)
+        if not isinstance(name, str) or not isinstance(axes, list):
+            continue
+        names = [getattr(axis, "name", None) for axis in axes]
+        if all(isinstance(n, str) for n in names):
+            result[name] = names
+    return result
+
+
+def _transformation_06(
+    t: tx.Any, to_v: str, policy: ConversionPolicy
+) -> tx.Any:
+    """Convert a 0.6 transformation one step along the 0.6 chain."""
+    from_v = _version_of(type(t))
+    doc = _transforms06.convert(
+        t.to_json(),
+        from_v,
+        to_v,
+        _systems_in_scope(),
+        lambda field: _report_loss(policy, field, to_v),
+    )
+    pkg = importlib.import_module(_package(to_v))
+    return pkg.transformations.CoordinateTransformation.from_json(doc)
+
+
+def _by_dimension_child_06(
+    child: tx.Any, to_v: str, policy: ConversionPolicy
+) -> tx.Any:
+    """Convert one wrapped `byDimension` entry (0.6.dev3 and later)."""
+    newcls = _target_class(type(child), to_v)
+    from_v = _version_of(type(child))
+    doc = _transforms06.convert(
+        {"type": "byDimension", "transformations": [child.to_json()]},
+        from_v,
+        to_v,
+        _systems_in_scope(),
+        lambda field: _report_loss(policy, field, to_v),
+    )
+    return newcls.from_json(doc["transformations"][0])
+
+
 _MIGRATIONS = {
     ("0.3", "0.4"): {"Multiscale": _multiscale_3_to_4},
     ("0.4", "0.3"): {"Multiscale": _multiscale_4_to_3},
@@ -752,6 +858,15 @@ _MIGRATIONS = {
     # back into a bare-JSON reference when stepping down past that boundary.
     ("0.6.dev4", "0.6.dev3"): {"Space": _space_to_json},
 }
+for _a, _b in zip(_transforms06.CHAIN, _transforms06.CHAIN[1:]):
+    for _step in ((_a, _b), (_b, _a)):
+        _MIGRATIONS.setdefault(_step, {}).update(
+            {
+                "CoordinateTransformation": _transformation_06,
+                "ByDimension.Transformation": _by_dimension_child_06,
+            }
+        )
+del _a, _b, _step
 
 
 @autodefine

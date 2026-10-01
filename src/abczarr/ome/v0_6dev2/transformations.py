@@ -58,6 +58,24 @@ class CoordinateTransformation(OMEMetadata):
     name: Optional[str]
     """A label for the transformation itself. Optional."""
 
+    input_axes: Optional[tx.List[str]]
+    """
+    The names of the axes this transformation reads from. This field is
+    set only on a transformation listed in a
+    [ByDimension][abczarr.ome.v0_6dev2.transformations.ByDimension]. Each
+    name refers to an axis of the `input` coordinate system of that
+    `ByDimension`. Optional.
+    """
+
+    output_axes: Optional[tx.List[str]]
+    """
+    The names of the axes this transformation writes to. This field is
+    set only on a transformation listed in a
+    [ByDimension][abczarr.ome.v0_6dev2.transformations.ByDimension]. Each
+    name refers to an axis of the `output` coordinate system of that
+    `ByDimension`. Optional.
+    """
+
 
 @register_subclass(type="identity")
 @autodefine
@@ -74,13 +92,14 @@ class Identity(CoordinateTransformation):
 @register_subclass(type="mapAxis")
 @autodefine
 class MapAxis(CoordinateTransformation):
-    """Renames axes without changing any coordinate values."""
+    """Permutes axes without changing any coordinate values."""
 
     type: Required[tx.Literal["mapAxis"]]
-    mapAxis: Required[tx.Dict[str, str]]
+    mapAxis: Required[tx.List[int]]
     """
-    Maps each output axis name to the input axis it takes its
-    values from.
+    One entry per output axis, giving the index of the input axis
+    whose values that output axis carries. The entries form a
+    permutation of the input axis indices.
     """
 
 
@@ -192,11 +211,13 @@ class Sequence(CoordinateTransformation):
 @register_subclass(type="byDimension")
 @autodefine
 class ByDimension(CoordinateTransformation):
-    """Combines several transformations, each acting on a different subset
-    of axes.
+    """Combines several transformations, each acting on its own subset of
+    axes.
 
-    Together, the transformations cover every axis between `input` and
-    `output`.
+    Each transformation in `transformations` names the axes it reads and
+    writes in its own `input_axes` and `output_axes` fields. Together, the
+    transformations write every axis of the `output` coordinate system
+    exactly once.
     """
 
     type: Required[tx.Literal["byDimension"]]

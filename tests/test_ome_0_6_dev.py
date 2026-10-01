@@ -46,7 +46,13 @@ _XFORMS_PRE = [
 ]
 XFORMS = {
     "v0_6dev1": _XFORMS_PRE,
-    "v0_6dev2": _XFORMS_PRE,
+    # From 0.6.dev2 on, `mapAxis` is a list of axis indices. The dev2
+    # `mapAxis` examples still carry the transitional dev1 name-to-name
+    # mapping, which the 0.6.dev2 schema rejects, so -- like the other
+    # transitional instances -- they are not exercised here.
+    "v0_6dev2": [
+        n for n in _XFORMS_PRE if n not in ("mapAxis1", "mapAxis2")
+    ],
     "v0_6dev3": [n for n in _XFORMS_PRE if n != "inverseOf"],
     # dev4 completes the input/output string->object overhaul: a transform's
     # `input`/`output` is a coordinate-system object, not a name string. Its

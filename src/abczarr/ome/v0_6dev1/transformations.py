@@ -77,13 +77,18 @@ class Identity(CoordinateTransformation):
 @register_subclass(type="mapAxis")
 @autodefine
 class MapAxis(CoordinateTransformation):
-    """Renames axes without changing any coordinate values."""
+    """Maps axes by name without changing any coordinate values.
+
+    Each output axis carries the values of the input axis it is mapped
+    to. An input axis that no output axis names is dropped. An input axis
+    named by several output axes has its values copied to each of them.
+    """
 
     type: Required[tx.Literal["mapAxis"]]
     mapAxis: Required[tx.Dict[str, str]]
     """
-    Maps each output axis name to the input axis it takes its
-    values from.
+    Maps the name of each output axis to the name of the input axis
+    whose values that output axis carries.
     """
 
 
@@ -195,11 +200,13 @@ class Sequence(CoordinateTransformation):
 @register_subclass(type="byDimension")
 @autodefine
 class ByDimension(CoordinateTransformation):
-    """Combines several transformations, each acting on a different subset
-    of axes.
+    """Combines several transformations, each acting on its own subset of
+    axes.
 
-    Together, the transformations cover every axis between `input` and
-    `output`.
+    Each transformation in `transformations` names the axes it reads and
+    writes in its own `input` and `output` fields, as lists of axis names.
+    Together, the transformations write every axis of the `output`
+    coordinate system exactly once.
     """
 
     type: Required[tx.Literal["byDimension"]]

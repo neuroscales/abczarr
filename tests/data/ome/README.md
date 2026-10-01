@@ -55,6 +55,9 @@ A few instances use a coordinate-systems shape that a later tag replaced:
   string→object overhaul completed in `0.6.dev4`/`0.6rc0` (the same
   transitional form that excludes some `mapAxis`/`byDimension` transform
   instances in `test_ome_0_6_dev.py`).
+- `mapAxis1.json` and `mapAxis2.json` (dev2) write `mapAxis` as the dev1
+  name-to-name mapping. The `0.6.dev2` schema requires a list of axis
+  indices, which is the form the dev2 model reads.
 - `multiscales_reference_to_label.json` (dev4) uses the axes-as-mapping
   coordinate system; the `0.6rc0` copy uses the list form.
 

@@ -104,7 +104,13 @@ class MapAxis(CoordinateTransformation):
 @register_subclass(type="projectAxis")
 @autodefine
 class ProjectAxis(CoordinateTransformation):
-    """Changes the number of axes between input and output."""
+    """Adds axes to a coordinate vector or removes axes from it.
+
+    The input axes listed in `droppedInputs` are removed. The remaining
+    input axes keep their order, and a zero is inserted at each output
+    position listed in `createdOutputs`. At least one of the two fields
+    is set.
+    """
 
     type: Required[tx.Literal["projectAxis"]]
     createdOutputs: Optional[tx.List[int]]
@@ -247,8 +253,8 @@ class ByDimension(CoordinateTransformation):
     """Combines several transformations, each acting on its own subset of
     axes.
 
-    Together, the entries in `transformations` cover every axis between
-    `input` and `output`.
+    Together, the entries in `transformations` write every axis of the
+    `output` coordinate system exactly once.
     """
 
     @autodefine
