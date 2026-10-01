@@ -348,6 +348,217 @@ def test_sequence_passes_its_axes_to_its_children() -> None:
     ]
 
 
+# --------------------------------------------------------------------------
+#   sequence: the axes between its steps
+# --------------------------------------------------------------------------
+
+_SCALE = {"type": "scale", "scale": [2.0, 3.0]}
+_NAMED_MAP_AXIS = {"type": "mapAxis", "mapAxis": {"y": "i", "x": "j"}}
+_INDEX_MAP_AXIS = {"type": "mapAxis", "mapAxis": [1, 0]}
+_AFFINE = {"type": "affine", "affine": [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]}
+_ROTATION = {"type": "rotation", "rotation": [[0.0, 1.0], [1.0, 0.0]]}
+
+
+def _sequence(version: str, steps: list, systems: tx.Any = None) -> tx.Any:
+    """A multiscale with one sequence from system ``in`` to ``out``."""
+    if systems is None:
+        systems = [_system("in", "j", "i"), _system("out", "y", "x")]
+    by_name = version in ("0.6.dev1", "0.6.dev2", "0.6.dev3")
+    sequence = {
+        "type": "sequence",
+        "input": "in" if by_name else {"name": "in"},
+        "output": "out" if by_name else {"name": "out"},
+        "transformations": steps,
+    }
+    return _multiscale(version, systems, [sequence])
+
+
+def _steps(ms: tx.Any) -> list:
+    return _xforms(ms)[0]["transformations"]
+
+
+def _standalone_sequence(steps: list) -> tx.Any:
+    return _pkg("0.6").transformations.CoordinateTransformation.from_json(
+        {"type": "sequence", "transformations": steps}
+    )
+
+
+@pytest.mark.parametrize("version", LATER_THAN_DEV1)
+@pytest.mark.parametrize("first", [True, False])
+def test_named_mapaxis_inside_a_sequence_converts(
+    first: bool, version: str
+) -> None:
+    # The mapAxis reads its input names from the sequence input or through
+    # the scale before it, and its output names from the sequence output or
+    # through the scale after it.
+    steps = [_NAMED_MAP_AXIS, _SCALE] if first else [_SCALE, _NAMED_MAP_AXIS]
+    dev1 = _sequence("0.6.dev1", steps)
+    converted = dev1.to_version(version)
+    expected = (
+        [_INDEX_MAP_AXIS, _SCALE] if first else [_SCALE, _INDEX_MAP_AXIS]
+    )
+    assert _steps(converted) == expected
+    assert _steps(converted.to_version("0.6.dev1")) == steps
+
+
+@pytest.mark.parametrize("version", LATER_THAN_DEV1)
+@pytest.mark.parametrize("first", [True, False])
+def test_index_mapaxis_inside_a_sequence_converts_to_names(
+    first: bool, version: str
+) -> None:
+    steps = [_INDEX_MAP_AXIS, _SCALE] if first else [_SCALE, _INDEX_MAP_AXIS]
+    converted = _sequence(version, steps).to_version("0.6.dev1")
+    expected = (
+        [_NAMED_MAP_AXIS, _SCALE] if first else [_SCALE, _NAMED_MAP_AXIS]
+    )
+    assert _steps(converted) == expected
+
+
+@pytest.mark.parametrize("first", [True, False])
+def test_index_mapaxis_inside_a_sequence_converts_to_0_5(first: bool) -> None:
+    # 0.5 cannot hold a mapAxis, so the conversion drops it with a warning.
+    steps = [_INDEX_MAP_AXIS, _SCALE] if first else [_SCALE, _INDEX_MAP_AXIS]
+    with pytest.warns(UserWarning, match="mapAxis"):
+        converted = _sequence("0.6", steps).to_version("0.5")
+    (scale,) = converted.coordinateTransformations
+    assert scale.scale == [2.0, 3.0]
+
+
+@pytest.mark.parametrize("other", [_AFFINE, _ROTATION])
+@pytest.mark.parametrize("first", [True, False])
+def test_named_mapaxis_next_to_a_matrix_names_the_cause(
+    first: bool, other: dict
+) -> None:
+    steps = [_NAMED_MAP_AXIS, other] if first else [other, _NAMED_MAP_AXIS]
+    position = 1 if first else 0
+    ms = _sequence("0.6.dev1", steps)
+    cause = f"inferred through the {other['type']} at index {position}"
+    with pytest.raises(ValueError, match=cause):
+        ms.to_version("0.6.dev2")
+
+
+def test_named_mapaxis_after_coordinates_names_the_cause() -> None:
+    steps = [{"type": "coordinates", "path": "c"}, _NAMED_MAP_AXIS]
+    ms = _sequence("0.6.dev1", steps)
+    with pytest.raises(ValueError) as info:
+        ms.to_version("0.6.dev2")
+    assert "inferred through the coordinates at index 0" in str(info.value)
+    assert "multiscale" not in str(info.value)
+
+
+_PROJECT_STEP = {"type": "projectAxis", "createdOutputs": [0]}
+# in (i, j) -> out (c, y, x): zeros at output 0
+_PROJECT_STEP_AFFINE = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]
+_PROJECT_SEQUENCES = {
+    "middle": [
+        {"type": "scale", "scale": [2.0, 2.0]},
+        _PROJECT_STEP,
+        {"type": "scale", "scale": [3.0, 3.0, 3.0]},
+    ],
+    "first": [_PROJECT_STEP, {"type": "scale", "scale": [3.0, 3.0, 3.0]}],
+    "last": [{"type": "scale", "scale": [2.0, 2.0]}, _PROJECT_STEP],
+}
+
+
+@pytest.mark.parametrize("version", BEFORE_RC0)
+@pytest.mark.parametrize("where", list(_PROJECT_SEQUENCES))
+def test_projectaxis_inside_a_sequence_becomes_an_affine(
+    where: str, version: str
+) -> None:
+    steps = _PROJECT_SEQUENCES[where]
+    systems = [_system("in", "i", "j"), _system("out", "c", "y", "x")]
+    converted = _sequence("0.6", steps, systems).to_version(version)
+    (affine,) = [t for t in _steps(converted) if t["type"] == "affine"]
+    assert affine["affine"] == _PROJECT_STEP_AFFINE
+    # The affine stays an affine on the way back up.
+    back = _steps(converted.to_version("0.6"))
+    assert [t["type"] for t in back] == [
+        "affine" if t is _PROJECT_STEP else t["type"] for t in steps
+    ]
+
+
+def test_projectaxis_inside_a_sequence_counts_from_the_scales() -> None:
+    # No coordinate system is in scope. The scale vectors give the counts.
+    t = _standalone_sequence(_PROJECT_SEQUENCES["middle"])
+    (affine,) = [
+        s
+        for s in t.to_version("0.6.dev4").to_json()["transformations"]
+        if s["type"] == "affine"
+    ]
+    assert affine["affine"] == _PROJECT_STEP_AFFINE
+
+
+@pytest.mark.parametrize(
+    ("matrix", "n_in"),
+    [
+        # 2 inputs -> 3 outputs
+        ({"type": "affine", "affine": [[1, 0, 0], [0, 1, 0], [1, 1, 0]]}, 3),
+        # 2 inputs -> 2 outputs, with the homogeneous row
+        ({"type": "affine", "affine": [[1, 0, 0], [0, 1, 0], [0, 0, 1]]}, 2),
+        ({"type": "rotation", "rotation": [[0, 1], [1, 0]]}, 2),
+    ],
+)
+def test_matrix_inside_a_sequence_gives_the_axis_count(
+    matrix: dict, n_in: int
+) -> None:
+    project = {"type": "projectAxis", "droppedInputs": [0]}
+    t = _standalone_sequence([matrix, project])
+    (_, affine) = t.to_version("0.6.dev4").to_json()["transformations"]
+    assert len(affine["affine"]) == n_in - 1
+    assert len(affine["affine"][0]) == n_in + 1
+
+
+def test_matrix_after_projectaxis_gives_the_axis_count() -> None:
+    project = {"type": "projectAxis", "droppedInputs": [0]}
+    matrix = {"type": "affine", "affine": [[1, 0, 0, 0], [0, 1, 0, 0]]}
+    t = _standalone_sequence([project, matrix])
+    (affine, _) = t.to_version("0.6.dev4").to_json()["transformations"]
+    assert affine["affine"] == [
+        [0.0, 1.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0, 0.0],
+    ]
+
+
+def test_sequence_axis_count_disagreement_raises_when_needed() -> None:
+    # Read forward, the first scale gives 3 axes before the projectAxis.
+    # Read backward, the last scale and the projectAxis give 1.
+    steps = [
+        {"type": "scale", "scale": [1.0, 2.0, 3.0]},
+        _PROJECT_STEP,
+        {"type": "scale", "scale": [1.0, 2.0]},
+    ]
+    t = _standalone_sequence(steps)
+    with pytest.raises(ValueError, match="3 axes between transformations 0"):
+        t.to_version("0.6.dev4")
+    # The step to 0.6rc0 needs no axes, so the sequence is kept as it is.
+    assert t.to_version("0.6rc0").to_version("0.6") == t
+
+
+@pytest.mark.parametrize("version", ["0.6.dev2", "0.6.dev3"])
+def test_named_bydimension_after_an_affine_inside_a_sequence(
+    version: str,
+) -> None:
+    by_dimension = {
+        "type": "byDimension",
+        "transformations": [
+            {"type": "scale", "scale": [2.0], "input": ["j"], "output": ["y"]},
+            {"type": "scale", "scale": [3.0], "input": ["i"], "output": ["x"]},
+        ],
+    }
+    ms = _sequence("0.6.dev1", [_AFFINE, by_dimension])
+    if version == "0.6.dev2":
+        # Axis names carry over between dev1 and dev2 without being looked up.
+        (_, converted) = _steps(ms.to_version(version))
+        assert [c["input_axes"] for c in converted["transformations"]] == [
+            ["j"],
+            ["i"],
+        ]
+    else:
+        with pytest.raises(ValueError, match="through the affine at index 0"):
+            ms.to_version(version)
+
+
 def test_standalone_index_bydimension_converts_without_systems() -> None:
     doc = _load("v0_6", "byDimension2")["coordinateTransformations"][0]
     t = _pkg("0.6").transformations.CoordinateTransformation.from_json(doc)
@@ -416,6 +627,33 @@ def test_standalone_index_bydimension_duplicate_raises() -> None:
     t = _pkg("0.6").transformations.CoordinateTransformation.from_json(doc)
     with pytest.raises(ValueError, match="written by transformations 0 and 1"):
         t.to_version("0.6rc0")
+
+
+_UNWRAPPED = [
+    (suffix, version)
+    for suffix in ("v0_6dev3", "v0_6dev4")
+    for version in VERSIONS.values()
+    if version != VERSIONS[suffix]
+]
+
+
+@pytest.mark.parametrize(("suffix", "version"), _UNWRAPPED)
+def test_unwrapped_bydimension_entry_raises(suffix: str, version: str) -> None:
+    # These upstream examples list each transformation directly instead of
+    # wrapping it in an object, which no version from dev3 on allows.
+    ms = _from_example(suffix, "byDimensionXarray")
+    with pytest.raises(ValueError, match="has no 'transformation' object"):
+        ms.to_version(version)
+
+
+def test_bydimension_entry_that_is_not_an_object_raises() -> None:
+    # A parsed byDimension always holds objects, so the JSON is converted
+    # directly.
+    from abczarr.ome import _transforms06
+
+    doc = {"type": "byDimension", "transformations": ["scale"]}
+    with pytest.raises(ValueError, match="entry 0 .* is not an object"):
+        _transforms06.convert(doc, "0.6", "0.6rc0", {}, lambda field: None)
 
 
 # --------------------------------------------------------------------------

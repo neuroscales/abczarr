@@ -19,9 +19,18 @@ individual axes:
 Translating between axis names and axis indices needs the axes of the
 coordinate systems a transformation refers to. The caller supplies those as
 a mapping from coordinate-system name to axis names. A ``byDimension`` hands
-each child the subset of axes it addresses, and a ``sequence`` hands its
-first child the sequence's input axes and its last child the sequence's
-output axes.
+each child the subset of axes it addresses.
+
+A ``sequence`` works out the axes between its steps. The axes are carried
+forward from the sequence's input and backward from its output, one step at
+a time. A step that names its own coordinate system fixes the axes on that
+side. A step's input axes are read from the forward pass first, and its
+output axes from the backward pass first, so that neither is inferred
+through the step itself. The other pass fills in what the first one leaves
+unknown. Axis names may legitimately differ between the two passes, for
+example in a sequence from array axes to physical axes. The number of axes
+may not. When the two passes disagree on the number of axes, the inferred
+axes are discarded, and a conversion that needs them fails.
 
 Where a construct has no counterpart in the target version, it is replaced by
 an exactly equivalent ``affine`` whose matrix only selects input coordinates
@@ -60,6 +69,9 @@ _CHILD_LAYOUT = {
 # are known: ``None`` when nothing is known, else one entry per axis holding
 # the axis name, or ``None`` where only the axis's position is known.
 Axes = tx.Optional[tx.List[tx.Optional[str]]]
+# For each side (input, output), a sentence saying why an enclosing sequence
+# could not work out the axes there, or ``None``.
+Notes = tx.Tuple[tx.Optional[str], tx.Optional[str]]
 Systems = tx.Mapping[str, tx.List[str]]
 Report = tx.Callable[[str], None]
 Json = tx.Dict[str, tx.Any]
@@ -98,9 +110,10 @@ def convert(
     its own.
 
     Raises ``ValueError`` when the conversion needs axis names or counts that
-    are not known, when a ``mapAxis`` or ``byDimension`` refers to an axis
-    its coordinate system does not have, and when a ``byDimension`` does not
-    write every output axis exactly once.
+    are not known, and when a ``mapAxis`` or ``byDimension`` refers to an
+    axis its coordinate system does not have. A ``ValueError`` is also raised
+    when a ``byDimension`` does not write every output axis exactly once, and
+    when one of its entries does not have the layout that `from_v` requires.
     """
     return _Step(from_v, to_v, systems, report).transform(doc, axes)
 
@@ -136,7 +149,12 @@ class _Step:
     #   dispatch
     # ------------------------------------------------------------------
 
-    def transform(self, doc: tx.Any, axes: "tx.Tuple[Axes, Axes]") -> tx.Any:
+    def transform(
+        self,
+        doc: tx.Any,
+        axes: "tx.Tuple[Axes, Axes]",
+        notes: Notes = (None, None),
+    ) -> tx.Any:
         if not isinstance(doc, abc.Mapping):
             return doc
         doc = dict(doc)
@@ -144,21 +162,26 @@ class _Step:
             self._own_axes(doc, "input", axes[0]),
             self._own_axes(doc, "output", axes[1]),
         )
+        # A side the transformation names itself owes nothing to its context.
+        notes = (
+            None if "input" in doc else notes[0],
+            None if "output" in doc else notes[1],
+        )
         kind = doc.get("type")
         if kind == "mapAxis":
-            return self._map_axis(doc, axes)
+            return self._map_axis(doc, axes, notes)
         if kind == "projectAxis":
-            return self._project_axis(doc, axes)
+            return self._project_axis(doc, axes, notes)
         if kind == "byDimension":
-            return self._by_dimension(doc, axes)
+            return self._by_dimension(doc, axes, notes)
         if kind == "sequence":
-            return self._sequence(doc, axes)
+            return self._sequence(doc, axes, notes)
         if kind == "bijection":
             if "forward" in doc:
-                doc["forward"] = self.transform(doc["forward"], axes)
+                doc["forward"] = self.transform(doc["forward"], axes, notes)
             if "inverse" in doc:
                 doc["inverse"] = self.transform(
-                    doc["inverse"], (axes[1], axes[0])
+                    doc["inverse"], (axes[1], axes[0]), (notes[1], notes[0])
                 )
             return doc
         if kind == "inverseOf":
@@ -168,7 +191,9 @@ class _Step:
                 )
             if "transformation" in doc:
                 doc["transformation"] = self.transform(
-                    doc["transformation"], (axes[1], axes[0])
+                    doc["transformation"],
+                    (axes[1], axes[0]),
+                    (notes[1], notes[0]),
                 )
             return doc
         return doc
@@ -195,24 +220,40 @@ class _Step:
             f"{message}"
         )
 
-    def _names(self, kind: str, axes: Axes, side: str) -> tx.List[str]:
+    def _unknown(
+        self, kind: str, what: str, side: str, note: tx.Optional[str]
+    ) -> tx.NoReturn:
+        """Fail because the axes of one side are not known well enough."""
+        if note is not None:
+            cause = note
+        else:
+            cause = (
+                "Axes are known only for a coordinate system that the "
+                "converted object declares, and for the steps of a sequence "
+                "whose axes follow from such a coordinate system."
+            )
+        self._fail(
+            kind,
+            f"the {what} of its {side} coordinate system are not known, and "
+            f"they are needed to translate between axis names and axis "
+            f"indices. {cause}",
+        )
+
+    def _names(
+        self, kind: str, axes: Axes, side: str, note: tx.Optional[str]
+    ) -> tx.List[str]:
         """The axis names of one side, or a clear error when unknown."""
         if axes is None or any(name is None for name in axes):
-            self._fail(
-                kind,
-                f"the axis names of its {side} coordinate system are not "
-                f"known, and they are needed to translate between axis names "
-                f"and axis indices. Convert the object that declares the "
-                f"coordinate system together with the transformation, such "
-                f"as the enclosing multiscale.",
-            )
+            self._unknown(kind, "axis names", side, note)
         return tx.cast(tx.List[str], axes)
 
     # ------------------------------------------------------------------
     #   mapAxis
     # ------------------------------------------------------------------
 
-    def _map_axis(self, doc: Json, axes: "tx.Tuple[Axes, Axes]") -> Json:
+    def _map_axis(
+        self, doc: Json, axes: "tx.Tuple[Axes, Axes]", notes: Notes
+    ) -> Json:
         value = doc.get("mapAxis")
         in_axes, out_axes = axes
         if isinstance(value, abc.Mapping):
@@ -220,18 +261,16 @@ class _Step:
                 return doc
             index = self._indices_from_names(
                 value,
-                self._names("mapAxis", in_axes, "input"),
-                self._names("mapAxis", out_axes, "output"),
+                self._names("mapAxis", in_axes, "input", notes[0]),
+                self._names("mapAxis", out_axes, "output", notes[1]),
             )
-        elif isinstance(value, list) and all(
-            isinstance(i, int) for i in value
-        ):
+        elif _is_index(value):
             index = list(value)
             if _map_axis_by_name(self.to_v):
                 doc["mapAxis"] = self._names_from_indices(
                     index,
-                    self._names("mapAxis", in_axes, "input"),
-                    self._names("mapAxis", out_axes, "output"),
+                    self._names("mapAxis", in_axes, "input", notes[0]),
+                    self._names("mapAxis", out_axes, "output", notes[1]),
                 )
                 return doc
         else:
@@ -254,7 +293,7 @@ class _Step:
                 "mapAxis",
                 f"mapAxis {index} is not a permutation, so it must become an "
                 f"affine, and the number of input axes that affine needs is "
-                f"not known",
+                f"not known.{_because(notes[0])}",
             )
         bad = [i for i in index if not 0 <= i < n_in]
         if bad:
@@ -320,7 +359,9 @@ class _Step:
     #   projectAxis
     # ------------------------------------------------------------------
 
-    def _project_axis(self, doc: Json, axes: "tx.Tuple[Axes, Axes]") -> Json:
+    def _project_axis(
+        self, doc: Json, axes: "tx.Tuple[Axes, Axes]", notes: Notes
+    ) -> Json:
         if _has_project_axis(self.to_v):
             return doc
         dropped = list(doc.get("droppedInputs") or [])
@@ -334,7 +375,8 @@ class _Step:
             self._fail(
                 "projectAxis",
                 "it becomes an affine, and the number of input or output "
-                "axes that affine needs is not known",
+                "axes that affine needs is not known."
+                + _because(notes[0] or notes[1]),
             )
         kept = [i for i in range(n_in) if i not in dropped]
         n_out = len(kept) + len(created)
@@ -363,40 +405,92 @@ class _Step:
     #   sequence
     # ------------------------------------------------------------------
 
-    def _sequence(self, doc: Json, axes: "tx.Tuple[Axes, Axes]") -> Json:
+    def _sequence(
+        self, doc: Json, axes: "tx.Tuple[Axes, Axes]", notes: Notes
+    ) -> Json:
         items = doc.get("transformations")
-        if isinstance(items, list):
-            last = len(items) - 1
-            doc["transformations"] = [
-                self.transform(
-                    item,
-                    (
-                        axes[0] if k == 0 else None,
-                        axes[1] if k == last else None,
-                    ),
-                )
-                for k, item in enumerate(items)
+        if not isinstance(items, list):
+            return doc
+        n = len(items)
+        # Boundary k lies before step k, so boundary 0 is the input of the
+        # sequence and boundary n is its output. A boundary is fixed when a
+        # step next to it names its own coordinate system.
+        fixed: tx.List[Axes] = [None] * (n + 1)
+        for k, item in enumerate(items):
+            fixed[k + 1] = self._declared(item, "output")
+        for k, item in enumerate(items):
+            own = self._declared(item, "input")
+            if own is not None:
+                fixed[k] = own
+        ahead, ahead_notes = _propagate(items, fixed, axes[0], notes[0], True)
+        behind, behind_notes = _propagate(
+            items, fixed, axes[1], notes[1], False
+        )
+
+        conflict = _count_conflict(ahead, behind)
+        if conflict is not None:
+            # The steps disagree about the number of axes, so nothing that
+            # was inferred is trusted. A conversion that needs the inferred
+            # axes fails with the disagreement as the cause.
+            k = conflict
+            note = (
+                f"The enclosing sequence has {len(ahead[k] or [])} axes "
+                f"{_boundary(k, n)} when read forward from its input, but "
+                f"{len(behind[k] or [])} when read backward from its output."
+            )
+            ahead = behind = [ahead[0], *fixed[1:n], behind[n]]
+            ahead_notes = behind_notes = [
+                ahead_notes[0],
+                *[None if f is not None else note for f in fixed[1:n]],
+                behind_notes[n],
             ]
+
+        # A step's input is read from the forward pass first and its output
+        # from the backward pass first, which never passes through the step.
+        doc["transformations"] = [
+            self.transform(
+                item,
+                (
+                    _pick(ahead[k], behind[k]),
+                    _pick(behind[k + 1], ahead[k + 1]),
+                ),
+                (ahead_notes[k], behind_notes[k + 1]),
+            )
+            for k, item in enumerate(items)
+        ]
         return doc
+
+    def _declared(self, item: tx.Any, key: str) -> Axes:
+        """The axes a sequence step names for its `key` side, if any."""
+        if not isinstance(item, abc.Mapping) or key not in item:
+            return None
+        return self._own_axes(item, key, None)
 
     # ------------------------------------------------------------------
     #   byDimension
     # ------------------------------------------------------------------
 
-    def _by_dimension(self, doc: Json, axes: "tx.Tuple[Axes, Axes]") -> Json:
+    def _by_dimension(
+        self, doc: Json, axes: "tx.Tuple[Axes, Axes]", notes: Notes
+    ) -> Json:
         items = doc.get("transformations")
         if not isinstance(items, list):
             return doc
         in_axes, out_axes = axes
         src_wrap, src_in, src_out = _CHILD_LAYOUT[self.from_v]
         dst_wrap, dst_in, dst_out = _CHILD_LAYOUT[self.to_v]
+        # Axes addressed by name can be checked for coverage only when every
+        # output axis has a known name.
+        by_index = src_wrap is not None or _named(out_axes)
 
         children = []
         written: tx.Dict[tx.Any, int] = {}
         for k, item in enumerate(items):
             if not isinstance(item, abc.Mapping):
-                children.append(item)
-                continue
+                self._fail(
+                    "byDimension",
+                    f"entry {k} of its transformations is not an object",
+                )
             if src_wrap is None:
                 inner = dict(item)
                 in_refs = inner.pop(src_in, None)
@@ -404,6 +498,14 @@ class _Step:
                 extras: Json = {}
             else:
                 inner = item.get(src_wrap)
+                if not isinstance(inner, abc.Mapping):
+                    self._fail(
+                        "byDimension",
+                        f"entry {k} of its transformations has no "
+                        f"{src_wrap!r} object. OME {self.from_v} wraps each "
+                        f"transformation of a byDimension in an object that "
+                        f"also lists the axes the transformation applies to.",
+                    )
                 in_refs, out_refs = item.get(src_in), item.get(src_out)
                 extras = {
                     key: value
@@ -416,7 +518,7 @@ class _Step:
             )
 
             # every output axis is written by exactly one child
-            keys = out_index if out_axes is not None else out_refs
+            keys = out_index if by_index else out_refs
             for key, name in zip(keys, out_names):
                 label = name if name is not None else key
                 if key in written:
@@ -430,15 +532,17 @@ class _Step:
 
             inner = self.transform(inner, (in_names, out_names))
             if dst_wrap is None:
-                in_new = self._names("byDimension", in_names, "input")
+                in_new = self._names(
+                    "byDimension", in_names, "input", notes[0]
+                )
                 out_new: tx.List[tx.Any] = self._names(
-                    "byDimension", out_names, "output"
+                    "byDimension", out_names, "output", notes[1]
                 )
             else:
-                in_new = self._known(in_index, "input")
-                out_new = self._known(out_index, "output")
+                in_new = self._known(in_index, "input", notes[0])
+                out_new = self._known(out_index, "output", notes[1])
             if dst_wrap is None:
-                child = dict(inner) if isinstance(inner, abc.Mapping) else {}
+                child = dict(inner)
                 for key in extras:
                     self.report(key)
                 for key in (dst_in, dst_out):
@@ -450,7 +554,7 @@ class _Step:
                 child.update(extras)
             children.append(child)
 
-        if out_axes is not None:
+        if out_axes is not None and by_index:
             for position, name in enumerate(out_axes):
                 if position not in written:
                     label = name if name is not None else position
@@ -477,7 +581,7 @@ class _Step:
             )
         if _CHILD_LAYOUT[self.from_v][0] is None:
             names: tx.List[tx.Optional[str]] = list(refs)
-            if axes is None:
+            if not _named(axes):
                 return names, [None] * len(refs)
             unknown = [r for r in refs if r not in axes]
             if unknown:
@@ -486,7 +590,7 @@ class _Step:
                     f"transformation {k} names {side} axes {unknown} that "
                     f"the {side} coordinate system {axes} does not have",
                 )
-            return names, [axes.index(r) for r in refs]
+            return names, [tx.cast(list, axes).index(r) for r in refs]
         index: tx.List[tx.Optional[int]] = list(refs)
         if axes is None:
             return [None] * len(refs), index
@@ -502,18 +606,212 @@ class _Step:
         return [axes[i] for i in refs], index
 
     def _known(
-        self, index: tx.List[tx.Optional[int]], side: str
+        self,
+        index: tx.List[tx.Optional[int]],
+        side: str,
+        note: tx.Optional[str],
     ) -> tx.List[int]:
         if any(i is None for i in index):
-            self._fail(
-                "byDimension",
-                f"the axes of its {side} coordinate system are not known, "
-                f"and they are needed to translate axis names into axis "
-                f"indices. Convert the object that declares the coordinate "
-                f"system together with the transformation, such as the "
-                f"enclosing multiscale.",
-            )
+            self._unknown("byDimension", "axes", side, note)
         return tx.cast(tx.List[int], index)
+
+
+# ----------------------------------------------------------------------
+#   sequence: inferring the axes between steps
+# ----------------------------------------------------------------------
+
+
+def _is_index(value: tx.Any) -> bool:
+    return isinstance(value, list) and all(isinstance(i, int) for i in value)
+
+
+def _named(axes: Axes) -> bool:
+    """Whether `axes` is known and names every axis."""
+    return axes is not None and None not in axes
+
+
+def _pick(first: Axes, second: Axes) -> Axes:
+    """The better known of two views of the same axes, `first` on a tie."""
+    for axes in (first, second):
+        if _named(axes):
+            return list(tx.cast(list, axes))
+    return first if first is not None else second
+
+
+def _hidden_by(item: tx.Any, k: int) -> str:
+    """Say that step `k` of a sequence hides the axes beyond it."""
+    kind = item.get("type") if isinstance(item, abc.Mapping) else None
+    label = kind if isinstance(kind, str) else "transformation"
+    return (
+        f"The axes cannot be inferred through the {label} at index {k} of "
+        f"the enclosing sequence."
+    )
+
+
+def _because(note: tx.Optional[str]) -> str:
+    return "" if note is None else " " + note
+
+
+def _propagate(
+    items: tx.List[tx.Any],
+    fixed: tx.List[Axes],
+    start: Axes,
+    note: tx.Optional[str],
+    forward: bool,
+) -> "tx.Tuple[tx.List[Axes], tx.List[tx.Optional[str]]]":
+    """Carry axes through the steps of a sequence in one direction.
+
+    Returns the axes at every boundary and, where they are not fully known,
+    the reason. A fixed boundary keeps its axes. `start` and `note` seed the
+    first boundary when it is not fixed.
+    """
+    n = len(items)
+    axes: tx.List[Axes] = [None] * (n + 1)
+    notes: tx.List[tx.Optional[str]] = [None] * (n + 1)
+    first = 0 if forward else n
+    if fixed[first] is not None:
+        axes[first] = fixed[first]
+    else:
+        axes[first], notes[first] = start, note
+    for k in range(n) if forward else reversed(range(n)):
+        src, dst = (k, k + 1) if forward else (k + 1, k)
+        if fixed[dst] is not None:
+            axes[dst] = fixed[dst]
+            continue
+        result, hides = _infer(items[k], axes[src], forward)
+        axes[dst] = result
+        if not _named(result):
+            notes[dst] = _hidden_by(items[k], k) if hides else notes[src]
+    return axes, notes
+
+
+def _count_conflict(
+    ahead: tx.List[Axes], behind: tx.List[Axes]
+) -> tx.Optional[int]:
+    """The first boundary where the two passes disagree on the axis count."""
+    for k, (one, other) in enumerate(zip(ahead, behind)):
+        if one is not None and other is not None and len(one) != len(other):
+            return k
+    return None
+
+
+def _boundary(k: int, n: int) -> str:
+    if k == 0:
+        return "before transformation 0"
+    if k == n:
+        return f"after transformation {n - 1}"
+    return f"between transformations {k - 1} and {k}"
+
+
+def _infer(item: tx.Any, axes: Axes, forward: bool) -> "tx.Tuple[Axes, bool]":
+    """Infer the axes on one side of a sequence step from the other side.
+
+    With `forward`, `axes` are the step's input axes and the output axes are
+    returned. Otherwise the input axes are inferred from the output axes.
+    The second value tells whether the step itself hides axis names or the
+    number of axes, as opposed to passing on what was already unknown.
+    """
+    if not isinstance(item, abc.Mapping):
+        return None, True
+    kind = item.get("type")
+    if kind in ("identity", "scale", "translation"):
+        if axes is not None:
+            return list(axes), False
+        vector = item.get(kind)
+        if isinstance(vector, list):
+            return [None] * len(vector), False
+        return None, False
+    if kind == "mapAxis":
+        return _infer_map_axis(item.get("mapAxis"), axes, forward)
+    if kind == "projectAxis":
+        return _infer_project_axis(item, axes, forward)
+    if kind in ("affine", "rotation"):
+        shape = _matrix_shape(item.get(kind), square=kind == "rotation")
+        if shape is None:
+            return None, True
+        n_in, n_out = shape
+        return [None] * (n_out if forward else n_in), True
+    # coordinates, displacements, and nested byDimension, sequence,
+    # bijection or inverseOf: nothing is known without declared axes.
+    return None, True
+
+
+def _infer_map_axis(
+    value: tx.Any, axes: Axes, forward: bool
+) -> "tx.Tuple[Axes, bool]":
+    if isinstance(value, abc.Mapping):
+        # A name mapping says how many outputs there are, but JSON key order
+        # carries no meaning, and the mapping may drop or repeat inputs.
+        return ([None] * len(value), True) if forward else (None, True)
+    if not _is_index(value):
+        return None, True
+    if forward:
+        if axes is None:
+            return [None] * len(value), False
+        return [axes[i] if 0 <= i < len(axes) else None for i in value], False
+    if not is_permutation(value):
+        return None, True
+    if axes is None:
+        return [None] * len(value), False
+    if len(axes) != len(value):
+        return None, False
+    inputs: tx.List[tx.Optional[str]] = [None] * len(value)
+    for k, i in enumerate(value):
+        inputs[i] = axes[k]
+    return inputs, False
+
+
+def _infer_project_axis(
+    item: Json, axes: Axes, forward: bool
+) -> "tx.Tuple[Axes, bool]":
+    dropped = item.get("droppedInputs") or []
+    created = item.get("createdOutputs") or []
+    if not (_is_index(dropped) and _is_index(created)):
+        return None, True
+    if len(set(dropped)) != len(dropped) or len(set(created)) != len(created):
+        return None, True
+    if axes is None:
+        return None, False
+    # Seen backward, the created outputs are dropped and the dropped inputs
+    # are created.
+    removed, added = (dropped, created) if forward else (created, dropped)
+    n_from = len(axes)
+    n_to = n_from - len(removed) + len(added)
+    if not all(0 <= i < n_from for i in removed):
+        return None, True
+    if not all(0 <= i < n_to for i in added):
+        return None, True
+    kept = iter(axes[i] for i in range(n_from) if i not in removed)
+    result = [None if i in added else next(kept) for i in range(n_to)]
+    return result, bool(added)
+
+
+def _matrix_shape(
+    matrix: tx.Any, square: bool
+) -> "tx.Optional[tx.Tuple[int, int]]":
+    """The input and output axis counts of an inline affine or rotation.
+
+    An affine matrix has one row per output axis and one column per input
+    axis plus the translation column. A last row of ``[0, ..., 0, 1]`` that
+    makes the matrix square is the homogeneous row, which is not an axis. A
+    rotation matrix is square, with one row and one column per axis.
+    """
+    if not isinstance(matrix, list) or not matrix:
+        return None
+    if not all(isinstance(row, list) for row in matrix):
+        return None
+    n_cols = len(matrix[0])
+    if any(len(row) != n_cols for row in matrix):
+        return None
+    n_rows = len(matrix)
+    if square:
+        return (n_rows, n_rows) if n_rows == n_cols else None
+    if n_cols < 2:
+        return None
+    homogeneous = [0] * (n_cols - 1) + [1]
+    if n_rows == n_cols and matrix[-1] == homogeneous:
+        n_rows -= 1
+    return n_cols - 1, n_rows
 
 
 def _as_affine(doc: Json, drop: tx.Iterable[str], matrix: tx.List) -> Json:
