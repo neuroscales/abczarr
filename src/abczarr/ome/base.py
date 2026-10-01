@@ -301,17 +301,17 @@ class OMEMetadata(FlexibleMetadata):
 
         Between the 0.6 previews, a `mapAxis` or `byDimension`
         transformation switches between addressing axes by name and
-        addressing them by index. That translation reads the axes of the
-        coordinate systems the transformation refers to. A transformation
-        that refers to a coordinate system by name therefore converts as
-        part of the multiscale that declares the coordinate system, not on
-        its own. Later versions have no `mapAxis` counterpart for a
-        0.6.dev1 `mapAxis` that drops or repeats an input axis. Such a
-        `mapAxis` becomes an equivalent `affine` that selects the same
-        input coordinates. A `projectAxis`, which first appears in 0.6rc0,
-        becomes an equivalent `affine` in earlier versions in the same way.
-        Neither `affine` turns back into the original transformation when
-        converted again.
+        addressing them by index. Translating between axis names and axis
+        indices needs the axes of the coordinate systems involved. A
+        transformation converted on its own, apart from the multiscale
+        that declares those coordinate systems, raises `ValueError` when
+        that translation is needed. Later versions have no `mapAxis`
+        counterpart for a 0.6.dev1 `mapAxis` that drops or repeats an input
+        axis. Such a `mapAxis` becomes an equivalent `affine` that selects
+        the same input coordinates. A `projectAxis`, which first appears in
+        0.6rc0, becomes an equivalent `affine` in earlier versions in the
+        same way. Neither `affine` turns back into the original
+        transformation when converted again.
 
         Parameters
         ----------
