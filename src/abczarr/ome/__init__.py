@@ -48,19 +48,9 @@ _LAZY = frozenset(
     }
 )
 
-_LAZY_SUBMODULES = frozenset(entry for entry in _LAZY if ":" not in entry)
-
-# Maps each lazily re-exported attribute to the submodule that defines it.
-_LAZY_ATTRIBUTES = {
-    attribute: module
-    for module, _, attribute in (
-        entry.partition(":") for entry in _LAZY if ":" in entry
-    )
-}
-
-__all__ = ["base", *sorted(_LAZY_SUBMODULES)]
+__all__ = ["base", *sorted(entry for entry in _LAZY if ":" not in entry)]
 __all__ += __all_base
-__all__ += sorted(_LAZY_ATTRIBUTES)
+__all__ += sorted(entry.partition(":")[2] for entry in _LAZY if ":" in entry)
 
 if tx.TYPE_CHECKING:
     from . import (  # noqa: F401
@@ -88,17 +78,20 @@ if tx.TYPE_CHECKING:
 
 
 def __getattr__(name: str) -> tx.Any:
-    if name in _LAZY_SUBMODULES:
+    if ":" not in name and name in _LAZY:
         # Importing a submodule also binds it as an attribute of this
         # package, so later lookups never reach this function again.
         return importlib.import_module(f"{__name__}.{name}")
-    if name in _LAZY_ATTRIBUTES:
-        module = importlib.import_module(
-            f"{__name__}.{_LAZY_ATTRIBUTES[name]}"
-        )
-        value = getattr(module, name)
-        globals()[name] = value
-        return value
+    for entry in _LAZY:
+        module, colon, attribute = entry.partition(":")
+        if colon and attribute == name:
+            value = getattr(
+                importlib.import_module(f"{__name__}.{module}"), name
+            )
+            # Caching the attribute in the package namespace means later
+            # lookups never reach this function again.
+            globals()[name] = value
+            return value
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
