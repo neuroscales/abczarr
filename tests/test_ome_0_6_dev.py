@@ -132,10 +132,13 @@ def _doc_params() -> object:
 def test_version_dispatches_to_its_package(version: str) -> None:
     """The top OME container registers under the version string that
     version's data declares, so a document routes to the right package."""
+    # Version packages are imported lazily, and a package registers its
+    # classes only once it is imported.
+    pkg = _pkg(version)
     match = (("version", VERSIONS[version]),)
     registered = base.OME._registry()[match]
     assert registered.__module__ == f"abczarr.ome.{version}.ome"
-    assert _pkg(version).version.VERSION == VERSIONS[version]
+    assert pkg.version.VERSION == VERSIONS[version]
 
 
 @pytest.mark.parametrize(("version", "name"), list(_xform_params()))
