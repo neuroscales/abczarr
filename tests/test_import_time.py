@@ -113,11 +113,13 @@ def test_ome_lazy_names_match_their_modules() -> None:
     submodules export, and all of them resolve."""
     import abczarr.ome as ome
 
-    expected = {}
-    for module in ("config", "pyramid"):
-        for name in getattr(ome, module).__all__:
-            expected[name] = module
-    assert ome._LAZY_ATTRIBUTES == expected
+    expected = {
+        f"{module}:{name}"
+        for module in ("config", "pyramid")
+        for name in getattr(ome, module).__all__
+    }
+    assert {entry for entry in ome._LAZY if ":" in entry} == expected
+    assert {entry for entry in ome._LAZY if ":" not in entry} == set(_OME_LAZY)
     for name in ome.__all__:
         assert hasattr(ome, name), name
         assert name in dir(ome), name

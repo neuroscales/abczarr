@@ -1,21 +1,3 @@
-__all__ = [
-    "base",
-    "config",
-    "pyramid",
-    "schemas",
-    "v0_1",
-    "v0_2",
-    "v0_3",
-    "v0_4",
-    "v0_5",
-    "v0_6",
-    "v0_6dev1",
-    "v0_6dev2",
-    "v0_6dev3",
-    "v0_6dev4",
-    "v0_6rc0",
-]
-
 # stdlib
 import importlib
 
@@ -37,21 +19,48 @@ from .base import __all__ as __all_base
 # `config` and `pyramid` are lazy too: `config` imports the latest version
 # package, and `pyramid` imports `abczarr.abc.sync`, which is itself still
 # being imported when this package is first loaded through `abczarr.ome.node`.
-_LAZY_SUBMODULES = frozenset(name for name in __all__ if name != "base")
+#
+# An entry without a colon names a lazy submodule. A "module:attribute" entry
+# names an attribute of that submodule, re-exported here on first access.
+# `tests/test_import_time.py` checks that the attributes listed for `config`
+# and `pyramid` match those modules' own `__all__`.
+_LAZY = frozenset(
+    {
+        "config",
+        "pyramid",
+        "schemas",
+        "v0_1",
+        "v0_2",
+        "v0_3",
+        "v0_4",
+        "v0_5",
+        "v0_6",
+        "v0_6dev1",
+        "v0_6dev2",
+        "v0_6dev3",
+        "v0_6dev4",
+        "v0_6rc0",
+        "config:ImageConfig",
+        "config:axis",
+        "pyramid:downsample_array",
+        "pyramid:create_pyramid",
+        "pyramid:default_levels",
+    }
+)
 
-# The names that `config` and `pyramid` export, re-exported here on first
-# access. `tests/test_import_time.py` checks that these lists match the
-# modules' own `__all__`.
+_LAZY_SUBMODULES = frozenset(entry for entry in _LAZY if ":" not in entry)
+
+# Maps each lazily re-exported attribute to the submodule that defines it.
 _LAZY_ATTRIBUTES = {
-    "ImageConfig": "config",
-    "axis": "config",
-    "downsample_array": "pyramid",
-    "create_pyramid": "pyramid",
-    "default_levels": "pyramid",
+    attribute: module
+    for module, _, attribute in (
+        entry.partition(":") for entry in _LAZY if ":" in entry
+    )
 }
 
+__all__ = ["base", *sorted(_LAZY_SUBMODULES)]
 __all__ += __all_base
-__all__ += list(_LAZY_ATTRIBUTES)
+__all__ += sorted(_LAZY_ATTRIBUTES)
 
 if tx.TYPE_CHECKING:
     from . import (  # noqa: F401
