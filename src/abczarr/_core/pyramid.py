@@ -7,11 +7,15 @@ import logging
 import math
 
 # dependencies
-import dask.array as da
 import typing_extensions as tx
 
 # locals
 from . import typing as tz
+
+if tx.TYPE_CHECKING:
+    # dask.array is slow to import, so it is only imported for annotations
+    # here and inside the function that computes on it.
+    import dask.array as da
 
 # logger
 logger = logging.getLogger(__name__)
@@ -88,11 +92,11 @@ def next_level_shape(
 
 
 def compute_next_level(
-    arr: da.Array,
+    arr: "da.Array",
     ndim: int,
     no_pyramid_axis: tx.Optional[int] = None,
-    window_func: tx.Callable = da.nanmean,
-) -> da.Array:
+    window_func: tx.Optional[tx.Callable] = None,
+) -> "da.Array":
     """Downsample a dask array by one pyramid level.
 
     The last `ndim` dimensions of `arr` are the pyramid dimensions. Any
@@ -111,9 +115,10 @@ def compute_next_level(
     no_pyramid_axis : int or None
         A pyramid-dimension index, in `range(ndim)`, to leave
         undownsampled. `None` downsamples every pyramid dimension.
-    window_func : callable
+    window_func : callable, optional
         The reduction applied within each downsampling window, such as
-        `dask.array.mean` or `dask.array.median`.
+        `dask.array.mean` or `dask.array.median`. The default, `None`,
+        applies `dask.array.nanmean`.
 
     Returns
     -------
@@ -122,6 +127,11 @@ def compute_next_level(
         Each pyramid dimension of length ``n`` becomes ``ceil(n / 2)``,
         except the one named by `no_pyramid_axis`, which is unchanged.
     """
+    import dask.array as da
+
+    if window_func is None:
+        window_func = da.nanmean
+
     # The pyramid dimensions are the last `ndim` axes of `arr`. Anything
     # before them is a leading, non-pyramid dimension.
     start = arr.ndim - ndim
