@@ -23,6 +23,7 @@ from abczarr._core.auto.attrs import autodefine, field
 from abczarr._core.metadata import register_subclass
 from abczarr._core.rfc2119 import Optional, Recommended, Required
 
+from .._datasets06 import ToDatasetTransformation
 from .._transforms06 import check_permutation
 from ..base import OMEMetadata
 
@@ -268,3 +269,8 @@ class ByDimension(CoordinateTransformation):
     type: Required[tx.Literal["byDimension"]]
     transformations: Required[tx.List[Transformation]]
     """The transformations to combine."""
+
+
+DatasetTransformation = tx.Annotated[
+    CoordinateTransformation, ToDatasetTransformation(("scale", "identity"))
+]

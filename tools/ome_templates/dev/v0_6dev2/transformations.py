@@ -26,6 +26,7 @@ from abczarr._core.metadata import register_subclass
 from abczarr._core.rfc2119 import Optional, Required
 
 # locals
+from .._datasets06 import ToDatasetTransformation
 from .._transforms06 import check_permutation
 from ..base import OMEMetadata
 
@@ -265,3 +266,9 @@ class Coordinates(CoordinateTransformation):
 
     interpolation: Optional[Interpolation]
     """How to sample the array between its own points. Optional."""
+
+
+# The single coordinate transformation a multiscale dataset carries.
+DatasetTransformation = tx.Annotated[
+    CoordinateTransformation, ToDatasetTransformation(("scale",))
+]

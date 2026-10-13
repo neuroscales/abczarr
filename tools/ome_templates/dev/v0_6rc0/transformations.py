@@ -26,6 +26,7 @@ from abczarr._core.metadata import register_subclass
 from abczarr._core.rfc2119 import Optional, Recommended, Required
 
 # locals
+from .._datasets06 import ToDatasetTransformation
 from .._transforms06 import check_permutation
 from ..base import OMEMetadata
 
@@ -291,3 +292,9 @@ class ByDimension(CoordinateTransformation):
     type: Required[tx.Literal["byDimension"]]
     transformations: Required[tx.List[Transformation]]
     """The transformations to combine."""
+
+
+# The single coordinate transformation a multiscale dataset carries.
+DatasetTransformation = tx.Annotated[
+    CoordinateTransformation, ToDatasetTransformation(("scale", "identity"))
+]

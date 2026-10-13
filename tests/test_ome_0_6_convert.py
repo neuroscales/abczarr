@@ -53,6 +53,9 @@ def _load(suffix: str, name: str) -> dict:
 
 def _multiscale(version: str, systems: list, transforms: list) -> tx.Any:
     """A multiscale declaring `systems` and carrying `transforms`."""
+    # A scale of ones is a dataset transformation every 0.6 version allows.
+    # An identity is not: 0.6.dev2 rejects it.
+    ones = [1.0] * len(systems[0]["axes"])
     return _pkg(version).Multiscale.from_json(
         {
             "coordinateSystems": systems,
@@ -62,7 +65,8 @@ def _multiscale(version: str, systems: list, transforms: list) -> tx.Any:
                     "path": "0",
                     "coordinateTransformations": [
                         {
-                            "type": "identity",
+                            "type": "scale",
+                            "scale": ones,
                             "input": {"path": "0"},
                             "output": {"name": systems[0]["name"]},
                         }

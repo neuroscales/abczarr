@@ -136,6 +136,8 @@ def test_05_multiscale_without_a_name_uses_a_default_system_name() -> None:
 
 
 def _affine_multiscale_06() -> object:
+    # A dataset may only carry a scale, an identity or a scale-and-translation
+    # sequence, so the affine sits on the multiscale itself.
     return v0_6rc0.Multiscale.from_json(
         {
             "coordinateSystems": [{"name": "physical", "axes": _AXES}],
@@ -144,12 +146,18 @@ def _affine_multiscale_06() -> object:
                     "path": "0",
                     "coordinateTransformations": [
                         {
-                            "type": "affine",
-                            "affine": [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+                            "type": "scale",
+                            "scale": [2.0, 2.0],
                             "input": {"path": "0"},
                             "output": {"name": "physical"},
                         }
                     ],
+                }
+            ],
+            "coordinateTransformations": [
+                {
+                    "type": "affine",
+                    "affine": [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
                 }
             ],
         }
@@ -161,10 +169,13 @@ def test_affine_is_dropped_silently_under_lossy() -> None:
     with warnings.catch_warnings():
         warnings.simplefilter("error")  # any warning fails the test
         reduced = m.to_version("0.5", policy="lossy")
-    # a dataset with nothing representable falls back to an identity scale
-    (scale,) = reduced.datasets[0].coordinateTransformations
+    # a transform list with nothing representable falls back to an identity
+    # scale, and the dataset's own scale is kept
+    (scale,) = reduced.coordinateTransformations
     assert scale.type == "scale"
     assert scale.scale == [1.0, 1.0]
+    (scale,) = reduced.datasets[0].coordinateTransformations
+    assert scale.scale == [2.0, 2.0]
 
 
 def test_affine_warns_once_under_warn() -> None:
