@@ -26,6 +26,7 @@ from abczarr._core.metadata import register_subclass
 from abczarr._core.rfc2119 import Optional, Required
 
 # locals
+from .._transforms06 import check_permutation
 from ..base import OMEMetadata
 
 # typing
@@ -98,11 +99,13 @@ class MapAxis(CoordinateTransformation):
     """Permutes axes without changing any coordinate values."""
 
     type: Required[tx.Literal["mapAxis"]]
-    mapAxis: Required[tx.List[int]]
+    mapAxis: Required[tx.List[int]] = field(validator=check_permutation)
     """
     One entry per output axis, giving the index of the input axis
     whose values that output axis carries. The entries form a
-    permutation of the input axis indices.
+    permutation of the input axis indices. A list that repeats an index,
+    or that holds an index outside the range 0 to `len(mapAxis) - 1`,
+    raises `ValueError`.
     """
 
 

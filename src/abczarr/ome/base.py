@@ -358,7 +358,9 @@ class OMEMetadata(FlexibleMetadata):
             transformation. A `byDimension` whose transformations do not
             write every output axis exactly once also raises this error.
             So does a `mapAxis` or `byDimension` that refers to an axis its
-            coordinate system does not have.
+            coordinate system does not have. An index-list `mapAxis` whose
+            length differs from the number of input axes also raises this
+            error, because such a list is not a permutation of those axes.
         UnsupportedConversion
             If `policy` is ``"strict"`` and a field or transformation
             cannot be represented in `version`.
