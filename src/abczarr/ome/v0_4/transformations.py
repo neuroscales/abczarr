@@ -37,7 +37,7 @@ class Translation(CoordinateTransformation):
     """An offset, one value per axis, in the axes' physical units."""
 
     type: Required[tx.Literal["translation"]]
-    translation: Required[tx.List[float]]
+    translation: Required[tx.List[tx.Union[float, int]]]
     """The offset, one number per axis."""
 
 
@@ -53,5 +53,5 @@ class Scale(CoordinateTransformation):
     """
 
     type: Required[tx.Literal["scale"]]
-    scale: Required[tx.List[float]]
+    scale: Required[tx.List[tx.Union[float, int]]]
     """The scale factor, one number per axis."""
