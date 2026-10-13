@@ -151,19 +151,67 @@ def test_dev1_drop_and_duplicate_become_selection_affines(
     ]
 
 
-@pytest.mark.parametrize("version", ["0.6.dev2", "0.6.dev4", "0.6"])
-def test_dev3_non_permutation_indices_become_affines(version: str) -> None:
-    # The dev3 example writes the dev1 projections as index lists, which
-    # its own schema rejects. Every version from dev2 on requires a
-    # permutation, so the projections become the equivalent affines.
-    ms = _from_example("v0_6dev3", "mapAxis2").to_version(version)
-    down, up = _xforms(ms)
-    assert down["affine"] == [[0.0, 1.0, 0.0]]
-    assert up["affine"] == [
-        [0.0, 1.0, 0.0],
-        [0.0, 1.0, 0.0],
-        [1.0, 0.0, 0.0],
-    ]
+def test_dev3_non_permutation_example_is_rejected() -> None:
+    # The upstream dev3 example writes the dev1 projections as index lists,
+    # which its own schema rejects. From dev2 on, `mapAxis` must be a
+    # permutation, so the model refuses to read it.
+    with pytest.raises(ValueError) as info:
+        _from_example("v0_6dev3", "mapAxis2")
+    # The multiscale reports the transformation it could not read, and
+    # chains the error raised by the `mapAxis` itself.
+    assert "not a permutation" in str(info.value.__cause__)
+
+
+@pytest.mark.parametrize("version", LATER_THAN_DEV1)
+@pytest.mark.parametrize(
+    "index",
+    [[0, 0], [1, 1, 0], [-1, 0], [0, 2], [1], [2, 0, 1, 4]],
+    ids=["repeat", "repeat3", "negative", "too-large", "short", "gap"],
+)
+def test_index_mapaxis_must_be_a_permutation(
+    version: str, index: tx.List[int]
+) -> None:
+    cls = _pkg(version).transformations.CoordinateTransformation
+    with pytest.raises(ValueError, match="not a permutation"):
+        cls.from_json({"type": "mapAxis", "mapAxis": index})
+    with pytest.raises(ValueError, match="not a permutation"):
+        _pkg(version).transformations.MapAxis(mapAxis=index)
+
+
+@pytest.mark.parametrize("version", LATER_THAN_DEV1)
+@pytest.mark.parametrize("index", [[], [0], [1, 0], [2, 0, 1]])
+def test_index_mapaxis_accepts_a_permutation(
+    version: str, index: tx.List[int]
+) -> None:
+    cls = _pkg(version).transformations.CoordinateTransformation
+    t = cls.from_json({"type": "mapAxis", "mapAxis": index})
+    assert t.mapAxis == index
+    assert cls.from_json(t.to_json()) == t
+
+
+def test_dev1_mapaxis_may_still_drop_and_repeat_axes() -> None:
+    cls = _pkg("0.6.dev1").transformations.CoordinateTransformation
+    t = cls.from_json({"type": "mapAxis", "mapAxis": {"z": "b", "y": "b"}})
+    assert t.mapAxis == {"z": "b", "y": "b"}
+
+
+def test_index_mapaxis_with_too_few_input_axes_raises() -> None:
+    # [1, 0] is a permutation of its own indices, but the input coordinate
+    # system has three axes, so it is not a permutation of the input axes.
+    ms = _multiscale(
+        "0.6.dev3",
+        [_system("in", "a", "b", "c"), _system("out", "x", "y")],
+        [
+            {
+                "type": "mapAxis",
+                "mapAxis": [1, 0],
+                "input": "in",
+                "output": "out",
+            }
+        ],
+    )
+    with pytest.raises(ValueError, match="not a permutation of the input"):
+        ms.to_version("0.6.dev4")
 
 
 def test_mapaxis_needs_every_output_axis() -> None:

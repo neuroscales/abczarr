@@ -107,3 +107,55 @@ def test_unset_recommended_object_is_omitted() -> None:
     assert set(out) == {"axes", "datasets", "version"}
     assert not _has_missing(out)
     json.dumps(out)
+
+
+# A document that mixes integers and floats in every numeric field that
+# used to be coerced to float: scale, translation and the omero window.
+# Keys are in the order to_json writes them, so the round trip can be
+# compared as text.
+_MIXED_NUMBERS_IMAGE = {
+    "version": "0.4",
+    "multiscales": [{
+        "axes": [{"name": "z", "type": "space"},
+                 {"name": "y", "type": "space"},
+                 {"name": "x", "type": "space"}],
+        "datasets": [{"path": "0", "coordinateTransformations": [
+            {"type": "scale", "scale": [1, 2, 2.5]},
+            {"type": "translation", "translation": [0, 0.5, 1]},
+        ]}],
+        "version": "0.4",
+    }],
+    "omero": {"channels": [{
+        "color": "FF0000",
+        "window": {"min": 0, "max": 65535, "start": 0.5, "end": 4095},
+    }], "version": "0.4"},
+}
+
+
+def test_to_json_keeps_integers_as_integers() -> None:
+    """An untouched read/write round trip is byte-identical: integers read
+    from JSON are written back as integers, and floats stay floats."""
+    from abczarr.ome import v0_4
+
+    text = json.dumps(_MIXED_NUMBERS_IMAGE)
+    out = v0_4.OME.from_json(json.loads(text)).to_json()
+    assert json.dumps(out) == text
+    scale = out["multiscales"][0]["datasets"][0][
+        "coordinateTransformations"][0]["scale"]
+    assert [type(v) for v in scale] == [int, int, float]
+
+
+@pytest.mark.parametrize("version", ["v0_4", "v0_5", "v0_6"])
+def test_scale_keeps_ints_and_converts_other_numbers_to_float(
+    version: str,
+) -> None:
+    """A Python int is kept, a float stays a float, and a non-builtin
+    number such as numpy.float32 becomes a float without truncation."""
+    import importlib
+
+    import numpy as np
+
+    mod = importlib.import_module(f"abczarr.ome.{version}.transformations")
+    scale = mod.Scale(scale=[2, 0.5, np.float32(0.25)]).scale
+    assert list(scale) == [2, 0.5, 0.25]
+    assert [type(v) for v in scale] == [int, float, float]

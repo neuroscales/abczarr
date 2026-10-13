@@ -53,7 +53,11 @@ XFORMS = {
     "v0_6dev2": [
         n for n in _XFORMS_PRE if n not in ("mapAxis1", "mapAxis2")
     ],
-    "v0_6dev3": [n for n in _XFORMS_PRE if n != "inverseOf"],
+    # The dev3 `mapAxis2` example writes index lists that are not
+    # permutations, which its own schema and the model both reject.
+    "v0_6dev3": [
+        n for n in _XFORMS_PRE if n not in ("inverseOf", "mapAxis2")
+    ],
     # dev4 completes the input/output string->object overhaul: a transform's
     # `input`/`output` is a coordinate-system object, not a name string. Its
     # `mapAxis` examples still carry the transitional string form, so -- like

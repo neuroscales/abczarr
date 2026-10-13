@@ -25,6 +25,7 @@ from abczarr._core.metadata import register_subclass
 from abczarr._core.rfc2119 import Optional, Required
 
 from .._datasets06 import ToDatasetTransformation
+from .._transforms06 import check_permutation
 from ..base import OMEMetadata
 
 Interpolation = tx.Union[tx.Literal["nearest", "linear", "bspline-cubic"], str]
@@ -96,11 +97,13 @@ class MapAxis(CoordinateTransformation):
     """Permutes axes without changing any coordinate values."""
 
     type: Required[tx.Literal["mapAxis"]]
-    mapAxis: Required[tx.List[int]]
+    mapAxis: Required[tx.List[int]] = field(validator=check_permutation)
     """
     One entry per output axis, giving the index of the input axis
     whose values that output axis carries. The entries form a
-    permutation of the input axis indices.
+    permutation of the input axis indices. A list that repeats an index,
+    or that holds an index outside the range 0 to `len(mapAxis) - 1`,
+    raises `ValueError`.
     """
 
 
@@ -110,7 +113,7 @@ class Translation(CoordinateTransformation):
     """Adds a fixed offset to every coordinate, one value per axis."""
 
     type: Required[tx.Literal["translation"]]
-    translation: Optional[tx.List[float]]
+    translation: Optional[tx.List[tx.Union[float, int]]]
     """The offset, given inline, one number per axis. Optional."""
 
     path: Optional[str]
@@ -127,7 +130,7 @@ class Scale(CoordinateTransformation):
     """Multiplies every coordinate by a per-axis factor."""
 
     type: Required[tx.Literal["scale"]]
-    scale: Optional[tx.List[float]]
+    scale: Optional[tx.List[tx.Union[float, int]]]
     """The factor, given inline, one number per axis. Optional."""
 
     path: Optional[str]
