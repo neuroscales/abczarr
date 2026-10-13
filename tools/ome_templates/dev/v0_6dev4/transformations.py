@@ -113,7 +113,7 @@ class Translation(CoordinateTransformation):
     """Adds a fixed offset to every coordinate, one value per axis."""
 
     type: Required[tx.Literal["translation"]]
-    translation: Optional[tx.List[float]]
+    translation: Optional[tx.List[tx.Union[float, int]]]
     """The offset, given inline, one number per axis. Optional."""
 
     path: Optional[str]
@@ -130,7 +130,7 @@ class Scale(CoordinateTransformation):
     """Multiplies every coordinate by a per-axis factor."""
 
     type: Required[tx.Literal["scale"]]
-    scale: Optional[tx.List[float]]
+    scale: Optional[tx.List[tx.Union[float, int]]]
     """The factor, given inline, one number per axis. Optional."""
 
     path: Optional[str]
@@ -147,7 +147,7 @@ class Affine(CoordinateTransformation):
     """Applies a linear map and a translation, given as a matrix."""
 
     type: Required[tx.Literal["affine"]]
-    affine: Optional[tx.List[tx.List[float]]]
+    affine: Optional[tx.List[tx.List[tx.Union[float, int]]]]
     """The matrix, given inline. Optional."""
 
     path: Optional[str]
@@ -160,7 +160,7 @@ class Rotation(CoordinateTransformation):
     """Rotates coordinates, given as a matrix."""
 
     type: Required[tx.Literal["rotation"]]
-    rotation: Optional[tx.List[tx.List[float]]]
+    rotation: Optional[tx.List[tx.List[tx.Union[float, int]]]]
     """The matrix, given inline. Optional."""
 
     path: Optional[str]
