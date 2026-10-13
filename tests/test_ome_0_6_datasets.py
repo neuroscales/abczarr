@@ -42,7 +42,7 @@ def _pkg(version: str) -> types.ModuleType:
 
 def _refs(version: str) -> tx.Dict[str, tx.Any]:
     """The dataset's input and output references, spelled for `version`."""
-    if version in ("0.6.dev2", "0.6.dev3"):
+    if version in ("0.6.dev1", "0.6.dev2", "0.6.dev3"):
         return {"input": "0", "output": "physical"}
     return {"input": {"path": "0"}, "output": {"name": "physical"}}
 
@@ -290,11 +290,10 @@ def test_pyramid_level_without_offset_is_a_lone_scale() -> None:
     # A new pyramid level whose offset is zero carries a single scale. A
     # one-step sequence would be rejected by the schema.
     from abczarr.ome import v0_6
-    from abczarr.ome.pyramid import _level_dataset
+    from abczarr.ome.pyramid import _level_dataset, _RefStyle
 
-    doc = _level_dataset(
-        "1", [2.0, 2.0], [0.0, 0.0], (True, {"name": "physical"})
-    )
+    style = _RefStyle("0.6", (True, {"name": "physical"}), {})
+    doc = _level_dataset("1", [2.0, 2.0], [0.0, 0.0], style)
     assert doc["coordinateTransformations"] == [
         {
             "type": "scale",
