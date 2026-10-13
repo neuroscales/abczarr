@@ -22,19 +22,19 @@ class Channel(OMEMetadata):
     class Window(OMEMetadata):
         """The intensity range a channel's color is mapped over."""
 
-        min: Required[float]
+        min: Required[tx.Union[float, int]]
         """The lowest value the channel's data can take."""
 
-        max: Required[float]
+        max: Required[tx.Union[float, int]]
         """The highest value the channel's data can take."""
 
-        start: Required[float]
+        start: Required[tx.Union[float, int]]
         """
         The value a viewer should render at zero intensity. This may
         narrow the range `min` and `max` bound.
         """
 
-        end: Required[float]
+        end: Required[tx.Union[float, int]]
         """
         The value a viewer should render at full intensity. This may
         narrow the range `min` and `max` bound.
