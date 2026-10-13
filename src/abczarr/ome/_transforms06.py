@@ -49,6 +49,9 @@ from collections import abc
 # dependencies
 import typing_extensions as tx
 
+# core
+from abczarr._core.rfc2119 import MISSING
+
 #: The 0.6 versions, oldest to newest.
 CHAIN = ("0.6.dev1", "0.6.dev2", "0.6.dev3", "0.6.dev4", "0.6rc0", "0.6")
 
@@ -121,6 +124,26 @@ def convert(
 def is_permutation(index: tx.Sequence[tx.Any]) -> bool:
     """Whether `index` lists each of ``0 .. len(index) - 1`` exactly once."""
     return sorted(index) == list(range(len(index)))
+
+
+def check_permutation(
+    instance: tx.Any,  # noqa: ANN401
+    attribute: tx.Any,  # noqa: ANN401
+    value: tx.Any,  # noqa: ANN401
+) -> None:
+    """``attrs`` validator for an index-list ``mapAxis`` (0.6.dev2 onward).
+
+    Raises ``ValueError`` unless `value` lists each of
+    ``0 .. len(value) - 1`` exactly once. An unset value passes, so that a
+    missing required field is reported by the usual requirement check.
+    """
+    if value is MISSING or value is None:
+        return
+    if not is_permutation(value):
+        raise ValueError(
+            f"mapAxis {list(value)} is not a permutation: it must list "
+            f"each of the indices 0 to {len(value) - 1} exactly once"
+        )
 
 
 def _selection(rows: tx.Sequence[tx.Optional[int]], n_in: int) -> tx.List:
@@ -286,23 +309,30 @@ class _Step:
         if is_permutation(index) and n_in in (None, len(index)):
             doc["mapAxis"] = index
             return doc
-        # The target requires a permutation. A mapping that drops or repeats
-        # input axes is a pure selection, so an affine expresses it exactly.
-        if n_in is None:
+        if not isinstance(value, abc.Mapping):
+            # An index list comes from 0.6.dev2 onward, where `mapAxis` must
+            # be a permutation of the input axes, so there is nothing to
+            # convert it to. The model already rejects a list that is not a
+            # permutation of its own indices, which leaves mainly a count
+            # that disagrees with the input coordinate system.
+            if is_permutation(index):
+                reason = (
+                    f"it has {len(index)} entries but the input coordinate "
+                    f"system has {n_in} axes"
+                )
+            else:
+                reason = "it does not list each of its indices exactly once"
             self._fail(
                 "mapAxis",
-                f"mapAxis {index} is not a permutation, so it must become an "
-                f"affine, and the number of input axes that affine needs is "
-                f"not known.{_because(notes[0])}",
+                f"mapAxis {index} is not a permutation of the input axes: "
+                f"{reason}",
             )
-        bad = [i for i in index if not 0 <= i < n_in]
-        if bad:
-            self._fail(
-                "mapAxis",
-                f"mapAxis {index} refers to input axes {bad}, but the input "
-                f"coordinate system has {n_in} axes",
-            )
-        return _as_affine(doc, ("mapAxis",), _selection(index, n_in))
+        # A 0.6.dev1 name mapping that drops or repeats input axes is a pure
+        # selection, so an affine expresses it exactly. The input axes are
+        # known here, because the names were resolved against them.
+        return _as_affine(
+            doc, ("mapAxis",), _selection(index, tx.cast(int, n_in))
+        )
 
     def _indices_from_names(
         self,
