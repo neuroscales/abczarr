@@ -487,14 +487,16 @@ def _level_dataset(
             {"type": "translation", "translation": list(translation)}
         )
     if has_refs:
-        sequence = {
-            "type": "sequence",
-            "input": {"path": path},
-            "transformations": transforms,
-        }  # type: tx.Dict[str, tx.Any]
+        # A 0.6 dataset carries one transformation. A sequence must have
+        # two steps, so a lone scale carries the references itself.
+        if len(transforms) == 1:
+            single = dict(transforms[0])
+        else:
+            single = {"type": "sequence", "transformations": transforms}
+        single["input"] = {"path": path}
         if output is not None:
-            sequence["output"] = output
-        return {"path": path, "coordinateTransformations": [sequence]}
+            single["output"] = output
+        return {"path": path, "coordinateTransformations": [single]}
     return {"path": path, "coordinateTransformations": transforms}
 
 

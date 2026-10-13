@@ -462,19 +462,62 @@ DELTAS_STABLE = {
 #                 between them are version-string, description-text and
 #                 ``$ref``-spelling only), so nothing but the version string.
 
+_DATASET_SEQUENCE_DOC = """\
+Each step of the sequence is a `Scale` or a
+[Translation][abczarr.ome.v0_6dev1.transformations.Translation]. The
+specification describes a scale followed by a translation, and abczarr
+writes the steps in that order. A sequence that lists the translation
+first is also accepted.
+"""
+
+_DATASET_TRANSFORMATIONS_DOC_V0_6DEV2 = """\
+The transformation that maps this level's array into a coordinate
+system of the pyramid. Exactly one transformation is given. The
+transformation is either a
+[Scale][abczarr.ome.v0_6dev1.transformations.Scale] or a
+[Sequence][abczarr.ome.v0_6dev1.transformations.Sequence] of two steps.
+""" + _DATASET_SEQUENCE_DOC
+
+_DATASET_TRANSFORMATIONS_DOC_V0_6DEV3 = """\
+The transformation that maps this level's array into a coordinate
+system of the pyramid. Exactly one transformation is given. The
+transformation is a
+[Scale][abczarr.ome.v0_6dev1.transformations.Scale], an
+[Identity][abczarr.ome.v0_6dev1.transformations.Identity], or a
+[Sequence][abczarr.ome.v0_6dev1.transformations.Sequence] of two steps.
+""" + _DATASET_SEQUENCE_DOC
+
 DELTAS_DEV = {
     # dev1 -> dev2
+    #   * a dataset carries exactly one transformation: a scale, or a
+    #     sequence of two scale or translation steps.
     "v0_6dev2": [
         AddModule(
             "transformations",
             _read_template("dev/v0_6dev2/transformations.py"),
         ),
+        AddImport(
+            "images", "from .transformations import DatasetTransformation"
+        ),
+        SetAnn(
+            "images", ("Dataset",), "coordinateTransformations",
+            "Required[tx.Tuple[DatasetTransformation]]",
+        ),
+        SetFieldDoc(
+            "images", ("Dataset",), "coordinateTransformations",
+            _DATASET_TRANSFORMATIONS_DOC_V0_6DEV2,
+        ),
     ],
     # dev2 -> dev3
+    #   * a dataset's transformation may also be an identity.
     "v0_6dev3": [
         AddModule(
             "transformations",
             _read_template("dev/v0_6dev3/transformations.py"),
+        ),
+        SetFieldDoc(
+            "images", ("Dataset",), "coordinateTransformations",
+            _DATASET_TRANSFORMATIONS_DOC_V0_6DEV3,
         ),
         AddModule("ome", _read_template("dev/v0_6dev3/ome.py")),
         AddModule("scenes", _read_template("dev/v0_6dev3/scenes.py")),

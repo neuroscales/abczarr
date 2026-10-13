@@ -178,7 +178,7 @@ from collections import abc
 # dependencies
 import typing_extensions as tx
 
-from abczarr._core.auto.attrs import autodefine, field, fields
+from abczarr._core.auto.attrs import autodefine, evolve, field, fields
 
 # core
 from abczarr._core.metadata import FlexibleMetadata
@@ -186,7 +186,7 @@ from abczarr._core.rfc2119 import MISSING
 from abczarr.errors import UnsupportedConversion
 
 # locals
-from . import _transforms06
+from . import _datasets06, _transforms06
 
 #: How a cross-version conversion treats information the target version
 #: cannot hold.
@@ -311,7 +311,10 @@ class OMEMetadata(FlexibleMetadata):
         the same input coordinates. A `projectAxis`, which first appears in
         0.6rc0, becomes an equivalent `affine` in earlier versions in the
         same way. Neither `affine` turns back into the original
-        transformation when converted again.
+        transformation when converted again. A dataset in 0.6.dev2 cannot
+        carry an `identity`. Converting a dataset to or through 0.6.dev2
+        therefore replaces its `identity` with the equivalent `scale` of
+        ones, which later versions keep as a `scale`.
 
         Parameters
         ----------
@@ -358,7 +361,11 @@ class OMEMetadata(FlexibleMetadata):
             transformation. A `byDimension` whose transformations do not
             write every output axis exactly once also raises this error.
             So does a `mapAxis` or `byDimension` that refers to an axis its
-            coordinate system does not have.
+            coordinate system does not have. The error is also raised for
+            a dataset whose coordinate transformations the target version
+            does not allow. For example, a 0.6.dev1 dataset that lists
+            several transformations cannot be converted to a later 0.6
+            version.
         UnsupportedConversion
             If `policy` is ``"strict"`` and a field or transformation
             cannot be represented in `version`.
@@ -849,6 +856,61 @@ def _by_dimension_child_06(
     return newcls.from_json(doc["transformations"][0])
 
 
+def _dataset_06(d: tx.Any, to_v: str, policy: ConversionPolicy) -> tx.Any:
+    """Convert a 0.6 dataset one step along the 0.6 chain.
+
+    The 0.6 previews disagree on which transformations a dataset may carry.
+    0.6.dev1 allows any list of transformations. Later versions allow
+    exactly one transformation, and only 0.6.dev2 forbids an identity. An
+    identity is therefore replaced by the equivalent scale of ones on the
+    way into 0.6.dev2. Any other dataset that the target version cannot
+    hold raises a ValueError that names the dataset.
+    """
+    from_v = _version_of(type(d))
+    cts = d.coordinateTransformations
+    allowed = _datasets06.TYPES[to_v]
+    if (
+        allowed is not None
+        and "identity" not in allowed
+        and len(cts) == 1
+        and cts[0].type == "identity"
+    ):
+        d = evolve(d, coordinateTransformations=[_identity_as_scale(d)])
+    problem = _datasets06.check_dataset(d.coordinateTransformations, to_v)
+    if problem is not None:
+        raise ValueError(
+            f"cannot convert dataset {d.path!r} from OME {from_v} to "
+            f"{to_v}. {problem}"
+        )
+    return _rebuild(d, _target_class(type(d), to_v), to_v, from_v, policy)
+
+
+def _identity_as_scale(d: tx.Any) -> tx.Any:
+    """The scale of ones equivalent to dataset `d`'s identity.
+
+    The number of axes is read from the coordinate system the identity maps
+    to, which must be declared by the enclosing multiscale.
+    """
+    (identity,) = d.coordinateTransformations
+    from_v = _version_of(type(d))
+    output = identity.output
+    if isinstance(output, abc.Mapping):
+        output = output.get("name")
+    elif isinstance(output, OMEMetadata):
+        output = getattr(output, "name", None)
+    axes = _systems_in_scope().get(output) if isinstance(output, str) else None
+    if axes is None:
+        raise ValueError(
+            f"cannot convert dataset {d.path!r} from OME {from_v}. Its "
+            f"identity transformation must become a scale, and the number "
+            f"of axes of that scale is unknown. The coordinate system the "
+            f"identity maps to is not declared alongside the dataset."
+        )
+    doc = dict(identity.to_json(), type="scale", scale=[1.0] * len(axes))
+    pkg = importlib.import_module(_package(from_v))
+    return pkg.transformations.CoordinateTransformation.from_json(doc)
+
+
 _MIGRATIONS = {
     ("0.3", "0.4"): {"Multiscale": _multiscale_3_to_4},
     ("0.4", "0.3"): {"Multiscale": _multiscale_4_to_3},
@@ -864,6 +926,7 @@ for _a, _b in zip(_transforms06.CHAIN, _transforms06.CHAIN[1:]):
             {
                 "CoordinateTransformation": _transformation_06,
                 "ByDimension.Transformation": _by_dimension_child_06,
+                "Dataset": _dataset_06,
             }
         )
 del _a, _b, _step

@@ -18,7 +18,7 @@ from abczarr._core.rfc2119 import Optional, Recommended, Required
 
 from ..base import OMEMetadata
 from .systems import CoordinateSystem
-from .transformations import CoordinateTransformation
+from .transformations import CoordinateTransformation, DatasetTransformation
 
 
 @autodefine
@@ -31,10 +31,19 @@ class Dataset(OMEMetadata):
     image group.
     """
 
-    coordinateTransformations: Required[tx.List[CoordinateTransformation]]
+    coordinateTransformations: Required[tx.Tuple[DatasetTransformation]]
     """
-    One or more transformations that map this level's own coordinate
-    system into another coordinate system of the pyramid.
+    The transformation that maps this level's array into a coordinate
+    system of the pyramid. Exactly one transformation is given. The
+    transformation is a
+    [Scale][abczarr.ome.v0_6dev3.transformations.Scale], an
+    [Identity][abczarr.ome.v0_6dev3.transformations.Identity], or a
+    [Sequence][abczarr.ome.v0_6dev3.transformations.Sequence] of two steps.
+    Each step of the sequence is a `Scale` or a
+    [Translation][abczarr.ome.v0_6dev3.transformations.Translation]. The
+    specification describes a scale followed by a translation, and abczarr
+    writes the steps in that order. A sequence that lists the translation
+    first is also accepted.
     """
 
 

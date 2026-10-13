@@ -23,6 +23,7 @@ from abczarr._core.auto.attrs import autodefine, field
 from abczarr._core.metadata import register_subclass
 from abczarr._core.rfc2119 import Optional, Required
 
+from .._datasets06 import ToDatasetTransformation
 from ..base import OMEMetadata
 
 Interpolation = tx.Union[tx.Literal["nearest", "linear", "bspline-cubic"], str]
@@ -247,3 +248,8 @@ class ByDimension(CoordinateTransformation):
     type: Required[tx.Literal["byDimension"]]
     transformations: Required[tx.List[Transformation]]
     """The transformations to combine."""
+
+
+DatasetTransformation = tx.Annotated[
+    CoordinateTransformation, ToDatasetTransformation(("scale", "identity"))
+]
