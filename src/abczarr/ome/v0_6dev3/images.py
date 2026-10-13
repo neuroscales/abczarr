@@ -44,6 +44,9 @@ class Dataset(OMEMetadata):
     specification describes a scale followed by a translation, and abczarr
     writes the steps in that order. A sequence that lists the translation
     first is also accepted.
+    The transformation names its `input` and its `output` with strings.
+    The `input` string is the path of this level's array, and the `output`
+    string is the name of a coordinate system of the pyramid.
     """
 
 

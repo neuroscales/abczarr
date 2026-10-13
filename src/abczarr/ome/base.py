@@ -316,6 +316,17 @@ class OMEMetadata(FlexibleMetadata):
         therefore replaces its `identity` with the equivalent `scale` of
         ones, which later versions keep as a `scale`.
 
+        Up to 0.6.dev3, a transformation names its `input` and its `output`
+        with strings. From 0.6.dev4 on, it uses objects. On a dataset, the
+        `input` string becomes `{"path": ...}` and the `output` string
+        becomes `{"name": ...}`. On a multiscale or a scene, both strings
+        are coordinate system names and become `{"name": ...}`. Converting
+        back replaces each object with its string when the target version
+        requires a string. A 0.5 multiscale-level transformation maps the
+        datasets' coordinate system onto a second coordinate system with
+        the same axes. The name of that second system is the name of the
+        first one followed by ``_transformed``.
+
         Parameters
         ----------
         version : str
@@ -367,7 +378,14 @@ class OMEMetadata(FlexibleMetadata):
             The error is also raised for a dataset whose coordinate
             transformations the target version does not allow. For example,
             a 0.6.dev1 dataset that lists several transformations cannot be
-            converted to a later 0.6 version.
+            converted to a later 0.6 version. A reference that the target
+            version cannot spell also raises this error. Examples are a
+            dataset output that carries a path, converted to a version
+            that names the output with a string, and a string reference on
+            a transformation converted on its own to 0.6.dev4 or later.
+            The error is also raised when the target version requires a
+            dataset reference that the source omits, and the enclosing
+            multiscale does not declare exactly one coordinate system.
         UnsupportedConversion
             If `policy` is ``"strict"`` and a field or transformation
             cannot be represented in `version`.
@@ -486,10 +504,13 @@ def _rebuild(
     to_v: str,
     from_v: str,
     policy: ConversionPolicy,
+    converted: tx.Optional[tx.Mapping[str, tx.Any]] = None,
 ) -> tx.Any:
+    # `converted` holds fields the caller has already converted to `to_v`.
     # An object that declares coordinate systems (a 0.6 multiscale) makes
     # their axes available to the transformations nested inside it, which
     # need them to translate between axis names and axis indices.
+    converted = converted or {}
     systems = getattr(source, "coordinateSystems", None)
     token = None
     if isinstance(systems, list):
@@ -501,6 +522,8 @@ def _rebuild(
                 continue
             if f.name == "version":
                 kwargs["version"] = to_v
+            elif f.name in converted:
+                kwargs[f.name] = converted[f.name]
             elif hasattr(source, f.name):
                 kwargs[f.name] = _migrate(
                     getattr(source, f.name), from_v, to_v, policy
@@ -583,17 +606,23 @@ def _carry(
 # `[Scale]` / `[Scale, Translation]` on each dataset. The 0.6 (RFC-5)
 # model drops `axes`, carries one or more named `coordinateSystems`, and
 # gives each dataset a list of general coordinate transformations. By
-# convention a dataset's transform maps the array's own (intrinsic)
-# system -- referenced by `input={"path": <dataset.path>}` -- onto a
-# named output system, `output={"name": <system>}`.
+# convention a dataset's transform maps the array, referenced by its path
+# in `input`, onto a coordinate system named in `output`.
 #
-# The migration is registered at the 0.5 <-> 0.6.dev1 step. In 0.6.dev1 a
-# transform's `input`/`output` are still free JSON (the typed `Space`
-# object arrives at 0.6.dev4), so they are written here as bare dicts;
-# the per-field converters coerce them to `Space` as the object walks up
-# the dev chain. Going the other way, `_space_to_json` turns a `Space`
-# back into a dict at the 0.6.dev4 -> 0.6.dev3 step, so by 0.6.dev1 the
-# references are dicts again.
+# The migration is registered at the 0.5 <-> 0.6.dev1 step. The 0.6.dev1
+# schema spells both references as strings: `input` is the dataset path
+# and `output` is the system name. `_dataset_06` rewrites them into the
+# `{"path": ...}` and `{"name": ...}` objects of 0.6.dev4 and later as the
+# object walks up the dev chain, and back into strings on the way down.
+#
+# A 0.5 multiscale-level transform is applied after the dataset
+# transforms. In 0.6 every multiscale-level transform needs an `input` and
+# an `output` system, so the 0.5 one maps the datasets' system onto a
+# second system with the same axes, named by `_global_system_name`. Two
+# 0.5 transforms (a scale and a translation) become one `sequence`,
+# because a 0.6 list of transforms between the same two systems would
+# offer alternatives rather than compose them. The reverse step composes
+# the multiscale-level transforms again, so the round trip is exact.
 
 
 def _multiscale_5_to_6(
@@ -603,28 +632,25 @@ def _multiscale_5_to_6(
 
     Synthesize one output coordinate system from the 0.5 axes, and rewrite
     each dataset's scale/translation into a 0.6 transform mapping the
-    array's intrinsic system onto that named system.
+    array onto that named system.
     """
     dev = importlib.import_module(_package(to_v))
     # The output system's name is the multiscale's own name if it has one,
     # else a plain default. It is independent of the multiscale `name`
     # field, which is carried across separately.
     system_name = ms.name if isinstance(ms.name, str) else "physical"
+    axes = [a.to_json() for a in ms.axes]
 
     doc: tx.Dict[str, tx.Any] = {
-        "coordinateSystems": [
-            {"name": system_name, "axes": [a.to_json() for a in ms.axes]}
-        ],
+        "coordinateSystems": [{"name": system_name, "axes": axes}],
         "datasets": [_dataset_5_to_6(d, system_name) for d in ms.datasets],
     }
-    # A multiscale-level transform applies globally, to no single pair of
-    # systems, so it is carried across without an input/output reference
-    # (both are optional in 0.6); the reverse step reads it back the same
-    # way, keeping the round trip exact.
     if _is_set(ms.coordinateTransformations):
-        doc["coordinateTransformations"] = [
-            _transform_5_to_6(t) for t in ms.coordinateTransformations
-        ]
+        global_name = _global_system_name(system_name)
+        doc["coordinateSystems"].append({"name": global_name, "axes": axes})
+        transform = _transforms_5_to_6(ms.coordinateTransformations)
+        transform.update(input=system_name, output=global_name)
+        doc["coordinateTransformations"] = [transform]
     if isinstance(ms.name, str):
         doc["name"] = ms.name
     if isinstance(ms.type, str):
@@ -634,27 +660,32 @@ def _multiscale_5_to_6(
     return dev.images.Multiscale.from_json(doc)
 
 
+def _global_system_name(system_name: str) -> str:
+    """The name of the system a 0.5 multiscale-level transform maps onto."""
+    return system_name + "_transformed"
+
+
 def _dataset_5_to_6(d: tx.Any, system_name: str) -> tx.Dict[str, tx.Any]:
-    """One 0.5 dataset -> one 0.6 dataset dict.
+    """One 0.5 dataset -> one 0.6.dev1 dataset dict.
 
     A lone scale becomes a single 0.6 `scale`; a scale followed by a
     translation becomes a `sequence` of the two, matching the RFC-5 corpus.
+    The references are the 0.6.dev1 strings: the dataset path and the
+    system name.
     """
-    refs = {"input": {"path": d.path}, "output": {"name": system_name}}
-    cts = d.coordinateTransformations
-    if len(cts) == 1:
-        transform = dict(_transform_5_to_6(cts[0]), **refs)
-    else:
-        scale, translation = cts
-        transform = {
-            "type": "sequence",
-            "transformations": [
-                _transform_5_to_6(scale),
-                _transform_5_to_6(translation),
-            ],
-            **refs,
-        }
+    transform = _transforms_5_to_6(d.coordinateTransformations)
+    transform.update(input=d.path, output=system_name)
     return {"path": d.path, "coordinateTransformations": [transform]}
+
+
+def _transforms_5_to_6(cts: tx.Sequence[tx.Any]) -> tx.Dict[str, tx.Any]:
+    """A 0.5 scale, or scale and translation, as one 0.6 transform."""
+    if len(cts) == 1:
+        return _transform_5_to_6(cts[0])
+    return {
+        "type": "sequence",
+        "transformations": [_transform_5_to_6(t) for t in cts],
+    }
 
 
 def _transform_5_to_6(t: tx.Any) -> tx.Dict[str, tx.Any]:
@@ -712,9 +743,8 @@ def _output_system(ms: tx.Any) -> tx.Any:
     name = None
     for d in ms.datasets:
         for t in d.coordinateTransformations:
-            ref = getattr(t, "output", None)
-            if isinstance(ref, abc.Mapping) and "name" in ref:
-                name = ref["name"]
+            name = _ref_name(getattr(t, "output", None))
+            if name is not None:
                 break
         if name is not None:
             break
@@ -826,6 +856,121 @@ def _axis_names(systems: tx.Iterable) -> tx.Dict[str, tx.List[str]]:
     return result
 
 
+# ----------------------------------------------------------------------
+#   within 0.6: the form of the input and output references
+# ----------------------------------------------------------------------
+#
+# Up to 0.6.dev3 a transformation names its `input` and `output` with
+# strings, and from 0.6.dev4 on with `{"name": ...}` or `{"path": ...}`
+# objects. What a string means depends on where the transformation sits:
+#
+# * on a dataset, `input` is the array path and `output` is a coordinate
+#   system name. `_dataset_06` rewrites these references itself.
+# * on a multiscale, both strings are coordinate system names. Going down,
+#   a name-only object becomes its name. An object that also carries a
+#   path is kept in 0.6.dev2 and 0.6.dev3, whose schemas accept it, and
+#   cannot be converted to 0.6.dev1, whose schema requires a string.
+# * on a scene, the 0.6.dev3 schema already requires objects that carry a
+#   name, so a string found there is a coordinate system name, and an
+#   object is kept as it is.
+# * anywhere else, such as a transformation converted on its own, the
+#   meaning of a string is unknown. Converting a string reference to an
+#   object therefore raises a ValueError, and objects are kept as they are.
+
+#: Where the transformation being converted sits: ``"dataset"``,
+#: ``"multiscale"``, ``"scene"``, or ``None`` when it is converted on its
+#: own.
+_PLACE: "contextvars.ContextVar[tx.Optional[str]]" = contextvars.ContextVar(
+    "abczarr_ome_transformation_place", default=None
+)
+
+
+def _object_refs(version: str) -> bool:
+    """Whether `version` spells references as objects rather than strings."""
+    return _datasets06.REFS[version] == _datasets06.OBJECT
+
+
+def _ref_field(ref: tx.Any, key: str) -> tx.Optional[str]:
+    """The `key` (``"name"`` or ``"path"``) of an object reference."""
+    if isinstance(ref, abc.Mapping):
+        value = ref.get(key)
+    elif isinstance(ref, OMEMetadata):
+        value = getattr(ref, key, None)
+    else:
+        value = None
+    return value if isinstance(value, str) else None
+
+
+def _ref_name(ref: tx.Any) -> tx.Optional[str]:
+    """The coordinate system name a reference gives, if any."""
+    return ref if isinstance(ref, str) else _ref_field(ref, "name")
+
+
+def _convert_refs(
+    doc: tx.Dict[str, tx.Any], from_v: str, to_v: str, place: tx.Optional[str]
+) -> tx.Dict[str, tx.Any]:
+    """Rewrite the references of a transformation that is not a dataset's."""
+    if place == "dataset":
+        return doc
+    doc = dict(doc)
+    for side in ("input", "output"):
+        ref = doc.get(side)
+        if isinstance(ref, str) and _object_refs(to_v):
+            if place is None:
+                raise ValueError(
+                    f"cannot convert a {doc.get('type')} transformation "
+                    f"from OME {from_v} to {to_v}. Its {side} {ref!r} must "
+                    f"become an object, and whether the string names a "
+                    f"coordinate system or an array path is known only for "
+                    f"a transformation converted as part of its dataset, "
+                    f"multiscale or scene."
+                )
+            doc[side] = {"name": ref}
+        elif isinstance(ref, abc.Mapping) and not _object_refs(to_v):
+            if place != "multiscale":
+                continue
+            if set(ref) == {"name"} and isinstance(ref["name"], str):
+                doc[side] = ref["name"]
+            elif to_v == "0.6.dev1":
+                raise ValueError(
+                    f"cannot convert a multiscale {doc.get('type')} "
+                    f"transformation from OME {from_v} to {to_v}. Its "
+                    f"{side} {dict(ref)!r} cannot be written as the "
+                    f"coordinate system name that OME {to_v} requires."
+                )
+    return doc
+
+
+def _with_place(
+    place: str, rebuild: tx.Callable[[], tx.Any]
+) -> tx.Any:
+    token = _PLACE.set(place)
+    try:
+        return rebuild()
+    finally:
+        _PLACE.reset(token)
+
+
+def _multiscale_06(
+    ms: tx.Any, to_v: str, policy: ConversionPolicy
+) -> tx.Any:
+    """Convert a 0.6 multiscale one step along the 0.6 chain."""
+    from_v = _version_of(type(ms))
+    newcls = _target_class(type(ms), to_v)
+    return _with_place(
+        "multiscale", lambda: _rebuild(ms, newcls, to_v, from_v, policy)
+    )
+
+
+def _scene_06(scene: tx.Any, to_v: str, policy: ConversionPolicy) -> tx.Any:
+    """Convert a 0.6 scene one step along the 0.6 chain."""
+    from_v = _version_of(type(scene))
+    newcls = _target_class(type(scene), to_v)
+    return _with_place(
+        "scene", lambda: _rebuild(scene, newcls, to_v, from_v, policy)
+    )
+
+
 def _transformation_06(
     t: tx.Any, to_v: str, policy: ConversionPolicy
 ) -> tx.Any:
@@ -838,6 +983,7 @@ def _transformation_06(
         _systems_in_scope(),
         lambda field: _report_loss(policy, field, to_v),
     )
+    doc = _convert_refs(doc, from_v, to_v, _PLACE.get())
     pkg = importlib.import_module(_package(to_v))
     return pkg.transformations.CoordinateTransformation.from_json(doc)
 
@@ -867,6 +1013,11 @@ def _dataset_06(d: tx.Any, to_v: str, policy: ConversionPolicy) -> tx.Any:
     identity is therefore replaced by the equivalent scale of ones on the
     way into 0.6.dev2. Any other dataset that the target version cannot
     hold raises a ValueError that names the dataset.
+
+    The `input` and `output` references are rewritten into the form of the
+    target version: the array path and the coordinate system name as
+    strings up to 0.6.dev3, and as `{"path": ...}` and `{"name": ...}`
+    objects from 0.6.dev4 on.
     """
     from_v = _version_of(type(d))
     cts = d.coordinateTransformations
@@ -878,13 +1029,87 @@ def _dataset_06(d: tx.Any, to_v: str, policy: ConversionPolicy) -> tx.Any:
         and cts[0].type == "identity"
     ):
         d = evolve(d, coordinateTransformations=[_identity_as_scale(d)])
-    problem = _datasets06.check_dataset(d.coordinateTransformations, to_v)
+    problem = _datasets06.check_dataset(
+        d.coordinateTransformations, to_v, refs=False
+    )
     if problem is not None:
         raise ValueError(
             f"cannot convert dataset {d.path!r} from OME {from_v} to "
             f"{to_v}. {problem}"
         )
-    return _rebuild(d, _target_class(type(d), to_v), to_v, from_v, policy)
+    sources = d.coordinateTransformations
+    targets = _with_place(
+        "dataset", lambda: _migrate(sources, from_v, to_v, policy)
+    )
+    targets = type(sources)(
+        _dataset_refs(d, source, target, to_v)
+        for source, target in zip(sources, targets)
+    )
+    return _rebuild(
+        d,
+        _target_class(type(d), to_v),
+        to_v,
+        from_v,
+        policy,
+        converted={"coordinateTransformations": targets},
+    )
+
+
+def _dataset_refs(
+    d: tx.Any, source: tx.Any, target: tx.Any, to_v: str
+) -> tx.Any:
+    """Give `target` the references of `source` in the form of `to_v`.
+
+    `source` is a transformation of dataset `d`, and `target` is the same
+    transformation already converted to `to_v`. A reference that `to_v`
+    requires and `source` lacks is filled in. The input is the dataset path,
+    and the output is the only coordinate system in scope.
+    """
+    from_v = _version_of(type(d))
+    form = _datasets06.REFS[to_v]
+    needed = form != _datasets06.SEQUENCE_STRING or target.type == "sequence"
+    path = source.input if isinstance(source.input, str) else None
+    path = path or _ref_field(source.input, "path")
+    name = _ref_name(source.output)
+    output_path = _ref_field(source.output, "path")
+    if needed and path is None:
+        path = d.path
+    if needed and name is None:
+        name = _only_system(d, from_v, to_v)
+    refs: tx.Dict[str, tx.Any] = {}
+    if form == _datasets06.OBJECT:
+        if path is not None:
+            refs["input"] = {"path": path}
+        if name is not None:
+            refs["output"] = {"name": name}
+            if output_path is not None:
+                refs["output"]["path"] = output_path
+    else:
+        if output_path is not None:
+            raise ValueError(
+                f"cannot convert dataset {d.path!r} from OME {from_v} to "
+                f"{to_v}. Its output refers to the coordinate system "
+                f"{name!r} at path {output_path!r}, and OME {to_v} names the "
+                f"output with a single string."
+            )
+        if path is not None:
+            refs["input"] = path
+        if name is not None:
+            refs["output"] = name
+    return evolve(target, **refs) if refs else target
+
+
+def _only_system(d: tx.Any, from_v: str, to_v: str) -> str:
+    """The name of the only coordinate system in scope of dataset `d`."""
+    names = list(_systems_in_scope())
+    if len(names) == 1:
+        return names[0]
+    raise ValueError(
+        f"cannot convert dataset {d.path!r} from OME {from_v} to {to_v}. "
+        f"OME {to_v} requires the coordinate system that the dataset maps "
+        f"onto, the dataset does not name it, and the enclosing multiscale "
+        f"does not declare exactly one coordinate system."
+    )
 
 
 def _identity_as_scale(d: tx.Any) -> tx.Any:
@@ -895,11 +1120,7 @@ def _identity_as_scale(d: tx.Any) -> tx.Any:
     """
     (identity,) = d.coordinateTransformations
     from_v = _version_of(type(d))
-    output = identity.output
-    if isinstance(output, abc.Mapping):
-        output = output.get("name")
-    elif isinstance(output, OMEMetadata):
-        output = getattr(output, "name", None)
+    output = _ref_name(identity.output)
     axes = _systems_in_scope().get(output) if isinstance(output, str) else None
     if axes is None:
         raise ValueError(
@@ -929,6 +1150,8 @@ for _a, _b in zip(_transforms06.CHAIN, _transforms06.CHAIN[1:]):
                 "CoordinateTransformation": _transformation_06,
                 "ByDimension.Transformation": _by_dimension_child_06,
                 "Dataset": _dataset_06,
+                "Multiscale": _multiscale_06,
+                "Scene": _scene_06,
             }
         )
 del _a, _b, _step

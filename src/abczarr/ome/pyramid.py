@@ -37,6 +37,9 @@ from abczarr._core import typing as tz
 # abc + ome
 from abczarr.abc.sync import ZarrArray, ZarrGroup
 
+# locals
+from . import _datasets06
+
 #: How much each axis shrinks per level. One number applies to every axis. A
 #: sequence gives one factor per axis. A mapping keys a factor by axis index
 #: or dimension name, and a `None` key sets the default for the axes it does
@@ -383,13 +386,14 @@ def _extend_metadata(
     multiscale = _first_multiscale(document)
     datasets = multiscale["datasets"]
     scale, offset, shape = _base_transform(_base_dataset(datasets, source))
+    refs = _RefStyle(document.get("version"), shape, multiscale)
     for level, path in enumerate(paths[1:], start=1):
         level_scale = [s * f**level for s, f in zip(scale, factors)]
         level_offset = [
             o + s * (f**level - 1) / 2
             for o, s, f in zip(offset, scale, factors)
         ]
-        datasets.append(_level_dataset(path, level_scale, level_offset, shape))
+        datasets.append(_level_dataset(path, level_scale, level_offset, refs))
     group.ome = document
 
 
@@ -471,14 +475,73 @@ def _flatten_json(
     return flat, has_refs, output
 
 
+class _RefStyle:
+    """How a new level of a document names its input and output.
+
+    A 0.6 document spells the references in the form its version requires.
+    When the base level of a document of another version carries
+    references, a new level gets a ``{"path": ...}`` input and the base
+    level's output.
+    """
+
+    def __init__(
+        self,
+        version: tx.Any,
+        shape: tx.Tuple[bool, tx.Any],
+        multiscale: tx.Any,
+    ) -> None:
+        self.version = version if version in _datasets06.REFS else None
+        self.has_refs, self.output = shape
+        self.multiscale = multiscale
+
+    @property
+    def single(self) -> bool:
+        """Whether a level carries one transformation with references."""
+        return self.version is not None or self.has_refs
+
+    def refs(self, kind: str, path: str) -> tx.Dict[str, tx.Any]:
+        """The references of a level at `path` whose transform is `kind`."""
+        if self.version is None:
+            refs = {"input": {"path": path}}  # type: tx.Dict[str, tx.Any]
+            if self.output is not None:
+                refs["output"] = self.output
+            return refs
+        form = _datasets06.REFS[self.version]
+        if form == _datasets06.SEQUENCE_STRING and kind != "sequence":
+            if not self.has_refs:
+                return {}
+        output = self.output
+        if form == _datasets06.OBJECT and isinstance(output, _abc.Mapping):
+            return {"input": {"path": path}, "output": dict(output)}
+        return _datasets06.dataset_refs(
+            self.version, "sequence", path, self._system()
+        )
+
+    def _system(self) -> str:
+        """The name of the coordinate system the levels map onto."""
+        if isinstance(self.output, str):
+            return self.output
+        if isinstance(self.output, _abc.Mapping):
+            name = self.output.get("name")
+            if isinstance(name, str):
+                return name
+        systems = self.multiscale.get("coordinateSystems") or []
+        if len(systems) == 1 and isinstance(systems[0].get("name"), str):
+            return systems[0]["name"]
+        raise ValueError(
+            "the base dataset does not name the coordinate system it maps "
+            "onto, and the multiscale does not declare exactly one "
+            "coordinate system"
+        )
+
+
 def _level_dataset(
     path: str,
     scale: tx.Sequence[float],
     translation: tx.Sequence[float],
-    shape: tx.Tuple[bool, tx.Any],
+    style: _RefStyle,
 ) -> tx.Dict[str, tx.Any]:
     """A new level's dataset, in the transform shape the base level used."""
-    has_refs, output = shape
     transforms = [
         {"type": "scale", "scale": list(scale)}
     ]  # type: tx.List[tx.Dict[str, tx.Any]]
@@ -486,16 +549,14 @@ def _level_dataset(
         transforms.append(
             {"type": "translation", "translation": list(translation)}
         )
-    if has_refs:
+    if style.single:
         # A 0.6 dataset carries one transformation. A sequence must have
         # two steps, so a lone scale carries the references itself.
         if len(transforms) == 1:
             single = dict(transforms[0])
         else:
             single = {"type": "sequence", "transformations": transforms}
-        single["input"] = {"path": path}
-        if output is not None:
-            single["output"] = output
+        single.update(style.refs(single["type"], path))
         return {"path": path, "coordinateTransformations": [single]}
     return {"path": path, "coordinateTransformations": transforms}
 

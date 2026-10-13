@@ -296,5 +296,6 @@ class ByDimension(CoordinateTransformation):
 
 # The single coordinate transformation a multiscale dataset carries.
 DatasetTransformation = tx.Annotated[
-    CoordinateTransformation, ToDatasetTransformation(("scale", "identity"))
+    CoordinateTransformation,
+    ToDatasetTransformation(("scale", "identity"), "object"),
 ]

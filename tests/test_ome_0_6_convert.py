@@ -36,6 +36,7 @@ VERSIONS = {
 }
 LATER_THAN_DEV1 = list(VERSIONS.values())[1:]
 BEFORE_RC0 = list(VERSIONS.values())[:4]
+BEFORE_DEV4 = list(VERSIONS.values())[:3]
 
 
 def _pkg(version: str) -> types.ModuleType:
@@ -56,6 +57,11 @@ def _multiscale(version: str, systems: list, transforms: list) -> tx.Any:
     # A scale of ones is a dataset transformation every 0.6 version allows.
     # An identity is not: 0.6.dev2 rejects it.
     ones = [1.0] * len(systems[0]["axes"])
+    # The dataset's references are strings up to 0.6.dev3 and objects later.
+    if version in BEFORE_DEV4:
+        refs = {"input": "0", "output": systems[0]["name"]}
+    else:
+        refs = {"input": {"path": "0"}, "output": {"name": systems[0]["name"]}}
     return _pkg(version).Multiscale.from_json(
         {
             "coordinateSystems": systems,
@@ -64,12 +70,7 @@ def _multiscale(version: str, systems: list, transforms: list) -> tx.Any:
                 {
                     "path": "0",
                     "coordinateTransformations": [
-                        {
-                            "type": "scale",
-                            "scale": ones,
-                            "input": {"path": "0"},
-                            "output": {"name": systems[0]["name"]},
-                        }
+                        {"type": "scale", "scale": ones, **refs}
                     ],
                 }
             ],
@@ -838,9 +839,6 @@ def test_converted_projectaxis_conforms_to_the_target_schema(
 
     ms = _from_example("v0_6", name).to_version(version)
     xforms = _xforms(ms)
-    # The coordinate-system references keep the object spelling of the
-    # source, while these versions name the system by a bare string. That
-    # spelling is not what is being checked here.
-    for t in xforms:
-        t["input"], t["output"] = t["input"]["name"], t["output"]["name"]
+    # These versions name a multiscale's coordinate systems with strings.
+    assert [(t["input"], t["output"]) for t in xforms] == [("in", "out")]
     schemas.validate(xforms, version, "coordinate_transformations")
