@@ -5,6 +5,7 @@
 __all__ = ["Omero", "Channel"]
 import typing_extensions as tx
 
+from abczarr._core import typing as tz
 from abczarr._core.auto.attrs import autodefine
 from abczarr._core.rfc2119 import Required
 
@@ -20,19 +21,19 @@ class Channel(OMEMetadata):
     class Window(OMEMetadata):
         """The intensity range a channel's color is mapped over."""
 
-        min: Required[tx.Union[float, int]]
+        min: Required[tz.JsonNumber]
         """The lowest value the channel's data can take."""
 
-        max: Required[tx.Union[float, int]]
+        max: Required[tz.JsonNumber]
         """The highest value the channel's data can take."""
 
-        start: Required[tx.Union[float, int]]
+        start: Required[tz.JsonNumber]
         """
         The value a viewer should render at zero intensity. This may
         narrow the range `min` and `max` bound.
         """
 
-        end: Required[tx.Union[float, int]]
+        end: Required[tz.JsonNumber]
         """
         The value a viewer should render at full intensity. This may
         narrow the range `min` and `max` bound.

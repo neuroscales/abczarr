@@ -20,6 +20,7 @@ __all__ = [
 ]
 import typing_extensions as tx
 
+from abczarr._core import typing as tz
 from abczarr._core.auto.attrs import autodefine, field
 from abczarr._core.metadata import register_subclass
 from abczarr._core.rfc2119 import Optional, Recommended, Required
@@ -131,7 +132,7 @@ class Translation(CoordinateTransformation):
     """Adds a fixed offset to every coordinate, one value per axis."""
 
     type: Required[tx.Literal["translation"]]
-    translation: Optional[tx.List[tx.Union[float, int]]]
+    translation: Optional[tx.List[tz.JsonNumber]]
     """The offset, given inline, one number per axis. Optional."""
 
     path: Optional[str]
@@ -148,7 +149,7 @@ class Scale(CoordinateTransformation):
     """Multiplies every coordinate by a per-axis factor."""
 
     type: Required[tx.Literal["scale"]]
-    scale: Optional[tx.List[tx.Union[float, int]]]
+    scale: Optional[tx.List[tz.JsonNumber]]
     """The factor, given inline, one number per axis. Optional."""
 
     path: Optional[str]
@@ -165,7 +166,7 @@ class Affine(CoordinateTransformation):
     """Applies a linear map and a translation, given as a matrix."""
 
     type: Required[tx.Literal["affine"]]
-    affine: Optional[tx.List[tx.List[tx.Union[float, int]]]]
+    affine: Optional[tx.List[tx.List[tz.JsonNumber]]]
     """The matrix, given inline. Optional."""
 
     path: Optional[str]
@@ -178,7 +179,7 @@ class Rotation(CoordinateTransformation):
     """Rotates coordinates, given as a matrix."""
 
     type: Required[tx.Literal["rotation"]]
-    rotation: Optional[tx.List[tx.List[tx.Union[float, int]]]]
+    rotation: Optional[tx.List[tx.List[tz.JsonNumber]]]
     """The matrix, given inline. Optional."""
 
     path: Optional[str]

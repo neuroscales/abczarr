@@ -169,9 +169,89 @@ NonNegativeIntegral = tx.Annotated[
     Integral, ToNonNegative(compose=True)]
 
 # JSON
-JsonNumber = tx.Union[int, float]
-JsonNumberLike = tx.Union[int, float, bool]
-JsonScalar = tx.Union[int, float, bool, str, None]
+# `JsonNumber`, `JsonNumberLike` and `JsonScalar` each carry a converter
+# in their `Annotated` metadata. That converter replaces the one that
+# would otherwise be built from the `Union`. A union converter tries its
+# members in a fixed order. With `int` first, a numpy float is truncated
+# and a numpy bool becomes an `int`. With `float` first, a numpy integer
+# becomes a float. `ToJsonNumber` chooses `int` or `float` from the value
+# itself, so an integral value becomes an `int` and any other real value
+# a `float`. A builtin bool passes through unchanged, as it did with the
+# plain union. `ToJsonScalar` keeps strings and booleans as they are and
+# hands every other number to `ToJsonNumber`. `ToFrozenJson` applies
+# `ToJsonScalar` to each leaf of a frozen JSON value.
+
+
+class ToJsonNumber(Converter[tx.Union[float, int], tx.Any]):
+    """Converts a number to the builtin `int` or `float` that matches it.
+
+    A builtin `int`, `float` or `bool` is returned unchanged. A numpy
+    bool becomes a `bool`. Any other integral number, such as
+    `numpy.int64`, becomes an `int`. Any other real number, such as
+    `numpy.float32`, becomes a `float`. A string is parsed as an `int`
+    when it spells an integer, and as a `float` otherwise. A value that
+    cannot be read as a real number raises a conversion error.
+    """
+
+    def __call__(self, value: tx.Any) -> tx.Union[float, int]:
+        if type(value) in (int, float, bool):
+            return value
+        if isinstance(value, np.bool_):
+            return bool(value)
+        try:
+            if isinstance(value, str):
+                try:
+                    return int(value)
+                except ValueError:
+                    return float(value)
+            if isinstance(value, numbers.Integral):
+                return int(value)
+            if isinstance(value, numbers.Real):
+                return float(value)
+            if isinstance(value, (bytes, bytearray, complex)):
+                raise TypeError(type(value).__name__)
+            return float(value)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise self.value_error(
+                value, f"Cannot convert {value!r} to a JSON number."
+            ) from exc
+
+
+JsonNumber = tx.Annotated[tx.Union[float, int], ToJsonNumber()]
+"""A JSON number, stored as a builtin `int` or `float`."""
+JsonNumberLike = tx.Annotated[tx.Union[float, int, bool], ToJsonNumber()]
+"""A JSON number or boolean, stored as a builtin `int`, `float` or
+`bool`."""
+
+
+class ToJsonScalar(Converter[tx.Union[int, float, bool, str, None], tx.Any]):
+    """Converts a scalar to the builtin type that JSON uses for it.
+
+    `None` is returned unchanged. A string is returned as a builtin
+    `str`, so a `numpy.str_` becomes a `str`. A string is never parsed
+    as a number. A builtin bool or a numpy bool becomes a `bool`. Any
+    other number is converted by `ToJsonNumber`. An integral number
+    becomes an `int`, and any other real number becomes a `float`. A
+    value of any other type raises a conversion error.
+    """
+
+    def __call__(self, value: tx.Any) -> tx.Union[int, float, bool, str, None]:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return str(value)
+        if isinstance(value, (bool, np.bool_)):
+            return bool(value)
+        if isinstance(value, (numbers.Number, np.number)):
+            return ToJsonNumber()(value)
+        raise self.value_error(
+            value, f"Cannot convert {value!r} to a JSON scalar."
+        )
+
+
+JsonScalar = tx.Annotated[
+    tx.Union[int, float, bool, str, None], ToJsonScalar()
+]
 """A JSON scalar: a number, a boolean, a string, or null."""
 Json = tx.Union[JsonScalar, tx.Mapping[str, "Json"], BuiltinSequence["Json"]]
 """Any JSON value. A scalar, a mapping of string keys to JSON values, or
@@ -194,12 +274,13 @@ _FrozenJson = tx.Union[
 class ToFrozenJson(Converter[_FrozenJson, _FrozenJson]):
     """Rebuilds a JSON-like value into its deeply frozen form.
 
-    Carried in `FrozenJson`'s `Annotated` metadata, so a field typed as
-    `FrozenJson` converts through this class. A mapping becomes a
-    `FrozenDict`, a list or tuple becomes a `tuple`, and every nested
-    value is converted the same way, recursively. A scalar is returned
-    unchanged. Nothing is serialized in the process, so the result stays
-    immutable and hashable all the way down.
+    A field typed as `FrozenJson` is converted by this class. A mapping
+    becomes a `FrozenDict` with string keys, and a list or tuple becomes
+    a `tuple`. Every nested value is converted in the same way. A scalar
+    is converted by `ToJsonScalar`, so a numpy scalar becomes the
+    builtin `int`, `float`, `bool` or `str` that matches it. A value
+    that is not JSON raises a conversion error. The result is immutable
+    and hashable at every level.
     """
 
     def __call__(self, value: _FrozenJson) -> _FrozenJson:
@@ -209,8 +290,10 @@ class ToFrozenJson(Converter[_FrozenJson, _FrozenJson]):
             )
         if isinstance(value, (list, tuple)):
             return tuple(self(item) for item in value)
-        return value
+        return _TO_JSON_SCALAR(value)
 
+
+_TO_JSON_SCALAR = ToJsonScalar()
 
 FrozenJson = tx.Annotated[_FrozenJson, ToFrozenJson()]
 FrozenJsonDict = FrozenDict[str, FrozenJson]
