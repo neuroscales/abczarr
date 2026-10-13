@@ -20,7 +20,7 @@ from abczarr._core.rfc2119 import Optional, Recommended, Required
 # locals
 from ..base import OMEMetadata
 from .systems import CoordinateSystem
-from .transformations import CoordinateTransformation
+from .transformations import CoordinateTransformation, DatasetTransformation
 
 
 @autodefine
@@ -33,10 +33,13 @@ class Dataset(OMEMetadata):
     image group.
     """
 
-    coordinateTransformations: Required[tx.List[CoordinateTransformation]]
+    coordinateTransformations: Required[tx.List[DatasetTransformation]]
     """
     One or more transformations that map this level's own coordinate
-    system into another coordinate system of the pyramid.
+    system into another coordinate system of the pyramid. Each
+    transformation names its `input` and its `output` with a string. The
+    `input` string is the path of this level's array, and the `output`
+    string is the name of a coordinate system of the pyramid.
     """
 
 

@@ -470,15 +470,23 @@ writes the steps in that order. A sequence that lists the translation
 first is also accepted.
 """
 
+_DATASET_STRING_REFS_DOC = """\
+The `input` string is the path of this level's array, and the `output`
+string is the name of a coordinate system of the pyramid.
+"""
+
 _DATASET_TRANSFORMATIONS_DOC_V0_6DEV2 = """\
 The transformation that maps this level's array into a coordinate
 system of the pyramid. Exactly one transformation is given. The
 transformation is either a
 [Scale][abczarr.ome.v0_6dev1.transformations.Scale] or a
 [Sequence][abczarr.ome.v0_6dev1.transformations.Sequence] of two steps.
-""" + _DATASET_SEQUENCE_DOC
+""" + _DATASET_SEQUENCE_DOC + """\
+A sequence names its `input` and its `output` with strings. A lone
+scale may omit both references.
+""" + _DATASET_STRING_REFS_DOC
 
-_DATASET_TRANSFORMATIONS_DOC_V0_6DEV3 = """\
+_DATASET_TRANSFORMATIONS_DOC_V0_6DEV3_TYPES = """\
 The transformation that maps this level's array into a coordinate
 system of the pyramid. Exactly one transformation is given. The
 transformation is a
@@ -486,6 +494,23 @@ transformation is a
 [Identity][abczarr.ome.v0_6dev1.transformations.Identity], or a
 [Sequence][abczarr.ome.v0_6dev1.transformations.Sequence] of two steps.
 """ + _DATASET_SEQUENCE_DOC
+
+_DATASET_TRANSFORMATIONS_DOC_V0_6DEV3 = (
+    _DATASET_TRANSFORMATIONS_DOC_V0_6DEV3_TYPES
+    + """\
+The transformation names its `input` and its `output` with strings.
+"""
+    + _DATASET_STRING_REFS_DOC
+)
+
+_DATASET_TRANSFORMATIONS_DOC_V0_6DEV4 = (
+    _DATASET_TRANSFORMATIONS_DOC_V0_6DEV3_TYPES
+    + """\
+The `input` of the transformation gives the path of this level's array
+in its `path` field. The `output` gives the name of a coordinate system
+of the pyramid in its `name` field. Both references are required.
+"""
+)
 
 DELTAS_DEV = {
     # dev1 -> dev2
@@ -495,9 +520,6 @@ DELTAS_DEV = {
         AddModule(
             "transformations",
             _read_template("dev/v0_6dev2/transformations.py"),
-        ),
-        AddImport(
-            "images", "from .transformations import DatasetTransformation"
         ),
         SetAnn(
             "images", ("Dataset",), "coordinateTransformations",
@@ -523,10 +545,16 @@ DELTAS_DEV = {
         AddModule("scenes", _read_template("dev/v0_6dev3/scenes.py")),
     ],
     # dev3 -> dev4
+    #   * a dataset's references become objects: the array path in
+    #     ``input.path`` and the coordinate system in ``output.name``.
     "v0_6dev4": [
         AddModule(
             "transformations",
             _read_template("dev/v0_6dev4/transformations.py"),
+        ),
+        SetFieldDoc(
+            "images", ("Dataset",), "coordinateTransformations",
+            _DATASET_TRANSFORMATIONS_DOC_V0_6DEV4,
         ),
     ],
     # dev4 -> rc0

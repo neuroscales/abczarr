@@ -270,5 +270,6 @@ class Coordinates(CoordinateTransformation):
 
 # The single coordinate transformation a multiscale dataset carries.
 DatasetTransformation = tx.Annotated[
-    CoordinateTransformation, ToDatasetTransformation(("scale",))
+    CoordinateTransformation,
+    ToDatasetTransformation(("scale",), "sequence-string"),
 ]

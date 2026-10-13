@@ -266,5 +266,6 @@ class Coordinates(CoordinateTransformation):
 
 
 DatasetTransformation = tx.Annotated[
-    CoordinateTransformation, ToDatasetTransformation(("scale",))
+    CoordinateTransformation,
+    ToDatasetTransformation(("scale",), "sequence-string"),
 ]

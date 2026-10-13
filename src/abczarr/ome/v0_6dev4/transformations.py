@@ -273,5 +273,6 @@ class ByDimension(CoordinateTransformation):
 
 
 DatasetTransformation = tx.Annotated[
-    CoordinateTransformation, ToDatasetTransformation(("scale", "identity"))
+    CoordinateTransformation,
+    ToDatasetTransformation(("scale", "identity"), "object"),
 ]
