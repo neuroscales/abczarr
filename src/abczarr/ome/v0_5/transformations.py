@@ -7,6 +7,7 @@ physical space.
 __all__ = ["CoordinateTransformation", "Translation", "Scale"]
 import typing_extensions as tx
 
+from abczarr._core import typing as tz
 from abczarr._core.auto.attrs import autodefine, field
 from abczarr._core.metadata import register_subclass
 from abczarr._core.rfc2119 import Required
@@ -37,7 +38,7 @@ class Translation(CoordinateTransformation):
     """An offset, one value per axis, in the axes' physical units."""
 
     type: Required[tx.Literal["translation"]]
-    translation: Required[tx.List[tx.Union[float, int]]]
+    translation: Required[tx.List[tz.JsonNumber]]
     """The offset, one number per axis."""
 
 
@@ -53,5 +54,5 @@ class Scale(CoordinateTransformation):
     """
 
     type: Required[tx.Literal["scale"]]
-    scale: Required[tx.List[tx.Union[float, int]]]
+    scale: Required[tx.List[tz.JsonNumber]]
     """The scale factor, one number per axis."""

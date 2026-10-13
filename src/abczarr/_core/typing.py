@@ -169,8 +169,10 @@ NonNegativeIntegral = tx.Annotated[
     Integral, ToNonNegative(compose=True)]
 
 # JSON
-JsonNumber = tx.Union[int, float]
-JsonNumberLike = tx.Union[int, float, bool]
+# `float` comes first so that a non-builtin float such as numpy.float32
+# is converted to `float` instead of being truncated by `int`.
+JsonNumber = tx.Union[float, int]
+JsonNumberLike = tx.Union[float, int, bool]
 JsonScalar = tx.Union[int, float, bool, str, None]
 """A JSON scalar: a number, a boolean, a string, or null."""
 Json = tx.Union[JsonScalar, tx.Mapping[str, "Json"], BuiltinSequence["Json"]]

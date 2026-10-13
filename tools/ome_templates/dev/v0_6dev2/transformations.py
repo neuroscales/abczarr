@@ -116,7 +116,7 @@ class Translation(CoordinateTransformation):
     """Adds a fixed offset to every coordinate, one value per axis."""
 
     type: Required[tx.Literal["translation"]]
-    translation: Optional[tx.List[tx.Union[float, int]]]
+    translation: Optional[tx.List[tz.JsonNumber]]
     """The offset, given inline, one number per axis. Optional."""
 
     path: Optional[str]
@@ -133,7 +133,7 @@ class Scale(CoordinateTransformation):
     """Multiplies every coordinate by a per-axis factor."""
 
     type: Required[tx.Literal["scale"]]
-    scale: Optional[tx.List[tx.Union[float, int]]]
+    scale: Optional[tx.List[tz.JsonNumber]]
     """The factor, given inline, one number per axis. Optional."""
 
     path: Optional[str]
