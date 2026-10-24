@@ -1,8 +1,9 @@
 """Import-cost regression tests.
 
 ``import abczarr`` should load only what the package needs up front. The
-OME version packages, the OME config and pyramid helpers, and abczarr's own
-use of dask are all loaded on first use instead.
+Zarr metadata version packages, the OME version packages, the OME config
+and pyramid helpers, and abczarr's own use of dask are all loaded on
+first use instead.
 
 Each check runs in a fresh interpreter, because other tests in the same
 session import these modules and would hide an eager import.
@@ -123,6 +124,53 @@ def test_ome_lazy_names_match_their_modules() -> None:
     for name in ome.__all__:
         assert hasattr(ome, name), name
         assert name in dir(ome), name
+
+
+def test_import_loads_no_metadata_version_package() -> None:
+    """``import abczarr`` imports none of the Zarr metadata version
+    packages, and lists them all in ``dir(abczarr.metadata)``."""
+    loaded, listed = _run(
+        """
+        import json, sys
+        import abczarr
+        loaded = sorted(m for m in sys.modules
+                        if m.startswith("abczarr.metadata.v"))
+        listed = [v in dir(abczarr.metadata) for v in ("v1", "v2", "v3")]
+        print(json.dumps([loaded, listed]))
+        """
+    )
+    assert loaded == []
+    assert listed == [True, True, True]
+
+
+def test_metadata_dispatch_loads_version_packages() -> None:
+    """Building metadata through a base class returns the concrete class
+    of the matching format version, which is loaded on demand."""
+    result = _run(
+        """
+        import json
+        from abczarr.metadata.base import ArrayMetadata, GroupMetadata
+        array = ArrayMetadata.from_json({
+            "zarr_format": 3,
+            "node_type": "array",
+            "shape": [2],
+            "data_type": "uint8",
+            "chunk_grid": {
+                "name": "regular",
+                "configuration": {"chunk_shape": [2]},
+            },
+            "chunk_key_encoding": {"name": "default"},
+            "codecs": [{"name": "bytes"}],
+            "fill_value": 0,
+        })
+        group = GroupMetadata.from_json({"zarr_format": 2})
+        print(json.dumps([type(array).__module__, type(group).__module__]))
+        """
+    )
+    assert result == [
+        "abczarr.metadata.v3.array",
+        "abczarr.metadata.v2.base",
+    ]
 
 
 def test_import_does_not_need_dask() -> None:

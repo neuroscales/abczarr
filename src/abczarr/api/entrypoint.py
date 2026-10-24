@@ -39,7 +39,6 @@ from ..abc.asynchronous import (
 from ..abc.store import AsyncPathBasedStore, PathBasedStore
 from ..abc.sync import ZarrArray, ZarrGroup, ZarrNode
 from ..drivers.base import Driver
-from ..metadata import v3
 from ..metadata.base import ArrayMetadata, NodeMetadata
 from .config import ArrayConfig, GroupConfig, ZarrConfig
 from .registry import available_drivers, select_driver
@@ -917,6 +916,8 @@ def _peek_array_metadata(path: tz.PathLike) -> tx.Any:
     )
     if not is_v3_array:
         return None
+    from ..metadata import v3
+
     try:
         return v3.ArrayMetadata.from_json(data)
     except Exception:
@@ -963,6 +964,8 @@ async def _apeek_array_metadata(path: tz.PathLike) -> tx.Any:
     )
     if not is_v3_array:
         return None
+    from ..metadata import v3
+
     try:
         return v3.ArrayMetadata.from_json(data)
     except Exception:
