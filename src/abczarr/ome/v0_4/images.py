@@ -32,13 +32,21 @@ class Dataset(OMEMetadata):
     """
 
     coordinateTransformations: Required[
-        tx.Union[tx.Tuple[Scale], tx.Tuple[Scale, Translation]]
+        tx.Union[
+            tx.Tuple[Scale],
+            tx.Tuple[Scale, Translation],
+            tx.Tuple[Translation, Scale],
+        ]
     ]
     """
     Places this level in the pyramid's physical space: a
     [Scale][abczarr.ome.v0_4.transformations.Scale], optionally followed
     by a [Translation][abczarr.ome.v0_4.transformations.Translation],
-    one value per axis.
+    one value per axis. The specification places the translation after the
+    scale, and abczarr writes the two steps in that order. A list that
+    gives the translation first is also accepted, and its order is kept.
+    The steps apply in the order listed, so a translation that comes first
+    is expressed in array units rather than in physical units.
     """
 
 
