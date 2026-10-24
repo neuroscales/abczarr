@@ -298,9 +298,35 @@ _TO_JSON_SCALAR = ToJsonScalar()
 FrozenJson = tx.Annotated[_FrozenJson, ToFrozenJson()]
 FrozenJsonDict = FrozenDict[str, FrozenJson]
 
-MutableJson = tx.Union[
-    JsonScalar, tx.MutableMapping[str, "Json"], tx.List["Json"]
+# The mutable JSON model. Its string forward references cannot be resolved
+# by the converter engine, so `ToMutableJson`, carried in `MutableJson`'s
+# `Annotated` metadata, does the recursive conversion itself, the same way
+# `ToFrozenJson` does for `FrozenJson`.
+_MutableJson = tx.Union[
+    JsonScalar, tx.MutableMapping[str, "MutableJson"], tx.List["MutableJson"]
 ]
+
+
+class ToMutableJson(Converter[_MutableJson, _MutableJson]):
+    """Rebuilds a JSON-like value into plain, mutable builtin containers.
+
+    A field typed as `MutableJson` is converted by this class. A mapping
+    becomes a `dict` with string keys, and a list or tuple becomes a
+    `list`. Every nested value is converted in the same way. A scalar is
+    converted by `ToJsonScalar`, so a numpy scalar becomes the builtin
+    `int`, `float`, `bool` or `str` that matches it. A value that is not
+    JSON raises a conversion error.
+    """
+
+    def __call__(self, value: _MutableJson) -> _MutableJson:
+        if isinstance(value, collections.abc.Mapping):
+            return {str(key): self(item) for key, item in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [self(item) for item in value]
+        return _TO_JSON_SCALAR(value)
+
+
+MutableJson = tx.Annotated[_MutableJson, ToMutableJson()]
 MutableJsonDict = tx.MutableMapping[str, MutableJson]
 
 # Shapes
