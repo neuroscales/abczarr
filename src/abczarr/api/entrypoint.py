@@ -28,6 +28,7 @@ import typing_extensions as tx
 from abczarr.errors import UnsupportedZarrOperation
 
 # locals
+from .. import metadata as zarr_metadata
 from .._core import constants
 from .._core import typing as tz
 from .._core.attrs import evolve, fields
@@ -39,7 +40,6 @@ from ..abc.asynchronous import (
 from ..abc.store import AsyncPathBasedStore, PathBasedStore
 from ..abc.sync import ZarrArray, ZarrGroup, ZarrNode
 from ..drivers.base import Driver
-from ..metadata import v3
 from ..metadata.base import ArrayMetadata, NodeMetadata
 from .config import ArrayConfig, GroupConfig, ZarrConfig
 from .registry import available_drivers, select_driver
@@ -918,7 +918,7 @@ def _peek_array_metadata(path: tz.PathLike) -> tx.Any:
     if not is_v3_array:
         return None
     try:
-        return v3.ArrayMetadata.from_json(data)
+        return zarr_metadata.v3.ArrayMetadata.from_json(data)
     except Exception:
         return None
 
@@ -964,6 +964,6 @@ async def _apeek_array_metadata(path: tz.PathLike) -> tx.Any:
     if not is_v3_array:
         return None
     try:
-        return v3.ArrayMetadata.from_json(data)
+        return zarr_metadata.v3.ArrayMetadata.from_json(data)
     except Exception:
         return None

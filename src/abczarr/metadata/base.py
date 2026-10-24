@@ -37,6 +37,7 @@ __all__ = [
 ]
 
 # stdlib
+import importlib
 import json
 import os
 import tempfile
@@ -143,6 +144,16 @@ class NodeMetadata(Metadata):
     node_type: tz.NodeType = "group"
     """Either ``"group"`` or ``"array"``."""
 
+    @classmethod
+    def _registry(cls) -> dict:
+        # The concrete classes of each format version register themselves
+        # when their package is imported, and `abczarr.metadata` imports
+        # those packages lazily. Loading them here, before any lookup, means
+        # that constructing a base class by name still returns the concrete
+        # class its arguments describe.
+        _load_version_packages()
+        return super()._registry()
+
     # Convenience updaters (immutably return new metadata)
     def update_attributes(self, attributes: tz.JsonDict) -> tx.Self:
         """Return a copy of this metadata with new attributes.
@@ -205,6 +216,21 @@ class NodeMetadata(Metadata):
             f"{constants.Z2ARRAY_JSON}, "
             f"{constants.Z1META_JSON}"
         )
+
+
+_VERSION_PACKAGES_LOADED = False
+
+
+def _load_version_packages() -> None:
+    """Import the `v1`, `v2` and `v3` packages, once."""
+    global _VERSION_PACKAGES_LOADED
+    if _VERSION_PACKAGES_LOADED:
+        return
+    # The flag is set first, so a construction that runs while one of these
+    # packages is still being imported does not import it again.
+    _VERSION_PACKAGES_LOADED = True
+    for version in ("v1", "v2", "v3"):
+        importlib.import_module(f"abczarr.metadata.{version}")
 
 
 def _node_type_at(root: os.PathLike) -> tx.Optional[tz.NodeType]:
