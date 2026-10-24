@@ -98,6 +98,19 @@ def test_mutable_json_keeps_scalar_kind() -> None:
     assert convert([1, 2]) == [1, 2]
 
 
+def test_mutable_json_converts_nested_values() -> None:
+    """`MutableJson` rebuilds containers and converts every leaf."""
+    convert = get_converter(tz.MutableJson)
+    value = convert({"a": (np.float32(0.5), [np.int64(3)]), 1: np.True_})
+    assert value == {"a": [0.5, [3]], "1": True}
+    assert type(value["a"]) is list
+    assert type(value["a"][0]) is float
+    assert type(value["a"][1][0]) is int
+    assert type(value["1"]) is bool
+    with pytest.raises(ConversionError):
+        convert([object()])
+
+
 def test_scalar_map_keeps_values() -> None:
     """The scalar map keeps special strings and converts numbers."""
     scalar_map = ScalarMap(
