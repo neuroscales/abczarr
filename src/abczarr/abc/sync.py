@@ -25,8 +25,10 @@ __all__ = [
 ]
 
 # stdlib
+import itertools
 import json
 import os
+import sys
 from abc import ABC, abstractmethod
 
 # dependencies
@@ -469,17 +471,25 @@ class ZarrArray(ZarrNode):
         """Write `source` into this array, block by block.
 
         `source` is any array-like object whose shape matches this
-        array's. A Dask array is written one block at a time, so a
-        source too large to fit in memory is never fully
-        materialized. A plain array is written in a single write.
+        array's. A Dask array is written one Dask block at a time.
+        Any other source is written one write unit at a time, where
+        the write unit is the shard when the array is sharded and the
+        chunk otherwise. Each write reads only the matching region of
+        `source`. A lazy source, such as another Zarr array, an HDF5
+        dataset, or a memory-mapped file, is therefore never fully
+        loaded into memory. A source that cannot be sliced, such as a
+        nested list, is first converted to a NumPy array.
+
         This method is the write counterpart of
         [to_dask][abczarr.abc.sync.ZarrArray.to_dask]. It works for
         every backend, unlike `dask.array.to_zarr`, which requires a
-        native `zarr.Array`.
+        native `zarr.Array`. Dask is needed only when `source` is a
+        Dask array.
 
         !!! example
             ```python
             array.store(dask_array)
+            array.store(numpy_array)
             ```
 
         Parameters
@@ -487,20 +497,48 @@ class ZarrArray(ZarrNode):
         source : array-like
             The data to write. Its shape must match this array's.
         lock : bool or str, optional
-            Whether to serialize concurrent block writes. The
-            default, `"auto"`, locks only when the source's blocks do
-            not line up with this array's write unit, since blocks
-            that each fall entirely within one chunk never write to
-            the same chunk at the same time. Passing `True` or `False`
-            decides the locking explicitly.
-        """
-        import dask.array as da
+            Whether to serialize concurrent block writes when `source`
+            is a Dask array. The default, `"auto"`, locks only when
+            the source's blocks do not line up with this array's
+            write unit. Blocks that each fall entirely within one
+            chunk never write to the same chunk at the same time.
+            Passing `True` or `False` decides the locking explicitly.
+            Any other source is written serially, so `lock` has no
+            effect on it.
 
-        darr = da.asarray(source)
-        if lock == "auto":
-            unit = self.shards or self.chunks
-            lock = not _blocks_align_to(darr.chunks, unit)
-        da.store(darr, self, lock=lock)
+        Raises
+        ------
+        ValueError
+            If `source` is not a Dask array and its shape differs
+            from this array's.
+        """
+        unit = self.shards or self.chunks
+        # Only test for a Dask array when dask is already imported: a
+        # source cannot be a Dask array otherwise, and this keeps the
+        # serial path free of the dask import.
+        dask_array = sys.modules.get("dask.array")
+        if dask_array is not None and isinstance(source, dask_array.Array):
+            if lock == "auto":
+                lock = not _blocks_align_to(source.chunks, unit)
+            dask_array.store(source, self, lock=lock)
+            return
+
+        if not hasattr(source, "shape") or not hasattr(source, "__getitem__"):
+            source = np.asarray(source)
+        shape = tuple(source.shape)
+        if shape != tuple(self.shape):
+            raise ValueError(
+                f"cannot store a source of shape {shape} into an array "
+                f"of shape {tuple(self.shape)}"
+            )
+        # One write per write unit. For a 0-d array the product yields a
+        # single empty selection, which writes the one element.
+        starts = [range(0, n, u) for n, u in zip(shape, unit)]
+        for corner in itertools.product(*starts):
+            slc = tuple(
+                slice(i, min(i + u, n)) for i, u, n in zip(corner, unit, shape)
+            )
+            self[slc] = np.asarray(source[slc])
 
 
 def _blocks_align_to(
