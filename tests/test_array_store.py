@@ -1,8 +1,10 @@
 """ZarrArray.store for a source that is not a Dask array.
 
-Such a source is written serially, one write unit (shard, else chunk) at a
-time, and the write needs no dask. A recording fake array checks the write
-grid without a backend; the end-to-end tests run over zarr-python.
+With dask installed, such a source is wrapped in a Dask array whose blocks
+are the write units (shard, else chunk) and stored through da.store.
+Without dask, it is written serially over the same grid. A recording fake
+array checks the write grid without a backend; the end-to-end tests run
+over zarr-python.
 """
 
 import pathlib
@@ -72,6 +74,11 @@ class _RecordingArray(ZarrArray):
         self.data[index] = value
 
 
+def _write_units(writes: tx.List[tx.Any]) -> tx.List[tx.Any]:
+    # Dask writes blocks in no fixed order.
+    return sorted(writes, key=lambda slc: [(s.start, s.stop) for s in slc])
+
+
 def _no_dask(monkeypatch: pytest.MonkeyPatch) -> None:
     # A None entry in sys.modules makes any import of that name fail.
     for name in list(sys.modules):
@@ -81,8 +88,19 @@ def _no_dask(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setitem(sys.modules, "dask.array", None)
 
 
+@pytest.fixture(params=["dask", "no-dask"])
+def dask_mode(
+    request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
+) -> str:
+    if request.param == "dask":
+        pytest.importorskip("dask.array")
+    else:
+        _no_dask(monkeypatch)
+    return request.param
+
+
 # --------------------------------------------------------------------------
-# the serial path (no backend, no dask)
+# the write grid (no backend)
 # --------------------------------------------------------------------------
 
 
@@ -115,7 +133,53 @@ def test_store_falls_back_to_chunks_when_unsharded(
     assert arr.writes == [(slice(0, 2),), (slice(2, 4),), (slice(4, 5),)]
 
 
-def test_store_reads_only_the_written_region_of_a_lazy_source() -> None:
+def test_store_uses_dask_for_a_numpy_source_with_write_unit_blocks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    da = pytest.importorskip("dask.array")
+    calls: tx.List[tx.Any] = []
+    store = da.store
+
+    def _store(source: tx.Any, target: tx.Any, **kwargs: tx.Any) -> tx.Any:
+        calls.append((source.chunks, kwargs))
+        return store(source, target, **kwargs)
+
+    monkeypatch.setattr(da, "store", _store)
+    arr = _RecordingArray((6, 5), chunks=(2, 2), shards=(4, 4))
+    source = np.arange(30, dtype="int32").reshape(6, 5)
+    arr.store(source)
+    np.testing.assert_array_equal(arr.data, source)
+    # blocks follow the shard grid, so "auto" needs no lock
+    assert calls == [(((4, 2), (4, 1)), {"lock": False})]
+    assert _write_units(arr.writes) == [
+        (slice(0, 4), slice(0, 4)),
+        (slice(0, 4), slice(4, 5)),
+        (slice(4, 6), slice(0, 4)),
+        (slice(4, 6), slice(4, 5)),
+    ]
+
+
+def test_store_locks_a_misaligned_dask_source(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    da = pytest.importorskip("dask.array")
+    locks: tx.List[tx.Any] = []
+    store = da.store
+
+    def _store(source: tx.Any, target: tx.Any, **kwargs: tx.Any) -> tx.Any:
+        locks.append(kwargs["lock"])
+        return store(source, target, **kwargs)
+
+    monkeypatch.setattr(da, "store", _store)
+    arr = _RecordingArray((4,), chunks=(2,))
+    arr.store(da.from_array(np.arange(4, dtype="int32"), chunks=3))
+    assert arr.data.tolist() == [0, 1, 2, 3]
+    assert locks == [True]
+
+
+def test_store_reads_only_the_written_region_of_a_lazy_source(
+    dask_mode: str,
+) -> None:
     source = _RecordingArray((4, 4), chunks=(4, 4))
     source.data[...] = 3
     reads: tx.List[tx.Any] = []
@@ -123,6 +187,8 @@ def test_store_reads_only_the_written_region_of_a_lazy_source() -> None:
 
     class _Lazy:
         shape = (4, 4)
+        ndim = 2
+        dtype = source.dtype
 
         def __getitem__(self, index: tx.Any) -> npt.ArrayLike:
             reads.append(index)
@@ -131,11 +197,13 @@ def test_store_reads_only_the_written_region_of_a_lazy_source() -> None:
     arr = _RecordingArray((4, 4), chunks=(2, 2))
     arr.store(_Lazy())
     assert (arr.data == 3).all()
-    assert reads == arr.writes
+    # dask may also take an empty slice to learn the block type
+    reads = [r for r in reads if all(s.stop > s.start for s in r)]
+    assert _write_units(reads) == _write_units(arr.writes)
     assert len(reads) == 4
 
 
-def test_store_writes_a_0d_array_once() -> None:
+def test_store_writes_a_0d_array_once(dask_mode: str) -> None:
     arr = _RecordingArray((), chunks=())
     arr.store(np.asarray(7))
     assert int(arr.data) == 7
@@ -143,7 +211,9 @@ def test_store_writes_a_0d_array_once() -> None:
 
 
 @pytest.mark.parametrize("source", [np.ones((4, 3)), np.ones((4,)), 1.0])
-def test_store_rejects_a_shape_mismatch(source: npt.ArrayLike) -> None:
+def test_store_rejects_a_shape_mismatch(
+    source: npt.ArrayLike, dask_mode: str
+) -> None:
     arr = _RecordingArray((4, 4), chunks=(2, 2))
     with pytest.raises(ValueError, match="shape"):
         arr.store(source)
@@ -196,18 +266,35 @@ def test_store_copies_from_another_zarr_array(
     np.testing.assert_array_equal(np.asarray(dst), expected)
 
 
-def test_store_does_not_call_dask_for_a_numpy_source(
+def test_store_calls_dask_for_a_numpy_source(
     tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     da = pytest.importorskip("dask.array")
+    calls: tx.List[tx.Any] = []
+    store = da.store
 
-    def _fail(*args: tx.Any, **kwargs: tx.Any) -> None:
-        raise AssertionError("dask.array.store was called")
+    def _store(source: tx.Any, target: tx.Any, **kwargs: tx.Any) -> tx.Any:
+        calls.append(source.chunks)
+        return store(source, target, **kwargs)
 
-    monkeypatch.setattr(da, "store", _fail)
+    monkeypatch.setattr(da, "store", _store)
     arr = abczarr.create(
         str(tmp_path / "a.zarr"),
         ArrayConfig(shape=(5, 5), dtype="int32", chunks=(2, 2)),
     )
     arr.store(np.full((5, 5), 4, dtype="int32"))
     assert (np.asarray(arr) == 4).all()
+    assert calls == [((2, 2, 1), (2, 2, 1))]
+
+
+def test_store_writes_numpy_without_dask(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _no_dask(monkeypatch)
+    arr = abczarr.create(
+        str(tmp_path / "a.zarr"),
+        ArrayConfig(shape=(5, 5), dtype="int32", chunks=(2, 2), shards=(4, 4)),
+    )
+    source = np.arange(25, dtype="int32").reshape(5, 5)
+    arr.store(source)
+    np.testing.assert_array_equal(np.asarray(arr), source)
