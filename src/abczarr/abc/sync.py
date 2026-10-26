@@ -518,27 +518,27 @@ class ZarrArray(ZarrNode):
             If `source` is not a Dask array and its shape differs
             from this array's.
         """
-        unit = self.shards or self.chunks
+        dask_chunks = self.shards or self.chunks
         try:
             import dask.array as da
         except ImportError:
             da = None
 
         if da is None or not isinstance(source, da.Array):
-            source = _store_source(source, self.shape)
+            source = _asarraylike(source, self.shape)
             if da is None:
-                _store_serially(self, source, unit)
+                _store_serially(self, source, dask_chunks)
                 return
             # Blocks that match the write unit never share a chunk. A
             # random name skips hashing the whole source to tokenize it.
-            source = da.from_array(source, chunks=unit, name=False)
+            source = da.from_array(source, chunks=dask_chunks, name=False)
 
         if lock == "auto":
-            lock = not _blocks_align_to(source.chunks, unit)
+            lock = not _blocks_align_to(source.chunks, dask_chunks)
         da.store(source, self, lock=lock)
 
 
-def _store_source(source: npt.ArrayLike, shape: tz.ShapeLike) -> tx.Any:
+def _asarraylike(source: npt.ArrayLike, shape: tz.ShapeLike) -> tx.Any:
     # Return `source` as something with `shape`, `dtype` and `ndim` that
     # can be sliced, after checking that its shape matches `shape`.
     if not all(
@@ -555,15 +555,15 @@ def _store_source(source: npt.ArrayLike, shape: tz.ShapeLike) -> tx.Any:
 
 
 def _store_serially(
-    target: "ZarrArray", source: tx.Any, unit: tz.ShapeLike
+    target: "ZarrArray", source: tx.Any, chunks: tz.ShapeLike
 ) -> None:
     # One write per write unit. For a 0-d array the product yields a
     # single empty selection, which writes the one element.
     shape = tuple(source.shape)
-    starts = [range(0, n, u) for n, u in zip(shape, unit)]
+    starts = [range(0, n, u) for n, u in zip(shape, chunks)]
     for corner in itertools.product(*starts):
         slc = tuple(
-            slice(i, min(i + u, n)) for i, u, n in zip(corner, unit, shape)
+            slice(i, min(i + u, n)) for i, u, n in zip(corner, chunks, shape)
         )
         target[slc] = np.asarray(source[slc])
 
