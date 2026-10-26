@@ -463,13 +463,14 @@ class AsyncZarrArray(AsyncZarrNode):
         else:
             source = _asarraylike(source, self.shape)
 
-        unit = self.shards or self.chunks
-        shape = tuple(self.shape)
+        write_chunks = self.shards or self.chunks
         # One block per write unit, and a single empty selection when 0-d.
-        n_blocks = math.prod(-(-n // u) for n, u in zip(shape, unit))
+        n_blocks = math.prod(
+            -(-n // u) for n, u in zip(self.shape, write_chunks)
+        )
         # The workers draw from one shared iterator. Advancing it never
         # awaits, so no two workers ever receive the same block.
-        slices = _write_unit_slices(shape, unit)
+        slices = _write_unit_slices(self.shape, write_chunks)
 
         async def read(slc: tx.Tuple[slice, ...]) -> np.ndarray:
             if isinstance(source, AsyncZarrArray):
