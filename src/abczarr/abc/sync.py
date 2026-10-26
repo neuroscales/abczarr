@@ -25,6 +25,7 @@ __all__ = [
 ]
 
 # stdlib
+import itertools
 import json
 import os
 from abc import ABC, abstractmethod
@@ -469,9 +470,24 @@ class ZarrArray(ZarrNode):
         """Write `source` into this array, block by block.
 
         `source` is any array-like object whose shape matches this
-        array's. A Dask array is written one block at a time, so a
-        source too large to fit in memory is never fully
-        materialized. A plain array is written in a single write.
+        array's. The write unit of this array is its shard when the
+        array is sharded and its chunk otherwise.
+
+        When Dask is installed, `source` is written block by block,
+        with several blocks written in parallel. A Dask array is
+        written one Dask block at a time. Any other source is written
+        one write unit at a time, and each write reads only the
+        matching region of `source`. A lazy source, such as another
+        Zarr array, an HDF5 dataset, or a memory-mapped file, is
+        therefore never fully loaded into memory.
+
+        When Dask is not installed, `source` is written serially, one
+        write unit at a time. Each write again reads only the matching
+        region of `source`.
+
+        A source without a `shape`, a `dtype`, and an `ndim`, such as
+        a nested list, is first converted to a NumPy array.
+
         This method is the write counterpart of
         [to_dask][abczarr.abc.sync.ZarrArray.to_dask]. It works for
         every backend, unlike `dask.array.to_zarr`, which requires a
@@ -479,6 +495,7 @@ class ZarrArray(ZarrNode):
 
         !!! example
             ```python
+            array.store(numpy_array)
             array.store(dask_array)
             ```
 
@@ -487,20 +504,84 @@ class ZarrArray(ZarrNode):
         source : array-like
             The data to write. Its shape must match this array's.
         lock : bool or str, optional
-            Whether to serialize concurrent block writes. The
-            default, `"auto"`, locks only when the source's blocks do
-            not line up with this array's write unit, since blocks
-            that each fall entirely within one chunk never write to
-            the same chunk at the same time. Passing `True` or `False`
-            decides the locking explicitly.
-        """
-        import dask.array as da
+            Whether to serialize concurrent block writes. The default,
+            `"auto"`, locks only when the blocks of `source` do not
+            line up with this array's write unit. Blocks that each
+            fall entirely within one chunk never write to the same
+            chunk at the same time. Passing `True` or `False` decides
+            the locking explicitly. The lock applies only when Dask is
+            installed. Without Dask, the writes are already serial.
 
-        darr = da.asarray(source)
+        Raises
+        ------
+        ValueError
+            If `source` is not a Dask array and its shape differs
+            from this array's.
+        """
+        dask_chunks = self.shards or self.chunks
+        try:
+            import dask.array as da
+        except ImportError:
+            da = None
+
+        if da is None or not isinstance(source, da.Array):
+            source = _asarraylike(source, self.shape)
+            if da is None:
+                _store_serially(self, source, dask_chunks)
+                return
+            # Blocks that match the write unit never share a chunk. A
+            # random name skips hashing the whole source to tokenize it.
+            source = da.from_array(source, chunks=dask_chunks, name=False)
+
         if lock == "auto":
-            unit = self.shards or self.chunks
-            lock = not _blocks_align_to(darr.chunks, unit)
-        da.store(darr, self, lock=lock)
+            lock = not _blocks_align_to(source.chunks, dask_chunks)
+        da.store(source, self, lock=lock)
+
+
+def _asarraylike(source: npt.ArrayLike, shape: tz.ShapeLike) -> tx.Any:
+    # Return `source` as something with `shape`, `dtype` and `ndim` that
+    # can be sliced, after checking that its shape matches `shape`.
+    if not all(
+        hasattr(source, name)
+        for name in ("shape", "dtype", "ndim", "__getitem__")
+    ):
+        source = np.asarray(source)
+    _check_store_shape(source.shape, shape)
+    return source
+
+
+def _check_store_shape(
+    source_shape: tz.ShapeLike, shape: tz.ShapeLike
+) -> None:
+    # Raise if a source of `source_shape` cannot be stored into `shape`.
+    if tuple(source_shape) != tuple(shape):
+        raise ValueError(
+            f"cannot store a source of shape {tuple(source_shape)} into "
+            f"an array of shape {tuple(shape)}"
+        )
+
+
+def _write_unit_slices(
+    shape: tz.ShapeLike, unit: tz.ShapeLike
+) -> tx.Iterator[tx.Tuple[slice, ...]]:
+    # Yield the selection of each `unit`-sized block of an array of
+    # `shape`, in C order. The last block on an axis may be partial. For
+    # a 0-d array the product yields a single empty selection, which
+    # selects the one element.
+    shape = tuple(shape)
+    starts = [range(0, n, u) for n, u in zip(shape, unit)]
+    for corner in itertools.product(*starts):
+        yield tuple(
+            slice(i, min(i + u, n)) for i, u, n in zip(corner, unit, shape)
+        )
+
+
+def _store_serially(
+    target: "ZarrArray", source: tx.Any, chunks: tz.ShapeLike
+) -> None:
+    # One write per write unit.
+    for slc in _write_unit_slices(source.shape, chunks):
+        target[slc] = np.asarray(source[slc])
 
 
 def _blocks_align_to(

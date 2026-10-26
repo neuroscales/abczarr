@@ -39,7 +39,9 @@ __all__ = [
 ]
 
 # stdlib
+import asyncio
 import json
+import math
 import os
 from abc import ABC, abstractmethod
 
@@ -51,7 +53,7 @@ import typing_extensions as tx
 # core
 from abczarr._core import constants
 from abczarr._core import typing as tz
-from abczarr._core.asyncutils import run_sync
+from abczarr._core.asyncutils import DEFAULT_CONCURRENCY, run_sync
 from abczarr._core.attributes import NodeAttributes, attribute_writes
 from abczarr.api.config import ArrayConfig, ArrayOptions
 from abczarr.metadata.base import NodeMetadata
@@ -70,7 +72,10 @@ from .sync import (
     ZarrArray,
     ZarrGroup,
     ZarrNode,
+    _asarraylike,
+    _check_store_shape,
     _resolve_array_config,
+    _write_unit_slices,
 )
 
 if tx.TYPE_CHECKING:
@@ -395,6 +400,102 @@ class AsyncZarrArray(AsyncZarrNode):
     async def setitem(self, index: tx.Any, value: npt.ArrayLike) -> None:
         """Write `value` at `index` (a NumPy-style selection)."""
         ...
+
+    async def store(
+        self,
+        source: tx.Union[npt.ArrayLike, "AsyncZarrArray"],
+        *,
+        max_concurrency: int = DEFAULT_CONCURRENCY,
+    ) -> None:
+        """Write `source` into this array, block by block.
+
+        This coroutine is the asynchronous counterpart of
+        [ZarrArray.store][abczarr.abc.sync.ZarrArray.store]. The shape
+        of `source` must match the shape of this array. The write unit
+        of this array is its shard when the array is sharded and its
+        chunk otherwise.
+
+        `source` is written one write unit at a time. Each write reads
+        only the matching region of `source`. A lazy source, such as
+        another Zarr array, an HDF5 dataset, or a memory-mapped file,
+        is therefore never fully loaded into memory. A source that is
+        itself an `AsyncZarrArray` is read with `await`. Reads from
+        any other lazy source do not block the event loop.
+
+        Several write units are written concurrently. No two write
+        units share a chunk, so the concurrent writes never conflict.
+        At most `max_concurrency` write units are read and written at
+        the same time. If one write fails, the remaining writes are
+        cancelled and the exception is raised. Writes that completed
+        before the failure are not undone.
+
+        A source without a `shape`, a `dtype`, and an `ndim`, such as
+        a nested list, is first converted to a NumPy array. Dask is
+        never used, even when it is installed.
+
+        !!! example
+            ```python
+            await array.store(numpy_array)
+            await array.store(other_async_array)
+            ```
+
+        Parameters
+        ----------
+        source : array-like or AsyncZarrArray
+            The data to write. Its shape must match this array's.
+        max_concurrency : int, optional
+            The largest number of write units in flight at once. It
+            must be at least 1. The default matches the size of the
+            thread pool that runs blocking reads and writes.
+
+        Raises
+        ------
+        ValueError
+            If the shape of `source` differs from this array's, or if
+            `max_concurrency` is less than 1.
+        """
+        if max_concurrency < 1:
+            raise ValueError(
+                f"max_concurrency must be at least 1, got {max_concurrency}"
+            )
+        if isinstance(source, AsyncZarrArray):
+            _check_store_shape(source.shape, self.shape)
+        else:
+            source = _asarraylike(source, self.shape)
+
+        write_chunks = self.shards or self.chunks
+        # One block per write unit, and a single empty selection when 0-d.
+        n_blocks = math.prod(
+            -(-n // u) for n, u in zip(self.shape, write_chunks)
+        )
+        # The workers draw from one shared iterator. Advancing it never
+        # awaits, so no two workers ever receive the same block.
+        slices = _write_unit_slices(self.shape, write_chunks)
+
+        async def read(slc: tx.Tuple[slice, ...]) -> np.ndarray:
+            if isinstance(source, AsyncZarrArray):
+                return np.asarray(await source.getitem(slc))
+            if isinstance(source, np.ndarray):
+                return source[slc]
+            # A lazy source reads from disk or the network.
+            return await run_sync(lambda: np.asarray(source[slc]))
+
+        async def worker() -> None:
+            for slc in slices:
+                await self.setitem(slc, await read(slc))
+
+        tasks = [
+            asyncio.ensure_future(worker())
+            for _ in range(min(max_concurrency, n_blocks))
+        ]
+        try:
+            await asyncio.gather(*tasks)
+        finally:
+            # On a failure or cancellation, stop the other workers and
+            # wait for them, so that none outlives this call.
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
 
 
 class ThreadedAsyncArray(AsyncZarrArray):
