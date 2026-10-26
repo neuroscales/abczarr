@@ -546,25 +546,41 @@ def _asarraylike(source: npt.ArrayLike, shape: tz.ShapeLike) -> tx.Any:
         for name in ("shape", "dtype", "ndim", "__getitem__")
     ):
         source = np.asarray(source)
-    if tuple(source.shape) != tuple(shape):
+    _check_store_shape(source.shape, shape)
+    return source
+
+
+def _check_store_shape(
+    source_shape: tz.ShapeLike, shape: tz.ShapeLike
+) -> None:
+    # Raise if a source of `source_shape` cannot be stored into `shape`.
+    if tuple(source_shape) != tuple(shape):
         raise ValueError(
-            f"cannot store a source of shape {tuple(source.shape)} into "
+            f"cannot store a source of shape {tuple(source_shape)} into "
             f"an array of shape {tuple(shape)}"
         )
-    return source
+
+
+def _write_unit_slices(
+    shape: tz.ShapeLike, unit: tz.ShapeLike
+) -> tx.Iterator[tx.Tuple[slice, ...]]:
+    # Yield the selection of each `unit`-sized block of an array of
+    # `shape`, in C order. The last block on an axis may be partial. For
+    # a 0-d array the product yields a single empty selection, which
+    # selects the one element.
+    shape = tuple(shape)
+    starts = [range(0, n, u) for n, u in zip(shape, unit)]
+    for corner in itertools.product(*starts):
+        yield tuple(
+            slice(i, min(i + u, n)) for i, u, n in zip(corner, unit, shape)
+        )
 
 
 def _store_serially(
     target: "ZarrArray", source: tx.Any, chunks: tz.ShapeLike
 ) -> None:
-    # One write per write unit. For a 0-d array the product yields a
-    # single empty selection, which writes the one element.
-    shape = tuple(source.shape)
-    starts = [range(0, n, u) for n, u in zip(shape, chunks)]
-    for corner in itertools.product(*starts):
-        slc = tuple(
-            slice(i, min(i + u, n)) for i, u, n in zip(corner, chunks, shape)
-        )
+    # One write per write unit.
+    for slc in _write_unit_slices(source.shape, chunks):
         target[slc] = np.asarray(source[slc])
 
 
