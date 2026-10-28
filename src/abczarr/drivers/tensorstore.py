@@ -23,6 +23,7 @@ __all__ = [
 
 # stdlib
 import json
+import re
 
 # dependencies
 import numpy.typing as npt
@@ -40,6 +41,7 @@ from abczarr.abc.sync import PathGroup, ZarrArray, ZarrNode
 from abczarr.api.config import ArrayConfig
 from abczarr.drivers._metadata import metadata_from_json
 from abczarr.drivers.base import Driver
+from abczarr.errors import UnsupportedZarrOperation
 from abczarr.metadata.base import ArrayMetadata, NodeMetadata, _node_at
 
 # optionals -- the module imports without tensorstore. A driver with no
@@ -84,19 +86,49 @@ def _parse_feature(key: str) -> tx.Optional[tx.Tuple[str, str, str]]:
     return version, kind, name
 
 
+#: The schemes TensorStore reaches through a kvstore driver of its own, mapped
+#: to TensorStore's spelling. Each one addresses the same data as fsspec, which
+#: abczarr reads through as well. ``memory://`` is absent: TensorStore's memory
+#: kvstore is a separate store from fsspec's, so an array written there would
+#: be invisible to everything else.
+_TS_SCHEMES = {
+    "file": "file",
+    "local": "file",
+    "gs": "gs",
+    "gcs": "gs",
+    "s3": "s3",
+    "s3a": "s3",
+    "http": "http",
+    "https": "https",
+}
+
+#: A URL scheme (``s3://``) or the head of an fsspec chain (``simplecache::``).
+_SCHEME_RE = re.compile(r"^([A-Za-z][A-Za-z0-9+.\-]*)(://|::)")
+
+
 def _kvstore_spec(location: tx.Any) -> tx.Any:
     """The TensorStore kvstore spec for `location`.
 
-    A kvstore spec, a dict or URL, is used as it is. A local path
-    becomes the file kvstore.
+    A kvstore spec dict is used as it is. A local path, given as a string or
+    a path object, becomes the file kvstore. A URL whose scheme TensorStore
+    reaches is passed on in TensorStore's spelling. Any other location raises
+    `UnsupportedZarrOperation`, rather than being written somewhere else.
     """
-    if isinstance(location, (dict, str)) and not _looks_like_path(location):
+    if isinstance(location, dict):
         return location
-    return {"driver": "file", "path": str(location)}
-
-
-def _looks_like_path(location: tx.Any) -> bool:
-    return isinstance(location, str) and "://" not in location
+    # the scheme is read from the text, never from a path object's protocol:
+    # some bagof.paths releases report an fsspec chain as a local path
+    text = str(location)
+    match = _SCHEME_RE.match(text)
+    if match is None:
+        return {"driver": "file", "path": text}
+    scheme, separator = match.groups()
+    ts_scheme = _TS_SCHEMES.get(scheme.lower()) if separator == "://" else None
+    if ts_scheme is None:
+        raise UnsupportedZarrOperation(
+            f"{scheme}{separator} locations", driver="tensorstore"
+        )
+    return ts_scheme + text[len(scheme):]
 
 
 def _ts_array_driver(version: tx.Any) -> str:
@@ -318,11 +350,13 @@ def _create_ts_array(
     ``.zattrs`` afterwards, since TensorStore's ``zarr`` driver writes
     only ``.zarray``.
     """
+    # refuse a location TensorStore cannot reach before any I/O
+    kvstore = _kvstore_spec(location)
     if _node_at(Path(str(location))) is not None and not overwrite:
         raise FileExistsError(f"a node already exists at {location}")
     spec = {
         "driver": _ts_array_driver(metadata.zarr_format),
-        "kvstore": _kvstore_spec(location),
+        "kvstore": kvstore,
         "metadata": _ts_metadata(metadata),
     }
     array = ts.open(spec, create=True, delete_existing=overwrite).result()
@@ -341,11 +375,13 @@ async def _acreate_ts_array(
     ``.result()``, then wraps the array as its native async twin. Driver
     selection and v2 attribute persistence mirror the synchronous create.
     """
+    # refuse a location TensorStore cannot reach before any I/O
+    kvstore = _kvstore_spec(location)
     if _node_at(Path(str(location))) is not None and not overwrite:
         raise FileExistsError(f"a node already exists at {location}")
     spec = {
         "driver": _ts_array_driver(metadata.zarr_format),
-        "kvstore": _kvstore_spec(location),
+        "kvstore": kvstore,
         "metadata": _ts_metadata(metadata),
     }
     array = await ts.open(spec, create=True, delete_existing=overwrite)
