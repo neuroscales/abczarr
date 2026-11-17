@@ -38,7 +38,9 @@ permissions:
 
 jobs:
   tests:
-    runs-on: ubuntu-latest
+    # Python 3.8 has no build for ubuntu-latest (26.04); 24.04 is the newest
+    # image that still provides it.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
         with:
