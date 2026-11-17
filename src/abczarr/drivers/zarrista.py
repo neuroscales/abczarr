@@ -28,6 +28,7 @@ import typing_extensions as tx
 from abczarr._core import typing as tz
 from abczarr._core.dtypes import asdtype
 from abczarr._core.features import FEATURE_KINDS, FEATURE_VERSIONS
+from abczarr._core.indexing import bounding_region
 from abczarr.abc.capabilities import Support
 from abczarr.abc.store import PathBasedStore
 from abczarr.abc.sync import PathGroup, ZarrArray, ZarrNode
@@ -155,10 +156,25 @@ class ZarristaArray(ZarristaNode, ZarrArray):
         return cell, None
 
     def __getitem__(self, index: tx.Any) -> npt.ArrayLike:
-        return self._array.retrieve_array_subset(index)
+        # zarrista reads only a step-1 box and keeps integer-indexed axes,
+        # so the box is read and the rest of the index is applied in NumPy
+        region, local = bounding_region(index, self.shape)
+        return np.asarray(self._array.retrieve_array_subset(region))[local]
 
     def __setitem__(self, index: tx.Any, value: npt.ArrayLike) -> None:
-        self._array.store_array_subset(index, np.asarray(value, self.dtype))
+        region, local = bounding_region(index, self.shape)
+        box = tuple(s.stop - s.start for s in region)
+        if 0 in box:
+            return
+        covered = np.zeros(box, dtype=bool)
+        covered[local] = True
+        if covered.all():
+            data = np.empty(box, self.dtype)
+        else:
+            # a partial or strided selection keeps the box's other elements
+            data = np.array(self._array.retrieve_array_subset(region))
+        data[local] = value
+        self._array.store_array_subset(region, np.ascontiguousarray(data))
 
 
 def _open_zarrista_array(location: tx.Any) -> ZarristaArray:
