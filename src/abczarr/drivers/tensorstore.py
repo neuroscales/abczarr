@@ -34,6 +34,7 @@ from bagof.paths import Path
 from abczarr._core import constants
 from abczarr._core import typing as tz
 from abczarr._core.features import FEATURE_KINDS, FEATURE_VERSIONS
+from abczarr._core.indexing import normalize_index
 from abczarr.abc.asynchronous import AsyncZarrArray, AsyncZarrNode
 from abczarr.abc.capabilities import Support
 from abczarr.abc.store import AsyncPathBasedStore, PathBasedStore
@@ -264,9 +265,12 @@ class TensorStoreArray(TensorStoreNode, ZarrArray):
         return write if write != read else None
 
     def __getitem__(self, index: tx.Any) -> npt.ArrayLike:
+        # TensorStore reads a negative position as a literal coordinate
+        index = normalize_index(index, self.shape)
         return self._array[index].read().result()
 
     def __setitem__(self, index: tx.Any, value: npt.ArrayLike) -> None:
+        index = normalize_index(index, self.shape)
         self._array[index].write(value).result()
 
     def as_async(self) -> "AsyncTensorStoreArray":
@@ -291,10 +295,15 @@ class AsyncTensorStoreArray(AsyncZarrArray):
     _async_support = Support.NATIVE
 
     async def getitem(self, index: tx.Any) -> npt.ArrayLike:
-        return await self._array()[index].read()
+        array = self._array()
+        # TensorStore reads a negative position as a literal coordinate
+        index = normalize_index(index, tuple(array.shape))
+        return await array[index].read()
 
     async def setitem(self, index: tx.Any, value: npt.ArrayLike) -> None:
-        await self._array()[index].write(value)
+        array = self._array()
+        index = normalize_index(index, tuple(array.shape))
+        await array[index].write(value)
 
     def _array(self) -> tx.Any:
         """The wrapped ``tensorstore.TensorStore`` handle."""
